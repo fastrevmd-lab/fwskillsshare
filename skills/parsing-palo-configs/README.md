@@ -1,0 +1,64 @@
+# parsing-palo-configs
+
+Claude Code skill for parsing and analyzing **Palo Alto PAN-OS and Panorama** firewall configurations in XML format.
+
+## What it does
+
+Parses XML config exports from device-level or Panorama device-group configurations and extracts:
+
+- Zones (layer3, layer2, virtual-wire, tap)
+- Address objects (ip-netmask, ip-range, fqdn, ip-wildcard)
+- Address groups (static and dynamic tag-based)
+- Service objects (TCP/UDP/SCTP/ICMP) and service groups
+- Custom applications
+- Security policies with profile settings
+- NAT rules (source and destination)
+- Decryption rules
+- Routing configuration
+- HA configuration
+- Zone protection profiles
+- VPN tunnels
+- Virtual-wire configurations
+- Multiple vsys support with per-vsys tagging
+- Panorama pre-rulebase and post-rulebase handling
+
+## Auto-trigger keywords
+
+`PAN-OS`, `Palo Alto`, `Panorama`, `NGFW`, `vsys`, `security rulebase`, `address-group`, `application-default`, `security-profile-group`, `device-group`, `<entry name=`, `<member>`, `tag-based`, `User-ID`
+
+## Manual invocation
+
+```
+/parsing-palo-configs
+```
+
+## Installation
+
+```bash
+cp -r parsing-palo-configs ~/.claude/skills/
+```
+
+## Security audit checks
+
+- Unused address/service objects
+- Shadowed policies
+- Overly permissive rules
+- Missing logging on allow rules
+- Disabled policies still in config
+- Dynamic address group dependency warnings
+- User-ID dependency flags
+- Profile group resolution validation
+- Implicit intra-zone allow and interzone default deny rules
+
+## File structure
+
+```
+parsing-palo-configs/
+├── SKILL.md                          # Main skill instructions
+├── references/
+│   ├── config-format.md              # PAN-OS XML structure, entry/member patterns
+│   ├── intermediate-schema.md        # Vendor-neutral output schema
+│   └── parsing-patterns.md           # XML parsing, profile groups, dynamic groups
+└── examples/
+    └── sample-parse.md               # Worked example with input/output
+```
