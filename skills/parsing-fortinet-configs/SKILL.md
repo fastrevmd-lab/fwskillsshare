@@ -186,7 +186,72 @@ For each policy extract:
 **Group:** `config firewall schedule group` → `edit <name>`
   Extract: `set member`
 
-### 9. Security Profile Definitions
+### 9. Application Mapping (L7 → Canonical)
+
+FortiGate supports L7 application control via `set application <list>` on policies. These reference
+FortiOS application IDs or names from the application control database.
+
+**Extracting application references from policies:**
+- `set application <list>` — space-separated application IDs or names
+- `set application-list <name>` — references an application control list profile (separate from direct app match)
+
+**Resolving FortiOS application names to canonical:**
+
+| FortiOS Name | Canonical App | Category |
+|-------------|---------------|----------|
+| `HTTPS` | `https` | web |
+| `HTTP` | `http` | web |
+| `SSH` | `ssh` | remote-access |
+| `RDP` | `rdp` | remote-access |
+| `DNS` | `dns` | network-mgmt |
+| `SMTP` | `smtp` | email |
+| `NTP` | `ntp` | network-mgmt |
+| `SNMP` | `snmp` | network-mgmt |
+| `FTP` | `ftp` | file-transfer |
+| `TFTP` | `tftp` | file-transfer |
+| `SIP` | `sip` | voip |
+| `LDAP` | `ldap` | auth |
+| `Kerberos` | `kerberos` | auth |
+| `SMB` | `smb` | file-transfer |
+| `MySQL` | `mysql` | database |
+| `MSSQL` | `mssql` | database |
+| `PostgreSQL` | `postgresql` | database |
+| `MongoDB` | `mongodb` | database |
+| `Zoom` | `zoom` | collaboration |
+| `Microsoft.Teams` | `ms-teams` | collaboration |
+| `Slack` | `slack` | collaboration |
+| `YouTube` | `youtube` | streaming |
+| `Netflix` | `netflix` | streaming |
+
+**FortiOS compound proposal parsing for VPN:**
+FortiOS encodes IKE proposals as compound strings: `aes256-sha256` → split on `-` boundary to get
+encryption (`aes256` → canonical `aes-256`) and integrity (`sha256`). Multiple proposals are
+space-separated: `aes256-sha256 aes128-sha1`.
+
+**On policy output:** When `set application` values are resolved, populate the policy's `apps` array
+with `{ vendor_name: "HTTPS", canonical: "https", confidence: 1.0, category: "web" }`.
+The `services` array keeps any `set service` matches separately.
+
+**Application control list profiles** (`config application list`) define grouped app-control
+policies. These do not map 1:1 to application groups — they are UTM profiles that filter
+applications by category, risk, or specific app ID. Extract the profile name for
+`security_profiles.application-list` but do not try to decompose into individual apps.
+
+**Unresolvable apps:** FortiOS numeric app IDs without a known name mapping → set `confidence: 0.0`,
+preserve the ID as `vendor_name`, and warn.
+
+### 9b. Application Groups
+
+FortiOS does not have explicit application groups in the same way PAN-OS does. The closest
+equivalent is `config application group` which groups application control signatures.
+
+Path: `config application group` → `edit <name>`
+Extract: `set application <list>` — member application IDs/names.
+Resolve each member to canonical. Store in `application_groups` array.
+
+If a group contains a mix of L7 apps and port-based services, split them appropriately.
+
+### 10. Security Profile Definitions
 Parse full profile objects for reference:
 - `config antivirus profile`
 - `config webfilter profile`
@@ -194,7 +259,7 @@ Parse full profile objects for reference:
 - `config application list`
 - `config firewall ssl-ssh-profile`
 
-### 10. Routing
+### 11. Routing
 - **Static routes (IPv4):** `config router static` → `edit <id>` with `set dst`, `set gateway`, `set device`, `set distance`
 - **Static routes (IPv6):** `config router static6` → `edit <id>` with same fields using IPv6 prefixes
 - **BGP:** `config router bgp` — extract:
@@ -212,7 +277,7 @@ Parse full profile objects for reference:
 - **OSPFv3:** `config router ospf6` — same structure but uses `config ospf6-interface` (not `ospf-interface`)
 - **Policy routing:** `config router policy` → PBF rules
 
-### 11. Infrastructure
+### 12. Infrastructure
 - **Version:** Extract from `#config-version=<version>:` comment line at top of config
 - **System Global:** `config system global` → extract `set hostname`
 - **DNS:** `config system dns` → extract `set primary`, `set secondary`, `set domain`
@@ -231,17 +296,17 @@ Parse full profile objects for reference:
   - Flag weak algorithms (DES/3DES, MD5, DH group ≤ 5)
   - Warn: certificate-based auth not fully converted
 
-### 12. Tokenizer
+### 13. Tokenizer
 Handle quoted multi-value lines correctly: `set member "HOST_A" "HOST_B"` → `['set', 'member', 'HOST_A', 'HOST_B']`. Strip quotes during tokenization. Values containing spaces must be kept as single tokens when quoted.
 
-### 13. Residual Config Capture
+### 14. Residual Config Capture
 Capture unrecognized `config` sections verbatim with depth tracking. Categorize into: VPN/IPsec, Routing Protocols, AAA/Users, PKI/Certificates, Wireless, Switching, DNS, NTP, SNMP, Other. Store in `residual_raw` for manual review.
 
-### 14. Multi-VDOM
+### 15. Multi-VDOM
 Detect VDOM context: `config vdom` / `edit <vdom-name>`.
 Each interface has `set vdom <name>`. Parse per-VDOM, tag items, merge.
 
-### 15. Implicit Rules
+### 16. Implicit Rules
 After parsing all explicit policies, append:
 - Per-zone **Intra-zone** rules (check zone config: `set intrazone allow|deny`)
   - Default is deny unless explicitly set to allow

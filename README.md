@@ -130,7 +130,9 @@ All skills output to a common schema with these sections:
 | `address_groups` | Groups of address objects |
 | `service_objects` | Service/port definitions |
 | `service_groups` | Groups of service objects |
-| `security_policies` | Firewall rules (the core output) |
+| `security_policies` | Firewall rules with resolved apps, services, profiles |
+| `applications` | Resolved L7 apps with canonical names and confidence scores |
+| `application_groups` | Groups of L7 applications (canonical keys) |
 | `nat_rules` | NAT translations (source, dest, static) |
 | `static_routes` | Routing table entries |
 | `virtual_routers` | Routing namespace / VRF separation |
@@ -150,7 +152,10 @@ All skills output to a common schema with these sections:
 Version 1.1.0 of these skills incorporates parsing improvements identified by analyzing the [fatcat/converter](https://github.com/fatcat/converter) JavaScript parsers. The following areas were significantly enhanced based on fatcat's implementation:
 
 **All Skills:**
-- Expanded intermediate schema with `system`, `virtual_routers`, `admin_users`, `vpn_tunnels`, `ospf_config`, `bgp_config`, `dhcp_config`, `residual_raw` definitions
+- Cross-vendor L7 application mapping with 240+ canonical apps, confidence scores, and categories (web, collaboration, email, remote-access, network-mgmt, database, cloud-storage, streaming, voip, auth, tunnel, security, and more)
+- Application and Application Group schema definitions with resolution algorithm (vendor-name → canonical → target-vendor)
+- Per-vendor application name mapping tables (JunOS `junos-*`, FortiOS uppercase names, PAN-OS unique names like `ssl`/`web-browsing`, ASA port-to-app inference)
+- Expanded intermediate schema with `applications`, `application_groups`, `system`, `virtual_routers`, `admin_users`, `vpn_tunnels`, `ospf_config`, `bgp_config`, `dhcp_config`, `residual_raw` definitions
 - IPv6 support throughout (addresses, routes, interface IPs, ICMPv6 services)
 - Full VPN/IPsec parsing with IKE/IPsec proposal chain resolution and weak algorithm detection
 - Detailed OSPF/OSPFv3 parsing (areas, interface-level settings, authentication, redistribution)
@@ -163,6 +168,8 @@ Version 1.1.0 of these skills incorporates parsing improvements identified by an
 - Version detection from config headers
 
 **Cisco ASA (parsing-cisco-configs):**
+- Port-to-application inference table (protocol+port → canonical app) for cross-platform conversion
+- ASA named port keyword mapping (www→80, domain→53, etc.)
 - ACL remark attachment to next rule as comment
 - Anonymous object creation for inline ACL addresses
 - Source port parsing in ACLs
@@ -171,6 +178,7 @@ Version 1.1.0 of these skills incorporates parsing improvements identified by an
 - VTI tunnel interface assembly with IPsec profile resolution
 
 **FortiGate (parsing-fortinet-configs):**
+- FortiOS application name resolution table with application groups and compound proposal parsing
 - Wildcard/wildcard-fqdn type conversion (to network/fqdn)
 - FortiLink interface filtering
 - Allowaccess classification into management services vs routing protocols
@@ -181,6 +189,8 @@ Version 1.1.0 of these skills incorporates parsing improvements identified by an
 - VPN IPsec phase1/phase2 compound proposal parsing (`aes256-sha256`)
 
 **PAN-OS (parsing-palo-configs):**
+- Full PAN-OS application resolution with 4-step pipeline (service check → app-group check → custom app check → canonical lookup)
+- `application-default` service decomposition guidance
 - Set-format (`show config flat`) input support with auto-detection
 - URL categories on security policies
 - Application group vs service object resolution in policy application field
@@ -190,6 +200,8 @@ Version 1.1.0 of these skills incorporates parsing improvements identified by an
 - Service and service-group description extraction
 
 **SRX (parsing-srx-configs):**
+- 33-entry JunOS predefined application mapping table (`junos-*` → canonical)
+- Application-set vs application-group distinction with mixed-set splitting
 - Improved format detection heuristic (stanza-name check vs line counting)
 - 6 hierarchical-to-set normalization rules for impedance mismatches
 - Zone-attached address book migration to global scope

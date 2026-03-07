@@ -241,13 +241,72 @@ Sub-commands:
   Derive network CIDR from the interface IP.
 - **DHCP Relay:** `dhcprelay server <ip> <iface>` + `dhcprelay enable <nameif>`
 
-### 14. Anonymous Objects
+### 14. Application Mapping (L7 → Canonical)
+
+ASA/FTD is a port-based platform — it does not have native L7 application awareness in ACLs.
+However, when converting FROM ASA to an app-aware platform (PAN-OS, FortiGate), or comparing
+configs, the parser should attempt to resolve well-known port/protocol combinations to canonical
+application names.
+
+**Resolution from port-based services:**
+For each service object or inline port match, check if the protocol+port maps to a known application:
+
+| Protocol | Port(s) | Canonical App | Category |
+|----------|---------|---------------|----------|
+| TCP | 443 | `https` | web |
+| TCP | 80 | `http` | web |
+| TCP | 22 | `ssh` | remote-access |
+| TCP | 3389 | `rdp` | remote-access |
+| UDP | 53 | `dns` | network-mgmt |
+| TCP | 25 | `smtp` | email |
+| TCP | 465 | `smtps` | email |
+| TCP | 993 | `imaps` | email |
+| TCP | 143 | `imap` | email |
+| UDP | 123 | `ntp` | network-mgmt |
+| UDP | 161 | `snmp` | network-mgmt |
+| UDP | 162 | `snmp-trap` | network-mgmt |
+| TCP | 21 | `ftp` | file-transfer |
+| TCP | 23 | `telnet` | remote-access |
+| TCP | 389 | `ldap` | auth |
+| TCP | 636 | `ldaps` | auth |
+| UDP | 69 | `tftp` | file-transfer |
+| TCP | 1433 | `mssql` | database |
+| TCP | 3306 | `mysql` | database |
+| TCP | 5432 | `postgresql` | database |
+| TCP | 445 | `smb` | file-transfer |
+| UDP | 500 | `ipsec` | tunnel |
+| UDP | 4500 | `ipsec-nat-t` | tunnel |
+| TCP | 5060 | `sip` | voip |
+| UDP | 5060 | `sip` | voip |
+
+**ASA named port keywords:** Map ASA port names to numbers before resolving:
+`www`→80, `https`→443, `ssh`→22, `telnet`→23, `ftp`→21, `ftp-data`→20, `smtp`→25,
+`pop3`→110, `imap4`→143, `domain`→53, `ntp`→123, `snmp`→161, `snmptrap`→162,
+`tftp`→69, `syslog`→514, `tacacs`→49, `radius`→1812, `ldap`→389, `ldaps`→636,
+`sqlnet`→1521, `h323`→1720, `sip`→5060, `rtsp`→554, `kerberos`→88, `msrpc`→135,
+`netbios-ssn`→139, `microsoft-ds`→445, `bgp`→179, `lpd`→515, `pptp`→1723
+
+**On policy output:** When a service match resolves to a known application, populate the policy's
+`apps` array with `{ vendor_name: "tcp/443", canonical: "https", confidence: 1.0, category: "web" }`.
+The `services` array still keeps the port-based match. This enables downstream converters to use
+the app-aware rule on platforms that support it.
+
+**Unresolvable services:** Complex port ranges, non-standard ports, or protocol groups that don't
+map to a single known application → keep as port-based services only, no `apps` entry.
+
+### 15. Application Groups
+
+ASA does not have application groups. However, when converting FROM an app-aware platform,
+object-group service entries that resolve entirely to known applications should be flagged
+as potential `application_groups` in the IR for downstream use.
+
+### 16. Anonymous Objects
 When inline addresses/services appear in ACLs or object groups without a named reference (e.g., `host 10.0.1.10` directly in an ACL line), create anonymous objects with auto-generated names (e.g., `anon-1-host`, `anon-2-net`). This ensures every IR reference points to a named object.
 
-### 15. Residual Config Capture
+### 17. Residual Config Capture
 Capture unrecognized top-level commands verbatim. Categorize into: VPN/IPsec, AAA, QoS, PKI/Certificates, IPv6, Other. Store in `residual_raw` for manual review.
 
-### 16. Transparent Mode
+### 18. Transparent Mode
 Detect: `firewall transparent` in config
 When in transparent mode:
 - Interfaces are in bridge-groups instead of having IPs
@@ -255,7 +314,7 @@ When in transparent mode:
 - BVI interfaces (`interface BVI<id>`) carry the management IP
 - Zones derived from nameifs still work the same way
 
-### 17. Implicit Rules
+### 19. Implicit Rules
 After building all policies from ACLs + access-groups, append:
 - **Implicit: Default Deny** — action: "deny", all any, `_implicit: true`
 

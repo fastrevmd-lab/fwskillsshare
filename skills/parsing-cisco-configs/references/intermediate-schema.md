@@ -208,6 +208,106 @@ Protocol values: `"tcp"`, `"udp"`, `"icmp"`, `"icmpv6"`, `"sctp"`, `"ip"`, `"any
 ```
 Type values: `"interface"`, `"dynamic-ip-pool"`, `"static"`, `"no-nat"`
 
+## Application (Resolved L7 App on a Policy)
+
+When a security policy references an application by vendor-specific name, resolve it to a canonical
+vendor-neutral entry. Each resolved app is stored in the policy's `apps` array.
+
+```json
+{
+  "vendor_name": "junos-https",
+  "canonical": "https",
+  "confidence": 1.0,
+  "category": "web"
+}
+```
+
+Fields:
+- **vendor_name** — the original name as it appears in the source config
+- **canonical** — vendor-neutral canonical key (lowercase, e.g., `"https"`, `"ssh"`, `"ms-teams"`)
+- **confidence** — mapping confidence score: `1.0` = exact match, `0.9` = close/likely, `0.0` = unresolved
+- **category** — application category for grouping and reporting
+
+### Canonical Application Categories
+
+| Category | Examples |
+|----------|----------|
+| `web` | https, http, quic, cloudflare, akamai |
+| `collaboration` | ms-teams, zoom, webex, slack, ms-sharepoint, google-meet, discord |
+| `email` | smtp, smtps, gmail, imap, imaps, pop3, outlook-web-app, exchange-online |
+| `remote-access` | ssh, rdp, telnet, vnc, teamviewer, anydesk, citrix-ica |
+| `network-mgmt` | dns, ntp, snmp, snmp-trap, netflow, ping, dhcp, syslog, bgp, ospf |
+| `file-transfer` | ftp, sftp, tftp, smb, nfs, cifs, rsync |
+| `database` | mysql, mssql, oracle-db, postgresql, mongodb, redis, elasticsearch |
+| `cloud-storage` | ms-onedrive, google-drive, dropbox, box, aws, azure, gcp |
+| `streaming` | youtube, netflix, rtp, rtsp, spotify, twitch |
+| `voip` | sip, h323, mgcp, sccp |
+| `auth` | ldap, ldaps, kerberos, radius, tacacs, ms-ad, okta, duo |
+| `tunnel` | ipsec, openvpn, gre, l2tp, wireguard, ssl-vpn |
+| `social` | facebook, twitter, linkedin, instagram, whatsapp |
+| `security` | crowdstrike, sentinelone, zscaler, palo-alto-networks, splunk |
+| `other` | docker, kubernetes, kafka, jenkins, grafana, terraform |
+
+### Cross-Vendor Application Name Mapping
+
+Each canonical application has vendor-specific names. The parser must resolve FROM the source
+vendor's name TO the canonical key. When rendering/converting, resolve FROM canonical TO the
+target vendor's name.
+
+Example mappings:
+
+| Canonical | JunOS | FortiOS | PAN-OS | FTD/ASA |
+|-----------|-------|---------|--------|---------|
+| `https` | `junos-https` | `HTTPS` | `ssl` | `HTTPS` |
+| `http` | `junos-http` | `HTTP` | `web-browsing` | `HTTP` |
+| `ssh` | `junos-ssh` | `SSH` | `ssh` | `SSH` |
+| `dns` | `junos-dns-udp` | `DNS` | `dns` | `DNS` |
+| `rdp` | `junos-ms-rpc` | `RDP` | `ms-rdp` | `RDP` |
+| `smtp` | `junos-smtp` | `SMTP` | `smtp` | `SMTP` |
+| `ntp` | `junos-ntp` | `NTP` | `ntp` | `NTP` |
+| `snmp` | `junos-snmp` | `SNMP` | `snmp` | `SNMP` |
+
+Resolution algorithm:
+1. **Pass 1 — Vendor-name match:** Look up the source vendor's name across all canonical entries
+2. **Pass 2 — Canonical-key match:** Check if the name is already a canonical key (e.g., PAN-OS uses `ssh` directly)
+3. **Unresolved:** If no match, set `confidence: 0.0` and keep the vendor_name as-is with a warning
+
+### Policies: `applications` vs `services` vs `apps` vs `app_groups`
+
+- **`services`** — port/protocol-based match references (service objects/groups). Always present.
+- **`applications`** — raw vendor-specific application names as they appear in the config (preserved for reference)
+- **`apps`** — resolved application entries (array of `{vendor_name, canonical, confidence, category}`)
+- **`app_groups`** — application group names referenced by this policy
+
+When a policy references an application name:
+1. Check if it is actually a service object or service group → promote to `services`
+2. Check if it is an application group → add to `app_groups`
+3. Otherwise resolve to canonical via the mapping → add to `apps`
+
+### Conversion Caveats for Applications
+
+- **Port-based platforms (ASA/FTD):** Cannot natively match L7 applications. When converting TO ASA, application rules must be decomposed into port-based service matches. Add a preflight warning.
+- **Confidence < 1.0:** Flag for manual review during conversion.
+- **Unresolved apps (confidence 0.0):** Cannot be converted — emit as residual with a warning.
+- **Category mismatch:** Some apps exist on one platform but not another (e.g., `ms-teams` on PAN-OS has no ASA equivalent). Emit a warning and leave as residual.
+
+## Application Group
+
+```json
+{
+  "name": "web-apps",
+  "members": ["https", "http", "quic"],
+  "description": "Web browsing applications",
+  "used": true
+}
+```
+
+Application groups use **canonical** application keys as members (not vendor-specific names).
+During parsing, resolve each member from vendor-specific to canonical.
+
+When an application-set or application-group contains a mix of L7 apps and port-based
+services, split them: L7 apps go to `application_groups`, port-based go to `service_groups`.
+
 ## Schedule
 
 ```json

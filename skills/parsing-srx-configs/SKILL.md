@@ -117,15 +117,74 @@ source port if present, ICMP type/code, inactivity-timeout, description.
 
 Map `protocol` values: `6` or `tcp` → TCP, `17` or `udp` → UDP, `1` or `icmp` → ICMP.
 
-### 5. Service Groups (Application Sets)
+### 5. Application Mapping (L7 → Canonical)
+
+JunOS uses predefined `junos-*` applications that are matched by name in security policies.
+These are L7-aware on SRX and must be resolved to canonical names for cross-vendor conversion.
+
+**JunOS predefined application names to canonical:**
+
+| JunOS Name | Protocol/Port | Canonical App | Category |
+|------------|---------------|---------------|----------|
+| `junos-https` | TCP/443 | `https` | web |
+| `junos-http` | TCP/80 | `http` | web |
+| `junos-ssh` | TCP/22 | `ssh` | remote-access |
+| `junos-telnet` | TCP/23 | `telnet` | remote-access |
+| `junos-ftp` | TCP/21 | `ftp` | file-transfer |
+| `junos-tftp` | UDP/69 | `tftp` | file-transfer |
+| `junos-dns-udp` | UDP/53 | `dns` | network-mgmt |
+| `junos-dns-tcp` | TCP/53 | `dns` | network-mgmt |
+| `junos-ntp` | UDP/123 | `ntp` | network-mgmt |
+| `junos-snmp` | UDP/161 | `snmp` | network-mgmt |
+| `junos-snmptrap` | UDP/162 | `snmp-trap` | network-mgmt |
+| `junos-smtp` | TCP/25 | `smtp` | email |
+| `junos-smtps` | TCP/465 | `smtps` | email |
+| `junos-imap` | TCP/143 | `imap` | email |
+| `junos-imaps` | TCP/993 | `imaps` | email |
+| `junos-pop3` | TCP/110 | `pop3` | email |
+| `junos-ldap` | TCP/389 | `ldap` | auth |
+| `junos-bgp` | TCP/179 | `bgp` | network-mgmt |
+| `junos-ospf` | ANY | `ospf` | network-mgmt |
+| `junos-sip` | UDP/5060 | `sip` | voip |
+| `junos-h323` | TCP/1720 | `h323` | voip |
+| `junos-ms-rpc` | TCP/135 | `msrpc` | other |
+| `junos-ms-sql` | TCP/1433 | `mssql` | database |
+| `junos-mysql` | TCP/3306 | `mysql` | database |
+| `junos-smb` | TCP/445 | `smb` | file-transfer |
+| `junos-ike` | UDP/500 | `ipsec` | tunnel |
+| `junos-ike-nat-t` | UDP/4500 | `ipsec-nat-t` | tunnel |
+| `junos-pptp` | TCP/1723 | `pptp` | tunnel |
+| `junos-icmp-all` | ICMP | `ping` | network-mgmt |
+| `junos-icmpv6-all` | ICMPv6 | `ping6` | network-mgmt |
+| `junos-nntp` | TCP/119 | `nntp` | other |
+| `junos-rdp` | TCP/3389 | `rdp` | remote-access |
+| `junos-syslog` | UDP/514 | `syslog` | network-mgmt |
+
+**Resolution in policies:** When `match application` lists a predefined app:
+1. Look up in the table above
+2. Populate policy's `apps` array: `{ vendor_name: "junos-https", canonical: "https", confidence: 1.0, category: "web" }`
+3. The `services` array keeps `application-default` or explicit port references separately
+
+**Custom applications** (`applications.application.<name>`): These are user-defined with explicit
+protocol and port. Extract as service objects AND attempt canonical resolution from protocol+port.
+If the port matches a known app, set `confidence: 0.9`.
+
+**Unresolvable apps:** For `any` application match or custom apps without a canonical mapping,
+set `confidence: 0.0`, preserve the vendor_name, and warn.
+
+### 5b. Service Groups (Application Sets)
 Path: `applications.application-set.<name>`
 Extract member applications and nested application-sets.
 
 **Application-Set vs Application-Group distinction:**
-Application-sets containing all L7/predefined apps → promote to `application_groups`.
-Sets containing user-defined port-based apps → keep as `service_groups`.
+- Determine member types: for each member, check if it is a predefined `junos-*` L7 app or a
+  user-defined port-based application
+- Application-sets containing **all L7/predefined apps** → promote to `application_groups` with
+  canonical member names
+- Sets containing **user-defined port-based apps** → keep as `service_groups`
+- **Mixed sets** → split: L7 members → `application_groups`, port-based → `service_groups`
 
-**Additional built-in apps** (beyond existing list): `junos-smtps` (TCP/465), `junos-imaps` (TCP/993), `junos-imap` (TCP/143), `junos-nntp` (TCP/119), `junos-ldap` (TCP/389), `junos-bgp` (TCP/179), `junos-ospf` (ANY), `junos-icmpv6-all` (ICMPv6), `junos-tftp` (UDP/69), `junos-snmptrap` (UDP/162).
+Resolve each L7 member from JunOS name to canonical before storing in `application_groups`.
 
 ### 6. Security Policies
 Path: `security.policies.from-zone.<src>.to-zone.<dst>.policy.<name>`

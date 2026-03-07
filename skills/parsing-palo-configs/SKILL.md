@@ -221,11 +221,83 @@ Derive network CIDR from the interface IP for the DHCP scope.
 - **Syslog:** `shared.log-settings.syslog.entry[]`
 - **Virtual wire:** `network.virtual-wire.entry[]`
 
-### 16. Application Resolution
-When a policy references an application name:
-1. Check if it is actually a service object/group misplaced in the `application` field → promote to service match
-2. Check if it is an application group → record in `app_groups`
-3. Otherwise resolve through cross-vendor app mapping with confidence scores
+### 16. Application Resolution (L7 → Canonical)
+
+PAN-OS has the richest L7 application model of any firewall vendor. Security policies use
+`<application><member>` to match traffic by application signature, independent of port.
+
+**Resolution steps for each application name in a policy:**
+
+1. **Service object/group check:** If the name matches a service object or service group → promote
+   to the `services` array (PAN-OS sometimes places port-based matches in the application field)
+2. **Application group check:** If the name matches an `application-group.entry[]` → add to policy's
+   `app_groups` array
+3. **Custom application check:** If the name matches a `application.entry[]` (custom app) → extract
+   its default port definition, resolve protocol/port to a service match
+4. **Cross-vendor canonical resolution:** Resolve through the app mapping table
+
+**PAN-OS application names to canonical:**
+
+| PAN-OS Name | Canonical App | Category |
+|-------------|---------------|----------|
+| `ssl` | `https` | web |
+| `web-browsing` | `http` | web |
+| `ssh` | `ssh` | remote-access |
+| `ms-rdp` | `rdp` | remote-access |
+| `dns` | `dns` | network-mgmt |
+| `smtp` | `smtp` | email |
+| `ntp` | `ntp` | network-mgmt |
+| `snmp` | `snmp` | network-mgmt |
+| `ftp` | `ftp` | file-transfer |
+| `tftp` | `tftp` | file-transfer |
+| `sip` | `sip` | voip |
+| `ldap` | `ldap` | auth |
+| `kerberos` | `kerberos` | auth |
+| `smb` | `smb` | file-transfer |
+| `ms-sql-s` | `mssql` | database |
+| `mysql` | `mysql` | database |
+| `postgresql` | `postgresql` | database |
+| `ms-teams` | `ms-teams` | collaboration |
+| `zoom` | `zoom` | collaboration |
+| `webex` | `webex` | collaboration |
+| `slack` | `slack` | collaboration |
+| `youtube` | `youtube` | streaming |
+| `netflix` | `netflix` | streaming |
+| `office365-enterprise-access` | `ms-office365` | collaboration |
+| `google-drive-web` | `google-drive` | cloud-storage |
+| `dropbox` | `dropbox` | cloud-storage |
+
+**`application-default` service:** When a policy sets `<service><member>application-default</member>`,
+PAN-OS uses each application's built-in default port. For the IR, keep `services: ["application-default"]`
+and rely on the `apps` array for resolution. During conversion to port-based platforms, decompose
+each resolved app's default port into explicit service matches.
+
+**On policy output:** For each resolved app, populate `apps` array:
+`{ vendor_name: "ssl", canonical: "https", confidence: 1.0, category: "web" }`
+
+**Custom applications** (`application.entry[]`): Extract the `<default><port><member>` list.
+Format is `tcp/80,443` or `udp/53` — parse protocol and port range, create a service object,
+and add to the policy's `services` array. Set `confidence: 0.9` since custom apps may not have
+an exact canonical equivalent.
+
+**Unresolvable apps:** PAN-OS has 3000+ built-in application signatures. Many are vendor-specific
+(e.g., `palo-alto-networks`, `fortinet`). For unknown apps, set `confidence: 0.0`, preserve the
+vendor_name, and warn. These will go to residual during conversion.
+
+### 16b. Application Groups
+
+Path: `application-group.entry[]`
+Extract `<members><member>` list.
+
+**Resolution:** For each member:
+1. Resolve from PAN-OS name to canonical
+2. If a member is itself an application group → recurse
+3. If a member is a custom application → extract its port definition
+
+Store in `application_groups` with canonical member names.
+
+**Mixed groups:** If a group contains both L7 apps and port-based services, split them:
+L7 apps → `application_groups`, port-based → `service_groups`.
 
 ### 17. Multi-vsys
 If multiple vsys entries found:
