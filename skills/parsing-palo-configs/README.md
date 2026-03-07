@@ -4,7 +4,7 @@ Claude Code skill for parsing and analyzing **Palo Alto PAN-OS and Panorama** fi
 
 ## What it does
 
-Parses XML config exports from device-level or Panorama device-group configurations and extracts:
+Parses both XML and set-format (`show config flat`) configs from device-level or Panorama device-group configurations and extracts:
 
 - Zones (layer3, layer2, virtual-wire, tap)
 - Address objects (ip-netmask, ip-range, fqdn, ip-wildcard)
@@ -17,10 +17,20 @@ Parses XML config exports from device-level or Panorama device-group configurati
 - Routing configuration
 - HA configuration
 - Zone protection profiles
-- VPN tunnels
+- IPv6 address types and routes
+- ICMP/ICMPv6 services
+- Interfaces (ethernet, LAG, loopback, tunnel, VLAN)
+- System config (hostname, DNS, NTP, management services)
+- Admin users
+- DHCP server/relay
+- Detailed OSPF/OSPFv3/BGP
+- VPN/IPsec with full crypto chain
+- URL categories on policies
+- Application group resolution
 - Virtual-wire configurations
 - Multiple vsys support with per-vsys tagging
 - Panorama pre-rulebase and post-rulebase handling
+- Residual config capture
 
 ## Auto-trigger keywords
 
@@ -49,6 +59,8 @@ cp -r parsing-palo-configs ~/.claude/skills/
 - User-ID dependency flags
 - Profile group resolution validation
 - Implicit intra-zone allow and interzone default deny rules
+- URL category dependencies
+- Weak VPN algorithms
 
 ## File structure
 

@@ -7,7 +7,7 @@ description: >
   "address-group", "application-default", "security-profile-group", "device-group",
   "<entry name=", "<member>", "tag-based", "User-ID". Also trigger when the user asks to
   convert, audit, summarize, or explain a Palo Alto config.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Parsing Palo Alto PAN-OS Configurations
@@ -18,9 +18,14 @@ intermediate format.
 
 ## Input Format
 
-PAN-OS configs are XML exports from either:
-- **Device-level** — `show running-config` or `running-config.xml` export
-- **Panorama** — device-group and template configs pushed to firewalls
+PAN-OS configs come in two formats. Auto-detect which one:
+
+1. **XML format** — `show running-config`, `running-config.xml` export, or Panorama config
+2. **Set format** — `show config flat` output with `set <path> <value>` lines
+
+**Detection:** Check if input starts with `<` or contains XML tags → XML mode. Lines starting with `set ` → set-format mode.
+
+**Set-format tokenization:** Handle double-quoted strings (preserve as single tokens), `[ ]` bracket list notation (expand to multiple values), and inline `#` comments. Example: `set deviceconfig system hostname fw1` maps to XML path `deviceconfig.system.hostname = fw1`.
 
 ### XML Structure Conventions
 
@@ -64,6 +69,8 @@ Types — detect by which child element exists:
 - `<ip-range>` → type: "range"
 - `<fqdn>` → type: "fqdn"
 - `<ip-wildcard>` → type: "wildcard" (warn: limited SRX support)
+- `<ipv6-netmask>` → type: "subnet" (or "host" if /128)
+- `<ipv6-range>` → type: "range"
 
 Also extract: `<description>`, `<tag><member>` tags.
 Auto-detect IP version from value.
@@ -81,10 +88,14 @@ Extract from `<protocol>`:
 - `<tcp><port>` / `<tcp><source-port>` → protocol: "tcp"
 - `<udp><port>` / `<udp><source-port>` → protocol: "udp"
 - `<sctp><port>` → protocol: "sctp" (warn: limited support)
+- `<icmp>` → protocol: "icmp" (extract type/code if present)
+- `<icmp6>` → protocol: "icmpv6"
+Also extract `<description>` from service objects.
 
 ### 5. Service Groups
 Path: `service-group.entry[]`
 Extract `<members><member>` list.
+Also extract `<description>` from service groups.
 
 ### 6. Applications (Custom)
 Path: `application.entry[]`
@@ -109,6 +120,7 @@ For each rule extract:
 - **applications** — `<application><member>` list
 - **services** — `<service><member>` list (often "application-default")
 - **action** — `<action>` child element name: allow, deny, drop, reset-client, reset-server, reset-both
+  Map `drop` to `deny` with info warning (silent deny → deny since some targets don't distinguish)
 - **log_start** — `<log-start>yes</log-start>`
 - **log_end** — `<log-end>yes</log-end>`
 - **disabled** — `<disabled>yes</disabled>`
@@ -117,6 +129,7 @@ For each rule extract:
 - **schedule** — `<schedule>` text
 - **source_users** — `<source-user><member>` list (User-ID)
   - Warn if non-"any" values found: User-ID has no direct equivalent on most platforms
+- **url_categories** — `<category><member>` list
 
 **Security profiles** — check `<profile-setting>`:
 - `<group><member>` → profile_group name, then resolve from profile-group definitions
@@ -143,28 +156,92 @@ For each rule:
 Path: `rulebase.decryption.rules.entry[]`
 Extract: name, zones, addresses, action (decrypt/no-decrypt), SSL type (forward-proxy, inbound-inspection).
 
-### 11. Routing & Infrastructure
-- **Static routes:** `network.virtual-router.entry[].routing-table.ip.static-route.entry[]`
-- **BGP:** `network.virtual-router.entry[].protocol.bgp`
-- **OSPF:** `network.virtual-router.entry[].protocol.ospf`
-- **HA:** `deviceconfig.high-availability` — mode (active-passive, active-active), group-id, peer-ip
+### 11. Interfaces
+Parse from `network.interface` entries (both XML and set-format):
+
+**Interface types:**
+- **Ethernet** (`ethernet1/1`): IP, IPv6, MTU, DHCP client, aggregate-group (LAG parent), description, subinterfaces (units with IP/VLAN tag/IPv6)
+- **Aggregate-ethernet** (`ae1`): LAG with layer3 IP, MTU, sub-units
+- **Loopback** (`loopback.N`): IP and description
+- **VLAN** (`vlan.N`): IP and VLAN tag
+- **Tunnel** (`tunnel.N`): IP for VPN binding
+
+Derive interface type from name: `ae*`=lag, `loopback*`=loopback, `tunnel*`=tunnel, `vlan*`=vlan.
+Back-populate `lag_members` on aggregate interfaces after parsing all interfaces.
+Subinterface zone inheritance: if a subinterface has no zone but its parent does, inherit the parent's zone.
+
+### 12. System Configuration
+Path: `deviceconfig.system`
+Extract:
+- `hostname`, `domain`, `sw-version` (→ metadata.source_version)
+- `dns-setting.servers` → primary/secondary DNS
+- `ntp-servers` → NTP servers with prefer flag
+- Management IP + netmask → synthetic `mgmt` interface with `is_mgmt: true`
+- Management services: SSH, HTTPS, HTTP, Telnet — PAN-OS uses `disable-*` flags where `yes` = disabled (invert)
+
+### 13. Admin Users
+Path: `mgt-config.users.entry[]`
+Extract: username, SSH public key (`ssh-public-key` or older `public-key`), role from permissions (`superuser`→super-admin, `devicereader`→read-only, `deviceadmin`→admin).
+Only migrate users with SSH keys; warn about others.
+
+### 14. DHCP Server and Relay
+Path: `network.dhcp.interface.entry[]`
+Extract per-interface:
+- **Server:** enable state, IP pools (start-end), gateway, primary/secondary DNS, domain, lease timeout
+- **Relay:** relay server IP addresses
+Derive network CIDR from the interface IP for the DHCP scope.
+
+### 15. Routing & Infrastructure
+- **Virtual Routers:** `network.virtual-router.entry[]` — extract name and interface list
+- **Static routes (IPv4):** `routing-table.ip.static-route.entry[]` with destination, nexthop (IP or discard), interface, metric
+- **Static routes (IPv6):** `routing-table.ip6.static-route.entry[]` (note: `ip6` not `ipv6` in XML path)
+- Routes through tunnel interfaces are separated and associated with VPN tunnels
+- **BGP:** `protocol.bgp` — extract:
+  - Local AS, router-ID, enable/disable
+  - Peer groups: type (ebgp/ibgp), group-level peer-as
+  - Per-peer: address, remote-as (fallback to group AS), description, update-source, password, keepalive/hold timers, next-hop-self, route-reflector-client, enabled
+  - Advertise-network entries
+  - Redistribution rules
+- **OSPF:** `protocol.ospf` — extract:
+  - Router-ID, reference-bandwidth
+  - Areas: area ID, type (normal/stub/nssa), no-summary, default-cost
+  - Area authentication: type (md5), key
+  - Interfaces per area: passive, enabled, metric, priority, hello/dead intervals, link-type, per-interface auth
+  - Redistribute: source, metric, metric-type
+- **OSPFv3:** `protocol.ospfv3` — same structure as OSPFv2
+- **HA:** `deviceconfig.high-availability` — enabled flag, mode (active-passive/active-active), group-id
+- **VPN/IPsec:**
+  - IKE crypto profiles: encryption, integrity, DH groups, lifetime
+  - IPsec crypto profiles: ESP encryption/authentication, DH group (PFS), lifetime
+  - IKE gateways: version (IKEv1/v2), auth method (PSK or certificate), PSK, local/peer address, local/peer ID, crypto profile reference, local cert + CA profile
+  - IPsec tunnels: IKE gateway reference, IPsec crypto profile reference, tunnel interface binding
+  - Resolve tunnel IPs, find VR containing tunnel, collect routes through tunnel interfaces
+  - Flag weak algorithms (DES/3DES, MD5, DH group ≤ 5)
 - **Zone protection:** `network.profiles.zone-protection-profile.entry[]`
-- **VPN:** `network.ike` and `network.tunnel.ipsec`
 - **Syslog:** `shared.log-settings.syslog.entry[]`
 - **Virtual wire:** `network.virtual-wire.entry[]`
 
-### 12. Multi-vsys
+### 16. Application Resolution
+When a policy references an application name:
+1. Check if it is actually a service object/group misplaced in the `application` field → promote to service match
+2. Check if it is an application group → record in `app_groups`
+3. Otherwise resolve through cross-vendor app mapping with confidence scores
+
+### 17. Multi-vsys
 If multiple vsys entries found:
 - Parse each independently
 - Tag all policies and objects with `_vsys: "vsys1"` etc.
 - Merge into flat arrays
 - Re-index `_rule_index` sequentially
 
-### 13. Implicit Rules
+### 18. Implicit Rules
 After parsing all explicit policies, append per-context:
 - **Implicit: Intra-zone Allow** — per zone, action: "allow", `_implicit: true`
   (for each zone, src_zones = dst_zones = [zone_name])
 - **Implicit: Interzone Default Deny** — action: "deny", src/dst zones: ["any"], `_implicit: true`
+
+### 19. Residual Config Capture
+Capture unhandled configuration sections. In XML mode, serialize unhandled elements back to XML strings. Categorize into: VPN Tunnels, IKE, IPsec Crypto, QoS, DNS Proxy, Shared Objects, PKI/Certificates, Security Profiles, Custom Applications, Policy-Based Forwarding, Panorama Config, Other. Store in `residual_raw`.
 
 ## Output Format
 
@@ -183,6 +260,7 @@ After extraction, run these checks and report findings:
 7. **Empty groups** — groups with no members
 8. **Dynamic groups** — flag for manual review (no static equivalent)
 9. **User-ID dependencies** — rules relying on source-user for access control
+10. **URL category dependencies** — rules using URL categories for access control
 
 ## Reference Files
 

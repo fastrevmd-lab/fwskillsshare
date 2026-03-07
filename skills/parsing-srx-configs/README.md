@@ -11,19 +11,27 @@ Detects and parses two config formats:
 Extracts:
 
 - Zones and address books
+- Zone-attached address books
 - Address objects (ip-prefix, dns-name, range-address, wildcard-address)
 - Address groups / address-sets
 - Applications and application-sets (with predefined application mapping)
 - Security policies (from-zone/to-zone pairs and global policies)
-- NAT rules (source, destination, static)
+- NAT rules (source, destination, static) with port matching and pool-based translations
+- Interfaces (IPv4/IPv6, LAG, DHCP client, VLAN, MTU)
+- System config (hostname, DNS, NTP, admin users)
 - Schedules
 - Static routes, BGP, OSPF/OSPFv3
+- IPv6 static routes
+- Routing instances/VRF
 - HA / chassis cluster configuration
+- MNHA HA detection
 - Screen/IDS protections
-- VPN tunnels
+- VPN full IKE/IPsec chain resolution
 - Syslog configuration
-- DHCP settings
+- DHCP server pools and relay
 - Logical-systems and tenant support for multi-context deployments
+- Residual config capture
+- Version detection
 
 ## Auto-trigger keywords
 
@@ -50,7 +58,7 @@ cp -r parsing-srx-configs ~/.claude/skills/
 - Disabled / deactivated policies
 - Duplicate objects
 - Empty groups
-- Bracket list `[val1 val2]` expansion handling
+- Weak VPN algorithms (DES/3DES, MD5, DH ≤ 5)
 
 ## File structure
 

@@ -13,9 +13,19 @@ Parses the hierarchical `config/edit/set/next/end` block format from `show full-
 - Security policies
 - VIPs (destination NAT) and IP pools (source NAT)
 - UTM/security profiles (antivirus, URL filtering, IPS, SSL inspection, DLP)
+- IPv6 address objects/groups and routes
 - Schedules
 - HA configuration
 - Multi-VDOM support
+- VPN IPsec phase1/phase2
+- Detailed OSPF/OSPFv3/BGP
+- DHCP server with pools and reservations
+- System global/DNS/NTP
+- Admin users
+- FortiLink filtering
+- Allowaccess classification
+- Residual config capture
+- Version detection
 
 ## Auto-trigger keywords
 
@@ -43,6 +53,7 @@ cp -r parsing-fortinet-configs ~/.claude/skills/
 - VIP reference validation
 - Geography object usage warnings
 - Implicit intra-zone rule generation
+- Weak VPN algorithms
 
 ## File structure
 

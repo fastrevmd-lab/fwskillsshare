@@ -8,7 +8,7 @@ description: >
   "nameif", "security-level", "nat (", "object network", "subnet", "host", "range",
   "interface GigabitEthernet", "interface Management", "failover", "threat-detection".
   Also trigger when the user asks to convert, audit, summarize, or explain a Cisco ASA/FTD config.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Parsing Cisco ASA / FTD Configurations
@@ -61,6 +61,16 @@ Extract from sub-commands:
 - `shutdown` — interface is administratively down
 - `description <text>`
 - `bridge-group <id>` — transparent mode bridge group membership
+- `ip address dhcp` — DHCP client mode (no static IP)
+- `ipv6 address <ipv6/prefix> [eui-64]` — IPv6 address
+- `mtu <value>` — MTU setting
+- `management-only` — management-only interface flag
+- `channel-group <N>` — LAG/EtherChannel membership (Port-channel parent)
+- `tunnel source interface <name>` — VPN tunnel source
+- `tunnel destination <ip>` — VPN tunnel destination
+- `tunnel protection ipsec profile <name>` — IPsec profile binding
+
+Interface types: detect `Port-channel*` as lag, `Tunnel*` as tunnel, `Loopback*` as loopback, `Management*` as management. Sub-interfaces contain `.` in name (e.g., `GigabitEthernet0/0.100`) — derive parent from name before the dot.
 
 ### 2. Zones (Derived from Interfaces)
 ASA doesn't have explicit zones. Derive them from `nameif` values:
@@ -71,10 +81,14 @@ ASA doesn't have explicit zones. Derive them from `nameif` values:
 ### 3. Network Objects
 Source: `object network <name>` blocks
 Types from sub-commands:
-- `host <ip>` → type: "host", value: ip + "/32"
+- `host <ip>` → type: "host", value: ip + "/32" (or "/128" for IPv6)
 - `subnet <ip> <mask>` → type: "subnet", value: ip + "/cidr" (convert mask to CIDR)
 - `range <start> <end>` → type: "range", value: "start-end"
 - `fqdn v4 <domain>` or `fqdn v6 <domain>` → type: "fqdn"
+
+Note: bare `fqdn <domain>` (without v4/v6 qualifier) is also valid.
+
+- `subnet <ipv6-prefix>` → for IPv6 subnets the value is already in CIDR form, no mask conversion needed.
 
 Also extract: `description`, inline `nat` statement (for object/auto NAT).
 
@@ -106,6 +120,9 @@ Members: `protocol-object <protocol-name-or-number>`
 ### 8. Access Lists (Security Policies)
 Source: `access-list <name> extended <action> <protocol> <src> <dst> [<svc>]`
 
+**ACL Remarks:**
+`access-list <name> remark <text>` — attach as `comment` to the NEXT ACL entry.
+
 **ACL Line Parsing — Token by Token:**
 
 Format: `access-list <id> extended <permit|deny> <protocol> <source> <dest> [<service>] [log] [time-range <name>]`
@@ -122,6 +139,9 @@ Format: `access-list <id> extended <permit|deny> <protocol> <source> <dest> [<se
 - `object-group <name>` → network object group
 - `<network> <mask>` → network/subnet-mask pair (convert standard subnet mask to CIDR)
 - `interface <nameif>` → the IP of that interface
+
+**Source port parsing** (after source address, for TCP/UDP — optional):
+- `eq <port>` / `range <start> <end>` → source port match (less common)
 
 **Service/port parsing** (after destination address, for TCP/UDP):
 - `eq <port>` → single port (use name or number)
@@ -176,20 +196,58 @@ Sub-commands:
 - `periodic <days> <start-time> to <end-time>`
 
 ### 12. Routing
-- **Static routes:** `route <nameif> <dest> <mask> <gateway> [<metric>]`
-- **BGP:** `router bgp <asn>` block with neighbor, network statements
-- **OSPF:** `router ospf <pid>` block with network, area statements
+- **Static routes (IPv4):** `route <nameif> <dest> <mask> <gateway> [<metric>]`
+- **Static routes (IPv6):** `ipv6 route <nameif> <dest/prefix> <gateway> [<metric>]`
+- **BGP:** `router bgp <asn>` block — extract:
+  - `router-id`, `address-family ipv4 unicast`
+  - Per-neighbor: `remote-as`, `description`, `update-source`, `password`, `timers` (keepalive/hold), `next-hop-self`, `soft-reconfiguration`, `route-reflector-client`, `shutdown`
+  - `network` statements (convert mask to CIDR)
+  - `redistribute` (connected/static)
+  - Note: route-map and prefix-list references are not converted (warn)
+- **OSPF:** `router ospf <pid>` block — extract:
+  - `router-id`, `auto-cost reference-bandwidth`
+  - `network <ip> <wildcard> area <id>` — match interfaces to areas via wildcard mask comparison
+  - Area types: stub, nssa, with `no-summary`; area default-cost; area authentication
+  - `passive-interface default` + `no passive-interface <nameif>` exceptions
+  - `redistribute` (connected/static with metric/metric-type)
+  - Interface-level: `ip ospf cost`, `ip ospf priority`, `ip ospf hello-interval`, `ip ospf dead-interval`, `ip ospf network point-to-point`, `ip ospf authentication message-digest` + key
+  - Normalize area IDs to dotted-decimal (0 → 0.0.0.0)
+- **OSPFv3:** `router ospfv3` block with `address-family ipv6 unicast` — similar structure to OSPFv2
 
 ### 13. Infrastructure
-- **HA/Failover:** `failover` command presence + `failover lan unit primary|secondary`,
+- **Hostname:** `hostname <name>` and `domain-name <domain>` → system metadata
+- **Version:** `asa version <X.Y>` or `firepower version <X.Y>` → metadata.source_version
+- **HA/Failover:** `failover` presence + `failover lan unit primary|secondary` (capture unit role),
   `failover interface ip`, `failover link`
 - **Screen/Threat Detection:** `threat-detection basic-threat` + `threat-detection rate` entries
-  Map to screen/IDS profiles
-- **VPN:** `crypto ikev1|ikev2` policies, `tunnel-group`, `crypto ipsec` transform-sets
+- **DNS:** `dns server-group DefaultDNS` block → extract `name-server` entries
+- **NTP:** `ntp server <ip> [prefer]`
+- **Management Access:** `ssh|http|telnet <source> <mask> <nameif>` — track which management protocols are accessible per zone
+- **Admin Users:** `username <name> password ... privilege <level>` — map privilege 15=super-admin, 1-14=operator, 0=read-only. `username <name> attributes` block with `ssh authentication publickey <key>` for SSH keys.
+- **VPN/IPsec:**
+  - `crypto ikev2 policy <seq>` blocks: encryption, integrity, DH group, lifetime
+  - `crypto ikev1 policy <seq>` blocks: authentication, encryption, hash, DH group, lifetime
+  - `crypto ipsec ikev2 ipsec-proposal <name>`: protocol esp encryption/integrity
+  - `crypto ipsec ikev1 transform-set <name> <enc> <integ>`
+  - `crypto ipsec profile <name>`: link proposals to PFS groups
+  - `tunnel-group <ip> ipsec-attributes`: PSK, certificates, authentication method
+  - VTI assembly: match Tunnel interfaces to IPsec profiles, resolve tunnel source/destination, collect routes through tunnel nameifs
+  - Canonicalize algorithm names (e.g., aes-256 → aes-256, sha → sha1)
+  - Flag weak algorithms (DES/3DES, MD5, DH group ≤ 5)
 - **Syslog:** `logging host <nameif> <ip>`
-- **DHCP:** `dhcpd address <range> <nameif>` / `dhcprelay server <ip> <nameif>`
+- **DHCP Server:** `dhcpd address <start>-<end> <nameif>` (pool range),
+  `dhcpd dns <ip1> [<ip2>]`, `dhcpd domain <domain>`, `dhcpd lease <seconds>`,
+  `dhcpd enable <nameif>` (commit trigger — binds staged options to interface).
+  Derive network CIDR from the interface IP.
+- **DHCP Relay:** `dhcprelay server <ip> <iface>` + `dhcprelay enable <nameif>`
 
-### 14. Transparent Mode
+### 14. Anonymous Objects
+When inline addresses/services appear in ACLs or object groups without a named reference (e.g., `host 10.0.1.10` directly in an ACL line), create anonymous objects with auto-generated names (e.g., `anon-1-host`, `anon-2-net`). This ensures every IR reference points to a named object.
+
+### 15. Residual Config Capture
+Capture unrecognized top-level commands verbatim. Categorize into: VPN/IPsec, AAA, QoS, PKI/Certificates, IPv6, Other. Store in `residual_raw` for manual review.
+
+### 16. Transparent Mode
 Detect: `firewall transparent` in config
 When in transparent mode:
 - Interfaces are in bridge-groups instead of having IPs
@@ -197,7 +255,7 @@ When in transparent mode:
 - BVI interfaces (`interface BVI<id>`) carry the management IP
 - Zones derived from nameifs still work the same way
 
-### 15. Implicit Rules
+### 17. Implicit Rules
 After building all policies from ACLs + access-groups, append:
 - **Implicit: Default Deny** — action: "deny", all any, `_implicit: true`
 
@@ -220,7 +278,7 @@ After extraction, report:
 6. **Duplicate objects** — same value, different names
 7. **Empty groups** — object-groups with no members
 8. **Unbound ACLs** — access-lists without matching access-group (never applied)
-9. **Wildcard mask conversion** — flag any non-contiguous wildcard masks (rare but problematic)
+9. **Subnet mask validation** — flag any non-standard subnet masks
 
 ## Reference Files
 

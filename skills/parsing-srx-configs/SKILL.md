@@ -8,7 +8,7 @@ description: >
   "applications", "security policies", "from-zone", "to-zone", "nat rule-set", "chassis cluster",
   "logical-systems", "routing-instances". Also trigger when the user asks to convert, audit,
   summarize, or explain an SRX config.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Parsing Juniper SRX Configurations
@@ -39,8 +39,7 @@ SRX configs come in two formats. Detect which one:
    }
    ```
 
-**Detection heuristic:** Count lines starting with `set `. If > 30% of non-empty lines, treat as
-set-command format. Otherwise treat as hierarchical.
+**Detection heuristic:** Check the first 2000 characters for known top-level stanza names followed by `{` (e.g., `system {`, `security {`, `interfaces {`, `routing-options {`). If found, treat as hierarchical. Otherwise treat as set-command format.
 
 ### Hierarchical to Set Conversion
 
@@ -48,8 +47,19 @@ If hierarchical format is detected, mentally convert to flat set commands before
 - Track the current path as you descend into `{ }` blocks
 - Each leaf value terminated by `;` becomes: `set <path> <value>`
 - Handle `inactive:` prefix → convert to `deactivate <path>`
+  Note: `inactive:` (hierarchical format) and `deactivate` (set format) are equivalent. In hierarchical parsing, strip `inactive:` and set `enabled: false` on the affected object. Handle the re-parse: strip the prefix, rebuild as a normal set line, re-tokenize to extract the target object name.
 - Handle bracket lists `[val1 val2]` → expand to one set command per value
 - Handle quoted strings as single tokens
+- Handle backslash escapes inside quoted strings
+- Strip block comments `/* ... */`
+
+**Hierarchical-to-set normalization:** After conversion, normalize these impedance mismatches:
+1. `range-address X to range-high Y` → `range-address X to Y`
+2. `address NAME ip-prefix CIDR` → `address NAME CIDR`
+3. `then static-nat prefix name CIDR` → `then static-nat prefix CIDR`
+4. `then source-nat pool pool-name NAME` → `then source-nat pool NAME`
+5. `then destination-nat pool pool-name NAME` → `then destination-nat pool NAME`
+6. `then destination-nat ip addr X` → `then destination-nat ip X`
 
 ## Extraction Pipeline
 
@@ -59,6 +69,26 @@ Parse the following sections in order. For each, read the reference files as nee
 Path: `security.zones.security-zone.<name>`
 Extract: zone name, interfaces list, description, host-inbound-traffic services/protocols
 
+### 1b. Interfaces
+Path: `interfaces.<name>` with units at `interfaces.<name>.unit.<id>`
+
+Extract per-interface/unit:
+- IPv4 address: `family inet address <cidr>`
+- IPv6 address: `family inet6 address <cidr>`
+- DHCP client: `family inet dhcp`
+- VLAN tagging: `vlan-tagging` / `flexible-vlan-tagging`
+- VLAN ID per unit: `vlan-id <id>`
+- MTU: `mtu <value>`
+- Description at both physical and unit level
+- LAG membership: `ether-options 802.3ad <ae-name>` → set `lag_parent`
+- LAG master: `aggregated-ether-options lacp` config
+
+**Interface type derivation:** `ae*`=lag, `lo*`=loopback, `st0/gr-/ip-/lt-`=tunnel, `fxp0/fxp1/me0/em0/em1`=management.
+**Management interface zone exclusion:** Remove management interfaces (fxp0, me0, em0, etc.) from security zones with a warning.
+**Unit-0 normalization:** When resolving zone membership, normalize `.0` suffixed names (e.g., `ge-0/0/0.0` → `ge-0/0/0`) for matching.
+**Cluster interface exclusion:** Skip chassis-cluster-specific interfaces (`reth*`, `fab*`) with a warning.
+After all interfaces parsed, back-populate `lag_members` on ae interfaces.
+
 ### 2. Address Objects
 Path: `security.address-book.global.address.<name>`
 Types to handle:
@@ -67,6 +97,12 @@ Types to handle:
 - `range-address` with `to` — type: "range", value: "start-end"
 - `wildcard-address` — type: "wildcard"
 - Plain IP with `/32` — type: "host"
+
+- `ip-prefix <cidr>` / `ipv6-prefix <cidr>` — explicit keywords in hierarchical format (normalize away during hierarchical-to-set conversion)
+
+**Zone-attached address books:**
+Path: `security.address-book.<zone-name>.address.<name>` (in addition to `global`)
+Zone-attached books are common in older Junos configs. Migrate to global scope with a warning.
 
 Auto-detect IP version (v4 vs v6) from the value.
 
@@ -85,6 +121,12 @@ Map `protocol` values: `6` or `tcp` → TCP, `17` or `udp` → UDP, `1` or `icmp
 Path: `applications.application-set.<name>`
 Extract member applications and nested application-sets.
 
+**Application-Set vs Application-Group distinction:**
+Application-sets containing all L7/predefined apps → promote to `application_groups`.
+Sets containing user-defined port-based apps → keep as `service_groups`.
+
+**Additional built-in apps** (beyond existing list): `junos-smtps` (TCP/465), `junos-imaps` (TCP/993), `junos-imap` (TCP/143), `junos-nntp` (TCP/119), `junos-ldap` (TCP/389), `junos-bgp` (TCP/179), `junos-ospf` (ANY), `junos-icmpv6-all` (ICMPv6), `junos-tftp` (UDP/69), `junos-snmptrap` (UDP/162).
+
 ### 6. Security Policies
 Path: `security.policies.from-zone.<src>.to-zone.<dst>.policy.<name>`
 Also: `security.policies.global.policy.<name>` (global policies, src/dst zones = ["any"])
@@ -94,7 +136,7 @@ For each policy extract:
 - **src_zones** / **dst_zones** — from the path (or ["any"] for global)
 - **src_addresses** / **dst_addresses** — from `match source-address` / `match destination-address`
 - **applications** — from `match application`
-- **action** — `permit` → "allow", `deny` → "deny", `reject` → "reset-both"
+- **action** — `permit` → "allow", `deny` → "deny", `reject` → "deny" (with info warning: "reject converted to deny — target may not support TCP reset")
 - **log_start** — true if `then log session-init`
 - **log_end** — true if `then log session-close`
 - **security_profiles** — extract from `then permit application-services`:
@@ -104,6 +146,7 @@ For each policy extract:
 - **disabled** — true if `deactivate` prefix on the policy path
 - **schedule** — from `scheduler-name`
 - **source_users** — from `match source-identity`
+- Handle `then count` and `then permit firewall-authentication` as no-ops (do not misinterpret as action modifiers)
 
 ### 7. NAT Rules
 Paths:
@@ -114,28 +157,85 @@ Paths:
 Extract: type, src/dst zones (from rule-set `from`/`to`), match addresses,
 translated source/destination/port.
 
+**Source NAT specifics:**
+- `then source-nat interface` → translate to egress interface
+- `then source-nat pool <poolname>` → translate to named pool (emit as `pool:<name>`)
+
+**Destination NAT specifics:**
+- `destination-port <port>` → original service match
+- `then destination-nat pool <poolname>` → translated destination from pool
+- `then destination-nat pool <poolname> port <port>` → translated destination + port
+- Handle hierarchical `ip addr <ip>` form for inline destination translation
+
+**Static NAT specifics:**
+- `then static-nat prefix <cidr>` → bidirectional static translation
+
 ### 8. Schedules
 Path: `schedulers.scheduler.<name>`
 Extract: name, type (daily-except/daily), start-date, stop-date, days of week, time ranges.
 
 ### 9. Routing
-- **Static routes:** `routing-options.static.route.<prefix>.next-hop`
-- **BGP:** `protocols.bgp.group.<name>` — local-as, peer-as, neighbors, export/import policies
-- **OSPF:** `protocols.ospf.area.<id>` — interfaces, area type, reference-bandwidth
-- **OSPFv3:** `protocols.ospf3.area.<id>`
+- **Static routes (IPv4):** `routing-options.static.route.<prefix>` with `next-hop`, `qualified-next-hop` (floating statics), or `discard` (null routes)
+- **Static routes (IPv6):** `routing-options.rib.inet6.0.static.route.<prefix>` — same structure
+- **Routing Instances / VRF:** `routing-instances.<name>` — extract interface membership, per-VR static routes (IPv4+IPv6), per-VR OSPF/BGP config
+- **BGP:** `protocols.bgp` — extract:
+  - Local-AS, router-ID
+  - Per-group: type (ebgp/ibgp), peer-as, local-address, authentication-key, hold-time, keepalive
+  - Per-neighbor overrides: peer-as, description, local-address, authentication-key, hold/keepalive timers, next-hop-self, route-reflector-client
+  - `deactivate` support for disabled neighbors
+  - Merge group-level defaults with neighbor-level overrides
+- **OSPF:** `protocols.ospf` — extract:
+  - Router-ID, reference-bandwidth (with unit parsing: g/m/k suffixes)
+  - Areas: area ID, type (normal/stub/nssa with no-summary), default-cost
+  - Area authentication type and key
+  - Per-interface: passive, metric, priority, hello/dead intervals, link-type (p2p/broadcast), per-interface authentication
+  - Redistribute: source, metric, metric-type
+  - `deactivate` support for disabled OSPF interfaces
+  - Normalize area IDs to dotted-decimal
+- **OSPFv3:** `protocols.ospf3` — same structure as OSPF via `ospf3` instances
 
-### 10. Infrastructure
-- **HA:** `chassis.cluster` — redundancy-groups, node priorities, heartbeat interfaces, fab links
+### 10. System Configuration
+Path: `system`
+Extract:
+- `system.host-name` → hostname
+- `system.domain-name` → domain
+- `system.name-server` → DNS servers
+- `system.ntp.server` → NTP servers with `prefer` flag
+- `system.services` → management services: ssh, telnet, netconf, https, http
+- `system.login.user` → admin users with class and SSH public keys
+  - Class mapping: super-user→super-admin, operator→operator, read-only→read-only
+
+### 11. Infrastructure
+- **Version:** `set version <X.Y>` → metadata.source_version
+- **HA Chassis Cluster:** `chassis.cluster` — redundancy-groups, node priorities, heartbeat interfaces, fab links
+- **HA MNHA:** `chassis.high-availability` — newer HA method on SRX4600/SRX5000 platforms
 - **Screen/IDS:** `security.screen.ids-option.<name>` — TCP/UDP/ICMP/IP protections
-- **VPN:** `security.ike` and `security.ipsec` — gateways, proposals, tunnels
+- **VPN/IPsec:** Full IKE/IPsec chain resolution:
+  - IKE proposals: encryption, integrity, DH group, lifetime, auth method (PSK vs certificate including RSA/DSA/ECDSA)
+  - IKE policies: mode, proposals list, PSK value, local certificate
+  - IKE gateways: peer address, external interface, IKE version (v1-only/v2-only), local/remote identity
+  - IPsec proposals: encryption, integrity, lifetime
+  - IPsec policies: proposals list, PFS group
+  - IPsec VPNs: bind-interface, IKE gateway reference, IPsec policy reference, establish-tunnels
+  - Resolve full chain: ipsecVpn → ikeGateway → ikePolicy → ikeProposal(s) → ipsecPolicy → ipsecProposal(s)
+  - Associate tunnel interfaces (st0, gr-, ip-) with their IPs, collect routes through tunnels
+  - Canonicalize algorithm names (e.g., aes-256-cbc → aes-256, hmac-sha-256-128 → sha256)
+  - Flag weak algorithms (DES/3DES, MD5, DH group ≤ 5)
 - **Syslog:** `system.syslog.host` — remote logging targets
-- **DHCP:** `system.services.dhcp-local-server` or `forwarding-options.dhcp-relay`
+- **DHCP Server:** `access.address-assignment.pool` — network, address ranges (low/high), router (gateway), name-server, maximum-lease-time, domain-name. Match pools to interfaces via `dhcp-local-server` group bindings using IP prefix matching.
+- **DHCP Relay:** Two forms:
+  - Legacy: `forwarding-options.helpers.bootp.server`
+  - Modern: `forwarding-options.dhcp-relay.server-group` / `group` / `active-server-group` / `interface`
+  Link relay server groups to per-interface `dhcp_relay` fields.
 
-### 11. Multi-Context
+### 12. Multi-Context
 Detect `logical-systems.<name>` and `tenants.<name>` in the config tree.
 Parse each context independently, tag all extracted items with `_logical_system` or `_tenant`.
 
-### 12. Implicit Rules
+### 13. Residual Config Capture
+Capture all unhandled `set` lines. Categorize into: IDS Screens, PKI/Certificates, QoS, SNMP, VLANs, Firewall Filters, Bridge Domains, Groups, Other. Store in `residual_raw` for manual review.
+
+### 14. Implicit Rules
 After parsing all explicit policies, append:
 - **Implicit: Default Deny** — action: "deny", src/dst zones: ["any"], src/dst addresses: ["any"],
   applications: ["any"], disabled: false, `_implicit: true`

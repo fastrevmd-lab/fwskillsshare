@@ -9,7 +9,7 @@ description: >
   "set dstintf", "set srcaddr", "set dstaddr", "set action accept", "set utm-status enable",
   "set av-profile", "set webfilter-profile", "set ips-sensor". Also trigger when the user asks
   to convert, audit, summarize, or explain a FortiGate config.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Parsing Fortinet FortiGate Configurations
@@ -62,11 +62,31 @@ Parse the block format into a nested object tree:
 ### 1. Zones and Interfaces
 **Zones:** `config system zone` → `edit <name>` with `set interface <list>`
 **Interfaces:** `config system interface` → `edit <name>` with `set vdom`, `set ip`, `set type`, `set vlanid`
+Additional interface fields to extract:
+- `set ip6 <addr/prefix>` (inside nested `config ipv6` sub-block) — IPv6 address
+- `set mtu <value>` — MTU
+- `set type aggregate` → type: "lag" (with `set member` for LAG members)
+- `set type loopback` → type: "loopback"
+- `set type tunnel` → type: "tunnel"
+- `set mode dhcp` — DHCP client (no static IP)
+- `set dhcp-relay-ip <ips>` — DHCP relay server IPs
+- `set allowaccess <list>` — management access protocols
+- `set fortilink enable` — FortiLink interface (exclude from output along with child interfaces)
+- `set description <text>`
+- Subinterface detection: dot-notation (`port1.100` → parent=`port1`) or VLAN-bound (`set interface <parent>` + `set vlanid <id>`)
+- Management interface detection: names matching `/^(mgmt\d*|management\d*)/i` → `is_mgmt: true`
+- After all interfaces parsed, back-populate `lag_members` on aggregate interfaces
 
 **Critical: Interface-as-Zone Merging**
 FortiGate can use interface names directly as zones in policies (via `srcintf`/`dstintf`).
 If a policy references an interface name not in any zone, treat that interface as its own zone.
 Merge zones and interfaces: create a zone entry for each interface used as a zone.
+
+**Zone Building Priority 3: Unzoned Interfaces**
+After explicit zones and policy-referenced interfaces, create auto-zones for any interface that has an IP address (or is a DHCP client) but was not yet assigned to a zone.
+
+**Allowaccess Classification:**
+Classify `allowaccess` values into management services (ssh, https, http, telnet, ping, snmp, netconf, fgfm, fmg-access, ftm, radius-acct, security-fabric, fabric, capwap, speed-test) and routing protocols (ospf, bgp, rip, isis, bfd). Attach to zones as `host_inbound` data.
 
 ### 2. Address Objects
 Path: `config firewall address` → `edit <name>`
@@ -76,12 +96,17 @@ Types — detect from `set type` or infer from fields:
 - `set type iprange` + `set start-ip` / `set end-ip` → type: "range", value: "start-end"
 - `set type fqdn` + `set fqdn <domain>` → type: "fqdn"
 - `set type geography` + `set country <code>` → type: "geo" (warn: limited cross-platform support)
-- `set type wildcard` + `set wildcard <ip> <mask>` → type: "wildcard" (warn)
-- `set type wildcard-fqdn` + `set wildcard-fqdn <pattern>` → type: "wildcard-fqdn" (warn)
+- `set type wildcard` + `set wildcard <ip> <mask>` → type: "network" (convert from wildcard with info warning)
+- `set type wildcard-fqdn` + `set wildcard-fqdn <pattern>` → type: "fqdn" (convert from wildcard-fqdn with info warning)
 
 Also extract: `set comment`, `set associated-interface`.
 Convert subnet mask notation (`255.255.255.0`) to CIDR (`/24`).
 Auto-detect IP version.
+
+**IPv6 Address Objects:** `config firewall address6` → `edit <name>`
+- `set ip6 <ipv6prefix/len>` → type: "subnet" (or "host" if /128)
+**IPv6 Address Groups:** `config firewall addrgrp6` → `edit <name>`
+- `set member <list>`
 
 ### 3. Address Groups
 Path: `config firewall addrgrp` → `edit <name>`
@@ -92,7 +117,10 @@ Path: `config firewall service custom` → `edit <name>`
 Extract from:
 - `set protocol TCP/UDP/SCTP` + `set tcp-portrange <range>` / `set udp-portrange <range>`
 - `set protocol ICMP` + `set icmptype` / `set icmpcode`
+- `set protocol IP` → protocol: "any" (matches any IP protocol)
+- `set protocol ICMP6` → protocol: "icmpv6"
 - Port range format: `80` or `80-443` or `80:1024-65535` (dst:src)
+- Note: A single service can have BOTH `tcp-portrange` and `udp-portrange` set simultaneously. Split into two service objects, one per protocol.
 
 ### 5. Service Groups
 Path: `config firewall service group` → `edit <name>`
@@ -118,6 +146,11 @@ For each policy extract:
 - **source_users** — `set groups <list>` (FSSO groups)
 - **nat** — `set nat enable` (source NAT toggle on the policy)
 
+**Default values** when fields are omitted from config:
+- `action` defaults to `accept` (→ "allow")
+- `logtraffic` defaults to `disable` (→ log_end: false)
+- `status` defaults to `enable` (→ disabled: false)
+
 **UTM / Security Profiles** — when `set utm-status enable`:
 - `set av-profile <name>` → antivirus
 - `set webfilter-profile <name>` → URL filtering
@@ -141,6 +174,10 @@ For each policy extract:
   `set extintf`, `set portforward enable` + `set extport` / `set mappedport`
   Note: VIPs are referenced in policies via `set dstaddr <vip-name>`
 
+**Central SNAT field names:** `set orig-addr <list>`, `set nat-ippool <list>` (also `set natippool` variant)
+**IP Pool additional field:** `set associated-interface <name>` — binds pool to specific egress interface
+**Tunnel route association:** Static routes with `set device <tunnel-interface>` should be associated with the corresponding VPN tunnel, not treated as regular routes.
+
 ### 8. Schedules
 **Recurring:** `config firewall schedule recurring` → `edit <name>`
   Extract: `set day`, `set start`, `set end`
@@ -158,24 +195,53 @@ Parse full profile objects for reference:
 - `config firewall ssl-ssh-profile`
 
 ### 10. Routing
-- **Static routes:** `config router static` → `edit <id>` with `set dst`, `set gateway`, `set device`
-- **BGP:** `config router bgp` with `set as`, `set router-id`, neighbor entries
-- **OSPF:** `config router ospf` with `set router-id`, area entries, network entries
-- **OSPFv3:** `config router ospf6`
+- **Static routes (IPv4):** `config router static` → `edit <id>` with `set dst`, `set gateway`, `set device`, `set distance`
+- **Static routes (IPv6):** `config router static6` → `edit <id>` with same fields using IPv6 prefixes
+- **BGP:** `config router bgp` — extract:
+  - `set as`, `set router-id`, global `set keepalive-timer`/`set holdtime-timer`
+  - Per-neighbor (in `config neighbor`): `remote-as`, `description`, `update-source`, `password`, per-neighbor timers (override global), `next-hop-self`, `soft-reconfiguration`, `route-reflector-client`, `status enable|disable`
+  - `config network` entries (prefix advertisements)
+  - `config redistribute` with `set status enable|disable`
+  - Warn: route-map/prefix-list references are not converted
+- **OSPF:** `config router ospf` — extract:
+  - `set router-id`, `set auto-cost-reference-bandwidth`
+  - `config area`: area ID, type (stub/nssa with no-summary), default-cost, authentication
+  - `config ospf-interface`: area assignment, passive flag, cost, priority, hello/dead intervals, network-type (point-to-point/broadcast), MD5 authentication with key ID and key
+  - `config redistribute`: source, status, metric, metric-type
+  - Warn: MD5 keys in cleartext
+- **OSPFv3:** `config router ospf6` — same structure but uses `config ospf6-interface` (not `ospf-interface`)
 - **Policy routing:** `config router policy` → PBF rules
 
 ### 11. Infrastructure
+- **Version:** Extract from `#config-version=<version>:` comment line at top of config
+- **System Global:** `config system global` → extract `set hostname`
+- **DNS:** `config system dns` → extract `set primary`, `set secondary`, `set domain`
+- **NTP:** `config system ntp` with nested `config ntpserver` → extract server entries
+- **Admin Users:** `config system admin` → extract access profile (super_admin→super-admin, prof_admin→admin), SSH public keys (ssh-public-key1/2/3). Warn when users lack SSH keys.
 - **HA:** `config system ha` — `set mode` (a-p/a-a), `set group-id`, `set priority`,
   `set hbdev`, `set monitor`
 - **Screen/DoS:** `config firewall DoS-policy` + IPS sensor definitions
 - **Syslog:** `config log syslogd setting`
-- **DHCP:** `config system dhcp server`
+- **DHCP Server:** `config system dhcp server` — extract top-level fields (`set default-gateway`, `set netmask`, `set interface`, `set domain`, `set lease-time`, `set dns-server1/dns-server2`) plus nested `config ip-range` (start-ip/end-ip) and `config reserved-address` (mac, ip, description). Derive network CIDR from gateway + netmask.
+- **VPN IPsec:**
+  - `config vpn ipsec phase1-interface`: IKE version, remote-gw, proposal (compound strings like `aes256-sha256` → split to encryption + integrity), DH group, key lifetime, PSK, certificate auth detection
+  - `config vpn ipsec phase2-interface`: phase1name reference, proposal, PFS, DH group, key lifetime
+  - Phase1 name auto-creates a tunnel interface of the same name
+  - Resolve tunnel IP from matching interface, associate static routes through tunnel interfaces
+  - Flag weak algorithms (DES/3DES, MD5, DH group ≤ 5)
+  - Warn: certificate-based auth not fully converted
 
-### 12. Multi-VDOM
+### 12. Tokenizer
+Handle quoted multi-value lines correctly: `set member "HOST_A" "HOST_B"` → `['set', 'member', 'HOST_A', 'HOST_B']`. Strip quotes during tokenization. Values containing spaces must be kept as single tokens when quoted.
+
+### 13. Residual Config Capture
+Capture unrecognized `config` sections verbatim with depth tracking. Categorize into: VPN/IPsec, Routing Protocols, AAA/Users, PKI/Certificates, Wireless, Switching, DNS, NTP, SNMP, Other. Store in `residual_raw` for manual review.
+
+### 14. Multi-VDOM
 Detect VDOM context: `config vdom` / `edit <vdom-name>`.
 Each interface has `set vdom <name>`. Parse per-VDOM, tag items, merge.
 
-### 13. Implicit Rules
+### 15. Implicit Rules
 After parsing all explicit policies, append:
 - Per-zone **Intra-zone** rules (check zone config: `set intrazone allow|deny`)
   - Default is deny unless explicitly set to allow

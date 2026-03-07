@@ -11,11 +11,21 @@ Parses line-oriented config output from `show running-config` and extracts:
 - Service objects and groups
 - Access lists (ACLs) and access group bindings
 - NAT rules (object NAT and twice NAT)
+- IPv6 addresses and routes
 - Static routes
+- DHCP server/relay
+- DNS/NTP servers
+- Admin users with SSH keys
+- Management access protocols
 - Time ranges and schedules
 - HA/failover configuration
 - Threat detection settings
-- VPN configuration
+- VPN/IPsec (IKE policies, proposals, VTI tunnel assembly)
+- Detailed OSPF/BGP
+- LAG/port-channel
+- Tunnel/loopback interfaces
+- ACL remarks
+- Residual config capture
 
 ## Auto-trigger keywords
 
@@ -43,6 +53,7 @@ cp -r parsing-cisco-configs ~/.claude/skills/
 - Duplicate objects
 - Empty object groups
 - Unbound ACLs (not applied to any interface)
+- Weak VPN algorithms (DES/3DES, MD5, DH ≤ 5)
 
 ## File structure
 

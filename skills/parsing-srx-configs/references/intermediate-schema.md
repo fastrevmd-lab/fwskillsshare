@@ -20,14 +20,19 @@ All extracted data should be normalized to this format regardless of source vend
   "security_profile_objects": [],
   "interfaces": [],
   "static_routes": [],
-  "bgp_config": [],
-  "ospf_config": [],
+  "virtual_routers": [],
+  "ospf_config": {},
+  "ospf3_config": {},
+  "bgp_config": {},
   "ha_config": {},
   "screen_config": [],
   "vpn_tunnels": [],
   "syslog_config": [],
   "dhcp_config": [],
+  "admin_users": [],
+  "system": {},
   "routing_contexts": [],
+  "residual_raw": [],
   "metadata": {}
 }
 ```
@@ -39,9 +44,17 @@ All extracted data should be normalized to this format regardless of source vend
   "name": "trust",
   "description": "Internal network zone",
   "interfaces": ["ge-0/0/0.0", "ge-0/0/1.0"],
-  "zone_type": "layer3"
+  "zone_type": "layer3",
+  "host_inbound": {
+    "system_services": ["ssh", "https", "ping", "dhcp", "ike"],
+    "protocols": ["ospf", "bgp"]
+  }
 }
 ```
+
+`host_inbound` tracks management-plane and routing-protocol access allowed on the zone.
+- `system_services`: ssh, https, http, telnet, ping, snmp, netconf, dhcp, ntp, ike, ipsec
+- `protocols`: bgp, ospf, ospf3, rip, ripng, ldp, rsvp, msdp, pim, all
 
 ## Address Object
 
@@ -89,7 +102,7 @@ Valid `type` values: `"host"`, `"subnet"`, `"range"`, `"fqdn"`, `"wildcard"`, `"
 ```
 
 Port range formats: `"80"`, `"80-443"`, `"1024-65535"`
-Protocol values: `"tcp"`, `"udp"`, `"icmp"`, `"sctp"`, `"ip"`
+Protocol values: `"tcp"`, `"udp"`, `"icmp"`, `"icmpv6"`, `"sctp"`, `"ip"`, `"any"`
 
 ## Service Group
 
@@ -114,6 +127,8 @@ Protocol values: `"tcp"`, `"udp"`, `"icmp"`, `"sctp"`, `"ip"`
   "negate_destination": false,
   "applications": ["junos-http", "junos-https"],
   "services": ["application-default"],
+  "url_categories": [],
+  "app_groups": [],
   "action": "allow",
   "log_start": false,
   "log_end": true,
@@ -211,14 +226,25 @@ Type values: `"interface"`, `"dynamic-ip-pool"`, `"static"`, `"no-nat"`
 {
   "name": "ge-0/0/0.0",
   "ip": "10.0.1.1/24",
+  "ipv6": "2001:db8::1/64",
   "zone": "trust",
   "vlan": null,
   "type": "physical",
   "description": "LAN interface",
   "status": "up",
-  "speed": "1g"
+  "speed": "1g",
+  "mtu": 1500,
+  "is_mgmt": false,
+  "dhcp_client": false,
+  "dhcp_relay": [],
+  "lag_parent": null,
+  "lag_members": [],
+  "is_subif": false,
+  "parent_interface": null
 }
 ```
+
+Interface `type` values: `"physical"`, `"loopback"`, `"lag"`, `"vlan"`, `"tunnel"`, `null`
 
 ## Static Route
 
@@ -285,3 +311,180 @@ Type values: `"interface"`, `"dynamic-ip-pool"`, `"static"`, `"no-nat"`
 ```
 
 Valid `source_vendor` values: `"srx"`, `"panos"`, `"fortigate"`, `"cisco_asa"`, `"checkpoint"`, `"sonicwall"`, `"huawei_usg"`
+
+## System
+
+```json
+{
+  "hostname": "fw-primary",
+  "domain_name": "example.com",
+  "dns_servers": ["8.8.8.8", "8.8.4.4"],
+  "ntp_servers": [{"address": "pool.ntp.org", "prefer": true}],
+  "dhcp_relay": [],
+  "mgmt_services": {
+    "ssh": true,
+    "https": true,
+    "http": false,
+    "telnet": false,
+    "netconf": null,
+    "snmp": null
+  }
+}
+```
+
+## Virtual Router
+
+```json
+{
+  "name": "default",
+  "interfaces": ["ge-0/0/0.0", "ge-0/0/1.0"]
+}
+```
+
+## OSPF Config
+
+```json
+{
+  "router_id": "10.0.0.1",
+  "reference_bandwidth": 100,
+  "areas": [
+    {
+      "id": "0.0.0.0",
+      "type": "normal",
+      "no_summary": false,
+      "default_cost": null,
+      "authentication": null,
+      "interfaces": [
+        {
+          "name": "ge-0/0/0.0",
+          "passive": false,
+          "enabled": true,
+          "metric": null,
+          "priority": null,
+          "hello_interval": null,
+          "dead_interval": null,
+          "link_type": null,
+          "authentication": null
+        }
+      ]
+    }
+  ],
+  "redistribute": [
+    {"source": "connected", "metric": null, "metric_type": null}
+  ]
+}
+```
+
+Area `type` values: `"normal"`, `"stub"`, `"nssa"`
+
+## BGP Config
+
+```json
+{
+  "local_as": 65001,
+  "router_id": "10.0.0.1",
+  "keepalive": 60,
+  "holdtime": 180,
+  "neighbors": [
+    {
+      "address": "10.0.0.2",
+      "remote_as": 65002,
+      "description": "Peer router",
+      "update_source": "lo0",
+      "password": null,
+      "keepalive": null,
+      "holdtime": null,
+      "next_hop_self": false,
+      "soft_reconfiguration": false,
+      "route_reflector_client": false,
+      "enabled": true
+    }
+  ],
+  "networks": ["10.0.0.0/24"],
+  "redistribute": [
+    {"source": "connected", "metric": null}
+  ]
+}
+```
+
+## VPN Tunnel
+
+```json
+{
+  "name": "vpn-to-branch",
+  "ike": {
+    "version": "ikev2",
+    "local_address": "203.0.113.1",
+    "remote_address": "198.51.100.1",
+    "local_id": null,
+    "remote_id": null,
+    "auth_method": "psk",
+    "psk": "****",
+    "local_cert": null,
+    "ca_profile": null,
+    "proposal": {
+      "encryption": ["aes-256"],
+      "integrity": ["sha256"],
+      "dh_group": [14],
+      "lifetime": 86400
+    }
+  },
+  "ipsec": {
+    "proposal": {
+      "encryption": ["aes-256"],
+      "integrity": ["sha256"],
+      "dh_group": [14],
+      "lifetime": 3600
+    },
+    "mode": "tunnel"
+  },
+  "tunnel_interface": "st0.0",
+  "tunnel_ip": "10.255.0.1/30",
+  "vr": "default",
+  "routes": ["192.168.10.0/24", "192.168.20.0/24"]
+}
+```
+
+Canonical encryption values: `"des"`, `"3des"`, `"aes-128"`, `"aes-192"`, `"aes-256"`, `"aes-128-gcm"`, `"aes-256-gcm"`
+Canonical integrity values: `"md5"`, `"sha1"`, `"sha256"`, `"sha384"`, `"sha512"`
+
+## Admin User
+
+```json
+{
+  "name": "admin",
+  "role": "super-admin",
+  "privilege_level": 15,
+  "ssh_keys": ["ssh-rsa AAAA..."],
+  "source_vendor": "cisco_asa"
+}
+```
+
+Role values: `"super-admin"`, `"admin"`, `"operator"`, `"read-only"`
+
+## DHCP Config
+
+```json
+{
+  "interface": "inside",
+  "network": "10.0.1.0/24",
+  "pools": [{"start": "10.0.1.100", "end": "10.0.1.200"}],
+  "gateway": "10.0.1.1",
+  "dns_servers": ["8.8.8.8"],
+  "domain": "example.com",
+  "lease_time": 86400,
+  "reservations": []
+}
+```
+
+## Residual Raw
+
+```json
+{
+  "label": "VPN/IPsec",
+  "text": "crypto map outside_map 10 match address ..."
+}
+```
+
+Captures unparsed configuration sections for manual review.
+Standard labels: VPN/IPsec, AAA, QoS, PKI/Certificates, Routing Protocols, Wireless, Switching, DNS, NTP, SNMP, Other
