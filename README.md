@@ -1,6 +1,6 @@
 # Claude Code Firewall Config Parsing Skills
 
-A collection of Claude Code skills for parsing, auditing, converting, and analyzing enterprise firewall configurations across four major vendors.
+A collection of Claude Code / Hermes skills for parsing, auditing, converting, and analyzing enterprise firewall configurations, plus Juniper SRX operational playbooks derived from field/research material.
 
 ## Skills Included
 
@@ -10,8 +10,12 @@ A collection of Claude Code skills for parsing, auditing, converting, and analyz
 | [parsing-fortinet-configs](skills/parsing-fortinet-configs/) | Fortinet FortiGate / FortiOS | `FortiGate`, `FortiOS`, `config firewall policy`, `set srcintf` |
 | [parsing-palo-configs](skills/parsing-palo-configs/) | Palo Alto PAN-OS & Panorama | `PAN-OS`, `Palo Alto`, `Panorama`, `vsys`, `<entry name=` |
 | [parsing-srx-configs](skills/parsing-srx-configs/) | Juniper SRX / Junos | `SRX`, `Junos`, `Juniper`, `set security`, `from-zone` |
+| [srx-dynamic-ip-feed](skills/srx-dynamic-ip-feed/) | Juniper SRX / Junos dynamic-address feed servers | `dynamic-address`, `feed-server`, `IPFD`, `show security dynamic-address`, `ipfd` |
+| [srx-mnha](skills/srx-mnha/) | Juniper SRX / Junos Multi-Node High Availability | `MNHA`, `Multi-Node High Availability`, `chassis high-availability`, `SRG`, `ICL`, `ICD` |
 
-All skills parse vendor-specific configs into a **common vendor-neutral intermediate JSON schema**, enabling cross-vendor comparison, conversion, and unified auditing.
+The four `parsing-*` skills parse vendor-specific configs into a **common vendor-neutral intermediate JSON schema**, enabling cross-vendor comparison, conversion, and unified auditing.
+
+The SRX operational skills are actionable Junos playbooks with commands, design guidance, verification steps, troubleshooting matrices, source attribution, and reference extracts.
 
 ## Installation
 
@@ -24,7 +28,7 @@ Copy the skill directories into your Claude Code skills folder:
 git clone git@github.com:fastrevmd-lab/claudeskillsshare.git
 
 # Copy all skills into your Claude Code skills directory
-cp -r claudeskillsshare/skills/parsing-* ~/.claude/skills/
+cp -r claudeskillsshare/skills/* ~/.claude/skills/
 ```
 
 ### Install a single skill
@@ -32,6 +36,9 @@ cp -r claudeskillsshare/skills/parsing-* ~/.claude/skills/
 ```bash
 # Example: install only the Cisco ASA skill
 cp -r claudeskillsshare/skills/parsing-cisco-configs ~/.claude/skills/
+
+# Example: install only the SRX MNHA skill
+cp -r claudeskillsshare/skills/srx-mnha ~/.claude/skills/
 ```
 
 ### Verify installation
@@ -52,11 +59,36 @@ After copying, your `~/.claude/skills/` directory should look like:
 │   └── (same structure)
 ├── parsing-palo-configs/
 │   └── (same structure)
-└── parsing-srx-configs/
-    └── (same structure)
+├── parsing-srx-configs/
+│   └── (same structure)
+├── srx-dynamic-ip-feed/
+│   ├── SKILL.md
+│   └── references/
+│       └── source-extract.md
+└── srx-mnha/
+    ├── SKILL.md
+    └── references/
+        ├── source-index.md
+        ├── source-dhcp-on-mnha-back-to-basics.md
+        ├── source-multi-node-high-availability-basics.md
+        ├── source-hybrid-mnha-with-ebgp.md
+        └── source-srx-from-chassis-cluster-to-mnha.md
 ```
 
-Restart Claude Code after installing. The skills will auto-trigger when they detect vendor-specific keywords in your messages or pasted configs.
+Restart Claude Code after installing. The skills will auto-trigger when they detect vendor-specific keywords or SRX operational topics in your messages or pasted configs.
+
+### Hermes local install
+
+For Hermes Agent, copy the skill directories into your local Hermes skills tree, usually under `~/.hermes/skills/devops/`:
+
+```bash
+mkdir -p ~/.hermes/skills/devops
+cp -r claudeskillsshare/skills/parsing-* ~/.hermes/skills/devops/
+cp -r claudeskillsshare/skills/srx-dynamic-ip-feed ~/.hermes/skills/devops/
+cp -r claudeskillsshare/skills/srx-mnha ~/.hermes/skills/devops/
+
+hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mnha'
+```
 
 ## Usage
 
@@ -73,6 +105,8 @@ Use slash commands to explicitly invoke a skill:
 /parsing-fortinet-configs
 /parsing-palo-configs
 /parsing-srx-configs
+/srx-dynamic-ip-feed
+/srx-mnha
 ```
 
 ### What you can do
@@ -82,6 +116,8 @@ Use slash commands to explicitly invoke a skill:
 - **Convert** — Transform configs between vendors (e.g., SRX to PAN-OS)
 - **Compare** — Diff two configs side-by-side
 - **Summarize** — Get a high-level overview of zones, policy counts, and security profiles
+- **Operate SRX dynamic feeds** — Configure, validate, and troubleshoot SRX dynamic-address feed servers
+- **Design SRX MNHA** — Reason about MNHA modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, and DHCP caveats
 
 ### Examples
 
@@ -100,6 +136,12 @@ Use slash commands to explicitly invoke a skill:
 
 # Read from file
 "Read /path/to/running-config.txt and audit it"
+
+# SRX dynamic IP feed server
+"Help me configure an SRX dynamic-address feed-server with HTTPS certificate validation and show me the verification commands"
+
+# SRX MNHA design/troubleshooting
+"Review this SRX MNHA hybrid eBGP design and tell me what to verify before failover testing"
 ```
 
 ## Tips
@@ -110,6 +152,8 @@ Use slash commands to explicitly invoke a skill:
   - **FortiGate**: `show full-configuration`
   - **PAN-OS**: XML config export or `show config flat` (set-format)
   - **SRX**: `show configuration | display set` or `show configuration`
+  - **SRX dynamic feeds**: collect `show security dynamic-address summary`, `show security dynamic-address`, and `show log messages | match ipfd`
+  - **SRX MNHA**: collect `show chassis high-availability information`, `show chassis high-availability services-redundancy-group <id>`, `show security flow session`, `show bgp summary`, and `show bfd session`
 - For large configs, save to a file and point Claude at the file path
 
 ## Conversion Caveats
@@ -119,9 +163,81 @@ Use slash commands to explicitly invoke a skill:
 - Dynamic address groups (PAN-OS) have no static equivalent
 - Geography/GeoIP objects have limited cross-platform support
 
+## SRX Operational Skills
+
+### srx-dynamic-ip-feed
+
+`srx-dynamic-ip-feed` is an operational playbook for Juniper SRX dynamic IP objects backed by HTTPS feed servers. It was synthesized from a Juniper Community TechPost and includes source attribution plus the extracted article text under `references/source-extract.md`.
+
+Use it for:
+
+- configuring `security dynamic-address feed-server`
+- building `.tgz` bundle archive feeds and mapping `feed-name` paths
+- exposing feeds as `security dynamic-address address-name` policy objects
+- validating HTTPS server certificates with SRX PKI / SSL initiation profiles
+- HTTP basic authentication and mutual TLS client-certificate patterns
+- applying dynamic-address objects in security policies
+- checking update behavior with HTTP `HEAD` / `GET` access logs
+- troubleshooting `ipfd` download, auth, certificate, and path errors
+- understanding `session-scan` and routing-instance reachability for feed servers
+
+Key verification commands:
+
+```text
+show security dynamic-address summary
+show security dynamic-address
+show log messages | match ipfd
+```
+
+Reference files:
+
+```text
+skills/srx-dynamic-ip-feed/SKILL.md
+skills/srx-dynamic-ip-feed/references/source-extract.md
+```
+
+### srx-mnha
+
+`srx-mnha` is a conservative SRX Multi-Node High Availability research/playbook skill built from four Juniper Community TechPosts. The source articles contained some conflicting or ambiguous details, so the main skill intentionally includes only non-conflicting operational guidance and keeps the extracted source material in `references/` for provenance.
+
+Use it for:
+
+- comparing chassis cluster and MNHA design models
+- routed, default-gateway, and hybrid MNHA design
+- SRG0 and SRG1+ behavior
+- ICL design, security, reachability, and liveness checks
+- ICD/asymmetric-routing caveats
+- runtime object synchronization and Active/Warm session verification
+- configuration synchronization patterns and safe separation of shared vs node-specific config
+- hybrid MNHA with eBGP, BFD, VIPs, and signal-route export policies
+- DHCP relay vs local DHCP behavior on MNHA
+- pre-cutover and troubleshooting checklists
+
+Key verification commands:
+
+```text
+show chassis high-availability information
+show chassis high-availability services-redundancy-group <id>
+show security flow session | match "HA State|HA Wing State|Session ID|In:|Out:"
+show bgp summary
+show bfd session
+show dhcp server binding routing-instance <RI>
+```
+
+Reference files:
+
+```text
+skills/srx-mnha/SKILL.md
+skills/srx-mnha/references/source-index.md
+skills/srx-mnha/references/source-dhcp-on-mnha-back-to-basics.md
+skills/srx-mnha/references/source-multi-node-high-availability-basics.md
+skills/srx-mnha/references/source-hybrid-mnha-with-ebgp.md
+skills/srx-mnha/references/source-srx-from-chassis-cluster-to-mnha.md
+```
+
 ## Intermediate Schema
 
-All skills output to a common schema with these sections:
+The four `parsing-*` skills output to a common schema with these sections:
 
 | Section | Contents |
 |---------|----------|
@@ -223,4 +339,9 @@ rm -rf ~/.claude/skills/parsing-cisco-configs
 rm -rf ~/.claude/skills/parsing-fortinet-configs
 rm -rf ~/.claude/skills/parsing-palo-configs
 rm -rf ~/.claude/skills/parsing-srx-configs
+rm -rf ~/.claude/skills/srx-dynamic-ip-feed
+rm -rf ~/.claude/skills/srx-mnha
+
+rm -rf ~/.hermes/skills/devops/srx-dynamic-ip-feed
+rm -rf ~/.hermes/skills/devops/srx-mnha
 ```
