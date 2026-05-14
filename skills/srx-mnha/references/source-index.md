@@ -6,3 +6,4 @@ These files are extracted Juniper Community article text used as provenance for 
 - `source-multi-node-high-availability-basics.md` — Steven Jacques, Multi-Node High Availability Basics
 - `source-hybrid-mnha-with-ebgp.md` — James Rathbun, Hybrid MNHA with eBGP
 - `source-srx-from-chassis-cluster-to-mnha.md` — Laurent Paumelle, SRX clustering: from Chassis Cluster to MultiNode High Availability
+- `source-mnha-ipsec-and-multiple-routing-instances.md` — James Rathbun, MNHA, IPSec and Multiple Routing Instances

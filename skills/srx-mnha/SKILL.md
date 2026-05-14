@@ -1,12 +1,12 @@
 ---
 name: srx-mnha
-description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX Multi-Node High Availability (MNHA). Covers chassis-cluster migration concepts, routed/default-gateway/hybrid modes, SRG0 and SRG1+ behavior, ICL/ICD links, RTO/session synchronization, eBGP/BFD failover, VIP/signal-route policy patterns, configuration synchronization, and DHCP relay/local-server caveats on MNHA.
+description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX Multi-Node High Availability (MNHA). Covers chassis-cluster migration concepts, routed/default-gateway/hybrid modes, SRG0/SRG1+ behavior, ICL/ICD links, RTO/session synchronization, eBGP/BFD failover, VIP/signal-route patterns, IPsec/IKED with floating loopbacks, multiple routing-instance caveats, NAT/proxy-ARP risks, and DHCP caveats.
 version: 1.0.0
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
   hermes:
-    tags: [srx, junos, mnha, high-availability, chassis-cluster, srg, icl, icd, bgp, bfd, dhcp]
+    tags: [srx, junos, mnha, high-availability, chassis-cluster, srg, icl, icd, bgp, bfd, ipsec, ike, nat, routing-instance, dhcp]
     related_skills: [parsing-srx-configs]
   sources:
     - title: "DHCP on MNHA: Back to Basics"
@@ -24,6 +24,10 @@ metadata:
     - title: "SRX clustering: from Chassis Cluster to MultiNode High Availability"
       author: Laurent Paumelle
       url: https://community.juniper.net/blogs/laurentp/2026/02/15/srx-from-chassis-cluster-to-mnha
+      retrieved: "2026-05-14"
+    - title: "MNHA, IPSec and Multiple Routing Instances"
+      author: James Rathbun
+      url: https://community.juniper.net/blogs/james-rathbun/2026/03/30/mnha-ipsec-and-multiple-routing-instances?CommunityKey=44efd17a-81a6-4306-b5f3-e5f82402d8d3
       retrieved: "2026-05-14"
 ---
 
@@ -48,8 +52,10 @@ Use this skill when the user asks about:
 - ICL, ICD, runtime object synchronization, Active/Warm session state, or failover behavior
 - routed MNHA, default-gateway MNHA, or hybrid MNHA
 - eBGP/BFD designs for MNHA active/backup or active/active forwarding
+- IPsec VPNs on MNHA, including floating loopback tunnel anchors, `managed-services ipsec`, IKED, remote access VPN, site-to-site VPN, or multiple routing instances
+- NAT/SNAT, proxy ARP, RPF/RRL, and deterministic routing concerns in MNHA
 - DHCP relay or DHCP local-server behavior on MNHA
-- troubleshooting `show chassis high-availability`, `show security flow session`, BGP/BFD convergence, or VIP installation
+- troubleshooting `show chassis high-availability`, `show security flow session`, BGP/BFD convergence, VIP installation, IPsec SAs, or IKE gateway lookup failures
 
 Do not use this as the primary skill for parsing a full SRX configuration. Load `parsing-srx-configs` first when the task is to extract or audit an arbitrary SRX config, then use this skill for MNHA-specific interpretation.
 
@@ -218,11 +224,13 @@ Design guidance:
 
 - source ICL from stable loopback or dedicated interface addresses
 - place ICL in a dedicated routing instance when practical
+- when using MNHA IPsec with floating loopback tunnel anchors, the ICL routing instance and the floating loopback/external-interface routing instance must align; route leaking is not a safe substitute for IKE gateway lookup
 - allow HA-related host-inbound services on the ICL zone
 - if encrypting ICL, allow IKE and use the Junos HA link encryption model
 - keep ICL RTT under the platform/release requirement for geo designs; the supplied sources use less than 100 ms as the design bound
 - use redundant paths where possible
 - do not assume ICL must be back-to-back; it can traverse routed infrastructure
+- size the encrypted ICL for RTO/session-sync bursts, not just steady state; James Rathbun's field rule of thumb is roughly 1 Gbps per 100,000 concurrent sessions and keeping utilization below about 75% for resync and connection-per-second bursts
 
 Minimal conceptual stanza:
 
@@ -258,6 +266,7 @@ Use ICD when:
 - hybrid designs may send one direction to one node and return traffic to the other
 - L7 inspection needs one node to see enough packets to classify or inspect a flow
 - you cannot guarantee symmetric routing during normal or failure states
+- multiple SRGs can be active on different nodes and create sustained cross-node, Z-mode-like forwarding
 
 Design notes:
 
@@ -266,6 +275,148 @@ Design notes:
 - account for encapsulation overhead and MTU
 - validate platform/release support for asymmetric flow and ICD behavior
 - test with real application traffic, not only ping
+- ICD may be used during the initial TCP 3-way handshake and while advanced inspection services need bidirectional visibility; do not assume every packet of every asymmetric flow will traverse ICD forever
+- sustained cross-node flows with advanced inspection/plugin services are not a good steady-state design; engineer traffic so complete bidirectional flows normally land on one active node
+- if ICD is down, asymmetric SYN/SYN-ACK or return traffic can fail even while synchronized sessions appear valid; check `show chassis high-availability data-plane statistics` and packet drops
+
+ICD configuration pattern:
+
+```junos
+set chassis high-availability local-id local-forwarding-ip <LOCAL_ICD_IP>
+set chassis high-availability peer-id <PEER_ID> peer-forwarding-ip <PEER_ICD_IP>
+set chassis high-availability peer-id <PEER_ID> peer-forwarding-ip interface <ICD_INTERFACE.UNIT>
+set chassis high-availability peer-id <PEER_ID> peer-forwarding-ip liveness-detection minimum-interval <MS>
+set chassis high-availability peer-id <PEER_ID> peer-forwarding-ip liveness-detection multiplier <COUNT>
+```
+
+ICD verification:
+
+```text
+show chassis high-availability data-plane statistics
+show security flow session source-prefix <SRC> destination-prefix <DST> pretty
+show log messages | match "MNHA forward|re-route failed|reject NH|ICD"
+```
+
+Look for `ICD Data` counters when traffic is actually crossing the ICD. A valid Active/Warm session with packet counters split across nodes does not by itself prove the ICD is forwarding every packet.
+
+## IPsec VPNs on MNHA with Multiple Routing Instances
+
+IPsec on MNHA is mostly an alignment problem: the SRG, floating loopback address, physical underlay interface, security zone, routing instance, and BGP advertisement must agree about which node and table should receive IKE/ESP traffic.
+
+Key requirements from the Juniper TechPost:
+
+- use SRG1 or higher for synchronized IPsec; do not try to anchor IPsec on SRG0
+- install and validate the newer IKE package where required by release/platform:
+  ```text
+  request system software add optional://junos-ike.tgz
+  show system processes | match "iked|ikemd|kmd"
+  ```
+- identify IPsec as an MNHA managed service on the SRG:
+  ```junos
+  set chassis high-availability services-redundancy-group <SRG> managed-services ipsec
+  ```
+- define the VPN endpoint as a floating IP on a loopback that is present on both nodes and tracked by the SRG prefix list
+- configure the IKE gateway `external-interface` as that loopback unit and set the expected `local-address`
+- if `process-packet-on-backup` is used, verify the routing and inspection consequences; it is optional, not a cure for bad path design
+
+Floating loopback / IKE gateway pattern:
+
+```junos
+set interfaces lo0 unit <UNIT> family inet address <FLOATING_VPN_IP>/32
+set policy-options prefix-list <IKE_GW_PREFIX_LIST> <FLOATING_VPN_IP>/32
+set chassis high-availability services-redundancy-group <SRG> prefix-list <IKE_GW_PREFIX_LIST> routing-instance <RI>
+set chassis high-availability services-redundancy-group <SRG> managed-services ipsec
+set security ike gateway <GW> external-interface lo0.<UNIT>
+set security ike gateway <GW> local-address <FLOATING_VPN_IP>
+```
+
+Routing-instance and zone rules that commonly get missed:
+
+- an interface can belong to only one security zone and one routing instance; this includes loopback units
+- the loopback used as the IKE `external-interface` and the physical interface receiving IKE/ESP must be in the same security zone
+- add an intra-zone policy for IKE and ESP when IKE/ESP arrives on a physical interface and is internally rerouted to the loopback anchor
+- the ICL's MNHA routing-instance context must match the floating loopback routing instance used by the IKE gateway; IKE gateway lookup is control-plane/self-traffic behavior and imported routes from another RI may not satisfy it
+- route leaking between RIs can be valid for transit traffic or st0 reachability, but do not rely on it to fix IKE gateway lookup to a floating loopback in a different RI
+
+Intra-zone IKE/ESP policy pattern:
+
+```junos
+set security policies from-zone <EXT_ZONE> to-zone <EXT_ZONE> policy ALLOW-IKE-ESP match source-address <REMOTE_PEER>
+set security policies from-zone <EXT_ZONE> to-zone <EXT_ZONE> policy ALLOW-IKE-ESP match destination-address <FLOATING_VPN_IP>
+set security policies from-zone <EXT_ZONE> to-zone <EXT_ZONE> policy ALLOW-IKE-ESP match application junos-ike
+set security policies from-zone <EXT_ZONE> to-zone <EXT_ZONE> policy ALLOW-IKE-ESP match application ESP
+set security policies from-zone <EXT_ZONE> to-zone <EXT_ZONE> policy ALLOW-IKE-ESP then permit
+```
+
+Symptoms of a bad RI/zone anchor:
+
+```text
+'external-interface'(lo0.<UNIT>) and 'routing-interface'(<PHY_IFL>) belong to different zones
+Re-route failed, pkt dropped
+unable to make the tunnel ready
+Gateway lookup failed
+```
+
+### Remote Access VPN Notes
+
+- IKEv1 aggressive mode sessions are not synchronized; expect clients to reauthenticate/reestablish after failover.
+- Certificates can synchronize to the peer when ICL cold sync is complete; still verify both nodes after enrollment.
+- RADIUS and other control-plane dependencies are node-local. Configure and test source addresses, routes, secrets, and reachability from both nodes.
+- For one SRG, a common address-assignment pool can move with failover. For active/active designs with multiple SRGs, use separate shared ranges per SRG or split pools to avoid address collisions.
+- `st0` counters are node-local and are not synchronized; use them to identify which node is actually forwarding tunnel traffic.
+- On Junos 23.1R1 and later, remote-access `default-profile` behavior is deprecated in favor of profile names based on FQDNs or IPs.
+
+Remote-access verification:
+
+```text
+show security ike security-associations
+show security ike security-associations srg-id <SRG>
+show security ike security-associations <REMOTE> detail | match "AAA assigned IP|Local|Remote|State"
+show network-access address-assignment pool <POOL>
+show interfaces st0.<UNIT> | match packets
+```
+
+### Site-to-Site VPN Notes
+
+- Tunnel interfaces such as `st0.<UNIT>` can live in a different routing instance from the IKE floating loopback, but then route import/export between the protected RI and VPN RI must be explicit and verified.
+- Auto Route Insertion (ARI) from traffic selectors may install routes in the protected RI on both MNHA nodes. Confirm the table where ARI routes land before writing policies.
+- If the floating IP for the IKE gateway is advertised conditionally with SRG signal routes, pin the preferred ingress path to the active node and avoid receiving tunnel-initiation traffic in a non-MNHA/non-ICL RI.
+
+Site-to-site verification:
+
+```text
+show security ike security-associations srg-id <SRG>
+show security ipsec security-associations
+show security flow session tunnel
+show route table <PROTECTED_RI>.inet.0 <REMOTE_TS_PREFIX>
+show route table <VPN_RI>.inet.0 <LOCAL_PROTECTED_PREFIX>
+```
+
+## NAT, Proxy ARP, and Deterministic Routing
+
+NAT in MNHA has to be deterministic across both nodes. Keep NAT policy and pools equivalent where stateful failover is expected, but avoid designs where both independent control planes answer for the same translated address at L2.
+
+Design guidance:
+
+- prefer routed next-hop reachability to SNAT pools over proxy ARP
+- do not rely on proxy ARP for upstream reachability to translated addresses in MNHA; both nodes can answer ARP and upstream devices keep only one MAC per IP
+- if using multiple ISPs, avoid shared SNAT pools unless return routing is deterministic and the prefix is advertised consistently
+- unique per-ISP SNAT pools can work, but active sessions will fail if failover changes the translated source range
+- `set security nat source rule-set <RS> to interface <IFL>` can make SNAT selection more predictable, but only if the pool, egress interface, and route advertisement all align
+- account for RPF and reverse route lookup before NAT; incorrect route selection can create `Dropped by IDS:IP spoofing` or other flow drops
+- if an upstream needs a next hop for a shared SNAT prefix, point it at a routed VIP or node interface deliberately; do not assume chassis-cluster proxy-ARP behavior transfers cleanly to MNHA
+
+Useful NAT/routing checks:
+
+```text
+show security nat source rule all
+show security nat source pool all
+show route table <RI>.inet.0 <SNAT_POOL_PREFIX>
+show route table <RI>.inet.0 0.0.0.0/0 exact
+show security packet-drop records | match "MNHA|IP spoofing|reroute|proxy|FLOW"
+```
+
+If packet drops include `Dropped by FLOW:error info in MNHA flow meta header`, suspect a cross-node/asymmetric MNHA flow where NAT or proxy-ARP return traffic landed on the wrong node.
 
 ## Runtime Object and Session Synchronization
 
@@ -363,6 +514,8 @@ Core pieces:
 
 Signal routes are arbitrary local routes used as policy conditions. Use prefixes that cannot collide with production routes.
 
+If no routing instance is specified for the signal route, expect Junos to install it in `inet.0`; make the `policy-options condition ... if-route-exists ... table` match the table where the signal route actually appears.
+
 ```junos
 set chassis high-availability services-redundancy-group <SRG> active-signal-route 169.254.200.1
 set chassis high-availability services-redundancy-group <SRG> backup-signal-route 169.254.200.2
@@ -438,6 +591,8 @@ Operational caution:
 - overly aggressive timers can cause instability
 - BFD hold-down can intentionally stabilize neighbors but can also extend failback outage
 - preemption/failback must be tested with routing convergence, not only SRG status
+- for VPN floating IPs in multiple routing-instance designs, inbound routing policy must steer IKE/ESP to the physical interface and RI that align with the floating loopback and ICL context, or IKE may fail with gateway lookup errors
+- if a route advertisement uses a VIP as next hop, BGP multihop or upstream static routing may be required so the advertised next hop is the VIP instead of BGP self
 
 ### VIPs in Hybrid or Default-Gateway Mode
 
@@ -538,6 +693,12 @@ Before production cutover:
 - [ ] Node-specific routing/interface configuration is intentionally different and documented.
 - [ ] Forwarding interface/logical-unit design is compatible with stateful failover expectations.
 - [ ] Symmetric routing is preferred or ICD/asymmetric-flow design is explicitly validated.
+- [ ] If advanced inspection services are in policy, steady-state cross-node/Z-mode forwarding has been eliminated or explicitly validated against Juniper support guidance.
+- [ ] IPsec on MNHA uses SRG1+, has `managed-services ipsec`, and IKED/package requirements are verified for the Junos release.
+- [ ] VPN floating loopbacks, ICL context, physical underlay interfaces, security zones, and routing instances align; IKE gateway lookup has been tested from both nodes.
+- [ ] Intra-zone IKE/ESP policy exists when VPN traffic is received on a physical interface and terminates on a loopback in the same zone.
+- [ ] Remote-access pools are common per SRG or split per active/active SRG design to prevent address collisions after failover.
+- [ ] NAT/SNAT pools, route advertisements, and upstream next hops produce deterministic return paths; proxy ARP is avoided unless explicitly tested.
 - [ ] Sessions show Active/Warm state across both nodes.
 - [ ] BGP/OSPF/static route preference selects the intended node.
 - [ ] BFD sessions are stable and timers are realistic for the platform.
@@ -571,7 +732,18 @@ Sessions and runtime state:
 ```text
 show security flow session destination-prefix <PREFIX>
 show security flow session source-prefix <PREFIX>
+show security flow session tunnel
 show security flow session | match "HA State|HA Wing State|Session ID|In:|Out:"
+```
+
+IPsec/IKE:
+
+```text
+show system processes | match "iked|ikemd|kmd"
+show security ike security-associations
+show security ike security-associations srg-id <SRG>
+show security ipsec security-associations
+show interfaces st0.<UNIT> | match packets
 ```
 
 Routing/BGP/BFD:
@@ -580,6 +752,8 @@ Routing/BGP/BFD:
 show bgp summary
 show bfd session
 show route <PREFIX>
+show route <SIGNAL_ROUTE>
+show route table <RI>.inet.0 <PREFIX>
 show route <PREFIX> receive-protocol bgp <NEIGHBOR>
 show route <PREFIX> advertising-protocol bgp <NEIGHBOR>
 ```
@@ -624,8 +798,18 @@ Use destructive clear commands only inside an approved maintenance procedure.
 
 10. Ignoring ICL security and reachability. If ICL fails, sync fails; if ICL is exposed, HA state can become a security risk.
 
+11. Anchoring MNHA IPsec on a floating loopback in a different routing instance from the ICL/MNHA context. IKE gateway lookup is control-plane/self-traffic behavior; route leaking that fixes transit traffic may not fix IKE.
+
+12. Putting the VPN loopback and receiving physical interface in different security zones. The tunnel can fail with reroute errors even when basic IP reachability exists.
+
+13. Assuming `process-packet-on-backup` or ICD makes all asymmetric designs safe. Advanced inspection services need bidirectional visibility; sustained cross-node flows should be engineered out of steady state.
+
+14. Using proxy ARP for NAT pool reachability as if MNHA were chassis cluster. Both independent nodes can answer ARP, and return traffic can land on the wrong node.
+
+15. Reusing the same remote-access address pool across independently active SRGs without splitting ranges. Failover may preserve a pool, but active/active SRGs can collide.
+
 ## Source Notes
 
-This skill is a synthesized operational playbook based on four Juniper Community TechPosts by James Rathbun, Steven Jacques, and Laurent Paumelle. Full extracted source references are stored under `references/` for local provenance.
+This skill is a synthesized operational playbook based on five Juniper Community TechPosts by James Rathbun, Steven Jacques, and Laurent Paumelle. Full extracted source references are stored under `references/` for local provenance.
 
 Per user instruction, ambiguous or conflicting article details were not encoded as hard guidance. Where support depends on platform or Junos release, this skill points operators to current Juniper documentation instead of freezing a source-specific matrix.
