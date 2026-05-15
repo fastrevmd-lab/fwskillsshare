@@ -20,9 +20,16 @@ This index records the source articles used to synthesize `srx-policy`. HTTP/ext
 - [[SRX] Configuring Next-Generation Web Filtering on SRX Devices](https://supportportal.juniper.net/s/article/SRX-Configuring-Next-Generation-Web-Filtering-on-SRX-Devices) -> `source-srx-configuring-next-generation-web-filtering-on-srx-devices.md`; HTTP 200; chars 75 (limited extraction; do not rely on details not corroborated elsewhere)
 - [Understanding Application Firewall Policies](https://www.juniper.net/documentation/us/en/software/nm-apps24.1/junos-space-security-director/topics/concept/junos-space-application-firewall-policies-overview.html) -> `source-understanding-application-firewall-policies.md`; HTTP 404; chars 13989 (limited extraction; do not rely on details not corroborated elsewhere)
 
+## Later NGWF/EWF correction sources
+
+- [Juniper NextGen Web Filtering Overview | Junos OS](https://www.juniper.net/documentation/us/en/software/junos/utm/topics/concept/next-gen-juniper-url-filtering-overview.html) -> summarized in `ngwf-vs-ewf-research.md`; browser-rendered extraction; observed page date 03-Feb-26
+- [request security utm web-filtering category migrate-to-ng-juniper | Junos OS](https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/command/request-security-utm-web-filtering-category-migrate-to-ng-juniper.html) -> summarized in `ngwf-vs-ewf-research.md`; browser-rendered extraction; observed page date 11-Aug-25
+- [Web Filtering Overview | Junos OS](https://www.juniper.net/documentation/us/en/software/junos/utm/topics/concept/utm-web-filtering-overview.html) -> summarized in `ngwf-vs-ewf-research.md`; browser-rendered extraction; observed page date 09-Nov-25
+- [Juniper Support Portal KB98153: [SRX] Configuring Next-Generation Web Filtering on SRX Devices](https://supportportal.juniper.net/s/article/SRX-Configuring-Next-Generation-Web-Filtering-on-SRX-Devices) -> summarized in `ngwf-vs-ewf-research.md`; browser-rendered extraction; created / last updated 2025-05-01
+
 ## Extraction limitations
 
 - The Security Director application-firewall overview URL and J-Web 23.2 web-filtering URL returned Juniper 404 pages during extraction; their article titles from the user-supplied reading list were preserved, but operational guidance was corroborated from other accessible Juniper/Junos and lab sources.
-- The Juniper Support Portal next-generation web-filtering article returned a JavaScript shell with minimal text; next-generation/enhanced web-filtering guidance was limited to accessible public docs and lab articles.
+- The initial non-rendered extraction of the Juniper Support Portal next-generation web-filtering article returned a JavaScript shell with minimal text. Later browser-rendered extraction exposed the KB98153 article body; NGWF/EWF conclusions are captured in `ngwf-vs-ewf-research.md` and corroborated with official Juniper Junos documentation.
 - The Reddit SecIntel thread was blocked by a JavaScript challenge; it was not used as authoritative guidance.
 - `source-security-global-policies.md` was fetched as an additional official Juniper source because the user explicitly requested strong preference for `security policies global` in greenfield and vendor-migration work, and Juniper's main policy page links Global Policy Overview as related policy material.
