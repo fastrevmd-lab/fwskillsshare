@@ -13,6 +13,7 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 | [srx-dynamic-ip-feed](skills/srx-dynamic-ip-feed/) | Juniper SRX / Junos dynamic-address feed servers | `dynamic-address`, `feed-server`, `IPFD`, `show security dynamic-address`, `ipfd` |
 | [srx-mpls-in-flow](skills/srx-mpls-in-flow/) | Juniper SRX / Junos MPLS L3VPN in flow mode | `MPLS in Flow`, `family mpls mode packet-based`, `inet-vpn`, `vrf-table-label`, `VRF-to-zone` |
 | [srx-mnha](skills/srx-mnha/) | Juniper SRX / Junos Multi-Node High Availability | `MNHA`, `Multi-Node High Availability`, `chassis high-availability`, `SRG`, `ICL`, `ICD` |
+| [srx-nat](skills/srx-nat/) | Juniper SRX / Junos NAT | `source nat`, `destination nat`, `static nat`, `NAT64`, `CGN`, `PBA`, `hairpin`, `proxy-arp` |
 
 The four `parsing-*` skills parse vendor-specific configs into a **common vendor-neutral intermediate JSON schema**, enabling cross-vendor comparison, conversion, and unified auditing.
 
@@ -43,6 +44,9 @@ cp -r claudeskillsshare/skills/srx-mnha ~/.claude/skills/
 
 # Example: install only the SRX MPLS in Flow skill
 cp -r claudeskillsshare/skills/srx-mpls-in-flow ~/.claude/skills/
+
+# Example: install only the SRX NAT skill
+cp -r claudeskillsshare/skills/srx-nat ~/.claude/skills/
 ```
 
 ### Verify installation
@@ -75,14 +79,23 @@ After copying, your `~/.claude/skills/` directory should look like:
 │       ├── source-index.md
 │       ├── source-srx-mpls-in-flow-part-1.md
 │       └── source-srx-mpls-in-flow-part-2.md
-└── srx-mnha/
+├── srx-mnha/
+│   ├── SKILL.md
+│   └── references/
+│       ├── source-index.md
+│       ├── source-dhcp-on-mnha-back-to-basics.md
+│       ├── source-multi-node-high-availability-basics.md
+│       ├── source-hybrid-mnha-with-ebgp.md
+│       └── source-srx-from-chassis-cluster-to-mnha.md
+└── srx-nat/
     ├── SKILL.md
     └── references/
         ├── source-index.md
-        ├── source-dhcp-on-mnha-back-to-basics.md
-        ├── source-multi-node-high-availability-basics.md
-        ├── source-hybrid-mnha-with-ebgp.md
-        └── source-srx-from-chassis-cluster-to-mnha.md
+        ├── source-dns64-and-nat64-on-srx-series.md
+        ├── source-srx4600-cgn-configuration-breakdown.md
+        ├── source-security-nat-overview.md
+        ├── source-troubleshoot-source-nat.md
+        └── source-troubleshoot-destination-nat.md
 ```
 
 Restart Claude Code after installing. The skills will auto-trigger when they detect vendor-specific keywords or SRX operational topics in your messages or pasted configs.
@@ -97,8 +110,9 @@ cp -r claudeskillsshare/skills/parsing-* ~/.hermes/skills/devops/
 cp -r claudeskillsshare/skills/srx-dynamic-ip-feed ~/.hermes/skills/devops/
 cp -r claudeskillsshare/skills/srx-mpls-in-flow ~/.hermes/skills/devops/
 cp -r claudeskillsshare/skills/srx-mnha ~/.hermes/skills/devops/
+cp -r claudeskillsshare/skills/srx-nat ~/.hermes/skills/devops/
 
-hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha'
+hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat'
 ```
 
 ## Usage
@@ -119,6 +133,7 @@ Use slash commands to explicitly invoke a skill:
 /srx-dynamic-ip-feed
 /srx-mpls-in-flow
 /srx-mnha
+/srx-nat
 ```
 
 ### What you can do
@@ -131,6 +146,7 @@ Use slash commands to explicitly invoke a skill:
 - **Operate SRX dynamic feeds** — Configure, validate, and troubleshoot SRX dynamic-address feed servers
 - **Design SRX MPLS in flow mode** — Configure SRX MPLS L3VPN while keeping inet/inet6 traffic in stateful flow mode for policy, NAT, and AppID
 - **Design SRX MNHA** — Reason about MNHA modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, and DHCP caveats
+- **Operate SRX NAT** — Configure and troubleshoot source NAT, destination NAT, static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin NAT, and proxy ARP
 
 ### Examples
 
@@ -158,6 +174,9 @@ Use slash commands to explicitly invoke a skill:
 
 # SRX MNHA design/troubleshooting
 "Review this SRX MNHA hybrid eBGP design and tell me what to verify before failover testing"
+
+# SRX NAT troubleshooting
+"Help me troubleshoot this SRX destination NAT rule: hits increment, but the policy denies the translated web server session"
 ```
 
 ## Tips
@@ -171,6 +190,7 @@ Use slash commands to explicitly invoke a skill:
   - **SRX dynamic feeds**: collect `show security dynamic-address summary`, `show security dynamic-address`, and `show log messages | match ipfd`
   - **SRX MPLS in Flow**: collect `show security flow status`, `show route table bgp.l3vpn.0`, `show route table <vrf>.inet.0`, `show ldp neighbor`, `show mpls interface`, `show security flow session extensive`, and `show security policies hit-count`
   - **SRX MNHA**: collect `show chassis high-availability information`, `show chassis high-availability services-redundancy-group <id>`, `show security flow session`, `show bgp summary`, and `show bfd session`
+  - **SRX NAT**: collect `show configuration security nat | display set`, `show security nat source rule all`, `show security nat destination rule all`, `show security nat static rule all`, `show security nat source pool all`, `show security nat proxy-arp`, and `show security flow session ... extensive`
 - For large configs, save to a file and point Claude at the file path
 
 ## Conversion Caveats
@@ -251,6 +271,47 @@ skills/srx-mpls-in-flow/SKILL.md
 skills/srx-mpls-in-flow/references/source-index.md
 skills/srx-mpls-in-flow/references/source-srx-mpls-in-flow-part-1.md
 skills/srx-mpls-in-flow/references/source-srx-mpls-in-flow-part-2.md
+```
+
+### srx-nat
+
+`srx-nat` is an operational playbook for Juniper SRX NAT. It was synthesized from Juniper Community NAT/CGN/NAT64 articles, Juniper NAT documentation, and support troubleshooting guides. It includes source attribution plus extracted or condensed references under `references/`.
+
+Use it for:
+
+- source NAT with interface or pool translation
+- destination NAT and static NAT for published servers and overlapping networks
+- NAT rule processing order, rule-set specificity, and first-match behavior
+- proxy ARP decisions for public NAT addresses
+- hairpin NAT / NAT reflection for inside clients using public server addresses
+- NAT64 with DNS64 using `static-nat inet` and IPv4 source NAT
+- CGN/PBA design, paired address pooling, persistent NAT, and pool exhaustion troubleshooting
+- `address-persistent` symptoms, removal, and TCP MSS caveats
+- source/destination/static NAT troubleshooting with counters, sessions, and traceoptions
+
+Key verification commands:
+
+```text
+show configuration security nat | display set
+show security nat source rule all
+show security nat destination rule all
+show security nat static rule all
+show security nat source pool all
+show security nat proxy-arp
+show security flow session source-prefix <source> extensive
+show security flow session destination-prefix <destination> extensive
+```
+
+Reference files:
+
+```text
+skills/srx-nat/SKILL.md
+skills/srx-nat/references/source-index.md
+skills/srx-nat/references/source-dns64-and-nat64-on-srx-series.md
+skills/srx-nat/references/source-srx4600-cgn-configuration-breakdown.md
+skills/srx-nat/references/source-security-nat-overview.md
+skills/srx-nat/references/source-troubleshoot-source-nat.md
+skills/srx-nat/references/source-troubleshoot-destination-nat.md
 ```
 
 ### srx-mnha
@@ -399,8 +460,10 @@ rm -rf ~/.claude/skills/parsing-srx-configs
 rm -rf ~/.claude/skills/srx-dynamic-ip-feed
 rm -rf ~/.claude/skills/srx-mpls-in-flow
 rm -rf ~/.claude/skills/srx-mnha
+rm -rf ~/.claude/skills/srx-nat
 
 rm -rf ~/.hermes/skills/devops/srx-dynamic-ip-feed
 rm -rf ~/.hermes/skills/devops/srx-mpls-in-flow
 rm -rf ~/.hermes/skills/devops/srx-mnha
+rm -rf ~/.hermes/skills/devops/srx-nat
 ```
