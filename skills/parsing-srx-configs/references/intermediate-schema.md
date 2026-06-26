@@ -1,5 +1,7 @@
 # Intermediate Schema Reference
 
+> Maintenance note: this schema is intentionally duplicated across the four `parsing-*` skills so each skill stays self-contained. Treat the SRX copy as canonical, sync changes to the other copies, and run `python3 scripts/check-shared-schema.py` from the repository root. See `skills/SHARED-SCHEMA.md`.
+
 This is the vendor-neutral intermediate JSON schema that all firewall config parsers produce.
 All extracted data should be normalized to this format regardless of source vendor.
 

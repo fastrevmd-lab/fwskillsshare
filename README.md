@@ -429,6 +429,17 @@ skills/srx-mnha/references/source-hybrid-mnha-with-ebgp.md
 skills/srx-mnha/references/source-srx-from-chassis-cluster-to-mnha.md
 ```
 
+
+## Shared Schema Maintenance
+
+The `intermediate-schema.md` file is intentionally duplicated in each `parsing-*` skill so every skill remains self-contained when copied alone. Treat `skills/parsing-srx-configs/references/intermediate-schema.md` as the canonical editing copy, then sync the same content to the other parser skills and run:
+
+```bash
+python3 scripts/check-shared-schema.py
+```
+
+See `skills/SHARED-SCHEMA.md` for the full policy.
+
 ## Intermediate Schema
 
 The four `parsing-*` skills output to a common schema with these sections:
