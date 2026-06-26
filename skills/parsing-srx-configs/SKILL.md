@@ -372,6 +372,9 @@ After extraction, run these checks and report findings:
 - `references/intermediate-schema.md` — Output schema specification
 - `references/parsing-patterns.md` — Edge cases, predefined apps, and name sanitization
 
+- `references/fixture-minimal-input.md` — Minimal parser fixture input
+- `references/fixture-expected-output.json` — Expected high-level intermediate-schema output for the minimal fixture
+
 ## Common Pitfalls
 
 1. Do not skip hierarchical-to-set normalization; inactive prefixes, bracket lists, and quoted strings affect extraction.

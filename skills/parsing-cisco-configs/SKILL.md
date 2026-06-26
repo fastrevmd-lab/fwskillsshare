@@ -392,6 +392,9 @@ After extraction, report:
 - `references/intermediate-schema.md` — Output schema specification
 - `references/parsing-patterns.md` — Edge cases, port name mapping, security-level logic
 
+- `references/fixture-minimal-input.md` — Minimal parser fixture input
+- `references/fixture-expected-output.json` — Expected high-level intermediate-schema output for the minimal fixture
+
 ## Common Pitfalls
 
 1. Do not treat IOS wildcard masks as ASA subnet masks; ASA object subnets use standard dotted masks.

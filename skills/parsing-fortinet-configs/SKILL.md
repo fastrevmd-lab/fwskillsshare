@@ -384,6 +384,9 @@ After extraction, report:
 - `references/intermediate-schema.md` — Output schema specification
 - `references/parsing-patterns.md` — Edge cases, mask conversion, application mapping
 
+- `references/fixture-minimal-input.md` — Minimal parser fixture input
+- `references/fixture-expected-output.json` — Expected high-level intermediate-schema output for the minimal fixture
+
 ## Common Pitfalls
 
 1. Do not assume every policy interface is a zone; FortiGate policies can reference zones or raw interfaces.

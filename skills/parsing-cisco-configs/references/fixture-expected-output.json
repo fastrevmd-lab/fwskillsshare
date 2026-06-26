@@ -1,0 +1,105 @@
+{
+  "zones": [
+    {
+      "name": "outside",
+      "interfaces": [
+        "GigabitEthernet0/0"
+      ],
+      "zone_type": "layer3"
+    },
+    {
+      "name": "inside",
+      "interfaces": [
+        "GigabitEthernet0/1"
+      ],
+      "zone_type": "layer3"
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "GigabitEthernet0/0",
+      "zone": "outside",
+      "ip": "203.0.113.2/24"
+    },
+    {
+      "name": "GigabitEthernet0/1",
+      "zone": "inside",
+      "ip": "10.0.0.1/24"
+    }
+  ],
+  "address_objects": [
+    {
+      "name": "WEB",
+      "type": "host",
+      "value": "10.0.1.10/32"
+    },
+    {
+      "name": "INSIDE-NET",
+      "type": "subnet",
+      "value": "10.0.0.0/16"
+    }
+  ],
+  "service_objects": [
+    {
+      "name": "HTTPS-ALT",
+      "protocol": "tcp",
+      "port_range": "8443"
+    }
+  ],
+  "security_policies": [
+    {
+      "name": "OUTSIDE-IN-1",
+      "src_zones": [
+        "outside"
+      ],
+      "dst_zones": [
+        "outside"
+      ],
+      "src_addresses": [
+        "any"
+      ],
+      "dst_addresses": [
+        "WEB"
+      ],
+      "services": [
+        "tcp/443"
+      ],
+      "action": "allow",
+      "log_end": true,
+      "_rule_index": 1
+    }
+  ],
+  "nat_rules": [
+    {
+      "name": "INSIDE-NET-auto-nat",
+      "type": "source",
+      "src_zones": [
+        "inside"
+      ],
+      "dst_zones": [
+        "outside"
+      ],
+      "src_addresses": [
+        "INSIDE-NET"
+      ],
+      "translated_src": {
+        "type": "interface"
+      },
+      "_rule_index": 1
+    }
+  ],
+  "static_routes": [
+    {
+      "destination": "0.0.0.0/0",
+      "next_hop": "203.0.113.1",
+      "interface": "outside"
+    }
+  ],
+  "metadata": {
+    "vendor": "cisco-asa",
+    "warnings": [
+      "ACL destination zone may require route/interface resolution beyond access-group binding"
+    ]
+  },
+  "residual_raw": []
+}

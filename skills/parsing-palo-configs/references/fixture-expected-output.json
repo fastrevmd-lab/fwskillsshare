@@ -1,0 +1,63 @@
+{
+  "zones": [
+    {
+      "name": "trust",
+      "interfaces": [
+        "ethernet1/2"
+      ]
+    },
+    {
+      "name": "untrust",
+      "interfaces": [
+        "ethernet1/1"
+      ]
+    }
+  ],
+  "address_objects": [
+    {
+      "name": "WEB",
+      "type": "host",
+      "value": "10.0.1.10/32"
+    }
+  ],
+  "service_objects": [
+    {
+      "name": "HTTPS-ALT",
+      "protocol": "tcp",
+      "port_range": "8443"
+    }
+  ],
+  "security_policies": [
+    {
+      "name": "ALLOW-WEB",
+      "src_zones": [
+        "trust"
+      ],
+      "dst_zones": [
+        "untrust"
+      ],
+      "src_addresses": [
+        "any"
+      ],
+      "dst_addresses": [
+        "WEB"
+      ],
+      "applications": [
+        "ssl"
+      ],
+      "services": [
+        "application-default"
+      ],
+      "action": "allow",
+      "_rule_index": 1,
+      "_vsys": "vsys1"
+    }
+  ],
+  "metadata": {
+    "vendor": "pan-os",
+    "warnings": [
+      "application-default preserved explicitly for conversion review"
+    ]
+  },
+  "residual_raw": []
+}

@@ -219,6 +219,7 @@ Use slash commands to explicitly invoke a skill:
   - **SRX NAT**: collect `show configuration security nat | display set`, `show security nat source rule all`, `show security nat destination rule all`, `show security nat static rule all`, `show security nat source pool all`, `show security nat proxy-arp`, and `show security flow session ... extensive`
   - **SRX security policy**: collect `show configuration security policies | display set`, `show configuration security policies global | display set`, `show security policies hit-count global`, `show security application-firewall rule-set <name>`, `show security utm web-filtering status`, `show security utm web-filtering statistics`, and `show security flow session ... extensive`
 - For large configs, save to a file and point Claude at the file path
+- Each `parsing-*` skill includes `references/fixture-minimal-input.md` and `references/fixture-expected-output.json` as a small smoke-test fixture for parser behavior and schema shape
 
 ## Conversion Caveats
 

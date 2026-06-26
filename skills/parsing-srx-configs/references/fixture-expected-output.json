@@ -1,0 +1,84 @@
+{
+  "zones": [
+    {
+      "name": "trust",
+      "interfaces": [
+        "ge-0/0/0.0"
+      ]
+    },
+    {
+      "name": "untrust",
+      "interfaces": [
+        "ge-0/0/1.0"
+      ]
+    }
+  ],
+  "address_objects": [
+    {
+      "name": "WEB",
+      "type": "host",
+      "value": "10.0.1.10/32",
+      "ip_version": "v4"
+    }
+  ],
+  "service_objects": [
+    {
+      "name": "APP-HTTPS",
+      "protocol": "tcp",
+      "port_range": "443"
+    }
+  ],
+  "security_policies": [
+    {
+      "name": "ALLOW-WEB",
+      "src_zones": [
+        "trust"
+      ],
+      "dst_zones": [
+        "untrust"
+      ],
+      "src_addresses": [
+        "any"
+      ],
+      "dst_addresses": [
+        "WEB"
+      ],
+      "applications": [
+        "APP-HTTPS"
+      ],
+      "action": "allow",
+      "log_end": true,
+      "_rule_index": 1
+    }
+  ],
+  "nat_rules": [
+    {
+      "name": "PAT",
+      "type": "source",
+      "src_zones": [
+        "trust"
+      ],
+      "dst_zones": [
+        "untrust"
+      ],
+      "src_addresses": [
+        "10.0.0.0/16"
+      ],
+      "translated_src": {
+        "type": "interface"
+      },
+      "_rule_index": 1
+    }
+  ],
+  "static_routes": [
+    {
+      "destination": "0.0.0.0/0",
+      "next_hop": "203.0.113.1"
+    }
+  ],
+  "metadata": {
+    "vendor": "juniper-srx",
+    "warnings": []
+  },
+  "residual_raw": []
+}
