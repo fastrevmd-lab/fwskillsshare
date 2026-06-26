@@ -10,6 +10,7 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 | [parsing-fortinet-configs](skills/parsing-fortinet-configs/) | Fortinet FortiGate / FortiOS | `FortiGate`, `FortiOS`, `config firewall policy`, `set srcintf` |
 | [parsing-palo-configs](skills/parsing-palo-configs/) | Palo Alto PAN-OS & Panorama | `PAN-OS`, `Palo Alto`, `Panorama`, `vsys`, `<entry name=` |
 | [parsing-srx-configs](skills/parsing-srx-configs/) | Juniper SRX / Junos | `SRX`, `Junos`, `Juniper`, `set security`, `from-zone` |
+| [garde](skills/garde/) | Juniper SRX Outpost SOC analyst | `GARDE`, `SRX Outpost`, `SkyATP`, `ATP Cloud`, `RT_FLOW`, `IDP`, `APPTRACK`, `SOC triage` |
 | [srx-dynamic-ip-feed](skills/srx-dynamic-ip-feed/) | Juniper SRX / Junos dynamic-address feed servers | `dynamic-address`, `feed-server`, `IPFD`, `show security dynamic-address`, `ipfd` |
 | [srx-mpls-in-flow](skills/srx-mpls-in-flow/) | Juniper SRX / Junos MPLS L3VPN in flow mode | `MPLS in Flow`, `family mpls mode packet-based`, `inet-vpn`, `vrf-table-label`, `VRF-to-zone` |
 | [srx-mnha](skills/srx-mnha/) | Juniper SRX / Junos Multi-Node High Availability | `MNHA`, `Multi-Node High Availability`, `chassis high-availability`, `SRG`, `ICL`, `ICD` |
@@ -79,6 +80,8 @@ After copying, your `~/.claude/skills/` directory should look like:
 │   └── (same structure)
 ├── parsing-srx-configs/
 │   └── (same structure)
+├── garde/
+│   └── SKILL.md
 ├── srx-dynamic-ip-feed/
 │   ├── SKILL.md
 │   └── references/
@@ -127,13 +130,14 @@ For Hermes Agent, copy the skill directories into your local Hermes skills tree,
 ```bash
 mkdir -p ~/.hermes/skills/devops
 cp -r claudeskillsshare/skills/parsing-* ~/.hermes/skills/devops/
+cp -r claudeskillsshare/skills/garde ~/.hermes/skills/devops/
 cp -r claudeskillsshare/skills/srx-dynamic-ip-feed ~/.hermes/skills/devops/
 cp -r claudeskillsshare/skills/srx-mpls-in-flow ~/.hermes/skills/devops/
 cp -r claudeskillsshare/skills/srx-mnha ~/.hermes/skills/devops/
 cp -r claudeskillsshare/skills/srx-nat ~/.hermes/skills/devops/
 cp -r claudeskillsshare/skills/srx-policy ~/.hermes/skills/devops/
 
-hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy'
+hermes skills list | grep -E 'garde|parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy'
 ```
 
 ## Usage
@@ -151,6 +155,7 @@ Use slash commands to explicitly invoke a skill:
 /parsing-fortinet-configs
 /parsing-palo-configs
 /parsing-srx-configs
+/garde
 /srx-dynamic-ip-feed
 /srx-mpls-in-flow
 /srx-mnha
@@ -166,6 +171,7 @@ Use slash commands to explicitly invoke a skill:
 - **Compare** — Diff two configs side-by-side
 - **Summarize** — Get a high-level overview of zones, policy counts, and security profiles
 - **Operate SRX dynamic feeds** — Configure, validate, and troubleshoot SRX dynamic-address feed servers
+- **Triage SRX Outpost security events** — Use GARDE to analyze SRX logs, SkyATP/ATP Cloud verdicts, RT_FLOW/IDP/APPTRACK events, and policy gaps
 - **Design SRX MPLS in flow mode** — Configure SRX MPLS L3VPN while keeping inet/inet6 traffic in stateful flow mode for policy, NAT, and AppID
 - **Design SRX MNHA** — Reason about MNHA modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, and DHCP caveats
 - **Operate SRX NAT** — Configure and troubleshoot source NAT, destination NAT, static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin NAT, and proxy ARP
