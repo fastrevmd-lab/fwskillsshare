@@ -7,7 +7,7 @@ license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [cis-controls, cis-v8, compliance, firewall, ngfw, safeguards, audit, evidence, network-infrastructure, logging, access-control, incident-response]
-    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, pci-ngfw-compliance, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance]
+    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, pci-ngfw-compliance, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, iso27001-ngfw-compliance, soc2-ngfw-compliance]
   sources:
     - title: "CIS Critical Security Controls v8"
       author: Center for Internet Security

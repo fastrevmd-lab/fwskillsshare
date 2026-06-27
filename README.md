@@ -21,6 +21,8 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 | [hipaa-ngfw-compliance](skills/hipaa-ngfw-compliance/) | HIPAA Security Rule / NGFW compliance support | `HIPAA`, `HIPPA`, `ePHI`, `Security Rule`, `164.312`, `HIPAA markers`, `audit evidence` |
 | [cmmc-nist-800-171-ngfw-compliance](skills/cmmc-nist-800-171-ngfw-compliance/) | CMMC Level 2 / NIST SP 800-171 CUI compliance support | `CMMC`, `NIST 800-171`, `CUI`, `CUI enclave`, `3.13.1`, `CMMC markers`, `SSP evidence` |
 | [cis-controls-ngfw-compliance](skills/cis-controls-ngfw-compliance/) | CIS Controls v8/v8.1 / NGFW compliance support | `CIS Controls`, `CIS v8`, `Implementation Group`, `Control 12`, `Control 13`, `CIS markers`, `audit evidence` |
+| [iso27001-ngfw-compliance](skills/iso27001-ngfw-compliance/) | ISO/IEC 27001:2022 / ISMS firewall support | `ISO 27001`, `Annex A`, `ISMS`, `SoA`, `network security`, `supplier access`, `ISO markers` |
+| [soc2-ngfw-compliance](skills/soc2-ngfw-compliance/) | SOC 2 Trust Services Criteria firewall support | `SOC 2`, `Trust Services Criteria`, `CC6`, `CC7`, `CC8`, `Type II`, `SOC2 markers` |
 
 The four `parsing-*` skills parse vendor-specific configs into a **common vendor-neutral intermediate JSON schema**, enabling cross-vendor comparison, conversion, and unified auditing. They now share common parser quality gates: schema conformance, object counts, unresolved-reference reporting, ordering/state preservation, residual capture, warnings/assumptions, and explicit conversion caveats.
 
@@ -77,6 +79,12 @@ cp -r fwskillsshare/skills/cmmc-nist-800-171-ngfw-compliance ~/.claude/skills/
 
 # Example: install only the CIS Controls NGFW compliance skill
 cp -r fwskillsshare/skills/cis-controls-ngfw-compliance ~/.claude/skills/
+
+# Example: install only the ISO 27001 NGFW compliance skill
+cp -r fwskillsshare/skills/iso27001-ngfw-compliance ~/.claude/skills/
+
+# Example: install only the SOC 2 NGFW compliance skill
+cp -r fwskillsshare/skills/soc2-ngfw-compliance ~/.claude/skills/
 ```
 
 ### Verify installation
@@ -142,11 +150,15 @@ After copying, your `~/.claude/skills/` directory should look like:
 │   └── SKILL.md
 ├── cmmc-nist-800-171-ngfw-compliance/
 │   └── SKILL.md
-└── cis-controls-ngfw-compliance/
+├── cis-controls-ngfw-compliance/
+│   └── SKILL.md
+├── iso27001-ngfw-compliance/
+│   └── SKILL.md
+└── soc2-ngfw-compliance/
     └── SKILL.md
 ```
 
-Restart Claude Code after installing. The skills will auto-trigger when they detect vendor-specific keywords, SRX operational topics, or PCI/HIPAA/CMMC/NIST 800-171/CIS Controls compliance language in your messages or pasted configs.
+Restart Claude Code after installing. The skills will auto-trigger when they detect vendor-specific keywords, SRX operational topics, or PCI/HIPAA/CMMC/NIST 800-171/CIS Controls/ISO 27001/SOC 2 compliance language in your messages or pasted configs.
 
 ### Hermes local install
 
@@ -164,8 +176,10 @@ cp -r fwskillsshare/skills/pci-ngfw-compliance ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/hipaa-ngfw-compliance ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/cmmc-nist-800-171-ngfw-compliance ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/cis-controls-ngfw-compliance ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/iso27001-ngfw-compliance ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/soc2-ngfw-compliance ~/.hermes/skills/devops/
 
-hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy|pci-ngfw-compliance|hipaa-ngfw-compliance|cmmc-nist-800-171-ngfw-compliance|cis-controls-ngfw-compliance'
+hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy|pci-ngfw-compliance|hipaa-ngfw-compliance|cmmc-nist-800-171-ngfw-compliance|cis-controls-ngfw-compliance|iso27001-ngfw-compliance|soc2-ngfw-compliance'
 ```
 
 ## Usage
@@ -209,6 +223,8 @@ Use slash commands to explicitly invoke a skill:
 - **Assess HIPAA firewall safeguards** — Map NGFW controls to HIPAA Security Rule ePHI access control, audit controls, transmission security, incident response, documentation, and business associate evidence
 - **Assess CMMC / NIST 800-171 firewall safeguards** — Map NGFW controls to CUI enclave scoping, boundary protection, remote access, external connections, audit logging, SSP evidence, and POA&M-style gaps
 - **Assess CIS Controls firewall safeguards** — Map NGFW controls to CIS Controls v8/v8.1 secure configuration, network infrastructure management, access control, audit logging, monitoring/defense, service-provider access, incident response, and testing evidence
+- **Assess ISO 27001 firewall controls** — Map NGFW controls to ISMS scope, Statement of Applicability, Annex A network security, access control, logging/monitoring, supplier access, change management, and incident-management evidence
+- **Assess SOC 2 firewall controls** — Map NGFW controls to Trust Services Criteria such as CC6 logical access, CC7 system operations, CC8 change management, CC9 risk mitigation, Availability, and Confidentiality evidence
 
 ### Examples
 
@@ -254,6 +270,12 @@ Use slash commands to explicitly invoke a skill:
 
 # CIS Controls NGFW compliance review
 "Review this firewall estate against CIS Controls v8 for secure configuration, network infrastructure management, audit logging, monitoring/defense, vendor access, and config description markers"
+
+# ISO 27001 NGFW compliance review
+"Review this firewall estate against ISO/IEC 27001:2022 for ISMS scope, SoA alignment, network security, supplier access, logging, change management, and config description markers"
+
+# SOC 2 NGFW compliance review
+"Review this production firewall estate for SOC 2 Type II evidence around CC6 access, CC7 monitoring, CC8 change management, availability, confidentiality, and config description markers"
 ```
 
 ## Tips
@@ -273,6 +295,8 @@ Use slash commands to explicitly invoke a skill:
   - **HIPAA NGFW compliance**: collect ePHI asset/data-flow diagrams, firewall policy/NAT/zone/VPN/object exports, risk analysis references, vendor/business associate access evidence, logging/SIEM evidence, encryption/VPN settings, and incident response runbooks
   - **CMMC / NIST 800-171 NGFW compliance**: collect SSP boundary sections, CUI asset/data-flow diagrams, firewall policy/NAT/zone/VPN/object exports, remote-access and external-connection evidence, logging/SIEM evidence, rule-review records, and POA&M/gap records
   - **CIS Controls NGFW compliance**: collect target CIS version/Implementation Group, network infrastructure inventory, firewall policy/NAT/zone/VPN/object exports, secure baseline evidence, admin/access records, logging/SIEM evidence, vulnerability/firmware records, service-provider access evidence, incident response runbooks, and penetration/segmentation test results
+  - **ISO 27001 NGFW compliance**: collect ISMS scope, SoA, risk treatment entries, firewall policy/NAT/zone/VPN/object exports, secure baseline evidence, supplier access evidence, logging/SIEM records, change samples, incident records, and management-system corrective actions
+  - **SOC 2 NGFW compliance**: collect system description, report period, Trust Services Categories, control matrix, firewall policy/NAT/zone/VPN/object exports, change samples, rule reviews, access reviews, alert/incident evidence, vendor evidence, and Type II operating-effectiveness samples
 - For large configs, save to a file and point Claude at the file path
 - Each `parsing-*` skill includes `references/fixture-minimal-input.md` and `references/fixture-expected-output.json` as a small smoke-test fixture for parser behavior and schema shape
 
@@ -351,6 +375,40 @@ Reference files:
 
 ```text
 skills/cis-controls-ngfw-compliance/SKILL.md
+```
+
+### iso27001-ngfw-compliance
+
+`iso27001-ngfw-compliance` is an ISO/IEC 27001:2022 ISMS and Annex A firewall-control playbook. It explains that an NGFW can support selected controls, but certification applies to the scoped ISMS and its risk assessment, Statement of Applicability, policies, operation, audit, and continual-improvement evidence.
+
+Use it for:
+
+- mapping firewall policy, NAT, VPN, zones, logging, secure configuration, supplier access, change management, backups, and incident response to SoA/risk-treatment evidence
+- reviewing network security, access control, configuration management, logging/monitoring, supplier access, vulnerability management, and corrective-action records
+- preparing ISO audit evidence requests, firewall findings, corrective actions, and management-system caveats
+- adding short ISO/ISMS evidence markers to firewall descriptions/tags where supported
+
+Reference files:
+
+```text
+skills/iso27001-ngfw-compliance/SKILL.md
+```
+
+### soc2-ngfw-compliance
+
+`soc2-ngfw-compliance` is a SOC 2 Trust Services Criteria firewall-control playbook for service organizations, SaaS platforms, MSPs, and cloud providers. It focuses on system boundaries, report period, control matrix mapping, design, and Type II operating-effectiveness evidence.
+
+Use it for:
+
+- mapping firewall policy, NAT, VPN, WAF, security groups, logging, access review, change management, vendor access, and incident-response evidence to SOC 2 controls
+- reviewing Trust Services Criteria support such as CC6 logical access, CC7 system operations, CC8 change management, CC9 risk mitigation, Availability, Confidentiality, and Privacy-supporting controls
+- preparing SOC 2 evidence requests, control descriptions, findings, sample expectations, and exception remediation
+- adding short SOC 2 evidence markers to firewall descriptions/tags where supported
+
+Reference files:
+
+```text
+skills/soc2-ngfw-compliance/SKILL.md
 ```
 
 ## SRX Operational Skills
@@ -678,11 +736,15 @@ rm -rf ~/.claude/skills/pci-ngfw-compliance
 rm -rf ~/.claude/skills/hipaa-ngfw-compliance
 rm -rf ~/.claude/skills/cmmc-nist-800-171-ngfw-compliance
 rm -rf ~/.claude/skills/cis-controls-ngfw-compliance
+rm -rf ~/.claude/skills/iso27001-ngfw-compliance
+rm -rf ~/.claude/skills/soc2-ngfw-compliance
 
 rm -rf ~/.hermes/skills/devops/pci-ngfw-compliance
 rm -rf ~/.hermes/skills/devops/hipaa-ngfw-compliance
 rm -rf ~/.hermes/skills/devops/cmmc-nist-800-171-ngfw-compliance
 rm -rf ~/.hermes/skills/devops/cis-controls-ngfw-compliance
+rm -rf ~/.hermes/skills/devops/iso27001-ngfw-compliance
+rm -rf ~/.hermes/skills/devops/soc2-ngfw-compliance
 rm -rf ~/.hermes/skills/devops/srx-dynamic-ip-feed
 rm -rf ~/.hermes/skills/devops/srx-mpls-in-flow
 rm -rf ~/.hermes/skills/devops/srx-mnha
