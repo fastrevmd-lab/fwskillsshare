@@ -19,6 +19,7 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 | [srx-policy](skills/srx-policy/) | Juniper SRX / Junos security policy | `security policies global`, `from-zone`, `to-zone`, `AppFW`, `AppID`, `NGWF`, `EWF`, `web-filtering`, `SecIntel`, `ATP` |
 | [pci-ngfw-compliance](skills/pci-ngfw-compliance/) | PCI DSS / NGFW compliance support | `PCI DSS`, `CDE`, `Requirement 1`, `PCI compliant firewall`, `PCI markers`, `audit evidence` |
 | [hipaa-ngfw-compliance](skills/hipaa-ngfw-compliance/) | HIPAA Security Rule / NGFW compliance support | `HIPAA`, `HIPPA`, `ePHI`, `Security Rule`, `164.312`, `HIPAA markers`, `audit evidence` |
+| [cmmc-nist-800-171-ngfw-compliance](skills/cmmc-nist-800-171-ngfw-compliance/) | CMMC Level 2 / NIST SP 800-171 CUI compliance support | `CMMC`, `NIST 800-171`, `CUI`, `CUI enclave`, `3.13.1`, `CMMC markers`, `SSP evidence` |
 
 The four `parsing-*` skills parse vendor-specific configs into a **common vendor-neutral intermediate JSON schema**, enabling cross-vendor comparison, conversion, and unified auditing. They now share common parser quality gates: schema conformance, object counts, unresolved-reference reporting, ordering/state preservation, residual capture, warnings/assumptions, and explicit conversion caveats.
 
@@ -69,6 +70,9 @@ cp -r fwskillsshare/skills/pci-ngfw-compliance ~/.claude/skills/
 
 # Example: install only the HIPAA NGFW compliance skill
 cp -r fwskillsshare/skills/hipaa-ngfw-compliance ~/.claude/skills/
+
+# Example: install only the CMMC / NIST 800-171 NGFW compliance skill
+cp -r fwskillsshare/skills/cmmc-nist-800-171-ngfw-compliance ~/.claude/skills/
 ```
 
 ### Verify installation
@@ -130,11 +134,13 @@ After copying, your `~/.claude/skills/` directory should look like:
 │       └── source-secintel-feeds-overview-and-benefits.md
 ├── pci-ngfw-compliance/
 │   └── SKILL.md
-└── hipaa-ngfw-compliance/
+├── hipaa-ngfw-compliance/
+│   └── SKILL.md
+└── cmmc-nist-800-171-ngfw-compliance/
     └── SKILL.md
 ```
 
-Restart Claude Code after installing. The skills will auto-trigger when they detect vendor-specific keywords, SRX operational topics, or PCI/HIPAA compliance language in your messages or pasted configs.
+Restart Claude Code after installing. The skills will auto-trigger when they detect vendor-specific keywords, SRX operational topics, or PCI/HIPAA/CMMC/NIST 800-171 compliance language in your messages or pasted configs.
 
 ### Hermes local install
 
@@ -150,8 +156,9 @@ cp -r fwskillsshare/skills/srx-nat ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/srx-policy ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/pci-ngfw-compliance ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/hipaa-ngfw-compliance ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/cmmc-nist-800-171-ngfw-compliance ~/.hermes/skills/devops/
 
-hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy|pci-ngfw-compliance|hipaa-ngfw-compliance'
+hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy|pci-ngfw-compliance|hipaa-ngfw-compliance|cmmc-nist-800-171-ngfw-compliance'
 ```
 
 ## Usage
@@ -176,6 +183,7 @@ Use slash commands to explicitly invoke a skill:
 /srx-policy
 /pci-ngfw-compliance
 /hipaa-ngfw-compliance
+/cmmc-nist-800-171-ngfw-compliance
 ```
 
 ### What you can do
@@ -192,6 +200,7 @@ Use slash commands to explicitly invoke a skill:
 - **Design SRX security policy** — Prefer `security policies global` for greenfield and vendor migrations, then layer AppID/AppFW, NGWF-first web filtering, SecIntel, and ATP controls
 - **Assess PCI firewall evidence** — Map NGFW policies, NAT, zones, logging, IDS/IPS, WAF/WAAP, and CDE segmentation to PCI DSS evidence expectations
 - **Assess HIPAA firewall safeguards** — Map NGFW controls to HIPAA Security Rule ePHI access control, audit controls, transmission security, incident response, documentation, and business associate evidence
+- **Assess CMMC / NIST 800-171 firewall safeguards** — Map NGFW controls to CUI enclave scoping, boundary protection, remote access, external connections, audit logging, SSP evidence, and POA&M-style gaps
 
 ### Examples
 
@@ -231,6 +240,9 @@ Use slash commands to explicitly invoke a skill:
 
 # HIPAA NGFW compliance review
 "Review this NGFW design for HIPAA Security Rule ePHI access control, audit logging, transmission security, and config description markers"
+
+# CMMC / NIST 800-171 NGFW compliance review
+"Review this firewall design for CMMC Level 2 CUI boundary protection, remote access, external connections, audit logging, SSP evidence, and config description markers"
 ```
 
 ## Tips
@@ -248,6 +260,7 @@ Use slash commands to explicitly invoke a skill:
   - **SRX security policy**: collect `show configuration security policies | display set`, `show configuration security policies global | display set`, `show security policies hit-count global`, `show security application-firewall rule-set <name>`, `show security utm web-filtering status`, `show security utm web-filtering statistics`, and `show security flow session ... extensive`
   - **PCI NGFW compliance**: collect firewall policy/NAT/zone/object exports, CDE network and data-flow diagrams, rule-review evidence, change tickets, logging/SIEM evidence, IDS/IPS/WAF evidence, and segmentation test results
   - **HIPAA NGFW compliance**: collect ePHI asset/data-flow diagrams, firewall policy/NAT/zone/VPN/object exports, risk analysis references, vendor/business associate access evidence, logging/SIEM evidence, encryption/VPN settings, and incident response runbooks
+  - **CMMC / NIST 800-171 NGFW compliance**: collect SSP boundary sections, CUI asset/data-flow diagrams, firewall policy/NAT/zone/VPN/object exports, remote-access and external-connection evidence, logging/SIEM evidence, rule-review records, and POA&M/gap records
 - For large configs, save to a file and point Claude at the file path
 - Each `parsing-*` skill includes `references/fixture-minimal-input.md` and `references/fixture-expected-output.json` as a small smoke-test fixture for parser behavior and schema shape
 
@@ -292,6 +305,23 @@ Reference files:
 
 ```text
 skills/hipaa-ngfw-compliance/SKILL.md
+```
+
+### cmmc-nist-800-171-ngfw-compliance
+
+`cmmc-nist-800-171-ngfw-compliance` is a CMMC Level 2 / NIST SP 800-171 NGFW/firewall assessment playbook. It explains that an NGFW can support CUI protection requirements, but CMMC/NIST 800-171 compliance is assessed at the contractor environment and CUI protection program level, not by certifying the firewall product alone.
+
+Use it for:
+
+- mapping firewall policy, NAT, VPN, zones, IDS/IPS, logging, segmentation, and remote-access controls to NIST 800-171 / CMMC evidence expectations
+- reviewing CUI enclave scope, CUI data flows, boundary protection, external connections, public-system separation, audit controls, and system security plan evidence
+- preparing assessor-ready evidence requests, findings, POA&M-style gaps, and remediation recommendations
+- adding short CMMC/CUI evidence markers to firewall descriptions/tags for policies, NAT, zones, VPNs, objects, and profiles where supported
+
+Reference files:
+
+```text
+skills/cmmc-nist-800-171-ngfw-compliance/SKILL.md
 ```
 
 ## SRX Operational Skills
@@ -617,9 +647,11 @@ rm -rf ~/.claude/skills/srx-nat
 rm -rf ~/.claude/skills/srx-policy
 rm -rf ~/.claude/skills/pci-ngfw-compliance
 rm -rf ~/.claude/skills/hipaa-ngfw-compliance
+rm -rf ~/.claude/skills/cmmc-nist-800-171-ngfw-compliance
 
 rm -rf ~/.hermes/skills/devops/pci-ngfw-compliance
 rm -rf ~/.hermes/skills/devops/hipaa-ngfw-compliance
+rm -rf ~/.hermes/skills/devops/cmmc-nist-800-171-ngfw-compliance
 rm -rf ~/.hermes/skills/devops/srx-dynamic-ip-feed
 rm -rf ~/.hermes/skills/devops/srx-mpls-in-flow
 rm -rf ~/.hermes/skills/devops/srx-mnha
