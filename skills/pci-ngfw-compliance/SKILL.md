@@ -7,7 +7,7 @@ license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [pci-dss, compliance, firewall, ngfw, network-security-controls, cde, segmentation, audit, evidence, ids, ips, waf, logging]
-    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance]
+    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance]
   sources:
     - title: "Payment Card Industry Data Security Standard: Requirements and Testing Procedures, v4.0.1"
       author: PCI Security Standards Council

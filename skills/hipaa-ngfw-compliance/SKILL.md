@@ -7,7 +7,7 @@ license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [hipaa, compliance, firewall, ngfw, ephi, security-rule, audit, evidence, segmentation, access-control, transmission-security, logging]
-    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, pci-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance]
+    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, pci-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance]
   sources:
     - title: "45 CFR Part 164 Subpart C: Security Standards for the Protection of Electronic Protected Health Information"
       author: U.S. Department of Health and Human Services / eCFR
