@@ -17,10 +17,14 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 | [srx-mnha](skills/srx-mnha/) | Juniper SRX / Junos Multi-Node High Availability | `MNHA`, `Multi-Node High Availability`, `chassis high-availability`, `SRG`, `ICL`, `ICD` |
 | [srx-nat](skills/srx-nat/) | Juniper SRX / Junos NAT | `source nat`, `destination nat`, `static nat`, `NAT64`, `CGN`, `PBA`, `hairpin`, `proxy-arp` |
 | [srx-policy](skills/srx-policy/) | Juniper SRX / Junos security policy | `security policies global`, `from-zone`, `to-zone`, `AppFW`, `AppID`, `NGWF`, `EWF`, `web-filtering`, `SecIntel`, `ATP` |
+| [pci-ngfw-compliance](skills/pci-ngfw-compliance/) | PCI DSS / NGFW compliance support | `PCI DSS`, `CDE`, `Requirement 1`, `PCI compliant firewall`, `PCI markers`, `audit evidence` |
+| [hipaa-ngfw-compliance](skills/hipaa-ngfw-compliance/) | HIPAA Security Rule / NGFW compliance support | `HIPAA`, `HIPPA`, `ePHI`, `Security Rule`, `164.312`, `HIPAA markers`, `audit evidence` |
 
 The four `parsing-*` skills parse vendor-specific configs into a **common vendor-neutral intermediate JSON schema**, enabling cross-vendor comparison, conversion, and unified auditing. They now share common parser quality gates: schema conformance, object counts, unresolved-reference reporting, ordering/state preservation, residual capture, warnings/assumptions, and explicit conversion caveats.
 
 The SRX operational skills are actionable Junos playbooks with commands, design guidance, verification steps, troubleshooting matrices, source attribution, and reference extracts.
+
+The compliance skills are research-backed NGFW/firewall assessment playbooks. They map firewall capabilities to compliance-control evidence, include assessor/auditor output templates, and recommend short config description/tag markers for policies, NAT, zones, VPNs, objects, and profiles where the platform supports them.
 
 ## License and Provenance
 
@@ -36,29 +40,35 @@ Copy the skill directories into your Claude Code skills folder:
 
 ```bash
 # Clone the repo
-git clone git@github.com:fastrevmd-lab/claudeskillsshare.git
+git clone git@github.com:fastrevmd-lab/fwskillsshare.git
 
 # Copy all skills into your Claude Code skills directory
-cp -r claudeskillsshare/skills/* ~/.claude/skills/
+cp -r fwskillsshare/skills/* ~/.claude/skills/
 ```
 
 ### Install a single skill
 
 ```bash
 # Example: install only the Cisco ASA skill
-cp -r claudeskillsshare/skills/parsing-cisco-configs ~/.claude/skills/
+cp -r fwskillsshare/skills/parsing-cisco-configs ~/.claude/skills/
 
 # Example: install only the SRX MNHA skill
-cp -r claudeskillsshare/skills/srx-mnha ~/.claude/skills/
+cp -r fwskillsshare/skills/srx-mnha ~/.claude/skills/
 
 # Example: install only the SRX MPLS in Flow skill
-cp -r claudeskillsshare/skills/srx-mpls-in-flow ~/.claude/skills/
+cp -r fwskillsshare/skills/srx-mpls-in-flow ~/.claude/skills/
 
 # Example: install only the SRX NAT skill
-cp -r claudeskillsshare/skills/srx-nat ~/.claude/skills/
+cp -r fwskillsshare/skills/srx-nat ~/.claude/skills/
 
 # Example: install only the SRX Policy skill
-cp -r claudeskillsshare/skills/srx-policy ~/.claude/skills/
+cp -r fwskillsshare/skills/srx-policy ~/.claude/skills/
+
+# Example: install only the PCI NGFW compliance skill
+cp -r fwskillsshare/skills/pci-ngfw-compliance ~/.claude/skills/
+
+# Example: install only the HIPAA NGFW compliance skill
+cp -r fwskillsshare/skills/hipaa-ngfw-compliance ~/.claude/skills/
 ```
 
 ### Verify installation
@@ -108,19 +118,23 @@ After copying, your `~/.claude/skills/` directory should look like:
 │       ├── source-security-nat-overview.md
 │       ├── source-troubleshoot-source-nat.md
 │       └── source-troubleshoot-destination-nat.md
-└── srx-policy/
-    ├── SKILL.md
-    └── references/
-        ├── source-index.md
-        ├── source-configuring-security-policies-junos-os.md
-        ├── source-security-global-policies.md
-        ├── source-security-policy-applications-and-application-sets-junos-os.md
-        ├── source-juniper-srx-enhanced-web-filtering-configuration.md
-        ├── ngwf-vs-ewf-research.md
-        └── source-secintel-feeds-overview-and-benefits.md
+├── srx-policy/
+│   ├── SKILL.md
+│   └── references/
+│       ├── source-index.md
+│       ├── source-configuring-security-policies-junos-os.md
+│       ├── source-security-global-policies.md
+│       ├── source-security-policy-applications-and-application-sets-junos-os.md
+│       ├── source-juniper-srx-enhanced-web-filtering-configuration.md
+│       ├── ngwf-vs-ewf-research.md
+│       └── source-secintel-feeds-overview-and-benefits.md
+├── pci-ngfw-compliance/
+│   └── SKILL.md
+└── hipaa-ngfw-compliance/
+    └── SKILL.md
 ```
 
-Restart Claude Code after installing. The skills will auto-trigger when they detect vendor-specific keywords or SRX operational topics in your messages or pasted configs.
+Restart Claude Code after installing. The skills will auto-trigger when they detect vendor-specific keywords, SRX operational topics, or PCI/HIPAA compliance language in your messages or pasted configs.
 
 ### Hermes local install
 
@@ -128,14 +142,16 @@ For Hermes Agent, copy the skill directories into your local Hermes skills tree,
 
 ```bash
 mkdir -p ~/.hermes/skills/devops
-cp -r claudeskillsshare/skills/parsing-* ~/.hermes/skills/devops/
-cp -r claudeskillsshare/skills/srx-dynamic-ip-feed ~/.hermes/skills/devops/
-cp -r claudeskillsshare/skills/srx-mpls-in-flow ~/.hermes/skills/devops/
-cp -r claudeskillsshare/skills/srx-mnha ~/.hermes/skills/devops/
-cp -r claudeskillsshare/skills/srx-nat ~/.hermes/skills/devops/
-cp -r claudeskillsshare/skills/srx-policy ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/parsing-* ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/srx-dynamic-ip-feed ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/srx-mpls-in-flow ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/srx-mnha ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/srx-nat ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/srx-policy ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/pci-ngfw-compliance ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/hipaa-ngfw-compliance ~/.hermes/skills/devops/
 
-hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy'
+hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy|pci-ngfw-compliance|hipaa-ngfw-compliance'
 ```
 
 ## Usage
@@ -158,6 +174,8 @@ Use slash commands to explicitly invoke a skill:
 /srx-mnha
 /srx-nat
 /srx-policy
+/pci-ngfw-compliance
+/hipaa-ngfw-compliance
 ```
 
 ### What you can do
@@ -172,6 +190,8 @@ Use slash commands to explicitly invoke a skill:
 - **Design SRX MNHA** — Reason about MNHA modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, and DHCP caveats
 - **Operate SRX NAT** — Configure and troubleshoot source NAT, destination NAT, static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin NAT, and proxy ARP
 - **Design SRX security policy** — Prefer `security policies global` for greenfield and vendor migrations, then layer AppID/AppFW, NGWF-first web filtering, SecIntel, and ATP controls
+- **Assess PCI firewall evidence** — Map NGFW policies, NAT, zones, logging, IDS/IPS, WAF/WAAP, and CDE segmentation to PCI DSS evidence expectations
+- **Assess HIPAA firewall safeguards** — Map NGFW controls to HIPAA Security Rule ePHI access control, audit controls, transmission security, incident response, documentation, and business associate evidence
 
 ### Examples
 
@@ -205,6 +225,12 @@ Use slash commands to explicitly invoke a skill:
 
 # SRX global policy migration
 "Convert this vendor rulebase into an SRX 23.x global security policy design with AppFW, NGWF-first web filtering, SecIntel, logging, and a final deny"
+
+# PCI NGFW compliance review
+"Review this firewall export for PCI DSS CDE segmentation evidence and recommend policy/NAT/zone description markers"
+
+# HIPAA NGFW compliance review
+"Review this NGFW design for HIPAA Security Rule ePHI access control, audit logging, transmission security, and config description markers"
 ```
 
 ## Tips
@@ -220,6 +246,8 @@ Use slash commands to explicitly invoke a skill:
   - **SRX MNHA**: collect `show chassis high-availability information`, `show chassis high-availability services-redundancy-group <id>`, `show security flow session`, `show bgp summary`, and `show bfd session`
   - **SRX NAT**: collect `show configuration security nat | display set`, `show security nat source rule all`, `show security nat destination rule all`, `show security nat static rule all`, `show security nat source pool all`, `show security nat proxy-arp`, and `show security flow session ... extensive`
   - **SRX security policy**: collect `show configuration security policies | display set`, `show configuration security policies global | display set`, `show security policies hit-count global`, `show security application-firewall rule-set <name>`, `show security utm web-filtering status`, `show security utm web-filtering statistics`, and `show security flow session ... extensive`
+  - **PCI NGFW compliance**: collect firewall policy/NAT/zone/object exports, CDE network and data-flow diagrams, rule-review evidence, change tickets, logging/SIEM evidence, IDS/IPS/WAF evidence, and segmentation test results
+  - **HIPAA NGFW compliance**: collect ePHI asset/data-flow diagrams, firewall policy/NAT/zone/VPN/object exports, risk analysis references, vendor/business associate access evidence, logging/SIEM evidence, encryption/VPN settings, and incident response runbooks
 - For large configs, save to a file and point Claude at the file path
 - Each `parsing-*` skill includes `references/fixture-minimal-input.md` and `references/fixture-expected-output.json` as a small smoke-test fixture for parser behavior and schema shape
 
@@ -229,6 +257,42 @@ Use slash commands to explicitly invoke a skill:
 - User-ID / FSSO source-user rules have no equivalent on most platforms
 - Dynamic address groups (PAN-OS) have no static equivalent
 - Geography/GeoIP objects have limited cross-platform support
+
+## Compliance Skills
+
+### pci-ngfw-compliance
+
+`pci-ngfw-compliance` is a PCI DSS v4.0.1 NGFW/firewall assessment playbook. It explains that an NGFW can support PCI DSS network security control evidence, but the device is not independently “PCI compliant.”
+
+Use it for:
+
+- mapping firewall policy, NAT, zones, IDS/IPS, WAF/WAAP, logging, and segmentation controls to PCI DSS evidence expectations
+- reviewing CDE inbound/outbound restrictions, default deny, payment processor paths, and public-facing service exposure
+- preparing assessor-ready evidence requests, findings, and gap-analysis summaries
+- adding short PCI evidence markers to firewall descriptions/tags for policies, NAT, zones, objects, and profiles where supported
+
+Reference files:
+
+```text
+skills/pci-ngfw-compliance/SKILL.md
+```
+
+### hipaa-ngfw-compliance
+
+`hipaa-ngfw-compliance` is a HIPAA Security Rule NGFW/firewall assessment playbook. It explains that an NGFW can support reasonable and appropriate safeguards for ePHI, but HIPAA compliance is assessed at the covered entity or business associate program/environment level.
+
+Use it for:
+
+- mapping firewall policy, NAT, VPN, zones, IDS/IPS, WAF/WAAP, logging, and segmentation controls to HIPAA Security Rule safeguards
+- reviewing ePHI access control, audit controls, person/entity authentication, transmission security, incident response, documentation, and business associate/vendor access evidence
+- preparing compliance-ready evidence requests, findings, and risk-treatment recommendations
+- adding short HIPAA evidence markers to firewall descriptions/tags for policies, NAT, zones, VPNs, objects, and profiles where supported
+
+Reference files:
+
+```text
+skills/hipaa-ngfw-compliance/SKILL.md
+```
 
 ## SRX Operational Skills
 
@@ -551,7 +615,11 @@ rm -rf ~/.claude/skills/srx-mpls-in-flow
 rm -rf ~/.claude/skills/srx-mnha
 rm -rf ~/.claude/skills/srx-nat
 rm -rf ~/.claude/skills/srx-policy
+rm -rf ~/.claude/skills/pci-ngfw-compliance
+rm -rf ~/.claude/skills/hipaa-ngfw-compliance
 
+rm -rf ~/.hermes/skills/devops/pci-ngfw-compliance
+rm -rf ~/.hermes/skills/devops/hipaa-ngfw-compliance
 rm -rf ~/.hermes/skills/devops/srx-dynamic-ip-feed
 rm -rf ~/.hermes/skills/devops/srx-mpls-in-flow
 rm -rf ~/.hermes/skills/devops/srx-mnha
