@@ -1,4 +1,6 @@
-# Claude Code Firewall Config Parsing Skills
+# Firewall Config Parsing Skills
+
+Unofficial / community project. This repository is an independent, community-driven project. It is not affiliated with, endorsed by, sponsored by, or supported by Hewlett Packard Enterprise, Cisco, Palo Alto Networks, or Juniper Networks. "HPE", ", "Juniper", "Cisco", "Fortinet", "Palo Alto Networks" and "Juniper SRX" are trademarks of their respective owners and are used here only to describe what this software interoperates with. Please direct support and licensing questions about those products to the respective vendors
 
 A collection of Claude Code / Hermes skills for parsing, auditing, converting, and analyzing enterprise firewall configurations, plus Juniper SRX operational playbooks derived from field/research material.
 
