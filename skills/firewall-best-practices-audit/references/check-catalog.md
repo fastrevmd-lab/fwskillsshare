@@ -98,7 +98,7 @@ their real top-level keys: `security_policies[]`, `address_objects` / `service_o
 
 - OPS-ZERO-HIT — zero-hit rule (only when usage/hit-count data is present) — `security_policies[].hit_count` (NOT part of the base intermediate schema — it requires external hit-count telemetry, so this check is data-dependent and is skipped unless that data is supplied) — LOW — definitive (skip if no data)
 
-- OPS-LOG-COMPLETENESS — no remote security-log stream/host target configured — `system` syslog/security-log fields — MEDIUM — definitive
+- OPS-LOG-COMPLETENESS — no remote security-log stream/host target configured — top-level `syslog_config[]` (SRX `security log stream`/host may land in `residual_raw`; skip if neither is captured) — MEDIUM — definitive
 
 ---
 
