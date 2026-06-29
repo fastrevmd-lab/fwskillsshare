@@ -1,7 +1,7 @@
 ---
 name: firewall-best-practices-audit
 description: Use when auditing or reviewing a firewall or NGFW rulebase for security and operational best-practice hygiene, independent of any compliance framework. Covers overly permissive and any-any rules, shadowed/redundant/overlapping/orphaned rules, missing deny-all and logging, dangerous exposed services, plaintext management (telnet/http/SNMPv1-2c), weak VPN/IKE/IPsec crypto, and operational cleanup (unused/duplicate objects, oversized groups, naming/description gaps, rule consolidation). Operates on the parsing-* intermediate schema; for raw config, run the matching parsing-cisco/fortinet/palo/srx skill first. Emits prioritized findings with severity, confidence, and vendor-neutral plus source-vendor remediation.
-version: 1.0.0
+version: 1.1.0
 author:
   - fastrevmd-lab
   - Claude
@@ -46,6 +46,8 @@ Route on what you were given:
 - **Raw config** — identify the vendor from the syntax, run the matching `parsing-*` skill (`parsing-cisco-configs`, `parsing-fortinet-configs`, `parsing-palo-configs`, `parsing-srx-configs`) to produce the intermediate schema, then audit the result. Never re-implement parsing in this skill.
 - **Unsupported vendor with no parser** — say so plainly: there is no parser for this vendor, so a structured audit cannot be produced; offer to audit a manually-normalized schema or to reason about pasted excerpts without finding IDs.
 
+As of v1.1 the audit also reads `system.ssh`, `system.auth`, `system.control_plane_protection`, `zones[].screen`, and `security_services` to cover device-plane hardening (SSH/management hardening, password/lockout policy, screen presence, and unreferenced security services); any of these fields that is absent simply skips its dependent check.
+
 Graceful degradation: the schema is static, so some checks have no input (for example, anything depending on hit counts or last-used timestamps, and any check needing a field the source parser did not populate). When a field is missing, skip the dependent check rather than guessing, and record every skipped check in the audit summary so the gap is visible.
 
 ## Severity & Confidence
@@ -69,7 +71,7 @@ Confidence is one of two values:
 
 1. **Establish input + vendor.** Confirm you have the intermediate schema (parse first if raw). Read `metadata.source_vendor` and `metadata` counts to size the audit.
 2. **Resolve objects and zones.** Expand `address_groups`, `service_groups`, and `application_groups` to members; map `security_policies` `src_zones`/`dst_zones` to `zones` and their interfaces; note `nat_rules` that change effective exposure. Flag references that do not resolve (drives heuristic confidence later).
-3. **Run the security checks.** Permissiveness/any-any, shadow/redundancy/overlap, missing deny-all and logging, dangerous exposed services, plaintext management, weak VPN/IKE/IPsec crypto. See `references/check-catalog.md` for the full check definitions, schema fields, and severity rationale.
+3. **Run the security checks.** Permissiveness/any-any, shadow/redundancy/overlap, missing deny-all and logging, dangerous exposed services, plaintext management, weak VPN/IKE/IPsec crypto. Also run the v1.1 device-plane families: SSH/management hardening (`SEC-SSH-ROOT-LOGIN`), security-services-unreferenced (`SEC-SERVICES-UNREFERENCED`), zone/NAT-without-policy (`SEC-ZONES-NAT-NO-POLICY`) plus the empty-policyset coverage warning (`SEC-EMPTY-POLICYSET`), host-inbound exposure (`SEC-HOST-INBOUND-EXPOSURE`), screen presence (`SEC-NO-SCREEN`), and auth hardening (`SEC-AUTH-HARDENING`). See `references/check-catalog.md` for the full check definitions, schema fields, and severity rationale.
 4. **Run the operational checks.** Unused/duplicate objects, oversized groups, naming/description gaps, rule consolidation, disabled-rule cleanup. Also from `references/check-catalog.md`.
 5. **Assign severity + confidence.** Apply the rubric above; downgrade to heuristic where rule order or object resolution is incomplete or NAT may alter exposure.
 6. **Attach remediation.** Give vendor-neutral guidance plus a concrete snippet in the source vendor's syntax. See `references/remediation-patterns.md` for per-vendor fix patterns keyed by finding category.

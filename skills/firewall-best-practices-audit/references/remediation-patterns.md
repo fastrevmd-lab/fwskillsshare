@@ -397,6 +397,153 @@ is identical.
 
 ---
 
+## SSH / management hardening (SEC-SSH-ROOT-LOGIN)
+
+Vendor-neutral: never allow direct root/admin SSH login; force key-based auth where
+possible, cap concurrent sessions, and rate-limit new connections so the management
+plane resists brute-force and exhaustion. SRX is authoritative below.
+
+- **Juniper SRX:** deny root SSH, drop password auth, and add connection/rate limits:
+  ```
+  set system services ssh root-login deny
+  set system services ssh no-passwords
+  set system services ssh connection-limit 5
+  set system services ssh rate-limit 4
+  set system services ssh protocol-version v2
+  ```
+- **Cross-vendor:** Cisco `no ip http server` + `ip ssh version 2` / `ip ssh
+  authentication-retries <n>` and an ACL on the vty/SSH lines; Palo PAN-OS / FortiGate
+  restrict admin SSH/HTTPS to a permitted-IP / trusthost management allowlist and
+  disable plaintext admin (see Plaintext-management family).
+
+Verify (SRX): `show configuration system services ssh | display set`.
+
+---
+
+## Unreferenced security services (SEC-SERVICES-UNREFERENCED)
+
+Vendor-neutral: a configured inspection profile (UTM/web-filter/IPS/AppFW/AV) that is
+attached to no permit rule inspects nothing — bind it to the intended allow policy or
+delete it. SRX is authoritative below.
+
+- **Juniper SRX:** attach the service to a permit policy under `then permit
+  application-services`:
+  ```
+  set security policies global policy <name> then permit application-services utm-policy <utm-name>
+  set security policies global policy <name> then permit application-services application-firewall rule-set <appfw-rs>
+  ```
+- **Cross-vendor:** Palo PAN-OS attach a `profile-setting profiles`/`group <name>` to
+  the security rule; FortiGate set `utm-status enable` plus the relevant
+  `av-profile`/`ips-sensor`/`webfilter-profile` on the policy; Cisco FTD reference the
+  intrusion/file policy in the access-control rule.
+
+Verify (SRX): `show security policies policy-name <name> detail`.
+
+---
+
+## Zones/NAT without policy + empty policy set (SEC-ZONES-NAT-NO-POLICY, SEC-EMPTY-POLICYSET)
+
+Vendor-neutral: zones and NAT rules with no security policies referencing them pass no
+traffic (or, on default-permit platforms, pass it unfiltered) — add explicit permit
+policies for each intended flow and close the set with a logged global deny. An empty
+policy set is a coverage warning: confirm whether it is default-deny-by-design,
+partial config, or a logical-system/tenant whose policies live elsewhere. SRX is
+authoritative below.
+
+- **Juniper SRX:** add explicit permit policies for intended flows, then a final logged
+  global deny:
+  ```
+  set security policies global policy 100-USERS-WEB match from-zone <src-zone>
+  set security policies global policy 100-USERS-WEB match to-zone <dst-zone>
+  set security policies global policy 100-USERS-WEB match source-address <src-obj>
+  set security policies global policy 100-USERS-WEB match destination-address <dst-obj>
+  set security policies global policy 100-USERS-WEB match application <app>
+  set security policies global policy 100-USERS-WEB then permit
+  set security policies global policy 100-USERS-WEB then log session-close
+  set security policies global policy 999-DENY-REST match from-zone any
+  set security policies global policy 999-DENY-REST match to-zone any
+  set security policies global policy 999-DENY-REST match source-address any
+  set security policies global policy 999-DENY-REST match destination-address any
+  set security policies global policy 999-DENY-REST match application any
+  set security policies global policy 999-DENY-REST then deny
+  set security policies global policy 999-DENY-REST then log session-init
+  ```
+- **Cross-vendor:** Cisco bind an `access-group` to the interface and end the ACL with
+  `deny ip any any log`; Palo PAN-OS / FortiGate add the intended allow rules plus an
+  explicit logged deny-all (both implicit denies are unlogged — see the Shadowed family).
+
+Verify (SRX): `show security policies` / `show security match-policies`.
+
+---
+
+## Host-inbound exposure (SEC-HOST-INBOUND-EXPOSURE)
+
+Vendor-neutral: management and sensitive services must not be reachable on an
+untrusted/data zone's host-inbound surface — strip them from the untrust zone and keep
+them only on a dedicated management zone/interface. SRX is authoritative below.
+
+- **Juniper SRX:** remove mgmt system-services from the untrust zone host-inbound
+  traffic (keep them on the mgmt zone / fxp0):
+  ```
+  delete security zones security-zone untrust host-inbound-traffic system-services ssh
+  delete security zones security-zone untrust host-inbound-traffic system-services https
+  delete security zones security-zone untrust host-inbound-traffic system-services snmp
+  set security zones security-zone mgmt host-inbound-traffic system-services ssh
+  ```
+- **Cross-vendor:** Cisco confine `ssh`/`http`/`snmp-server host` to the management
+  interface + subnet; Palo PAN-OS detach the interface-management-profile (or strip
+  ssh/https/snmp from it) on data interfaces; FortiGate set the WAN interface
+  `allowaccess` to `ping` only.
+
+Verify (SRX): `show configuration security zones security-zone untrust | display set`.
+
+---
+
+## No screen on external zone (SEC-NO-SCREEN)
+
+Vendor-neutral: the internet-facing/untrust zone should have a screen (IDS) profile
+bound so flood, scan, and malformed-packet protections apply at the edge. SRX is
+authoritative below.
+
+- **Juniper SRX:** define a screen profile and bind it to the external zone:
+  ```
+  set security screen ids-option UNTRUST-SCREEN tcp syn-flood alarm-threshold 1024
+  set security screen ids-option UNTRUST-SCREEN icmp flood threshold 1000
+  set security screen ids-option UNTRUST-SCREEN ip spoofing
+  set security zones security-zone untrust screen UNTRUST-SCREEN
+  ```
+- **Cross-vendor:** Cisco rely on `threat-detection`/`ip verify reverse-path` and
+  embryonic-connection limits in NAT/policy; Palo PAN-OS attach a Zone Protection
+  profile to the untrust zone; FortiGate enable DoS policies on the WAN interface.
+
+Verify (SRX): `show security screen status` / `show configuration security zones security-zone untrust | display set`.
+
+---
+
+## Auth hardening (SEC-AUTH-HARDENING)
+
+Vendor-neutral: enforce a password-complexity/length policy and a login lockout (retry
+limit + backoff) so local accounts resist guessing. Use placeholders; never commit a
+real password. SRX is authoritative below.
+
+- **Juniper SRX:** set a login password policy and retry-options lockout:
+  ```
+  set system login password minimum-length 12
+  set system login password change-type character-sets
+  set system login password minimum-changes 3
+  set system login retry-options tries-before-disconnect 3
+  set system login retry-options backoff-threshold 2
+  set system login retry-options lockout-period 5
+  ```
+- **Cross-vendor:** Cisco `aaa local authentication attempts max-fail <n>` plus
+  `password-policy` (minimum-length/complexity); Palo PAN-OS set a password-complexity
+  profile and an authentication-profile lockout; FortiGate `config system
+  password-policy` plus `config system global` `admin-lockout-threshold`/`-duration`.
+
+Verify (SRX): `show configuration system login | display set`.
+
+---
+
 ## Notes
 
 - These are change templates, not turnkey configs — confirm interface names, zone
