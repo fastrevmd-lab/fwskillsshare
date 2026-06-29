@@ -1,6 +1,46 @@
-# Recommended Compliance Skills TODO
+# Recommended Skills TODO
 
-Recommended future compliance skills for this firewall / NGFW skill collection.
+Recommended future skills for this firewall / NGFW skill collection. The
+[Tooling & Operational Skills](#tooling--operational-skills-non-compliance)
+section covers non-compliance skills; the rest tracks compliance playbooks.
+
+## Tooling & Operational Skills (non-compliance)
+
+These consume the existing `parsing-*` intermediate schema (or vendor configs)
+to realize the "cross-vendor comparison, conversion, and unified auditing" the
+parsers were built for, plus vendor-operational breadth.
+
+1. [ ] `firewall-best-practices-audit` — **next up (brainstorming).** Vendor-neutral
+   rulebase hardening / security-hygiene review over a parsed config: any-any and
+   overly broad rules, shadowed/redundant/unused rules, missing deny-all,
+   no-logging rules, plaintext management (telnet/http), dangerous exposed
+   services, object/rule sprawl, weak VPN/crypto. The "unified auditing" payoff;
+   complements compliance skills (general hygiene, not framework-mapped). Highest
+   recurring-use frequency.
+
+2. [ ] `firewall-config-conversion` — Cross-vendor migration via the intermediate
+   schema (schema → target vendor; e.g. ASA→FTD, ASA/FortiGate→Palo, any→SRX).
+   The marquee use of the shared schema. Pair with a conversion fidelity report
+   (what did not translate cleanly / manual follow-ups). High per-event value.
+
+3. [ ] `firewall-config-diff` — Cross-vendor (via schema) or same-vendor snapshot
+   comparison: rule parity, drift, HA-pair consistency, and pre/post-migration
+   validation. Small; the validation half of `firewall-config-conversion`.
+
+4. [ ] `palo-operational` (PAN-OS operational playbook) — Vendor-operational depth
+   for Palo Alto, mirroring the SRX operational skills. Author/validate against the
+   available Palo VM. Likely areas: security/NAT policy structure, App-ID /
+   security profiles, decryption, zones/interfaces, commit/candidate config,
+   logging, and CLI/operational verification. Closes the non-SRX operational gap.
+
+5. [ ] `firewall-policy-path` — Policy-path / "why is this traffic allowed or
+   blocked" analysis: given a flow (src/dst/port/app) and a parsed config, trace
+   zone selection, matching rule, NAT, and profile actions to explain the outcome.
+   Operational troubleshooting companion to the audit skill.
+
+## Recommended Compliance Skills
+
+Future compliance playbooks for this collection.
 
 ## Created
 
