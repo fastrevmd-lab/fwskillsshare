@@ -165,17 +165,35 @@ After copying, your `~/.claude/skills/` directory should look like:
 │       ├── source-index.md
 │       └── source-design-summary.md
 ├── pci-ngfw-compliance/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── references/
+│       ├── control-mapping.md
+│       └── assessment-workflow.md
 ├── hipaa-ngfw-compliance/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── references/
+│       ├── control-mapping.md
+│       └── assessment-workflow.md
 ├── cmmc-nist-800-171-ngfw-compliance/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── references/
+│       ├── control-mapping.md
+│       └── assessment-workflow.md
 ├── cis-controls-ngfw-compliance/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── references/
+│       ├── control-mapping.md
+│       └── assessment-workflow.md
 ├── iso27001-ngfw-compliance/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── references/
+│       ├── control-mapping.md
+│       └── assessment-workflow.md
 └── soc2-ngfw-compliance/
-    └── SKILL.md
+    ├── SKILL.md
+    └── references/
+        ├── control-mapping.md
+        └── assessment-workflow.md
 ```
 
 Restart Claude Code after installing. The skills will auto-trigger when they detect vendor-specific keywords, SRX operational topics, or PCI/HIPAA/CMMC/NIST 800-171/CIS Controls/ISO 27001/SOC 2 compliance language in your messages or pasted configs.
