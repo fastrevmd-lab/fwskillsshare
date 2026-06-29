@@ -33,6 +33,7 @@ All extracted data should be normalized to this format regardless of source vend
   "dhcp_config": [],
   "admin_users": [],
   "system": {},
+  "security_services": {},
   "routing_contexts": [],
   "residual_raw": [],
   "metadata": {}
@@ -47,6 +48,7 @@ All extracted data should be normalized to this format regardless of source vend
   "description": "Internal network zone",
   "interfaces": ["ge-0/0/0.0", "ge-0/0/1.0"],
   "zone_type": "layer3",
+  "screen": "untrust-screen",
   "host_inbound": {
     "system_services": ["ssh", "https", "ping", "dhcp", "ike"],
     "protocols": ["ospf", "bgp"]
@@ -57,6 +59,7 @@ All extracted data should be normalized to this format regardless of source vend
 `host_inbound` tracks management-plane and routing-protocol access allowed on the zone.
 - `system_services`: ssh, https, http, telnet, ping, snmp, netconf, dhcp, ntp, ike, ipsec
 - `protocols`: bgp, ospf, ospf3, rip, ripng, ldp, rsvp, msdp, pim, all
+- `screen`: name of the bound screen / DoS-protection profile for the zone (SRX `screen <name>`), or null. Populated where the vendor parser supports it; absent → SEC-NO-SCREEN skipped.
 
 ## Address Object
 
@@ -430,9 +433,46 @@ Valid `source_vendor` values: `"srx"`, `"panos"`, `"fortigate"`, `"cisco_asa"`, 
     "telnet": false,
     "netconf": null,
     "snmp": null
+  },
+  "ssh": {
+    "root_login": "deny-password",
+    "rate_limit": 32,
+    "ciphers": [],
+    "protocol_version": null,
+    "connection_limit": null
+  },
+  "auth": {
+    "password_policy": {"min_length": 12, "complexity": "character-sets"},
+    "login_lockout": {"tries": 3, "lockout_period": 5},
+    "root_authentication_present": true
+  },
+  "control_plane_protection": {
+    "re_filter_present": true,
+    "applied_to": ["lo0.0"]
   }
 }
 ```
+
+- `ssh.root_login`: allow | deny | deny-password | null. `ssh.rate_limit`/`connection_limit`: ints or null. Generic across vendors (SRX `system services ssh`, Cisco `ssh`/`http` servers, Palo/Forti admin access).
+- `auth`: password policy + login lockout + whether a root credential is set. `control_plane_protection.re_filter_present`: a stateless device/control-plane protection filter is applied (SRX lo0 input filter; Cisco CoPP; Palo/Forti mgmt profile). All optional; absent → the dependent check skips.
+
+## Security Services
+
+```json
+{
+  "app_id": true,
+  "idp": true,
+  "secintel": true,
+  "aamw": true,
+  "utm": true
+}
+```
+
+Presence flags for advanced security services configured on the device
+(application identification, IDP/IPS, security intelligence, advanced anti-malware,
+UTM). The audit's SEC-SERVICES-UNREFERENCED check compares these against
+`security_policies[].security_profiles` to find configured-but-inert services.
+Populated where the vendor parser supports it; absent → the check is skipped.
 
 ## Virtual Router
 
