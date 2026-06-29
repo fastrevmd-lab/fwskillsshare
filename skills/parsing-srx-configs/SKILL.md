@@ -3,7 +3,7 @@ name: parsing-srx-configs
 description: 'Parse and analyze Juniper SRX / Junos firewall configurations. Use this skill when the user pastes, uploads, or references an SRX configuration — either in "set" command format (show configuration | display set) or hierarchical curly-brace format (show configuration). Trigger on keywords: SRX, Junos, Juniper, "set security", "security zones", "address-book", "applications", "security policies", "from-zone", "to-zone", "nat rule-set", "chassis cluster", "logical-systems", "routing-instances". Also trigger when the user asks to convert, audit, summarize, or explain an SRX config.
 
   '
-version: 1.1.0
+version: 1.2.0
 author: Hermes Agent
 license: MIT
 metadata:
@@ -298,12 +298,17 @@ Extract:
 - `system.services` → management services: ssh, telnet, netconf, https, http
 - `system.login.user` → admin users with class and SSH public keys
   - Class mapping: super-user→super-admin, operator→operator, read-only→read-only
+- `system.services.ssh` { `root-login`, `rate-limit`, `ciphers`, `protocol-version`, `connection-limit` } → `system.ssh` (omit/null absent keys; root-login defaults to Junos `deny-password` when unset).
+- `system.login.password` { `minimum-length`→min_length, `change-type`→complexity, `minimum-changes` } and `system.login.retry-options` { `tries-before-disconnect`→tries, `lockout-period` } → `system.auth.password_policy` / `system.auth.login_lockout`. Set `system.auth.root_authentication_present: true` when `system.root-authentication` exists.
 
 ### 11. Infrastructure
 - **Version:** `set version <X.Y>` → metadata.source_version
 - **HA Chassis Cluster:** `chassis.cluster` — redundancy-groups, node priorities, heartbeat interfaces, fab links
 - **HA MNHA:** `chassis.high-availability` — newer HA method on SRX4600/SRX5000 platforms
 - **Screen/IDS:** `security.screen.ids-option.<name>` — TCP/UDP/ICMP/IP protections
+  - **Screen zone binding:** for each `security.zones.security-zone.<z>.screen <name>`, set `zones[].screen = <name>`. The screen option detail continues to populate the Screen/IDS Config object.
+  - **Security services presence:** set `security_services` flags true when present: `services application-identification`→app_id, `security idp` / `services idp` (security-package)→idp, `services security-intelligence`→secintel, `services advanced-anti-malware`→aamw, `security utm`→utm.
+- **Control-plane / RE protection:** when a stateless `firewall { family inet filter <name> }` is applied as an interface input filter on `lo0` (`interfaces lo0 unit N family inet filter input <name>`), set `system.control_plane_protection { re_filter_present: true, applied_to: ["lo0.<N>"] }`. The filter terms still go to `residual_raw`; this is a presence flag, not a full parse.
 - **VPN/IPsec:** Full IKE/IPsec chain resolution:
   - IKE proposals: encryption, integrity, DH group, lifetime, auth method (PSK vs certificate including RSA/DSA/ECDSA)
   - IKE policies: mode, proposals list, PSK value, local certificate
