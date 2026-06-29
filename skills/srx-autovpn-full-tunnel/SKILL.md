@@ -1,0 +1,390 @@
+---
+name: srx-autovpn-full-tunnel
+description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX AutoVPN hub-and-spoke IPsec with full-tunnel backhaul, where spokes send all non-local traffic up the tunnel and the hub is the centralized internet egress. Covers the dynamic group-ike-id hub gateway, IKEv2 with PSK, traffic selectors, Auto Route Insertion (ARI), the single shared st0.0, 0.0.0.0/0 selector scope versus a supernet, the spoke default route into st0, the anti-recursion host route, the vSRX management-default ECMP caveat, hub source-NAT egress, VPN-to-untrust and VPN-to-VPN hairpin policies, verification, and when static per-spoke tunnels fit better.
+version: 1.0.0
+author:
+  - fastrevmd-lab
+  - Jason Anderson
+  - Claude
+license: source-derived-summary-local-use
+metadata:
+  hermes:
+    tags: [srx, junos, autovpn, ipsec, vpn, hub-and-spoke, full-tunnel, backhaul, traffic-selectors, ari, auto-route-insertion, ikev2, group-ike-id, source-nat, anti-recursion, centralized-egress, st0]
+    related_skills: [srx-ipsec-hub-spoke, srx-nat, srx-mnha, srx-policy, parsing-srx-configs]
+  sources:
+    - title: "SRX AutoVPN — Full-Tunnel Backhaul (lab)"
+      author: Jason Anderson
+      url: https://github.com/anderson-jason573/srx-autovpn-backhaul-public
+      retrieved: "2026-06-29"
+    - title: AutoVPN on Hub-and-Spoke Devices | Junos OS
+      author: Juniper Networks
+      url: https://www.juniper.net/documentation/us/en/software/junos/vpn-ipsec/topics/topic-map/security-autovpn-on-hub-and-spoke-devices.html
+      retrieved: "2026-06-29"
+    - title: Understanding Traffic Selectors in Route-Based VPNs | Junos OS
+      author: Juniper Networks
+      url: https://www.juniper.net/documentation/us/en/software/junos/vpn-ipsec/topics/topic-map/security-traffic-selectors-in-route-based-vpns.html
+      retrieved: "2026-06-29"
+    - title: "Example: Configuring AutoVPN with Pre-Shared Key | Junos OS"
+      author: Juniper Networks
+      url: https://www.juniper.net/documentation/us/en/software/junos/interfaces-next-gen-services/topics/example/configuring-auto-vpn-pre-shared-key.html
+      retrieved: "2026-06-29"
+    - title: IPsec VPN User Guide | Junos OS
+      author: Juniper Networks
+      url: https://www.juniper.net/documentation/us/en/software/junos/vpn-ipsec/index.html
+      retrieved: "2026-06-29"
+---
+
+# SRX AutoVPN Full-Tunnel Backhaul
+
+## Overview
+
+AutoVPN lets one hub gateway accept IPsec connections from any number of spokes
+with **no per-spoke hub configuration**. *Full-tunnel backhaul* is the design
+choice to send **everything a spoke does not own locally** up the tunnel to the
+hub, instead of the conventional split tunnel (only hub-LAN traffic in the
+tunnel, internet broken out locally, no spoke-to-spoke).
+
+Core principle: **if traffic is not local to a spoke, it goes to the hub.** The
+hub then source-NATs internet-bound traffic out its WAN and hairpins
+spoke-to-spoke traffic back out the tunnel un-NAT'd. The motivation is
+**centralized egress** — all internet traffic can be inspected, filtered, and
+logged at one point (UTM/IDP on the hub).
+
+The full-tunnel changes are confined to four things: the **traffic selector
+scope**, **spoke routing**, **hub egress routing/NAT**, and **two added hub
+security policies**. Everything else — IKE/IPsec parameters and the AutoVPN
+dynamic-gateway mechanics — is standard AutoVPN.
+
+> **Attribution.** The reference topology, full-tunnel backhaul approach, and the
+> validated `set`-format configuration this skill summarizes come from Jason
+> Anderson's lab `srx-autovpn-backhaul-public`
+> (https://github.com/anderson-jason573/srx-autovpn-backhaul-public), built and
+> validated on four vSRX (Junos OS 23.2R2.21) plus a Cisco IOS-XE WAN transit
+> router. See `references/source-design-summary.md`.
+
+## When to Use
+
+- Designing or migrating a **hub-and-spoke IPsec** overlay where the hub must be
+  the **single internet egress** for all spokes (centralized inspection/logging).
+- Many or churning spoke sites: AutoVPN adds spokes with **zero hub change**.
+- Spokes must reach **each other** through the hub (hairpin) as well as the
+  internet.
+- Auditing or troubleshooting an existing full-tunnel AutoVPN: tunnels up but no
+  traffic, asymmetric/black-holed internet, NAT not applying, or recursion.
+
+When **not** to use:
+- A handful of small, stable, explicitly-pinned sites where every tunnel should
+  be visible in config — use static per-spoke tunnels instead
+  (`srx-ipsec-hub-spoke`). See *Choose This vs. Static Hub-Spoke* below.
+- Spokes that need **local breakout** (split tunnel). Full tunnel concentrates
+  all spoke internet traffic on the hub's WAN, CPU, and NAT table.
+
+## Topology Model
+
+```
+                CSR1 / upstream router  (loopback = "the internet")
+        WAN /30   WAN /30    WAN /30    WAN /30
+           │         │          │          │
+        srx01      srx02      srx03      srx04
+         HUB       spoke      spoke      spoke
+     192.168.1/24  .2/24      .3/24      .4/24   (LANs)
+
+   AutoVPN: all spokes terminate on the hub's single st0.0.
+```
+
+| Element | Role |
+|---------|------|
+| Hub WAN (`untrust`) | IKE/IPsec endpoint + internet egress; PAT target |
+| Hub LAN (`trust`) | Local hub subnet |
+| Hub `st0.0` (`VPN`) | One bound tunnel interface for **all** spokes |
+| Spoke WAN (`untrust`) | IKE/IPsec endpoint to the hub WAN IP |
+| Spoke `st0.0` (`VPN`) | Single tunnel to the hub |
+| Underlay | Any IP transport that lets each spoke WAN reach the hub WAN |
+
+`st0` units are **unnumbered, point-to-point** (no `multipoint` keyword) —
+required for traffic selectors. Management (`fxp0`) is out-of-band and never
+carries tunnel traffic.
+
+## AutoVPN Mechanics
+
+- **IKEv2 / IPsec.** Phase 1: PSK, DH group 14, SHA-256, AES-256-CBC, `v2-only`.
+  Phase 2: ESP, AES-256-GCM, PFS group 14, 3600 s. Clamp `tcp-mss ipsec-vpn 1350`
+  to absorb ESP overhead.
+- **Dynamic hub gateway.** `dynamic hostname <domain>` + `dynamic ike-user-type
+  group-ike-id` makes the hub accept any spoke presenting an IKE ID under
+  `*.<domain>`. Each spoke sets `local-identity hostname srxNN.<domain>` and pins
+  the hub with `remote-identity hostname srx01.<domain>`.
+- **Single bound tunnel.** Every spoke terminates on the hub's one `st0.0`; there
+  is no per-spoke `st0` unit on the hub.
+- **Auto Route Insertion (ARI).** When a spoke SA comes up, the hub
+  automatically installs a route to that spoke's LAN `/24` via `st0.0` (protocol
+  `ARI-TS`). The hub needs **no static routes to spoke LANs**.
+- **Traffic selectors** define which source/destination prefixes each end carries
+  — the lever full tunnel pulls.
+
+> **Auth: lab PSK vs. production PKI.** A single shared PSK keeps the focus on
+> mechanics but is not production practice. In production prefer
+> certificate-based (PKI) auth with per-device identity, or at minimum strong,
+> unique PSKs in a secrets manager with rotation.
+
+## Traffic Selectors — the core
+
+Full tunnel is fundamentally a traffic-selector change: the spoke must *request*
+the whole internet, and the hub must *accept* any destination.
+
+| Selector | Split tunnel | Full-tunnel backhaul |
+|----------|--------------|----------------------|
+| Spoke `local-ip` | `192.168.x.0/24` (its LAN) | same |
+| Spoke `remote-ip` | `192.168.1.0/24` (hub LAN only) | **`0.0.0.0/0`** |
+| Hub `local-ip` | `192.168.1.0/24` (hub LAN) | **`0.0.0.0/0`** |
+| Hub `remote-ip` | `192.168.0.0/16` (spoke summary) | same |
+
+Two facts that surprise people:
+
+1. **Hub `local-ip 0.0.0.0/0` does NOT create a default route via `st0.0`.**
+   IKEv2 narrows the negotiated selector to hub `0.0.0.0/0` ∩ spoke
+   `192.168.x.0/24` = the spoke's specific `/24`, and **ARI keys off the remote
+   (spoke) selector**, so the hub still installs clean per-spoke `/24` routes.
+2. **Spoke-to-spoke needs no extra selector config.** With hub `local-ip
+   0.0.0.0/0`, the inbound SA from spoke A already accepts spoke B's subnet as a
+   destination, and the outbound SA to spoke B already accepts spoke A as source.
+
+### Hub `remote-ip`: specific supernet vs. `0.0.0.0/0` wildcard
+
+This is a **different axis** from the `0.0.0.0/0` used on the spoke `remote-ip` /
+hub `local-ip` above — do not conflate them. The hub `remote-ip` controls which
+spoke prefixes the hub will accept (and, via ARI, which routes appear).
+
+| | Supernet (`192.168.0.0/16`) | Wildcard (`0.0.0.0/0`) |
+|---|---|---|
+| Use when | Spoke LANs summarize cleanly | Spoke LANs discontiguous / unsummarizable |
+| Hub-side guardrail | Yes — IKE rejects prefixes outside the summary | None — hub trusts every spoke |
+| Zero-touch hub | Mostly (new out-of-summary LAN forces a widen) | Fully |
+| Blast radius if a spoke is rogue | Contained | Large — a spoke could advertise the hub LAN / another site / `0.0.0.0/0`; ARI would install it (route hijack) |
+
+Default to the **supernet** whenever addressing permits; it keeps the guardrail.
+Use the wildcard only when there is genuinely no summarizable scheme, and push the
+guardrail to per-spoke security policy/filtering instead.
+
+Two caveats regardless of choice:
+- **Spokes must propose their specific `/24`, not `0.0.0.0/0`** — else the
+  negotiated selector stays `0.0.0.0/0` and ARI has no specific prefix to install.
+- **Overlapping spoke subnets are not solved by selectors** — that is a NAT
+  problem (static/twice-NAT at the colliding spoke), not a VPN problem.
+
+## Routing Changes
+
+### Spoke
+
+| | Split tunnel | Full-tunnel backhaul |
+|---|---|---|
+| Tunnel route | `192.168.1.0/24 → st0.0` | **`0.0.0.0/0 → st0.0`** (default into tunnel) |
+| Hub WAN host route | `HUB_WAN/32 → <underlay nh>` | **same — and now CRITICAL** |
+| WAN `/30` routes | via underlay | same |
+
+> **Anti-recursion is the #1 gotcha of full tunnel.** The spoke default now
+> points into `st0.0`, but the ESP packets that *carry* the tunnel are destined to
+> the hub's WAN IP. If that traffic also followed the default into the tunnel you
+> get infinite recursion and an instant black-hole. Keep the host route
+> `HUB_WAN/32 → <underlay next-hop>` (and the connected WAN `/30`) **more-specific**
+> than the new default.
+
+### Hub
+
+| | Split tunnel | Full-tunnel backhaul |
+|---|---|---|
+| WAN `/30` routes | via underlay | same |
+| Spoke LAN routes | ARI `192.168.x.0/24 → st0.0` | same (ARI) |
+| Default route | none | **add `0.0.0.0/0 → <WAN next-hop>`** (egress for de-encapsulated internet traffic) |
+
+> **Caveat — competing management default (ECMP trap).** Many vSRX images carry a
+> management default `0.0.0.0/0 → <mgmt-gw> via fxp0` in `inet.0`. Adding a second
+> `0.0.0.0/0` does **not** override it — Junos installs both next-hops as **ECMP**,
+> so half the traffic wrongly egresses `fxp0` and NAT / the `untrust` policy never
+> applies. *Removing* the management default risks cutting OOB access.
+> - **Production fix:** put `fxp0` in a dedicated **management routing-instance**
+>   so `inet.0`'s default can legitimately point into the WAN/tunnel.
+> - **Lab shortcut:** route the specific internet destination instead
+>   (`<sim-internet>/32 → st0.0` on spoke, `<sim-internet>/32 → <WAN nh>` on hub),
+>   plus `192.168.0.0/16 → st0.0` on each spoke for hub-LAN and spoke-to-spoke.
+>   Being more-specific than the management default, these exercise the full data
+>   path without disturbing management.
+
+## Hub NAT and Security Policies
+
+### Source NAT (internet egress only)
+
+PAT spoke private sources to the hub's WAN egress IP so the upstream has an
+address to return to. **Scope the rule-set `from zone VPN to zone untrust`** so it
+matches only internet egress — spoke-to-spoke (`VPN → VPN`) and spoke-to-hub-LAN
+(`VPN → trust`) never match and stay un-NAT'd, preserving real private IPs between
+sites.
+
+```
+set security nat source rule-set VPN-BACKHAUL from zone VPN
+set security nat source rule-set VPN-BACKHAUL to zone untrust
+set security nat source rule-set VPN-BACKHAUL rule SNAT-INTERNET match source-address 192.168.0.0/16
+set security nat source rule-set VPN-BACKHAUL rule SNAT-INTERNET match destination-address 0.0.0.0/0
+set security nat source rule-set VPN-BACKHAUL rule SNAT-INTERNET then source-nat interface
+```
+
+> Hub-LAN hosts to the internet are `trust → untrust` and are **not** covered.
+> Add a parallel `trust → untrust` source-NAT rule if the hub should also be the
+> NAT egress for its own LAN.
+
+### Security policies
+
+| Policy | Split tunnel | Full-tunnel backhaul |
+|--------|--------------|----------------------|
+| `trust → untrust` | permit | same |
+| `trust → VPN` | permit | same |
+| `VPN → trust` | permit | same |
+| `VPN → untrust` | — | **add permit** (spoke internet egress) |
+| `VPN → VPN` | — | **add permit** (spoke-to-spoke hairpin) |
+
+Return traffic for both NAT'd internet and inter-spoke flows is handled by the
+stateful session table — no reverse policy needed. **Spoke** security policies do
+not change; the spoke's `trust → untrust` becomes dead (no local breakout) but is
+harmless to leave.
+
+## Config Skeleton (hub, `set` format)
+
+PSK is a placeholder substituted at deploy time from a git-ignored secrets file —
+never commit it.
+
+```
+# --- Tunnel interface (P2P, unnumbered) ---
+set interfaces st0 unit 0 family inet
+
+# --- IKE Phase 1 ---
+set security ike proposal AUTOVPN-IKE-PROP authentication-method pre-shared-keys
+set security ike proposal AUTOVPN-IKE-PROP dh-group group14
+set security ike proposal AUTOVPN-IKE-PROP authentication-algorithm sha-256
+set security ike proposal AUTOVPN-IKE-PROP encryption-algorithm aes-256-cbc
+set security ike policy AUTOVPN-IKE-POL proposals AUTOVPN-IKE-PROP
+set security ike policy AUTOVPN-IKE-POL pre-shared-key ascii-text "$AUTOVPN_PSK"
+# Dynamic gateway — accepts any spoke whose IKE ID is *.homelab.local
+set security ike gateway AUTOVPN-HUB-GW ike-policy AUTOVPN-IKE-POL
+set security ike gateway AUTOVPN-HUB-GW dynamic hostname homelab.local
+set security ike gateway AUTOVPN-HUB-GW dynamic ike-user-type group-ike-id
+set security ike gateway AUTOVPN-HUB-GW dynamic reject-duplicate-connection
+set security ike gateway AUTOVPN-HUB-GW local-identity hostname srx01.homelab.local
+set security ike gateway AUTOVPN-HUB-GW external-interface ge-0/0/0.0
+set security ike gateway AUTOVPN-HUB-GW version v2-only
+
+# --- IPsec Phase 2 ---
+set security ipsec proposal AUTOVPN-IPSEC-PROP protocol esp
+set security ipsec proposal AUTOVPN-IPSEC-PROP encryption-algorithm aes-256-gcm
+set security ipsec policy AUTOVPN-IPSEC-POL perfect-forward-secrecy keys group14
+set security ipsec policy AUTOVPN-IPSEC-POL proposals AUTOVPN-IPSEC-PROP
+set security ipsec vpn AUTOVPN-HUB bind-interface st0.0
+set security ipsec vpn AUTOVPN-HUB ike gateway AUTOVPN-HUB-GW
+set security ipsec vpn AUTOVPN-HUB ike ipsec-policy AUTOVPN-IPSEC-POL
+# Full-tunnel selector: hub local-ip 0.0.0.0/0 accepts ANY destination from spokes
+set security ipsec vpn AUTOVPN-HUB traffic-selector TS-ALL local-ip 0.0.0.0/0
+set security ipsec vpn AUTOVPN-HUB traffic-selector TS-ALL remote-ip 192.168.0.0/16
+set security flow tcp-mss ipsec-vpn mss 1350
+
+# --- Zones (st0.0 in its own VPN zone) ---
+set security zones security-zone untrust host-inbound-traffic system-services ike
+set security zones security-zone untrust interfaces ge-0/0/0.0
+set security zones security-zone trust interfaces ge-0/0/1.0
+set security zones security-zone VPN host-inbound-traffic system-services ping
+set security zones security-zone VPN interfaces st0.0
+
+# --- Routing: ARI handles spoke LANs; add the egress default (see ECMP caveat) ---
+set routing-options static route 0.0.0.0/0 next-hop 10.0.0.1
+```
+
+Spoke differs only in: `local-identity hostname srxNN.homelab.local`,
+`remote-identity hostname srx01.homelab.local`, gateway `address <HUB_WAN>`,
+selector `local-ip 192.168.x.0/24` + `remote-ip 0.0.0.0/0`, a default route
+`0.0.0.0/0 → st0.0`, **and the anti-recursion host route `HUB_WAN/32 → <underlay
+next-hop>`**. See `references/source-design-summary.md` for full per-device detail.
+
+## Verification
+
+```
+show security ike security-associations            # one Phase 1 SA per spoke, UP
+show security ipsec security-associations           # one Phase 2 SA per spoke, bound st0.0
+show route 192.168.0.0/16                            # clean per-spoke /24s, protocol ARI-TS via st0.0
+show security nat source rule all                    # SNAT-INTERNET hit count incrementing
+show security flow session                           # spoke-src -> internet, xlated to hub WAN IP
+show security nat source summary
+show system core-dumps                               # must stay zero (data-plane stability)
+```
+
+Internet backhaul: from a spoke, `ping <sim-internet> source <spoke-LAN-gw>` —
+hub session shows the source translated to the hub WAN IP.
+Spoke-to-spoke: `ping <other-spoke-LAN> source <spoke-LAN-gw>` — hub session shows
+`spokeA → spokeB` entering and leaving on `st0.0`, zone `VPN → VPN`, **no NAT**.
+
+## Troubleshooting Matrix
+
+| Stage | Symptom | Common causes |
+|-------|---------|---------------|
+| Underlay | Peers can't reach each other | Transport routing/filtering; verify `ping` between WAN IPs |
+| Phase 1 (IKE) | No IKE SA / stuck | PSK mismatch, proposal/DH mismatch, wrong IKE identity (`group-ike-id` domain), IKEv1-vs-v2 mismatch |
+| Phase 2 (IPsec) | IKE up, no IPsec SA | IPsec proposal/PFS mismatch, traffic-selector mismatch |
+| ARI routes | No per-spoke `/24` on hub | Spoke proposed `0.0.0.0/0` instead of its `/24`; hub `remote-ip` excludes the spoke LAN |
+| Data plane | Tunnel up, no traffic | Missing spoke default into `st0`, `st0` in wrong zone, `VPN→untrust`/`VPN→VPN` policy missing |
+| Internet egress | Spoke can't reach internet, NAT zero hits | **Management-default ECMP** stealing traffic out `fxp0`; NAT rule-set not `VPN→untrust` |
+| Recursion | Tunnel flaps / black-hole | **Missing anti-recursion host route** `HUB_WAN/32` |
+| Fragmentation | Large flows fail, small ones work | Tunnel MTU/MSS — keep/lower `tcp-mss ipsec-vpn` |
+
+IKE tracing when an SA won't establish:
+```
+set security ike traceoptions file ike-trace
+set security ike traceoptions flag ike
+set security ike traceoptions level detail
+```
+Read with `show log ike-trace`; force renegotiation with `clear security ike
+security-associations` / `clear security ipsec security-associations`. Live daemon
+log is `show log iked` on modern (iked) platforms, `show log kmd` on older (kmd).
+
+## Caveats and Tradeoffs
+
+1. **Anti-recursion route** — the single most common break; keep `HUB_WAN/32`
+   more-specific than the spoke default.
+2. **No local breakout** — all spoke internet traffic concentrates on the hub's
+   WAN, CPU (encrypt/decrypt), and NAT table. This is the central capacity-planning
+   decision; the upside is centralized inspection/logging.
+3. **MTU / MSS** — backhauling large flows over ESP plus NAT makes fragmentation
+   likely; keep the MSS clamp, lower it if PMTU issues appear.
+4. **Scale** — per platform, AutoVPN with traffic selectors scales to thousands of
+   tunnels; approaching limits, go **dual-hub** to remove the single point of
+   failure and distribute load.
+5. **`0.0.0.0/0` is legitimate here** — full tunnel requires the wildcard
+   selector by definition (there is no supernet for "the entire internet").
+
+## Choose This vs. Static Hub-Spoke
+
+| | **AutoVPN full-tunnel (this skill)** | Static P2P hub-spoke (`srx-ipsec-hub-spoke`) |
+|---|---|---|
+| Hub gateways | One dynamic `group-ike-id` gateway | One static gateway per spoke (by IP) |
+| Hub tunnel interfaces | Single shared `st0.0` | One `st0` unit per spoke |
+| Hub → spoke-LAN routes | Auto Route Insertion (`ARI-TS`) | Static, one per spoke |
+| Add a new spoke | **Zero hub change** | Hub change: +gateway +VPN +`st0` +route |
+| Best for | Many or churning sites | A few small, stable, explicit sites |
+
+Backhaul behavior, NAT, anti-recursion, and the management-default caveat are
+**identical** between the two. Pick AutoVPN when spoke count grows or churns; pick
+static when you want every tunnel spelled out in config.
+
+## Verification Checklist
+
+- [ ] `st0` units are point-to-point (no `multipoint`) — required for selectors
+- [ ] Hub `local-ip 0.0.0.0/0`, spoke `remote-ip 0.0.0.0/0`; hub `remote-ip` is the spoke summary (or wildcard with policy guardrails)
+- [ ] Hub shows one IKE + one IPsec SA per spoke and clean per-spoke `ARI-TS` `/24` routes
+- [ ] Spoke has `0.0.0.0/0 → st0.0` AND the anti-recursion `HUB_WAN/32` host route
+- [ ] Hub egress default does not ECMP with a management default (management in its own routing-instance, or use specific routes)
+- [ ] Source-NAT rule-set is `VPN → untrust` only; `VPN→untrust` and `VPN→VPN` policies permit
+- [ ] `show system core-dumps` is zero
+
+## Source Notes
+
+Derived and summarized (not copied verbatim) from Jason Anderson's
+`srx-autovpn-backhaul-public` lab and the Juniper Junos IPsec/AutoVPN
+documentation. The source repo carries no explicit license; this skill is a
+source-derived summary for local operational use with attribution. See
+`references/source-index.md` and `references/source-design-summary.md`.

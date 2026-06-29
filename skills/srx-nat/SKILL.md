@@ -7,7 +7,7 @@ license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [srx, junos, nat, source-nat, destination-nat, static-nat, nat64, dns64, cgn, pba, persistent-nat, hairpin, proxy-arp]
-    related_skills: [parsing-srx-configs, srx-mnha, srx-mpls-in-flow]
+    related_skills: [parsing-srx-configs, srx-mnha, srx-mpls-in-flow, srx-autovpn-full-tunnel, srx-ipsec-hub-spoke]
   sources:
     - title: DNS64 and NAT64 on SRX Series
       author: Steven Jacques

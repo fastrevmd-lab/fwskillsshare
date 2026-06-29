@@ -7,7 +7,7 @@ license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [srx, junos, mnha, high-availability, chassis-cluster, srg, icl, icd, bgp, bfd, ipsec, ike, nat, routing-instance, dhcp]
-    related_skills: [parsing-srx-configs]
+    related_skills: [parsing-srx-configs, srx-autovpn-full-tunnel, srx-ipsec-hub-spoke]
   sources:
     - title: "DHCP on MNHA: Back to Basics"
       author: James Rathbun

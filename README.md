@@ -17,6 +17,8 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 | [srx-mnha](skills/srx-mnha/) | Juniper SRX / Junos Multi-Node High Availability | `MNHA`, `Multi-Node High Availability`, `chassis high-availability`, `SRG`, `ICL`, `ICD` |
 | [srx-nat](skills/srx-nat/) | Juniper SRX / Junos NAT | `source nat`, `destination nat`, `static nat`, `NAT64`, `CGN`, `PBA`, `hairpin`, `proxy-arp` |
 | [srx-policy](skills/srx-policy/) | Juniper SRX / Junos security policy | `security policies global`, `from-zone`, `to-zone`, `AppFW`, `AppID`, `NGWF`, `EWF`, `web-filtering`, `SecIntel`, `ATP` |
+| [srx-autovpn-full-tunnel](skills/srx-autovpn-full-tunnel/) | Juniper SRX / Junos AutoVPN full-tunnel backhaul | `AutoVPN`, `full-tunnel`, `backhaul`, `traffic-selector`, `ARI`, `group-ike-id`, `centralized egress`, `anti-recursion` |
+| [srx-ipsec-hub-spoke](skills/srx-ipsec-hub-spoke/) | Juniper SRX / Junos static P2P IPsec hub-and-spoke | `route-based IPsec`, `hub-and-spoke`, `point-to-point`, `per-spoke tunnel`, `st0`, `full-tunnel`, `backhaul`, `anti-recursion` |
 | [pci-ngfw-compliance](skills/pci-ngfw-compliance/) | PCI DSS / NGFW compliance support | `PCI DSS`, `CDE`, `Requirement 1`, `PCI compliant firewall`, `PCI markers`, `audit evidence` |
 | [hipaa-ngfw-compliance](skills/hipaa-ngfw-compliance/) | HIPAA Security Rule / NGFW compliance support | `HIPAA`, `HIPPA`, `ePHI`, `Security Rule`, `164.312`, `HIPAA markers`, `audit evidence` |
 | [cmmc-nist-800-171-ngfw-compliance](skills/cmmc-nist-800-171-ngfw-compliance/) | CMMC Level 2 / NIST SP 800-171 CUI compliance support | `CMMC`, `NIST 800-171`, `CUI`, `CUI enclave`, `3.13.1`, `CMMC markers`, `SSP evidence` |
@@ -67,6 +69,12 @@ cp -r fwskillsshare/skills/srx-nat ~/.claude/skills/
 
 # Example: install only the SRX Policy skill
 cp -r fwskillsshare/skills/srx-policy ~/.claude/skills/
+
+# Example: install only the SRX AutoVPN full-tunnel backhaul skill
+cp -r fwskillsshare/skills/srx-autovpn-full-tunnel ~/.claude/skills/
+
+# Example: install only the SRX static P2P IPsec hub-and-spoke skill
+cp -r fwskillsshare/skills/srx-ipsec-hub-spoke ~/.claude/skills/
 
 # Example: install only the PCI NGFW compliance skill
 cp -r fwskillsshare/skills/pci-ngfw-compliance ~/.claude/skills/
@@ -172,6 +180,8 @@ cp -r fwskillsshare/skills/srx-mpls-in-flow ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/srx-mnha ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/srx-nat ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/srx-policy ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/srx-autovpn-full-tunnel ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/srx-ipsec-hub-spoke ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/pci-ngfw-compliance ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/hipaa-ngfw-compliance ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/cmmc-nist-800-171-ngfw-compliance ~/.hermes/skills/devops/
@@ -179,7 +189,7 @@ cp -r fwskillsshare/skills/cis-controls-ngfw-compliance ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/iso27001-ngfw-compliance ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/soc2-ngfw-compliance ~/.hermes/skills/devops/
 
-hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy|pci-ngfw-compliance|hipaa-ngfw-compliance|cmmc-nist-800-171-ngfw-compliance|cis-controls-ngfw-compliance|iso27001-ngfw-compliance|soc2-ngfw-compliance'
+hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy|srx-autovpn-full-tunnel|srx-ipsec-hub-spoke|pci-ngfw-compliance|hipaa-ngfw-compliance|cmmc-nist-800-171-ngfw-compliance|cis-controls-ngfw-compliance|iso27001-ngfw-compliance|soc2-ngfw-compliance'
 ```
 
 ## Usage
