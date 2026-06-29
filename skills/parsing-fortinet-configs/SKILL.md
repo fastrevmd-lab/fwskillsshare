@@ -25,6 +25,7 @@ metadata:
     - parsing-srx-configs
     - parsing-palo-configs
     - parsing-cisco-configs
+    - firewall-best-practices-audit
 ---
 
 # Parsing Fortinet FortiGate Configurations

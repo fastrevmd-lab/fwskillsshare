@@ -26,6 +26,7 @@ metadata:
     - srx-mnha
     - srx-mpls-in-flow
     - srx-dynamic-ip-feed
+    - firewall-best-practices-audit
 ---
 
 # Parsing Juniper SRX Configurations

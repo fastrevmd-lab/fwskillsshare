@@ -10,7 +10,7 @@ These consume the existing `parsing-*` intermediate schema (or vendor configs)
 to realize the "cross-vendor comparison, conversion, and unified auditing" the
 parsers were built for, plus vendor-operational breadth.
 
-1. [ ] `firewall-best-practices-audit` — **next up (brainstorming).** Vendor-neutral
+1. [x] `firewall-best-practices-audit` — **next up (brainstorming).** Vendor-neutral
    rulebase hardening / security-hygiene review over a parsed config: any-any and
    overly broad rules, shadowed/redundant/unused rules, missing deny-all,
    no-logging rules, plaintext management (telnet/http), dangerous exposed

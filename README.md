@@ -6,7 +6,7 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 
 ## Skills Included
 
-**17 skills** across three families — 4 config parsers, 7 Juniper SRX operational playbooks, and 6 NGFW compliance assessment playbooks:
+**18 skills** across four families — 4 config parsers, 7 Juniper SRX operational playbooks, 6 NGFW compliance assessment playbooks, and 1 vendor-neutral audit skill:
 
 | Skill | Vendor / Platform | Trigger Keywords |
 |-------|-------------------|------------------|
@@ -21,6 +21,7 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 | [srx-policy](skills/srx-policy/) | Juniper SRX / Junos security policy | `security policies global`, `from-zone`, `to-zone`, `AppFW`, `AppID`, `NGWF`, `EWF`, `web-filtering`, `SecIntel`, `ATP` |
 | [srx-autovpn-full-tunnel](skills/srx-autovpn-full-tunnel/) | Juniper SRX / Junos AutoVPN full-tunnel backhaul | `AutoVPN`, `full-tunnel`, `backhaul`, `traffic-selector`, `ARI`, `group-ike-id`, `centralized egress`, `anti-recursion` |
 | [srx-ipsec-hub-spoke](skills/srx-ipsec-hub-spoke/) | Juniper SRX / Junos static P2P IPsec hub-and-spoke | `route-based IPsec`, `hub-and-spoke`, `point-to-point`, `per-spoke tunnel`, `st0`, `full-tunnel`, `backhaul`, `anti-recursion` |
+| [firewall-best-practices-audit](skills/firewall-best-practices-audit/) | Vendor-neutral (Cisco/Palo/FortiGate/SRX via parsers) | `firewall audit`, `best practices`, `hardening`, `rulebase review`, `shadowed rules`, `any-any`, `least privilege`, `unused objects` |
 | [pci-ngfw-compliance](skills/pci-ngfw-compliance/) | PCI DSS / NGFW compliance support | `PCI DSS`, `CDE`, `Requirement 1`, `PCI compliant firewall`, `PCI markers`, `audit evidence` |
 | [hipaa-ngfw-compliance](skills/hipaa-ngfw-compliance/) | HIPAA Security Rule / NGFW compliance support | `HIPAA`, `HIPPA`, `ePHI`, `Security Rule`, `164.312`, `HIPAA markers`, `audit evidence` |
 | [cmmc-nist-800-171-ngfw-compliance](skills/cmmc-nist-800-171-ngfw-compliance/) | CMMC Level 2 / NIST SP 800-171 CUI compliance support | `CMMC`, `NIST 800-171`, `CUI`, `CUI enclave`, `3.13.1`, `CMMC markers`, `SSP evidence` |
@@ -95,6 +96,9 @@ cp -r fwskillsshare/skills/iso27001-ngfw-compliance ~/.claude/skills/
 
 # Example: install only the SOC 2 NGFW compliance skill
 cp -r fwskillsshare/skills/soc2-ngfw-compliance ~/.claude/skills/
+
+# Example: install only the vendor-neutral firewall best-practices audit skill
+cp -r fwskillsshare/skills/firewall-best-practices-audit ~/.claude/skills/
 ```
 
 ### Verify installation
@@ -218,8 +222,9 @@ cp -r fwskillsshare/skills/cmmc-nist-800-171-ngfw-compliance ~/.hermes/skills/de
 cp -r fwskillsshare/skills/cis-controls-ngfw-compliance ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/iso27001-ngfw-compliance ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/soc2-ngfw-compliance ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/firewall-best-practices-audit ~/.hermes/skills/devops/
 
-hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy|srx-autovpn-full-tunnel|srx-ipsec-hub-spoke|pci-ngfw-compliance|hipaa-ngfw-compliance|cmmc-nist-800-171-ngfw-compliance|cis-controls-ngfw-compliance|iso27001-ngfw-compliance|soc2-ngfw-compliance'
+hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy|srx-autovpn-full-tunnel|srx-ipsec-hub-spoke|pci-ngfw-compliance|hipaa-ngfw-compliance|cmmc-nist-800-171-ngfw-compliance|cis-controls-ngfw-compliance|iso27001-ngfw-compliance|soc2-ngfw-compliance|firewall-best-practices-audit'
 ```
 
 ## Usage
@@ -806,6 +811,7 @@ rm -rf ~/.claude/skills/cmmc-nist-800-171-ngfw-compliance
 rm -rf ~/.claude/skills/cis-controls-ngfw-compliance
 rm -rf ~/.claude/skills/iso27001-ngfw-compliance
 rm -rf ~/.claude/skills/soc2-ngfw-compliance
+rm -rf ~/.claude/skills/firewall-best-practices-audit
 
 rm -rf ~/.hermes/skills/devops/pci-ngfw-compliance
 rm -rf ~/.hermes/skills/devops/hipaa-ngfw-compliance
@@ -820,4 +826,5 @@ rm -rf ~/.hermes/skills/devops/srx-nat
 rm -rf ~/.hermes/skills/devops/srx-policy
 rm -rf ~/.hermes/skills/devops/srx-autovpn-full-tunnel
 rm -rf ~/.hermes/skills/devops/srx-ipsec-hub-spoke
+rm -rf ~/.hermes/skills/devops/firewall-best-practices-audit
 ```

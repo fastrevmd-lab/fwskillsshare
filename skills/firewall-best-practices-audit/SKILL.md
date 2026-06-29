@@ -42,7 +42,7 @@ Do NOT use this skill when:
 
 Route on what you were given:
 
-- **Parsed intermediate schema** (the vendor-neutral JSON described in `parsing-srx-configs/references/intermediate-schema.md`) — audit directly. Read `metadata.source_vendor` to drive vendor-specific remediation snippets.
+- **Parsed intermediate schema** (the vendor-neutral JSON produced by any `parsing-*` skill; the schema definition lives in the `parsing-srx-configs` skill) — audit directly. Read `metadata.source_vendor` to drive vendor-specific remediation snippets.
 - **Raw config** — identify the vendor from the syntax, run the matching `parsing-*` skill (`parsing-cisco-configs`, `parsing-fortinet-configs`, `parsing-palo-configs`, `parsing-srx-configs`) to produce the intermediate schema, then audit the result. Never re-implement parsing in this skill.
 - **Unsupported vendor with no parser** — say so plainly: there is no parser for this vendor, so a structured audit cannot be produced; offer to audit a manually-normalized schema or to reason about pasted excerpts without finding IDs.
 

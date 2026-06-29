@@ -26,6 +26,7 @@ metadata:
     - parsing-srx-configs
     - parsing-fortinet-configs
     - parsing-cisco-configs
+    - firewall-best-practices-audit
 ---
 
 # Parsing Palo Alto PAN-OS Configurations
