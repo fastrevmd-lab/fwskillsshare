@@ -34,7 +34,7 @@ New audit checks (v1.1):
 
 Process note: re-run the real-device test (rust-junosmcp `vSRX-Production` and a
 policy-heavy device) after v1.1 to confirm the catalog now exercises >1 check.
-Full test write-up available on request (not yet committed).
+Full test write-up: `docs/skill-tests/2026-06-29-vsrx-production-audit.md`.
 
 ## Tooling & Operational Skills (non-compliance)
 
