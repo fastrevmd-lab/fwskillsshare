@@ -38,10 +38,10 @@ from `references/remediation-patterns.md`.
 ## Findings
 
 ```text
-[SEC-INBOUND-ANY] HIGH (definitive) — Inbound permit from any internet source to internal host
+[SEC-INBOUND-ANY] HIGH (heuristic) — Inbound permit from any source to host reachable via ingress zone outside
 Category: security / inbound-exposure
-Affected: security_policies OUTSIDE-IN-1 (src_addresses: any, dst_addresses: WEB=10.0.1.10/32, services: tcp/443), ingress zone outside (GigabitEthernet0/0, 203.0.113.2/24)
-Why it matters: OUTSIDE-IN-1 permits any source on the internet to reach the internal host WEB on tcp/443. An unrestricted internet-facing source means the entire IPv4 space can probe and attack the exposed service; a sourced allowlist shrinks that attack surface dramatically. Destination and service are already scoped, so the source is the gap.
+Affected: security_policies OUTSIDE-IN-1 (src_addresses: any, dst_addresses: WEB=10.0.1.10/32, services: tcp/443), dst_zones: outside, ingress zone outside (GigabitEthernet0/0, 203.0.113.2/24)
+Why it matters: OUTSIDE-IN-1 permits any source to reach WEB (10.0.1.10/32) on tcp/443 via the ingress zone outside. The source is definitively any, so the entire IPv4 space can probe the exposed service and a sourced allowlist would shrink that attack surface dramatically. The inbound-from-internet-to-internal classification is heuristic, not definitive: metadata.warnings flags that the ACL destination zone needs route/interface resolution and the rule's dst_zones is ["outside"], so inbound exposure cannot be proven until zone/route resolution confirms the real destination zone.
 Remediation: Replace the any source with the specific partner/customer prefixes (or a published-source allowlist) that actually need the service; keep the destination and port tight and retain logging.
 Fix (Cisco ASA/FTD):
   object network PARTNER-SRC

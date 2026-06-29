@@ -3,6 +3,10 @@
 > Reference material for the `firewall-best-practices-audit` skill; loaded on
 > demand. Each entry: id, what it detects, the intermediate-schema fields it
 > reads, default severity, and confidence notes.
+>
+> The per-check default severities listed here are the **authoritative** defaults;
+> the SKILL.md "Severity & Confidence" table shows the general scale with
+> context-adjusted examples. Where they appear to differ, this catalog wins.
 
 Schema field names use the vendor-neutral intermediate schema (canonical reference:
 the canonical intermediate schema (documented in the `parsing-srx-configs` skill)). The brief used
@@ -50,7 +54,7 @@ their real top-level keys: `security_policies[]`, `address_objects` / `service_o
 
 - SEC-MGMT-DATAZONE — management services exposed to data/untrusted zones — `zones[].host_inbound` — MEDIUM — definitive
 
-- SEC-WEAK-IKE — weak IKE (DH<14, 3DES/DES, MD5/SHA-1, aggressive mode) — `vpn_tunnels[].ike` (`ike.proposal.dh_group`, `ike.proposal.encryption`, `ike.proposal.integrity`, `ike.version`) — HIGH — definitive
+- SEC-WEAK-IKE — weak IKE — DH-group (<14), encryption (3DES/DES), and authentication/integrity (MD5/SHA-1) weakness are definitively detectable from the crypto fields. IKEv1 aggressive-mode detection is data-dependent: the canonical schema carries `ike.version` but has no IKE mode/aggressive field, so skip aggressive-mode detection unless the parser captured it elsewhere (e.g. in residual/raw) — `vpn_tunnels[].ike` (`ike.proposal.dh_group`, `ike.proposal.encryption`, `ike.proposal.integrity`, `ike.version`) — HIGH — definitive
 
 - SEC-WEAK-IPSEC — weak IPsec (no PFS, weak ESP enc/auth) — `vpn_tunnels[].ipsec` (`ipsec.proposal.dh_group`, `ipsec.proposal.encryption`, `ipsec.proposal.integrity`) — MEDIUM — definitive
 
@@ -76,7 +80,7 @@ their real top-level keys: `security_policies[]`, `address_objects` / `service_o
 
 - OPS-REDUNDANT-OBJ — redundant objects (subset/superset duplicates) — `address_objects`, `service_objects` — LOW — heuristic
 
-- OPS-ZERO-HIT — zero-hit rule (only when usage/hit-count data is present) — `security_policies[].hit_count` (not in base schema — data-dependent; skip if no hit-count data available) — LOW — definitive (skip if no data)
+- OPS-ZERO-HIT — zero-hit rule (only when usage/hit-count data is present) — `security_policies[].hit_count` (NOT part of the base intermediate schema — it requires external hit-count telemetry, so this check is data-dependent and is skipped unless that data is supplied) — LOW — definitive (skip if no data)
 
 ---
 

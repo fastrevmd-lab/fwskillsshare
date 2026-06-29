@@ -12,6 +12,11 @@ Each subsection covers the same fix for all four vendors: Cisco ASA/FTD,
 Palo PAN-OS, FortiGate, and Juniper SRX. Vendor syntax is drawn from the repo's
 parsing/`srx-*` skills so it stays idiomatic.
 
+> **Cisco ASA/FTD note:** the "Cisco ASA/FTD" snippets below are ASA-style CLI
+> (also applicable to FTD via FlexConfig/LINA). FMC-managed FTD applies the
+> equivalent change through its access-control policy (and platform settings),
+> not through persistent `access-list`/`http`/`ssh` CLI — translate accordingly.
+
 ---
 
 ## Overly permissive / any-any (SEC-ANY-ANY, SEC-ANY-SVC, SEC-BROAD-SRC, SEC-BROAD-DST)
@@ -53,8 +58,10 @@ narrowest prefix that still satisfies intent.
   ```
 - **Juniper SRX:** match specific address/application objects, permit with logging:
   ```
-  set security policies global policy <name> match from-zone <zone> to-zone <zone>
-  set security policies global policy <name> match source-address <src-obj> destination-address <dst-obj>
+  set security policies global policy <name> match from-zone <zone>
+  set security policies global policy <name> match to-zone <zone>
+  set security policies global policy <name> match source-address <src-obj>
+  set security policies global policy <name> match destination-address <dst-obj>
   set security policies global policy <name> match application <app>
   set security policies global policy <name> then permit
   set security policies global policy <name> then log session-close
@@ -113,7 +120,8 @@ strings; enable SSHv2, HTTPS, and SNMPv3 (authPriv) instead.
   crypto key generate rsa modulus 2048
   ssh version 2
   ssh <mgmt-subnet> <mask> management
-  no http server enable
+  http server enable
+  no http 0.0.0.0 0.0.0.0 outside
   http <mgmt-subnet> <mask> management
   no snmp-server community <community>
   snmp-server group MGMT-GRP v3 priv
@@ -214,9 +222,13 @@ to specific sources and destinations, never `any`.
   delete security zones security-zone untrust host-inbound-traffic system-services ssh
   delete security zones security-zone untrust host-inbound-traffic system-services https
   set security zones security-zone mgmt host-inbound-traffic system-services ssh
-  set security policies global policy allow-rdp match from-zone untrust to-zone dmz
-  set security policies global policy allow-rdp match source-address <partner-src> destination-address <rdp-host> application junos-ms-rdp
-  set security policies global policy allow-rdp then permit log session-close
+  set security policies global policy allow-rdp match from-zone untrust
+  set security policies global policy allow-rdp match to-zone dmz
+  set security policies global policy allow-rdp match source-address <partner-src>
+  set security policies global policy allow-rdp match destination-address <rdp-host>
+  set security policies global policy allow-rdp match application junos-ms-rdp
+  set security policies global policy allow-rdp then permit
+  set security policies global policy allow-rdp then log session-close
   ```
 
 ---
@@ -325,8 +337,11 @@ sure the rulebase ends with an explicit logged deny-all.
   ```
   insert security policies global policy <specific-name> before policy <broad-name>
   delete security policies global policy <redundant-name>
-  set security policies global policy 999-DENY-REST match from-zone any to-zone any
-  set security policies global policy 999-DENY-REST match source-address any destination-address any application any
+  set security policies global policy 999-DENY-REST match from-zone any
+  set security policies global policy 999-DENY-REST match to-zone any
+  set security policies global policy 999-DENY-REST match source-address any
+  set security policies global policy 999-DENY-REST match destination-address any
+  set security policies global policy 999-DENY-REST match application any
   set security policies global policy 999-DENY-REST then deny
   set security policies global policy 999-DENY-REST then log session-init
   ```

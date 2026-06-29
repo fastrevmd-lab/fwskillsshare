@@ -42,7 +42,7 @@ Do NOT use this skill when:
 
 Route on what you were given:
 
-- **Parsed intermediate schema** (the vendor-neutral JSON produced by any `parsing-*` skill; the schema definition lives in the `parsing-srx-configs` skill) — audit directly. Read `metadata.source_vendor` to drive vendor-specific remediation snippets; note that the source vendor may appear as `metadata.source_vendor` (canonical schema) or `metadata.vendor` (as some parser fixtures emit, e.g. the Cisco fixture's `"vendor": "cisco-asa"`) — read whichever key is present.
+- **Parsed intermediate schema** (the vendor-neutral JSON produced by any `parsing-*` skill; the schema definition lives in the `parsing-srx-configs` skill) — audit directly. Read `metadata.source_vendor` to drive vendor-specific remediation snippets. `metadata.source_vendor` is the canonical schema field; `metadata.vendor` is a non-canonical compatibility value that some parser fixtures emit (e.g. the Cisco fixture's `"vendor": "cisco-asa"`) and is not a schema field — read whichever key is present.
 - **Raw config** — identify the vendor from the syntax, run the matching `parsing-*` skill (`parsing-cisco-configs`, `parsing-fortinet-configs`, `parsing-palo-configs`, `parsing-srx-configs`) to produce the intermediate schema, then audit the result. Never re-implement parsing in this skill.
 - **Unsupported vendor with no parser** — say so plainly: there is no parser for this vendor, so a structured audit cannot be produced; offer to audit a manually-normalized schema or to reason about pasted excerpts without finding IDs.
 
@@ -57,6 +57,8 @@ Graceful degradation: the schema is static, so some checks have no input (for ex
 | Medium | Material hygiene gap — shadowed/redundant/overlapping rules, oversized any in one field, SNMPv1/2c, missing logging on internal allows. |
 | Low | Minor hardening or correctness nit — overlapping objects, weak naming, narrow over-broad object. |
 | Info | Operational cleanup with no direct risk — unused/duplicate objects, oversized groups, missing descriptions, consolidation opportunities, disabled rules. |
+
+This table is the general scale with context-adjusted examples; the per-check default severities in `references/check-catalog.md` are the authoritative defaults (a check's catalog severity wins over any example here, since real severity is adjusted by logging, scope, and trust-boundary context).
 
 Confidence is one of two values:
 
