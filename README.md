@@ -6,6 +6,8 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 
 ## Skills Included
 
+**17 skills** across three families — 4 config parsers, 7 Juniper SRX operational playbooks, and 6 NGFW compliance assessment playbooks:
+
 | Skill | Vendor / Platform | Trigger Keywords |
 |-------|-------------------|------------------|
 | [parsing-cisco-configs](skills/parsing-cisco-configs/) | Cisco ASA & FTD | `ASA`, `FTD`, `access-list`, `object network`, `nameif` |
@@ -152,6 +154,16 @@ After copying, your `~/.claude/skills/` directory should look like:
 │       ├── source-juniper-srx-enhanced-web-filtering-configuration.md
 │       ├── ngwf-vs-ewf-research.md
 │       └── source-secintel-feeds-overview-and-benefits.md
+├── srx-autovpn-full-tunnel/
+│   ├── SKILL.md
+│   └── references/
+│       ├── source-index.md
+│       └── source-design-summary.md
+├── srx-ipsec-hub-spoke/
+│   ├── SKILL.md
+│   └── references/
+│       ├── source-index.md
+│       └── source-design-summary.md
 ├── pci-ngfw-compliance/
 │   └── SKILL.md
 ├── hipaa-ngfw-compliance/
@@ -212,6 +224,8 @@ Use slash commands to explicitly invoke a skill:
 /srx-mnha
 /srx-nat
 /srx-policy
+/srx-autovpn-full-tunnel
+/srx-ipsec-hub-spoke
 /pci-ngfw-compliance
 /hipaa-ngfw-compliance
 /cmmc-nist-800-171-ngfw-compliance
@@ -622,6 +636,30 @@ skills/srx-mnha/references/source-hybrid-mnha-with-ebgp.md
 skills/srx-mnha/references/source-srx-from-chassis-cluster-to-mnha.md
 ```
 
+### srx-autovpn-full-tunnel
+
+`srx-autovpn-full-tunnel` is an SRX AutoVPN hub-and-spoke playbook for full-tunnel backhaul, where spokes send all non-local traffic up the tunnel and the hub provides centralized internet egress. It covers the dynamic `group-ike-id` gateway, traffic selectors + Auto Route Insertion (ARI), the single shared `st0.0`, hub source-NAT egress, spoke-to-spoke hairpin, and the anti-recursion route. Derived (with attribution) from Jason Anderson's `srx-autovpn-backhaul-public` lab.
+
+Reference files:
+
+```text
+skills/srx-autovpn-full-tunnel/SKILL.md
+skills/srx-autovpn-full-tunnel/references/source-index.md
+skills/srx-autovpn-full-tunnel/references/source-design-summary.md
+```
+
+### srx-ipsec-hub-spoke
+
+`srx-ipsec-hub-spoke` is an SRX static point-to-point route-based IPsec hub-and-spoke playbook with the same full-tunnel backhaul, but using one explicit IKE gateway, IPsec VPN, `st0` unit, and static route per spoke (no traffic selectors, no ARI) — routing alone scopes each tunnel. It covers per-spoke peering by WAN IP, hub source-NAT egress, spoke-to-spoke hairpin across `st0` units, the anti-recursion route, and when to switch to AutoVPN. Derived (with attribution) from Jason Anderson's `srx-p2p-ipsec-public` lab.
+
+Reference files:
+
+```text
+skills/srx-ipsec-hub-spoke/SKILL.md
+skills/srx-ipsec-hub-spoke/references/source-index.md
+skills/srx-ipsec-hub-spoke/references/source-design-summary.md
+```
+
 
 ## Shared Schema Maintenance
 
@@ -742,6 +780,8 @@ rm -rf ~/.claude/skills/srx-mpls-in-flow
 rm -rf ~/.claude/skills/srx-mnha
 rm -rf ~/.claude/skills/srx-nat
 rm -rf ~/.claude/skills/srx-policy
+rm -rf ~/.claude/skills/srx-autovpn-full-tunnel
+rm -rf ~/.claude/skills/srx-ipsec-hub-spoke
 rm -rf ~/.claude/skills/pci-ngfw-compliance
 rm -rf ~/.claude/skills/hipaa-ngfw-compliance
 rm -rf ~/.claude/skills/cmmc-nist-800-171-ngfw-compliance
@@ -760,4 +800,6 @@ rm -rf ~/.hermes/skills/devops/srx-mpls-in-flow
 rm -rf ~/.hermes/skills/devops/srx-mnha
 rm -rf ~/.hermes/skills/devops/srx-nat
 rm -rf ~/.hermes/skills/devops/srx-policy
+rm -rf ~/.hermes/skills/devops/srx-autovpn-full-tunnel
+rm -rf ~/.hermes/skills/devops/srx-ipsec-hub-spoke
 ```
