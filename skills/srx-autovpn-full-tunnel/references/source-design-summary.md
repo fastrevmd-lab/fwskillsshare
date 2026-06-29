@@ -31,29 +31,18 @@ the hub NAT address with no extra config.
 
 ## AutoVPN dynamic gateway (hub)
 
-```
-set security ike gateway AUTOVPN-HUB-GW dynamic hostname homelab.local
-set security ike gateway AUTOVPN-HUB-GW dynamic ike-user-type group-ike-id
-set security ike gateway AUTOVPN-HUB-GW dynamic reject-duplicate-connection
-set security ike gateway AUTOVPN-HUB-GW local-identity hostname srx01.homelab.local
-set security ike gateway AUTOVPN-HUB-GW external-interface ge-0/0/0.0
-set security ike gateway AUTOVPN-HUB-GW version v2-only
-```
-
-Each spoke: `local-identity hostname srxNN.homelab.local`, `remote-identity
+The hub gateway is **dynamic** (`dynamic hostname homelab.local` +
+`dynamic ike-user-type group-ike-id` + `reject-duplicate-connection`), with
+`local-identity hostname srx01.homelab.local`, `external-interface ge-0/0/0.0`,
+`version v2-only`. Deployable `set` commands are in the SKILL.md *Config Skeleton*
+(not repeated here to avoid drift). Each spoke: `local-identity hostname srxNN.homelab.local`, `remote-identity
 hostname srx01.homelab.local`, gateway `address 10.0.0.2` (the hub WAN IP).
 
 ## Single bound tunnel + traffic selectors
 
-The hub binds one VPN to `st0.0` for **all** spokes:
-
-```
-set security ipsec vpn AUTOVPN-HUB bind-interface st0.0
-set security ipsec vpn AUTOVPN-HUB traffic-selector TS-ALL local-ip 0.0.0.0/0
-set security ipsec vpn AUTOVPN-HUB traffic-selector TS-ALL remote-ip 192.168.0.0/16
-```
-
-Selector matrix (split vs. full tunnel):
+The hub binds one VPN to `st0.0` for **all** spokes, with traffic-selector
+`TS-ALL local-ip 0.0.0.0/0` + `remote-ip 192.168.0.0/16` (see SKILL.md *Config
+Skeleton* for the `set` commands). Selector matrix (split vs. full tunnel):
 
 | Selector | Split | Full-tunnel |
 |----------|-------|-------------|
@@ -80,15 +69,9 @@ does **not** create a default route via `st0.0`.
 
 ## Hub source NAT (internet egress only)
 
-```
-set security nat source rule-set VPN-BACKHAUL from zone VPN
-set security nat source rule-set VPN-BACKHAUL to zone untrust
-set security nat source rule-set VPN-BACKHAUL rule SNAT-INTERNET match source-address 192.168.0.0/16
-set security nat source rule-set VPN-BACKHAUL rule SNAT-INTERNET match destination-address 0.0.0.0/0
-set security nat source rule-set VPN-BACKHAUL rule SNAT-INTERNET then source-nat interface
-```
-
-Scoped `VPN → untrust`, so only internet egress is PATed to the hub WAN IP.
+Source NAT rule-set `VPN-BACKHAUL` (`set` commands in the SKILL.md *Config
+Skeleton*) is scoped `VPN → untrust`, so only internet egress is PATed to the hub
+WAN IP.
 Spoke-to-spoke (`VPN → VPN`) and spoke-to-hub-LAN (`VPN → trust`) stay un-NAT'd.
 
 ## Hub security policies

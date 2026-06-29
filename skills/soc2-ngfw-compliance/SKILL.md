@@ -19,6 +19,7 @@ metadata:
       retrieved: "2026-06-27"
 ---
 
+
 # SOC 2 NGFW Compliance Research
 
 ## Overview
@@ -71,155 +72,17 @@ Before assessing firewall controls, establish:
 
 If scope and criteria are unknown, provide a typical SOC 2 firewall evidence baseline and label assumptions.
 
-## SOC 2 Criteria Mapping for Firewall Work
+## Reference Material (load on demand)
 
-Use this practical mapping as a starting point. Exact criteria and points of focus should be verified against the current AICPA materials and the organization’s control matrix.
+Detailed lookup material lives in `references/` to keep this skill lean; read these when you need them:
 
-| SOC 2 area | What the NGFW/firewall estate can support | Evidence to request |
-|---|---|---|
-| CC1 / control environment support | Defined owners, responsibilities, and governance for firewall controls | RACI, policy ownership, control matrix, training/acknowledgment records |
-| CC2 / communication and information | Firewall controls documented and communicated through policies/procedures | Network security policy, change procedure, rule standard, evidence repository |
-| CC3 / risk assessment | Network risks drive firewall requirements and exceptions | Risk register, threat model, exception/risk acceptance records |
-| CC5 / control activities | Firewall rules, baselines, reviews, approvals, and alerts operate as control activities | Config exports, rule reviews, tickets, samples, approvals |
-| CC6 logical and physical access | Restrict network, admin, remote, service, vendor, and customer-data access | Rulebase, VPN groups, MFA/AAA/RBAC, admin reviews, vendor access evidence |
-| CC7 system operations | Monitor firewall/VPN/admin/threat events and respond to anomalies | SIEM logs, alert rules, triage records, incident tickets, daily/weekly reviews |
-| CC8 change management | Authorize, test, approve, implement, and review firewall changes | Change tickets, diffs, approvals, emergency changes, rollback evidence |
-| CC9 risk mitigation | Manage vendor, cloud, vulnerability, and continuity risks affecting firewall controls | Vendor reviews, vulnerability tickets, DR/failover tests, risk treatment |
-| Availability category | Protect production availability with segmentation, DDoS/WAF paths, HA, backups, and DR | HA/failover evidence, backup/restore tests, monitoring alerts, capacity records |
-| Confidentiality category | Restrict and monitor paths to confidential customer data | Segmentation rules, egress controls, encryption/VPN paths, data-flow diagrams |
-| Privacy category support | Limit and monitor network access to personal information systems | Data-flow maps, access restrictions, logging, third-party access evidence |
-
-## Assessment Workflow
-
-### 1. Establish SOC 2 Scope and Control Matrix
-
-Collect:
-
-- system description and service boundaries;
-- Trust Services Categories in scope;
-- Type I or Type II report period;
-- control matrix with control IDs and mapped criteria;
-- network diagrams, data-flow diagrams, cloud architecture, and customer-data paths;
-- production firewall/WAF/VPN/ZTNA/security-group inventory;
-- firewall/network/security policies and procedures;
-- audit evidence request list and sampling expectations.
-
-Questions to answer:
-
-- Which firewall controls are explicit controls in the matrix, and which are supporting evidence for broader controls?
-- Which systems and customer data flows are in scope?
-- Which service commitments mention availability, confidentiality, security, privacy, or incident response?
-- Which providers operate or can access firewall controls?
-- What evidence proves the control operated across the full period?
-
-### 2. Build a Firewall-to-SOC 2 Matrix
-
-For each firewall or enforcement point, capture:
-
-- device/control name and platform/version;
-- role: production perimeter, internal segmentation, cloud security group, WAF/WAAP, VPN/ZTNA, IDS/IPS, DNS/web security, management-plane enforcement;
-- SOC 2 system boundary relationship;
-- protected services and customer-data paths;
-- control IDs and Trust Services Criteria mapping;
-- control owner and reviewer;
-- change ticket system and evidence repository;
-- logging/SIEM destination, alert owner, retention;
-- rule review cadence and last review;
-- admin/vendor access review cadence;
-- HA/DR/backup role;
-- open exceptions, deviations, or audit findings.
-
-Example:
-
-```text
-Firewall: PA-SAAS-PROD-EDGE
-SOC 2 scope: Production SaaS platform, Security + Availability + Confidentiality
-SOC 2 mapping: NET-01 / CC6, NET-02 / CC7, CHG-04 / CC8, AV-03 / Availability
-Evidence: CHG-22119, SIEM-FW-PROD, RULE-REVIEW-2026Q2, VPN-ACCESS-2026Q2, DR-FAILOVER-2026
-Open exception: Temporary support rule lacks expiry; exception EXC-044 expires 2026-07-31
-```
-
-### 3. Review Firewall Policy for SOC 2 Control Operation
-
-For each in-scope or supporting rule, verify:
-
-- owner, reviewer, and business purpose;
-- customer-data path or production service protected;
-- source/destination zone/network/user/device;
-- application/service/port and whether broad access is justified;
-- NAT/public exposure relationship;
-- logging and alerting expectations;
-- attached security profiles or compensating controls;
-- change ticket and approval;
-- control ID/evidence reference;
-- temporary/vendor access expiry;
-- hit count/last-hit and stale-rule review;
-- exceptions, deviations, or risk acceptance.
-
-### 4. Add SOC 2 Evidence Markers to Firewall Configs
-
-Where the platform supports descriptions, comments, tags, or labels, add concise markers that help auditors connect config exports to control evidence.
-
-Pattern:
-
-```text
-SOC2:<theme> CTRL:<control-id> OWNER:<team> REF:<ticket-or-evidence-id> PURPOSE:<short-purpose>
-```
-
-Examples:
-
-```text
-SOC2:ACCESS CTRL:NET-01 OWNER:NetSec REF:CHG-22119 PURPOSE:Prod app to DB least privilege
-SOC2:MONITOR CTRL:SEC-07 OWNER:SecOps REF:SIEM-FW-01 PURPOSE:Forward firewall threat logs
-SOC2:CHANGE CTRL:CHG-04 OWNER:NetOps REF:CHG-22119 PURPOSE:Approved production firewall change
-SOC2:AVAIL CTRL:AV-03 OWNER:SRE REF:DR-FW-2026 PURPOSE:HA firewall path for SaaS production
-SOC2:VENDOR CTRL:VND-02 OWNER:IT REF:SUPPORT-2026Q2 PURPOSE:Time-bound vendor support access
-SOC2:CONF CTRL:CONF-01 OWNER:AppOps REF:DATAFLOW-07 PURPOSE:Restrict confidential data path
-```
-
-Marker rules:
-
-- Use the organization’s actual SOC 2 control IDs where available.
-- Keep markers short enough for platform field limits and exports.
-- Do not include customer names, personal data, confidential customer data, credentials, secrets, vulnerability detail, incident detail, or sensitive architecture.
-- Treat markers as evidence pointers, not auditor conclusions.
-- Keep detailed evidence in tickets, GRC, audit folders, CMDB, or source-of-truth systems.
-
-### 5. Validate Type II Operating Effectiveness
-
-For Type II reports, collect samples over the examination period:
-
-- sampled firewall changes show authorization, testing/validation, implementation, and approval;
-- emergency changes have post-implementation review;
-- rule reviews happened at the required cadence and tracked remediation;
-- admin/VPN/vendor access reviews were completed and exceptions resolved;
-- logs were forwarded continuously or exceptions were documented;
-- alerts were triaged according to procedure;
-- incidents involving firewall/VPN/WAF/IDS were documented and resolved;
-- backups, HA, failover, or DR tests support availability commitments;
-- vulnerabilities and firmware/security advisories were tracked;
-- deviations have management review and remediation.
-
-## Evidence Request Checklist
-
-Ask for:
-
-- SOC 2 report type, period, Trust Services Categories, and system description;
-- control matrix with control IDs and criteria mappings;
-- production firewall/WAF/VPN/ZTNA/security group inventory;
-- architecture, network, data-flow, and customer-data diagrams;
-- firewall/network security policies, secure configuration standards, rule standards, and change procedures;
-- firewall policy, NAT, zone/interface, object, routing, VPN/ZTNA, WAF, IDS/IPS, DNS/security-profile, and cloud security group exports;
-- sampled firewall change tickets, approvals, diffs, validation notes, and emergency-change reviews;
-- rule review/recertification evidence, stale-rule remediation, exception lists, and risk acceptances;
-- admin, VPN, privileged, vendor, MSP/MSSP, and service-account access review evidence;
-- MFA/AAA/RBAC evidence for firewall admin and remote access;
-- syslog/SIEM forwarding configuration, NTP, sample firewall/VPN/admin/threat logs, alert rules, triage records, retention settings, and review records;
-- incident response tickets and firewall-related investigations;
-- vulnerability/advisory tracking, firmware/content update evidence, and remediation tickets;
-- HA/failover, backup/restore, DR, monitoring, capacity, or DDoS/WAF evidence when Availability is in scope;
-- confidentiality/privacy data-flow restrictions and third-party access evidence when those categories are in scope;
-- subservice organization/provider shared responsibility evidence and complementary user entity controls if applicable.
+- `references/control-mapping.md` — SOC 2 Criteria Mapping for Firewall Work (full control-by-control matrix).
+- `references/assessment-workflow.md` — step-by-step assessment workflow, config evidence markers, and the evidence request checklist:
+  1. Establish SOC 2 Scope and Control Matrix
+  2. Build a Firewall-to-SOC 2 Matrix
+  3. Review Firewall Policy for SOC 2 Control Operation
+  4. Add SOC 2 Evidence Markers to Firewall Configs
+  5. Validate Type II Operating Effectiveness
 
 ## Output Templates
 

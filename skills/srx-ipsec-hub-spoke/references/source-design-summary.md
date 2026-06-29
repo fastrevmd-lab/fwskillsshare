@@ -28,20 +28,10 @@ each spoke uses a single `st0.0` to the hub. `st0` units are unnumbered P2P.
 
 ## Per-spoke gateway and VPN (no dynamic gateway, no selectors)
 
-Hub, one block per spoke (srx02 example):
-
-```
-set security ike gateway GW-srx02 ike-policy IKE-POL
-set security ike gateway GW-srx02 address 10.0.1.2          # spoke WAN IP (pinned by IP)
-set security ike gateway GW-srx02 external-interface ge-0/0/0.0
-set security ike gateway GW-srx02 version v2-only
-set security ipsec vpn VPN-srx02 bind-interface st0.0
-set security ipsec vpn VPN-srx02 ike gateway GW-srx02
-set security ipsec vpn VPN-srx02 ike ipsec-policy IPSEC-POL
-set security ipsec vpn VPN-srx02 establish-tunnels immediately
-```
-
-Spoke (srx02) pins the hub by IP: `set security ike gateway GW-hub address
+Hub, one block per spoke: an IKE gateway `GW-srxNN` pinned by `address
+<spoke-WAN-IP>` and an IPsec VPN `VPN-srxNN` bound to that spoke's `st0` unit with
+`establish-tunnels immediately` (deployable `set` commands in the SKILL.md *Config
+Skeleton*, hub block). Spoke (srx02) pins the hub by IP: `set security ike gateway GW-hub address
 10.0.0.2`. No `local-identity`/`remote-identity`, no `traffic-selector`. The
 negotiated proxy-id defaults to `0.0.0.0/0 ↔ 0.0.0.0/0`, so one SA per spoke carries
 internet and inter-spoke traffic; **routing** scopes each `st0`.
@@ -80,14 +70,8 @@ st0.0` on each spoke for hub-LAN and spoke-to-spoke.
 
 ## Hub source NAT (internet egress only)
 
-```
-set security nat source rule-set VPN-BACKHAUL from zone VPN
-set security nat source rule-set VPN-BACKHAUL to zone untrust
-set security nat source rule-set VPN-BACKHAUL rule SNAT-INTERNET match source-address 192.168.0.0/16
-set security nat source rule-set VPN-BACKHAUL rule SNAT-INTERNET match destination-address 0.0.0.0/0
-set security nat source rule-set VPN-BACKHAUL rule SNAT-INTERNET then source-nat interface
-```
-
+Source NAT rule-set `VPN-BACKHAUL` (`set` commands in the SKILL.md *Config
+Skeleton*) is scoped `VPN → untrust`.
 All three spoke tunnels share the VPN zone, so one rule-set covers every spoke.
 Spoke-to-spoke (`VPN → VPN`) and spoke-to-hub-LAN (`VPN → trust`) stay un-NAT'd.
 
