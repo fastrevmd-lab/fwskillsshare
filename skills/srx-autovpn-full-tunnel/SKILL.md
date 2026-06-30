@@ -261,6 +261,8 @@ set security ike proposal AUTOVPN-IKE-PROP authentication-method pre-shared-keys
 set security ike proposal AUTOVPN-IKE-PROP dh-group group14
 set security ike proposal AUTOVPN-IKE-PROP authentication-algorithm sha-256
 set security ike proposal AUTOVPN-IKE-PROP encryption-algorithm aes-256-cbc
+set security ike proposal AUTOVPN-IKE-PROP lifetime-seconds 86400
+set security ike policy AUTOVPN-IKE-POL mode main
 set security ike policy AUTOVPN-IKE-POL proposals AUTOVPN-IKE-PROP
 set security ike policy AUTOVPN-IKE-POL pre-shared-key ascii-text "$AUTOVPN_PSK"
 # Dynamic gateway — accepts any spoke whose IKE ID is *.homelab.local
@@ -275,6 +277,7 @@ set security ike gateway AUTOVPN-HUB-GW version v2-only
 # --- IPsec Phase 2 ---
 set security ipsec proposal AUTOVPN-IPSEC-PROP protocol esp
 set security ipsec proposal AUTOVPN-IPSEC-PROP encryption-algorithm aes-256-gcm
+set security ipsec proposal AUTOVPN-IPSEC-PROP lifetime-seconds 3600
 set security ipsec policy AUTOVPN-IPSEC-POL perfect-forward-secrecy keys group14
 set security ipsec policy AUTOVPN-IPSEC-POL proposals AUTOVPN-IPSEC-PROP
 set security ipsec vpn AUTOVPN-HUB bind-interface st0.0
@@ -354,8 +357,15 @@ log is `show log iked` on modern (iked) platforms, `show log kmd` on older (kmd)
 4. **Scale** — per platform, AutoVPN with traffic selectors scales to thousands of
    tunnels; approaching limits, go **dual-hub** to remove the single point of
    failure and distribute load.
-5. **`0.0.0.0/0` is legitimate here** — full tunnel requires the wildcard
-   selector by definition (there is no supernet for "the entire internet").
+5. **`0.0.0.0/0` selector — use with a caveat.** Full tunnel needs a wildcard to
+   pull all destinations up the tunnel (there is no supernet for "the entire
+   internet"). But note Juniper's traffic-selector docs caution that a `remote-ip`
+   of `0.0.0.0/0` for site-to-site selectors is not formally supported, and **ARI
+   does not install a route for a `0.0.0.0/0` selector**. This design does not rely
+   on ARI for that direction: the spoke reaches everything via a static
+   `0.0.0.0/0 → st0.0` default route, and ARI installs only the hub-side per-spoke
+   `/24` routes (keyed on the spoke's specific `remote-ip`, not the wildcard).
+   Validate on your target release/platform and confirm with JTAC for production.
 
 ## Choose This vs. Static Hub-Spoke
 
