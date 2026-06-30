@@ -367,7 +367,7 @@ Example of configuration for “commit sync” (on node1):
     
     set system commit peers-synchronize  
     set system commit peers slab-srx4200-04 user labuser  
-    set system commit peers slab-srx4200-04 authentication "$9$A.somepassword"  
+    set system commit peers slab-srx4200-04 authentication "$9$<REDACTED>"  
     set system commit peers slab-srx4200-04 routing-instance MNHA-ICL
 
 Example of configuration for common IPsec for ICL:
@@ -383,7 +383,7 @@ Example of configuration for common IPsec for ICL:
     set groups mnha-sync-group security ike proposal MNHA-prop lifetime-seconds 300  
     set groups mnha-sync-group security ike policy MNHA-pol description iclpolicy  
     set groups mnha-sync-group security ike policy MNHA-pol proposals MNHA-prop  
-    set groups mnha-sync-group security ike policy MNHA-pol pre-shared-key ascii-text "$9$.preshared.key.for.icl"  
+    set groups mnha-sync-group security ike policy MNHA-pol pre-shared-key ascii-text "$9$<REDACTED>"  
     set groups mnha-sync-group security ike gateway MNHA-gw ike-policy MNHA-pol  
     set groups mnha-sync-group security ike gateway MNHA-gw version v2-only  
     set groups mnha-sync-group security ipsec proposal MNHA-prop description ICL-esp  

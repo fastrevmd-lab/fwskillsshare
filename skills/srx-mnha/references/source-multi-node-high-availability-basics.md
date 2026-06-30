@@ -221,7 +221,7 @@ This above configuration shows SRG0 without ICL encryption. However, ICL encrypt
     set groups mnha-sync security ike proposal ike-prop encryption-algorithm aes-256-gcm  
     set groups mnha-sync security ike proposal ike-prop lifetime-seconds 28800  
     set groups mnha-sync security ike policy icl proposals ike-prop  
-    set groups mnha-sync security ike policy icl pre-shared-key ascii-text "$9$fQ390BEevLApvLxNY25QF"  
+    set groups mnha-sync security ike policy icl pre-shared-key ascii-text "$9$<REDACTED>"  
     set groups mnha-sync security ike gateway icl ike-policy icl  
     set groups mnha-sync security ike gateway icl version v2-only  
     
@@ -336,7 +336,7 @@ We won’t cover the functionality of groups in depth here. They’re essentiall
     set system host-name vSRX-MNHA-1  
     set system services netconf ssh  
     set system commit peers vSRX-MNHA-2 user root  
-    set system commit peers vSRX-MNHA-2 authentication "$9$Gxjkmz39O1hfT1hSr8LGDi"  
+    set system commit peers vSRX-MNHA-2 authentication "$9$<REDACTED>"  
     set system static-host-mapping vSRX-MNHA-2 inet 172.30.192.156  
     set security ssh-known-hosts host vsrx-mnha-2,172.30.192.156 ecdsa-sha2-nistp384-key AAAA---snip---ioCmqQ==
 

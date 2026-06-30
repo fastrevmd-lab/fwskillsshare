@@ -979,7 +979,7 @@ In MNHA, the control planes are independent. RADIUS configurations are specific 
 MNHA-SRX-A & MNHA-SRX-B
 set access radius-server 192.168.99.100 port 1812
 set access radius-server 192.168.99.100 accounting-port 1813
-set access radius-server 192.168.99.100 secret "$9$n/FVCAuSyK8xdApK87Vg4TzF6tuOBIEhS"
+set access radius-server 192.168.99.100 secret "$9$<REDACTED>"
 set access radius-server 192.168.99.100 timeout 2
 set access radius-server 192.168.99.100 retry 3
 set access radius-server 192.168.99.100 source-address X.X.X.X
@@ -1004,9 +1004,9 @@ set security ike proposal IKE-PROP encryption-algorithm aes-128-cbc
 set security ike proposal IKE-PROP lifetime-seconds 28800
 IKE Policy configuration:
 MNHA-SRX-A & MNHA-SRX-B
-set security ike policy IKE-POLICY pre-shared-key ascii-text "$9$vSV8xd24Zk.5bs.5QFAtM8X"
+set security ike policy IKE-POLICY pre-shared-key ascii-text "$9$<REDACTED>"
 set security ike policy IKE-POLICY-2 proposals IKE-PROP
-set security ike policy IKE-POLICY-2 pre-shared-key ascii-text "$9$NDVs4UjqQF/aZF/CtIR-VwYaZDikPTz"
+set security ike policy IKE-POLICY-2 pre-shared-key ascii-text "$9$<REDACTED>"
 Again, the external interface is that of lo0.10 but the local address is 10.165.251.100, floating IP in SRG-1.
 IKE GW configuration:
 MNHA-SRX-A & MNHA-SRX-B

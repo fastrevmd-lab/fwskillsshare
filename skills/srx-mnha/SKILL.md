@@ -235,13 +235,12 @@ Design guidance:
 Minimal conceptual stanza:
 
 ```junos
-set chassis high-availability local-id <LOCAL_ID>
-set chassis high-availability local-ip <LOCAL_ICL_IP>
-set chassis high-availability peer <PEER_ID> peer-ip <PEER_ICL_IP>
-set chassis high-availability peer <PEER_ID> interface <ICL_SOURCE_INTERFACE>
-set chassis high-availability peer <PEER_ID> routing-instance <ICL_RI>
-set chassis high-availability liveness-detection minimum-interval <MS>
-set chassis high-availability liveness-detection multiplier <COUNT>
+set chassis high-availability local-id local-ip <LOCAL_ICL_IP>
+set chassis high-availability peer-id <PEER_ID> peer-ip <PEER_ICL_IP>
+set chassis high-availability peer-id <PEER_ID> interface <ICL_SOURCE_INTERFACE>
+set chassis high-availability peer-id <PEER_ID> routing-instance <ICL_RI>
+set chassis high-availability peer-id <PEER_ID> liveness-detection minimum-interval <MS>
+set chassis high-availability peer-id <PEER_ID> liveness-detection multiplier <COUNT>
 set chassis high-availability services-redundancy-group 0 peer-id <PEER_ID>
 ```
 
