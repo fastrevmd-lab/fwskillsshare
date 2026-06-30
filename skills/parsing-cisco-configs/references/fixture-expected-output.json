@@ -15,18 +15,6 @@
       "zone_type": "layer3"
     }
   ],
-  "interfaces": [
-    {
-      "name": "GigabitEthernet0/0",
-      "zone": "outside",
-      "ip": "203.0.113.2/24"
-    },
-    {
-      "name": "GigabitEthernet0/1",
-      "zone": "inside",
-      "ip": "10.0.0.1/24"
-    }
-  ],
   "address_objects": [
     {
       "name": "WEB",
@@ -39,6 +27,7 @@
       "value": "10.0.0.0/16"
     }
   ],
+  "address_groups": [],
   "service_objects": [
     {
       "name": "HTTPS-ALT",
@@ -46,6 +35,7 @@
       "port_range": "8443"
     }
   ],
+  "service_groups": [],
   "security_policies": [
     {
       "name": "OUTSIDE-IN-1",
@@ -53,7 +43,7 @@
         "outside"
       ],
       "dst_zones": [
-        "outside"
+        "any"
       ],
       "src_addresses": [
         "any"
@@ -67,6 +57,29 @@
       "action": "allow",
       "log_end": true,
       "_rule_index": 1
+    },
+    {
+      "name": "default-deny",
+      "src_zones": [
+        "any"
+      ],
+      "dst_zones": [
+        "any"
+      ],
+      "src_addresses": [
+        "any"
+      ],
+      "dst_addresses": [
+        "any"
+      ],
+      "applications": [
+        "any"
+      ],
+      "services": [],
+      "action": "deny",
+      "disabled": false,
+      "_rule_index": 2,
+      "_implicit": true
     }
   ],
   "nat_rules": [
@@ -88,6 +101,22 @@
       "_rule_index": 1
     }
   ],
+  "applications": [],
+  "application_groups": [],
+  "schedules": [],
+  "security_profile_objects": [],
+  "interfaces": [
+    {
+      "name": "GigabitEthernet0/0",
+      "zone": "outside",
+      "ip": "203.0.113.2/24"
+    },
+    {
+      "name": "GigabitEthernet0/1",
+      "zone": "inside",
+      "ip": "10.0.0.1/24"
+    }
+  ],
   "static_routes": [
     {
       "destination": "0.0.0.0/0",
@@ -95,11 +124,24 @@
       "interface": "outside"
     }
   ],
+  "virtual_routers": [],
+  "ospf_config": {},
+  "ospf3_config": {},
+  "bgp_config": {},
+  "ha_config": {},
+  "screen_config": [],
+  "vpn_tunnels": [],
+  "syslog_config": [],
+  "dhcp_config": [],
+  "admin_users": [],
+  "system": {},
+  "security_services": {},
+  "routing_contexts": [],
+  "residual_raw": [],
   "metadata": {
-    "vendor": "cisco-asa",
+    "source_vendor": "cisco_asa",
     "warnings": [
       "ACL destination zone may require route/interface resolution beyond access-group binding"
     ]
-  },
-  "residual_raw": []
+  }
 }

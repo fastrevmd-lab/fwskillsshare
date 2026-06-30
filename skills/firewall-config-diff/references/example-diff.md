@@ -25,7 +25,7 @@ are never printed — only a presence/changed flag.
 ## Scenario 1 — Same-vendor drift (Cisco ASA → Cisco ASA)
 
 **Source for A:** the real parsed Cisco fixture (`parsing-cisco-configs`
-`references/fixture-expected-output.json`, `metadata.vendor: cisco-asa`). It contains exactly:
+`references/fixture-expected-output.json`, `metadata.source_vendor: cisco_asa`). It contains exactly:
 zones `outside` / `inside`; interfaces `GigabitEthernet0/0` (203.0.113.2/24) /
 `GigabitEthernet0/1` (10.0.0.1/24); address objects `WEB` (10.0.1.10/32) and `INSIDE-NET`
 (10.0.0.0/16); service object `HTTPS-ALT` (tcp/8443); security policy `OUTSIDE-IN-1`
@@ -61,7 +61,7 @@ Section: interfaces          unchanged 2  added 0  removed 0  changed 0
 Section: static_routes       unchanged 1  added 0  removed 0  changed 0
 Not comparable: none (same vendor — all sections isomorphic)
 
-Parity verdict: DIFFERENCES FOUND (3)  (A=cisco-asa, B=cisco-asa)
+Parity verdict: DIFFERENCES FOUND (3)  (A=cisco_asa, B=cisco_asa)
 ```
 
 The verdict count is 3: one added policy, one changed address object, one changed policy
@@ -152,7 +152,7 @@ Not comparable: vpn_tunnels tunnel-model (ASA crypto-map vs SRX route-based st0 
   classic ASA — threat attachment not-comparable to/from ASA), physical interface names,
   ASA `security-level` trust ordering and implicit high→low permit
 
-Parity verdict: EQUIVALENT  (A=cisco-asa, B=srx)
+Parity verdict: EQUIVALENT  (A=cisco_asa, B=srx)
 ```
 
 The comparable sections — including the VPN **proposal fields** — are equivalent; only the
@@ -182,7 +182,7 @@ self-contained — the conversion skill is named, never path-referenced.)
     {"name": "HTTPS-ALT", "protocol": "tcp", "port_range": "8443"}
   ],
   "security_policies": [
-    {"name": "OUTSIDE-IN-1", "src_zones": ["outside"], "dst_zones": ["outside"],
+    {"name": "OUTSIDE-IN-1", "src_zones": ["outside"], "dst_zones": ["any"],
      "src_addresses": ["any"], "dst_addresses": ["WEB"], "services": ["tcp/443"],
      "action": "allow", "log_end": true}
   ],
@@ -211,7 +211,7 @@ Re-parsed:
     {"vendor_name": "HTTPS-ALT", "canonical": null, "confidence": 0.0, "category": "custom"}
   ],
   "security_policies": [
-    {"name": "010-OUTSIDE-IN-1", "src_zones": ["outside"], "dst_zones": ["outside"],
+    {"name": "010-OUTSIDE-IN-1", "src_zones": ["outside"], "dst_zones": ["any"],
      "src_addresses": ["any"], "dst_addresses": ["WEB"], "applications": ["https"],
      "action": "permit", "log_end": true}
   ],
@@ -255,7 +255,7 @@ Not comparable: physical interface names (GigabitEthernet0/x vs ge-0/0/x.0 — p
   default-deny would block inside→outside until an explicit permit policy is added; this
   intent loss is a fidelity gap, not a schema add/remove)
 
-Parity verdict: DIFFERENCES FOUND (1)  (A=cisco-asa, B=srx)
+Parity verdict: DIFFERENCES FOUND (1)  (A=cisco_asa, B=srx)
 ```
 
 The verdict count is 1: the single comparable difference is the `service_objects` removal

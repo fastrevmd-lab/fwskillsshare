@@ -13,16 +13,6 @@
       ]
     }
   ],
-  "interfaces": [
-    {
-      "name": "port1",
-      "ip": "203.0.113.2/24"
-    },
-    {
-      "name": "port2",
-      "ip": "10.0.0.1/24"
-    }
-  ],
   "address_objects": [
     {
       "name": "WEB",
@@ -30,6 +20,7 @@
       "value": "10.0.1.10/32"
     }
   ],
+  "address_groups": [],
   "service_objects": [
     {
       "name": "HTTPS-ALT",
@@ -37,6 +28,7 @@
       "port_range": "8443"
     }
   ],
+  "service_groups": [],
   "security_policies": [
     {
       "name": "ALLOW-WEB",
@@ -60,13 +52,65 @@
       "log_start": true,
       "log_end": true,
       "_rule_index": 1
+    },
+    {
+      "name": "default-deny",
+      "src_zones": [
+        "any"
+      ],
+      "dst_zones": [
+        "any"
+      ],
+      "src_addresses": [
+        "any"
+      ],
+      "dst_addresses": [
+        "any"
+      ],
+      "applications": [
+        "any"
+      ],
+      "services": [],
+      "action": "deny",
+      "disabled": false,
+      "_rule_index": 2,
+      "_implicit": true
     }
   ],
+  "nat_rules": [],
+  "applications": [],
+  "application_groups": [],
+  "schedules": [],
+  "security_profile_objects": [],
+  "interfaces": [
+    {
+      "name": "port1",
+      "ip": "203.0.113.2/24"
+    },
+    {
+      "name": "port2",
+      "ip": "10.0.0.1/24"
+    }
+  ],
+  "static_routes": [],
+  "virtual_routers": [],
+  "ospf_config": {},
+  "ospf3_config": {},
+  "bgp_config": {},
+  "ha_config": {},
+  "screen_config": [],
+  "vpn_tunnels": [],
+  "syslog_config": [],
+  "dhcp_config": [],
+  "admin_users": [],
+  "system": {},
+  "security_services": {},
+  "routing_contexts": [],
+  "residual_raw": [],
   "metadata": {
-    "vendor": "fortigate",
+    "source_vendor": "fortigate",
     "warnings": [
       "Interfaces referenced directly by policy are represented as auto-zones"
     ]
-  },
-  "residual_raw": []
+  }
 }
