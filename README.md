@@ -43,6 +43,20 @@ Original skill/playbook text in this repository is released under the MIT Licens
 
 Some `references/` files contain source-derived notes or extracts from Juniper, Cisco, Fortinet, Palo Alto Networks, community posts, blogs, support portals, or other third-party material. Those excerpts are included for local operational context, attribution, and verification. Upstream source material remains subject to its original owners' terms. Before redistributing, bundling commercially, or publishing a derivative catalog, review the upstream licenses/terms and replace long excerpts with citations or concise notes where required.
 
+## Quality and Review
+
+All **20 / 20 skills** have passed an independent technical review (2026-06-30) covering schema/field accuracy, vendor command/syntax correctness (Cisco ASA/FTD, FortiGate, PAN-OS, Junos SRX), standards/control-ID accuracy for the compliance playbooks, and secret hygiene. Findings were remediated and the four `parsing-*` skills share one byte-identical intermediate schema (verified by `scripts/check-shared-schema.py`).
+
+| Family | Skills | Reviewed |
+|--------|-------:|:--------:|
+| Config parsers | 4 | 4 / 4 |
+| SRX operational playbooks | 7 | 7 / 7 |
+| NGFW compliance playbooks | 6 | 6 / 6 |
+| Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
+| **Total** | **20** | **20 / 20** |
+
+These are research/operational and assessment-support skills, not certified products: review their output against current vendor documentation, live device behavior, and (for compliance work) a qualified assessor before relying on it.
+
 ## Installation
 
 ### Quick Install (all skills)
