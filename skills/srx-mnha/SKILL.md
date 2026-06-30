@@ -184,7 +184,8 @@ Use SRG1+ for:
 Common SRG1+ attributes:
 
 ```junos
-set chassis high-availability services-redundancy-group <SRG> deployment-type hybrid
+set chassis high-availability services-redundancy-group <SRG> deployment-type <routing|hybrid|switching>
+# deployment-type: routed/L3 = routing; hybrid = hybrid; default-gateway/L2 = switching
 set chassis high-availability services-redundancy-group <SRG> peer-id <PEER_ID>
 set chassis high-availability services-redundancy-group <SRG> activeness-priority <PRIORITY>
 ```
@@ -343,7 +344,8 @@ Intra-zone IKE/ESP policy pattern:
 set security policies from-zone <EXT_ZONE> to-zone <EXT_ZONE> policy ALLOW-IKE-ESP match source-address <REMOTE_PEER>
 set security policies from-zone <EXT_ZONE> to-zone <EXT_ZONE> policy ALLOW-IKE-ESP match destination-address <FLOATING_VPN_IP>
 set security policies from-zone <EXT_ZONE> to-zone <EXT_ZONE> policy ALLOW-IKE-ESP match application junos-ike
-set security policies from-zone <EXT_ZONE> to-zone <EXT_ZONE> policy ALLOW-IKE-ESP match application ESP
+set security policies from-zone <EXT_ZONE> to-zone <EXT_ZONE> policy ALLOW-IKE-ESP match application <ESP_APPLICATION>
+# define <ESP_APPLICATION> as a custom application for ESP (IP protocol 50), or use a release-validated predefined app; bare "ESP" is not a Junos built-in
 set security policies from-zone <EXT_ZONE> to-zone <EXT_ZONE> policy ALLOW-IKE-ESP then permit
 ```
 
