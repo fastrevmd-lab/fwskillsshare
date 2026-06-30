@@ -13,7 +13,7 @@ Collect:
 - network diagrams showing CUI, non-CUI, public/DMZ, cloud, wireless, management, logging, backup, remote-access, and vendor/customer networks;
 - firewall/NSC inventory, including physical, virtual, cloud-native, host-based, VPN, ZTNA/SASE, IDS/IPS, WAF/WAAP, microsegmentation, and firewall managers;
 - external connection inventory: customers, primes, subcontractors, vendors, cloud services, MSP/MSSP/SOC, remote users, support paths, file exchanges, APIs, and email/file transfer paths;
-- system security protection assets and CUI security protection assets that provide boundary, identity, logging, monitoring, and management functions.
+- Security Protection Assets that provide boundary, identity, logging, monitoring, and management functions; note also Contractor Risk Managed Assets (CRMA), Specialized Assets, and Out-of-Scope Assets as defined by the CMMC Level 2 scoping guidance.
 
 Questions to answer:
 

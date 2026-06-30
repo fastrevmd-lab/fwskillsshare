@@ -31,7 +31,7 @@ Use this table as a first-pass mapping for CMMC Level 2 / NIST SP 800-171 Rev. 2
 | 3.4.3 Change tracking | Track and approve firewall rule/config changes | Change tickets, diffs, approvals, emergency change records |
 | 3.4.6 Least functionality | Disable unnecessary firewall services and broad rules | Management services, insecure protocol removal, service allowlists |
 | 3.4.7 Restrict nonessential ports/protocols | Block unnecessary ports and protocols to CUI systems | Rule review evidence, app/service inventory, deny policy |
-| 3.4.8 Deny by exception | Default-deny approach for traffic not explicitly permitted | Final deny rules, implicit deny documentation, deny logs |
+| 3.13.6 Deny by default | Deny network traffic by default; allow only by explicit exception | Final deny rules, implicit-deny documentation, deny logs |
 | 3.5.3 Multifactor authentication | Support MFA on remote/admin access paths where applicable | VPN/admin MFA config, IdP policy, authentication logs |
 | 3.5.4 Replay-resistant authentication | Use secure admin/VPN authentication mechanisms | Certificate/SSH/TLS/IPsec details, disabled weak auth |
 | 3.6.1 Incident response capability | Firewall events feed incident identification and containment | IR runbooks, alert mappings, sample investigations |
@@ -44,10 +44,9 @@ Use this table as a first-pass mapping for CMMC Level 2 / NIST SP 800-171 Rev. 2
 | 3.13.3 Separate user/functionality | Separate user functions from system management functions | Management network, jump hosts, admin policy separation |
 | 3.13.5 Public-access separation | Keep public-access systems separate from internal systems | DMZ, NAT, reverse proxy/WAF, no direct CUI database exposure |
 | 3.13.8 Transmission confidentiality | Protect CUI in transit with cryptography where required | VPN/TLS/IPsec/SSH evidence, cipher/protocol inventory |
-| 3.13.11 CUI encryption at rest/in transit adjunct | Firewall supports in-transit enforcement; not storage encryption | Rules requiring secure protocols, blocked plaintext alternatives |
-| 3.13.12 Collaborative/mobile code restrictions | Control network paths for risky content/services | Egress filtering, URL/app controls, sandbox/threat profiles |
-| 3.13.13 Mobile code execution | Monitor/block unauthorized mobile code channels where relevant | App control, URL filtering, threat prevention logs |
-| 3.13.16 CUI at external systems | Control CUI transmissions to external systems | Partner VPNs, egress allowlists, cloud/private link paths |
+| 3.13.11 FIPS-validated cryptography | When the firewall uses cryptography (VPN/TLS/IPsec) to protect CUI confidentiality, it must be FIPS-validated | FIPS mode enabled, validated module/cert, approved cipher/algorithm config |
+| 3.13.13 Mobile code | Control/monitor risky mobile code and content paths | Egress filtering, URL/app controls, sandbox/threat-prevention profiles |
+| 3.13.16 CUI at rest | Confidentiality of stored CUI; the firewall provides only indirect support (segmentation/access restriction), not storage encryption | Indirect: CUI-enclave segmentation + access-restriction evidence |
 | 3.14.3 Security alerts/advisories | Use firewall/IPS/vendor alerts in vulnerability response | Firmware/advisory tracking, signature updates, emergency changes |
 | 3.14.6 Monitor communications | Monitor inbound/outbound traffic for attacks and indicators | IDS/IPS/threat logs, SIEM alerts, detection tuning |
 | 3.14.7 Identify unauthorized use | Detect unauthorized access or anomalous CUI network use | Deny events, impossible travel/VPN anomalies, egress anomalies |
