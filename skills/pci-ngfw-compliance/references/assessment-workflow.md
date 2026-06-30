@@ -198,7 +198,7 @@ Ask for these artifacts before claiming alignment:
 - [ ] PCI markers in supported policy, NAT, zone, object, tag, and profile description/comment fields, plus an explanation for any platform where markers cannot be embedded
 - [ ] last six-month firewall review evidence and remediation output
 - [ ] change tickets for recent firewall/network changes
-- [ ] admin access list, roles, MFA/encryption evidence, and authentication source
+- [ ] admin access list and roles, MFA/authentication evidence mapped to Req 8.x (8.2.1 unique IDs, 8.3.1, 8.4.1–8.4.3 MFA, 8.5.1), and encrypted admin-protocol evidence mapped to Req 2.2.7.
 - [ ] syslog/SIEM forwarding configuration and sample logs
 - [ ] daily log review or alert workflow evidence
 - [ ] IDS/IPS profile placement, update status, and alert examples

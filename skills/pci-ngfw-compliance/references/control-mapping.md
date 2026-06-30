@@ -27,6 +27,16 @@ Use this table as the first-pass mapping. Always verify exact text against the c
 | 2.2.7 Admin encryption | Non-console admin access encrypted using strong cryptography | SSH/HTTPS config, disabled Telnet/HTTP, cipher standards |
 | 4.2.1 PAN over public networks | Strong cryptography/security protocols protect PAN in transit | TLS/IPsec configs, certificate/cipher reviews, weak protocol removal |
 | 6.4.2 Public web app protection | Automated technical solution in front of public-facing web apps to detect/prevent web attacks | WAF/WAAP/NGFW app protection config, logs, update evidence |
+| 8.2.1 Unique IDs | No shared admin accounts on the firewall or management system; every administrator has a unique, individual account | Admin account list showing no shared/generic accounts; per-admin account evidence |
+| 8.2.4 Account lifecycle | Admin account additions, changes, and removals processed through formal change control | Change tickets for account provisioning/deprovisioning; account audit records |
+| 8.2.5 Terminated users | Admin and VPN access revoked promptly on termination or role change | Offboarding checklist, account-deletion evidence tied to HR separation dates |
+| 8.2.6 Inactive accounts | Admin accounts not used within 90 days disabled or removed | Account last-login report; evidence of 90-day inactive-account review |
+| 8.2.7 Third-party/vendor remote access | Third-party and vendor remote access enabled only when needed, monitored during use, and disabled when complete | VPN/jump-host policies; session monitoring/recording evidence; access-enable/disable logs |
+| 8.3.1 Authentication factors | Strong authentication credentials required for all firewall and manager administrative access | Authentication policy config; password/key complexity settings; AAA/RADIUS/TACACS+ config |
+| 8.4.1 MFA — non-console admin | MFA required for all non-console administrative access to the firewall and CDE network security controls | MFA config on management platforms (Panorama, FortiManager, etc.); RADIUS/TACACS+ MFA integration evidence |
+| 8.4.2 MFA — all CDE access | MFA required for all access into the CDE | CDE access path diagrams; MFA enforcement evidence for all CDE entry paths |
+| 8.4.3 MFA — remote/VPN access | MFA required for all remote access originating from outside the entity's network into the CDE, including VPN | VPN gateway MFA config; authentication logs showing MFA enforcement for remote sessions |
+| 8.5.1 MFA system protections | MFA implementation is not bypassable, is replay-resistant, and is protected against MFA fatigue/push-bombing attacks | MFA system config review; evidence of replay-resistance and anti-bypass controls |
 | 10.2.x Audit logs | Logs enabled and capture required security events | Syslog/SIEM forwarding, log categories, sample events |
 | 10.3.x Log protection | Logs protected from unauthorized modification and disclosure | SIEM RBAC, immutable storage, retention config |
 | 10.4.x Daily review | Relevant security logs reviewed at least daily or via automated mechanisms | SIEM use cases, alert workflow, daily review evidence |
