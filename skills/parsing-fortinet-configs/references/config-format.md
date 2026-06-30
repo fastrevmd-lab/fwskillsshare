@@ -110,17 +110,29 @@ config firewall service custom
         set protocol TCP/UDP/SCTP
         set tcp-portrange 8080-8090
         set udp-portrange 9000-9010
+        set sctp-portrange 3868
     next
     edit "custom-icmp"
         set protocol ICMP
         set icmptype 8
         set icmpcode 0
     next
+    edit "gre-proto"
+        set protocol IP
+        set protocol-number 47
+    next
 end
 ```
 
 Port range format: `<dst-port>` or `<dst-port-range>` or `<dst-port>:<src-port>`
 Examples: `443`, `8080-8090`, `443:1024-65535`
+
+A single custom service may set any combination of `tcp-portrange`, `udp-portrange`, and
+`sctp-portrange`. Split it into separate TCP, UDP, and/or SCTP service objects accordingly.
+
+When `set protocol IP` carries a `set protocol-number <n>` (e.g. GRE=47, ESP=50), preserve that
+IP protocol number rather than flattening to "any"; "any" is only correct when it means all IP
+protocols.
 
 ## Firewall Policy
 
@@ -269,17 +281,20 @@ Modes: `standalone`, `a-p` (active-passive), `a-a` (active-active)
 
 ## Multi-VDOM
 
-```
-config vdom
-edit root
-...
-end
+Real FortiOS uses a SINGLE `config vdom` block enumerating each VDOM with `edit <vdom> ... next`,
+closed by one `end` — NOT repeated `config vdom ... end` blocks:
 
+```
 config vdom
-edit VDOM-Customer1
-...
+    edit root
+    next
+    edit VDOM-Customer1
+    next
 end
 ```
+
+Per-VDOM object configuration then appears under `config vdom` / `edit <vdom>` with the section
+configs nested inside, each entry closed by `next` and the whole block by a single `end`.
 
 Each VDOM is an independent virtual firewall with its own zones, policies, and routing.
 

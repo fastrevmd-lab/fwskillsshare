@@ -105,8 +105,9 @@ When individual profiles are set directly (not via group):
 | emailfilter-profile | (email filtering — no direct map) |
 | dlp-profile | dlp |
 
-Profiles without a direct intermediate mapping should be preserved in a vendor-specific
-`_fortigate` property for reference.
+Profiles without a direct intermediate mapping should be preserved in `residual_raw` or noted in
+`metadata.warnings` for reference. Do not invent a vendor-specific top-level property for them —
+the schema has no such field.
 
 ## Logging Interpretation
 
@@ -146,10 +147,13 @@ When name is empty, use the policy ID as the name: `"Policy-1"`, `"Policy-2"`, e
 
 ## Intrazone Policy
 
-FortiGate zones have `set intrazone allow|deny`:
-- If `allow` → append implicit intra-zone allow rule for that zone
-- If `deny` (default) → append implicit intra-zone deny rule
-- This differs from PAN-OS where intra-zone is always allowed by default
+Only model intrazone behavior for EXPLICIT `config system zone` entries that carry
+`set intrazone deny|allow`:
+- Explicit `set intrazone allow` → append implicit intra-zone allow rule for that zone
+- Explicit `set intrazone deny` → append implicit intra-zone deny rule for that zone
+- Do NOT fabricate intra-zone allow/deny policies for raw interface auto-zones (interfaces used
+  directly in policies but never declared in `config system zone`) — they have no intrazone setting.
+- This differs from PAN-OS where intra-zone is always allowed by default.
 
 ## Common Warnings
 

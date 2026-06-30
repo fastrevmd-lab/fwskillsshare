@@ -131,7 +131,7 @@ Types — detect from `set type` or infer from fields:
 - `set type iprange` + `set start-ip` / `set end-ip` → type: "range", value: "start-end"
 - `set type fqdn` + `set fqdn <domain>` → type: "fqdn"
 - `set type geography` + `set country <code>` → type: "geo" (warn: limited cross-platform support)
-- `set type wildcard` + `set wildcard <ip> <mask>` → type: "network" (convert from wildcard with info warning)
+- `set type wildcard` + `set wildcard <ip> <mask>` → type: "wildcard" (preserve the `<ip> <mask>` wildcard value; "network" is NOT a valid schema type) with info warning
 - `set type wildcard-fqdn` + `set wildcard-fqdn <pattern>` → type: "fqdn" (convert from wildcard-fqdn with info warning)
 
 Also extract: `set comment`, `set associated-interface`.
@@ -150,12 +150,12 @@ Extract: `set member <list>` (space-separated quoted names)
 ### 4. Service Objects
 Path: `config firewall service custom` → `edit <name>`
 Extract from:
-- `set protocol TCP/UDP/SCTP` + `set tcp-portrange <range>` / `set udp-portrange <range>`
+- `set protocol TCP/UDP/SCTP` + `set tcp-portrange <range>` / `set udp-portrange <range>` / `set sctp-portrange <range>`
 - `set protocol ICMP` + `set icmptype` / `set icmpcode`
-- `set protocol IP` → protocol: "any" (matches any IP protocol)
+- `set protocol IP` + `set protocol-number <n>` → preserve the IP protocol number `<n>` (e.g. GRE=47, ESP=50) as the service object's protocol (the numeric value, or via a warning). Only emit protocol: "any" when `set protocol IP` genuinely means all IP protocols (no `protocol-number`, or `protocol-number 0`).
 - `set protocol ICMP6` → protocol: "icmpv6"
 - Port range format: `80` or `80-443` or `80:1024-65535` (dst:src)
-- Note: A single service can have BOTH `tcp-portrange` and `udp-portrange` set simultaneously. Split into two service objects, one per protocol.
+- Note: A single custom service can set ANY combination of `tcp-portrange`, `udp-portrange`, and `sctp-portrange` simultaneously. Split into separate service objects — one TCP, one UDP, and/or one SCTP — according to which ranges are present.
 
 ### 5. Service Groups
 Path: `config firewall service group` → `edit <name>`
@@ -179,7 +179,12 @@ For each policy extract:
 - **description** — `set comments <value>`
 - **schedule** — `set schedule <value>`
 - **source_users** — `set groups <list>` (FSSO groups)
-- **nat** — `set nat enable` (source NAT toggle on the policy)
+
+**Policy NAT (do NOT emit a policy `nat` field — the policy schema has no `nat` field):**
+FortiGate per-policy source NAT (`set nat enable`, optionally with `set ippool enable` + `set poolname <pool>`) must be translated into a `nat_rules[]` source-NAT entry, NOT a flag on the policy:
+- `set nat enable` alone → source-NAT (interface/egress overload) on the policy's `dstintf`, scoped to the policy's `srcaddr`/`dstaddr`.
+- `set nat enable` + `set ippool enable` + `set poolname <pool>` → source-NAT using the named IP pool `<pool>` (cross-reference `config firewall ippool`).
+- If the source-NAT intent cannot be resolved to a concrete `nat_rules[]` entry, preserve it as a `metadata.warnings` / `residual_raw` note rather than inventing a policy field.
 
 **Default values** when fields are omitted from config:
 - `action` defaults to `accept` (→ "allow")
@@ -190,7 +195,7 @@ For each policy extract:
 - `set av-profile <name>` → antivirus
 - `set webfilter-profile <name>` → URL filtering
 - `set ips-sensor <name>` → IPS/IDP
-- `set application-list <name>` → application control
+- `set application-list <name>` → application control (do NOT emit an `application-list` security-profile key — it is not a schema-supported profile key; signal app-control presence via `security_services.app_id` at device level and/or store the profile reference in `security_profile_objects` / `metadata.warnings`)
 - `set ssl-ssh-profile <name>` → SSL inspection
 - `set dnsfilter-profile <name>` → DNS filtering
 - `set emailfilter-profile <name>` → email filtering
@@ -202,7 +207,15 @@ For each policy extract:
   Extract: `set startip`, `set endip`, `set type` (overload, one-to-one, fixed-port-range)
 
 **Central SNAT:** `config firewall central-snat-map` → `edit <id>`
-  Extract: src/dst interfaces, src/dst addresses, NAT IP pool
+  Extract the full FortiOS central-SNAT field set so real rules are not missed:
+  - `set srcintf <list>` — source interface(s)
+  - `set dstintf <list>` — destination/egress interface(s)
+  - `set orig-addr <list>` — original (pre-NAT) source addresses
+  - `set dst-addr <list>` — destination addresses the rule matches
+  - `set nat enable|disable` — whether this entry performs NAT (a disabled entry = no-NAT exemption; preserve it)
+  - `set nat-ippool <list>` (also `set natippool` variant) — translated source pool; absent → egress-interface overload
+  - `set protocol <n>` and `set orig-port` / `set nat-port` where present — protocol/port scoping
+  Map to a `nat_rules[]` source-NAT entry (or a no-NAT exemption when `nat disable`).
 
 **Destination NAT (VIPs):** `config firewall vip` → `edit <name>`
   Extract: `set extip` (original dest), `set mappedip` (translated dest),
@@ -259,9 +272,16 @@ FortiOS application IDs or names from the application control database.
 | `Netflix` | `netflix` | streaming |
 
 **FortiOS compound proposal parsing for VPN:**
-FortiOS encodes IKE proposals as compound strings: `aes256-sha256` → split on `-` boundary to get
-encryption (`aes256` → canonical `aes-256`) and integrity (`sha256`). Multiple proposals are
-space-separated: `aes256-sha256 aes128-sha1`.
+FortiOS encodes IKE/IPsec proposals as compound strings. Do NOT assume every proposal is a simple
+`encryption-integrity` pair — parse encryption / integrity / prf separately:
+- **Simple enc-integrity:** `aes256-sha256` → encryption (`aes256` → canonical `aes-256`) + integrity (`sha256`).
+- **AEAD GCM (no separate integrity):** `aes256gcm`, `aes128gcm`, `chacha20poly1305` carry their own
+  authentication — integrity is N/A. Phase2 GCM is the bare token (e.g. `aes256gcm`, no integrity suffix).
+- **IKEv2 phase1 PRF suffix (phase1-only):** `aes256gcm-prfsha384` → encryption `aes256gcm`, prf `sha384`,
+  no separate integrity. The `prf*` suffix appears only on phase1 proposals, never phase2.
+- **null:** `null` encryption (no confidentiality) and `null` integrity also exist — flag as weak.
+Multiple proposals are space-separated: `aes256-sha256 aes128-sha1 aes256gcm`. Tokenize each on `-`,
+then classify each segment as encryption, integrity, or prf rather than assuming a fixed two-part split.
 
 **On policy output:** When `set application` values are resolved, populate the policy's `apps` array
 with `{ vendor_name: "HTTPS", canonical: "https", confidence: 1.0, category: "web" }`.
@@ -269,8 +289,10 @@ The `services` array keeps any `set service` matches separately.
 
 **Application control list profiles** (`config application list`) define grouped app-control
 policies. These do not map 1:1 to application groups — they are UTM profiles that filter
-applications by category, risk, or specific app ID. Extract the profile name for
-`security_profiles.application-list` but do not try to decompose into individual apps.
+applications by category, risk, or specific app ID. The schema has no `application-list`
+profile key — represent app-control presence via `security_services.app_id` (device-level)
+and store the profile reference in `security_profile_objects` and/or `metadata.warnings`.
+Do not try to decompose the list into individual apps.
 
 **Unresolvable apps:** FortiOS numeric app IDs without a known name mapping → set `confidence: 0.0`,
 preserve the ID as `vendor_name`, and warn.
@@ -324,7 +346,7 @@ Parse full profile objects for reference:
 - **Syslog:** `config log syslogd setting`
 - **DHCP Server:** `config system dhcp server` — extract top-level fields (`set default-gateway`, `set netmask`, `set interface`, `set domain`, `set lease-time`, `set dns-server1/dns-server2`) plus nested `config ip-range` (start-ip/end-ip) and `config reserved-address` (mac, ip, description). Derive network CIDR from gateway + netmask.
 - **VPN IPsec:**
-  - `config vpn ipsec phase1-interface`: IKE version, remote-gw, proposal (compound strings like `aes256-sha256` → split to encryption + integrity), DH group, key lifetime, PSK, certificate auth detection
+  - `config vpn ipsec phase1-interface`: IKE version, remote-gw, proposal (compound strings — parse enc/integrity/prf separately; GCM tokens have no integrity, `prf*` suffix is phase1-only — see "FortiOS compound proposal parsing"), DH group, key lifetime, PSK, certificate auth detection
   - `config vpn ipsec phase2-interface`: phase1name reference, proposal, PFS, DH group, key lifetime
   - Phase1 name auto-creates a tunnel interface of the same name
   - Resolve tunnel IP from matching interface, associate static routes through tunnel interfaces
@@ -343,8 +365,9 @@ Each interface has `set vdom <name>`. Parse per-VDOM, tag items, merge.
 
 ### 16. Implicit Rules
 After parsing all explicit policies, append:
-- Per-zone **Intra-zone** rules (check zone config: `set intrazone allow|deny`)
-  - Default is deny unless explicitly set to allow
+- Per-zone **Intra-zone** rules ONLY for explicit `config system zone` entries carrying
+  `set intrazone deny|allow`. Do NOT fabricate intra-zone rules for raw interface auto-zones
+  (interfaces never declared in `config system zone`).
 - **Implicit: Default Deny** — action: "deny", all any, `_implicit: true`
 
 ## Output Format
