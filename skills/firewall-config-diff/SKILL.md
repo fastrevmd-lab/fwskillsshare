@@ -51,23 +51,33 @@ A and B may be the same vendor (drift, HA-pair, pre/post-change) or different ve
 ## Semantic Identity
 
 ```
-Items pair across A and B by MEANING, not name or order:
+Items pair across A and B by MEANING, not order. Identity is value/tuple-based by default;
+a stable name is a valid anchor only in the same-vendor case (see the convention below):
 - address objects: by value (e.g. 10.0.1.10/32), not object name.
-  Nuance by mode: for SAME-vendor diffs (drift), when object names are stable, anchor pairs by name and report a value change as `changed`; for CROSS-vendor diffs, pair strictly by value (names differ), so a value change is removed + added.
 - service objects: by protocol + port(s). applications: by canonical app name.
 - address/service groups: by their expanded member set.
 - security policies: by the tuple (src_addresses, dst_addresses, service/app, action, src_zones, dst_zones), addresses compared by value.
 - nat_rules: by (match addresses/zones + translation).
 - interfaces: by name/unit + address. static routes: by prefix + next-hop. OSPF/BGP: by area/AS + neighbor.
-- system / admin_users / dhcp / ha / screens / schedules / security_services: by their natural key (name or the field identity).
+- system / admin_users / dhcp_config / ha_config / screen_config / schedules / security_services: by their natural key (name or the field identity).
 A matched pair is `unchanged` (all attributes equal) or `changed` (same identity, ≥1 differing attribute — e.g. logging, profile, description). Unmatched in A only = `removed`; in B only = `added`.
 Security-policy ORDER differences are reported separately (order affects shadowing) and do NOT count as add/remove.
+
+Name-anchoring convention (resolves how value changes are reported):
+- CROSS-vendor → identity is strictly value/tuple-based (names differ across platforms), so a
+  value change is a `removed` + `added` pair.
+- SAME-vendor drift → when object/policy NAMES are stable you MAY anchor pairs by name and
+  report the value/attribute delta as `changed` (applies to address objects, service objects,
+  address/service groups, AND security policies). A policy whose referenced object value
+  shifts stays paired by name; the shift is noted on the `changed` pair, not as add+remove.
+Identity is never anchored by name ALONE — but a stable name is a legitimate anchor for
+same-vendor drift.
 ```
 
 ## Diff Workflow
 
 1. **Normalize both sides to schema.** Confirm A and B are each the intermediate schema (parse any raw side first), and record each side's source vendor.
-2. **Pair items per section.** For every schema section, pair items between A and B by their semantic identity from the rules above — by value, member set, or match-and-action tuple, never by name or position.
+2. **Pair items per section.** For every schema section, pair items between A and B by their semantic identity from the rules above — by value, member set, or match-and-action tuple. This is the cross-vendor default; for same-vendor drift a stable name is a valid anchor (see the Name-anchoring convention). Never pair by position.
 3. **Classify each pairing.** Mark each pair `unchanged` (all attributes equal) or `changed` (same identity, differing attributes); items unmatched in A are `removed`, in B are `added`. Note `security_policies` rule-order differences separately, since order affects shadowing — a reorder is not an add/remove.
 4. **Normalize cross-vendor constructs.** When A and B are different vendors, normalize the constructs that the two vendors model differently using `references/equivalence-rules.md` before pairing, and flag any feature with no equivalent on the other side as `not-comparable` — never let a non-isomorphic feature surface as a false diff.
 5. **Emit the report and verdict.** Produce the per-section report and the single parity verdict in the templates below, and list everything that could not be compared.
@@ -75,13 +85,18 @@ Security-policy ORDER differences are reported separately (order affects shadowi
 ## Output & Verdict
 
 ```text
-Parity verdict: <EQUIVALENT | DIFFERENCES FOUND (<n>)>  (A=<vendor>, B=<vendor>)
 Section: <name>   unchanged <n>  added <n>  removed <n>  changed <n>[  | order: <n> reordered]
   + [B] <added item — semantic summary>
   - [A] <removed item — semantic summary>
   ~ [A→B] <identity>: <attribute change, e.g. logging off → on>
 Not comparable: <sections/features with no cross-vendor equivalent>
+Parity verdict: <EQUIVALENT | DIFFERENCES FOUND (<n>)>  (A=<vendor>, B=<vendor>)
 ```
+
+The per-section report comes first; the single `Parity verdict:` line is always last (the
+worked examples follow this order). `<n>` in the verdict equals the total
+added + removed + changed across all sections (comparable items only — `not-comparable`
+entries are listed but never counted).
 
 Framings: **drift** (A=old, B=new → what changed) and **parity** (A vs B → equivalent?) — same mechanism. Never claim more than the schema supports; always list what could not be compared.
 
@@ -96,7 +111,7 @@ Framings: **drift** (A=old, B=new → what changed) and **parity** (A vs B → e
 - Treating a rename or a reorder as add+remove — match by semantic identity, and report order separately.
 - Emitting false diffs on cross-vendor non-isomorphic features — flag them `not-comparable` instead.
 - Re-implementing parsing instead of delegating to the matching `parsing-*` skill.
-- Comparing object NAMES instead of VALUES — two configs can use different names for the same subnet.
+- Comparing object NAMES instead of VALUES across vendors — two configs can use different names for the same subnet (for same-vendor drift a stable name is a valid anchor; the value/attribute delta is then a `changed`).
 - Forgetting that NAT can change the effective meaning of traffic when reasoning about policy equivalence.
 - Path-referencing another skill's files in the round-trip example — keep this skill self-contained with inline snippets.
 

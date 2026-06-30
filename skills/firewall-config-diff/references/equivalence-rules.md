@@ -19,10 +19,18 @@ FortiGate/FortiOS, Cisco ASA/FTD) — do not path-reference another skill.
 
 General rules that apply to every section:
 
-- **Pair by meaning, never by name or position.** A rename, a reorder, or a different
-  vendor's syntax is not a difference.
+- **Pair by meaning, never by position.** A rename, a reorder, or a different vendor's syntax
+  is not a difference. Identity is value/tuple-based by default; a stable name is a valid
+  anchor only for same-vendor drift (next bullet).
+- **Same-vendor drift exception (name-anchoring).** When A and B are the SAME vendor and the
+  object/policy NAMES are stable, you MAY anchor pairs by name and report the value/attribute
+  delta as `changed` (applies to address objects, service objects, address/service groups,
+  AND security policies). The "pair strictly by value, names differ → a value change is
+  removed + added" rule is the CROSS-vendor default. Identity is never anchored by name
+  *alone*, but a stable name is a legitimate anchor for same-vendor drift.
 - **Addresses compare by value, not object name.** `web-srv = 10.0.1.10/32` on A equals an
-  object named `host-A` with value `10.0.1.10/32` on B.
+  object named `host-A` with value `10.0.1.10/32` on B (cross-vendor); for same-vendor drift a
+  same-named object whose value shifts is reported `changed`, not removed + added.
 - **Groups compare by their fully expanded member set** (recursively flatten nested groups),
   order-insensitive.
 - **Internal fields (`_rule_index`, `_implicit`, `_vsys`, `_vdom`, `added_by_fpic`, …) are
@@ -58,6 +66,8 @@ General rules that apply to every section:
   `udp/53`, `tcp/8443`. Not `name` — `custom-https tcp/8443` on A equals `web-alt tcp/8443`
   on B.
 - **Change-attrs:** `protocol`, `port_range`, `source_port`. `description` cosmetic.
+- **SAME-vendor (drift):** when the service name is stable, anchor by name and report a
+  protocol/port change as `changed` (not removed + added).
 
 ### service_groups
 - **Identity:** the **expanded member set** of (protocol+port) services, flattened and
@@ -87,6 +97,10 @@ General rules that apply to every section:
   `schedule`, `disabled` (enabled vs disabled), `tags`, `source_users`, `url_categories`.
 - **Order** is reported separately (a reorder changes shadowing) and is **not** an
   add/remove. `_implicit` default-deny rules are matched implicit-to-implicit.
+- **SAME-vendor (drift):** when the policy name is stable, anchor by name and report
+  attribute deltas as `changed`. If a referenced object's value shifts (e.g. a destination
+  address object is re-pointed), the policy stays paired by name and the effective-value shift
+  is noted on the `changed` pair — not reported as removed + added.
 
 ### nat_rules
 - **Identity:** the **match + translation** —
@@ -99,12 +113,14 @@ General rules that apply to every section:
   `added`/`removed` pair.
 
 ### interfaces
-- **Identity:** the interface **name/unit** plus its primary **address** (`ip`/`ipv6`). For
-  cross-vendor pairing where physical names are not portable, pair by address/role (see Part 2
-  — interface naming is `not-comparable` by name).
-- **Change-attrs:** `ip`, `ipv6`, `zone` binding, `vlan`, `mtu`, `status`, `speed`,
-  `is_mgmt`, `dhcp_client`, `dhcp_relay`, LAG membership (`lag_parent`/`lag_members`),
-  subinterface parent.
+- **Identity:** the interface **name** plus its primary **address** (`ip`/`ipv6`); for a
+  sub-interface use `is_subif` / `parent_interface` to relate it to its parent (there is no
+  separate `unit` field — the unit is part of `name`). For cross-vendor pairing where physical
+  names are not portable, pair by address/role (see Part 2 — interface naming is
+  `not-comparable` by name).
+- **Change-attrs:** `ip`, `ipv6`, `zone` binding, `type`, `is_subif`, `parent_interface`,
+  `vlan`, `mtu`, `status`, `speed`, `is_mgmt`, `dhcp_client`, `dhcp_relay`, LAG membership
+  (`lag_parent`/`lag_members`).
 
 ### static_routes
 - **Identity:** `destination` prefix + `next_hop` (+ `vrf` when present). Not `name`.

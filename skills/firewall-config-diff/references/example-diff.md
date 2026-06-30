@@ -79,13 +79,21 @@ false diff.
 **A — ASA-shaped snippet:**
 
 ```text
+interface GigabitEthernet0/0
+ nameif outside
+ security-level 0
 object network web-srv
  host 10.0.1.10
 access-list OUTSIDE_in extended permit tcp any object web-srv eq https
 access-group OUTSIDE_in in interface outside
+crypto ikev2 policy 1
+ encryption aes-256
+ integrity sha256
+ group 14
+ lifetime seconds 86400
 crypto map OUT_MAP 10 match address VPN_TRAFFIC
 crypto map OUT_MAP 10 set peer 198.51.100.7
-crypto map OUT_MAP 10 set ikev2 ipsec-proposal AES256-SHA
+crypto map OUT_MAP 10 set ikev2 ipsec-proposal AES256-SHA256
 ! pre-shared-key <redacted>            (secret never compared by value)
 ! classic ASA has no NGFW / UTM profile object
 ```
@@ -99,6 +107,11 @@ set security policies global policy ALLOW-WEB match destination-address host-A
 set security policies global policy ALLOW-WEB match application junos-https
 set security policies global policy ALLOW-WEB then permit
 set security policies global policy ALLOW-WEB then permit application-services security-intelligence-policy SECINTEL
+set security ike proposal IKE-PROP encryption-algorithm aes-256-cbc
+set security ike proposal IKE-PROP authentication-algorithm sha-256
+set security ike proposal IKE-PROP dh-group group14
+set security ike proposal IKE-PROP lifetime-seconds 86400
+set security ike policy IKE-POL proposals IKE-PROP
 set security ipsec vpn VPN-SITEB bind-interface st0.0
 set security ipsec vpn VPN-SITEB ike gateway GW-SITEB address 198.51.100.7
 set security ipsec vpn VPN-SITEB ike gateway GW-SITEB ike-policy IKE-POL
@@ -111,31 +124,40 @@ set security ipsec vpn VPN-SITEB ike gateway GW-SITEB ike-policy IKE-POL
   10.0.1.10/32 — different names, equal object.
 - ASA `eq https` (tcp/443) and SRX `junos-https` both normalize to canonical app `https` —
   equal, not a diff.
-- ASA `nameif outside` and the SRX `from-zone/to-zone` derive to the same pseudo-zone pairing
-  for the comparable policy; the ASA `security-level` trust ordering itself is
-  `not-comparable`.
+- ASA derives a pseudo-zone `outside` from `nameif outside` (`security-level 0`); the SRX side
+  uses a `security policies global` rule (zone-agnostic match), so the comparable policy pairs
+  on addresses + app without any zone conflict. The ASA `security-level` trust ordering and
+  its implicit high→low permit have no SRX equivalent and are `not-comparable`.
+- VPN crypto **proposal fields** normalize and compare: ASA `crypto ikev2 policy` (aes-256 /
+  sha256 / DH group14 / lifetime 86400) and SRX `IKE-PROP` (aes-256-cbc / sha-256 / group14 /
+  86400) are **equal**. Only the tunnel **model** differs (see vpn_tunnels below).
 
 ```text
 Section: address_objects     unchanged 1  added 0  removed 0  changed 0
     (10.0.1.10/32 present on both — paired by value, not name)
 Section: security_policies   unchanged 1  added 0  removed 0  changed 0
     (any → 10.0.1.10/32, https, allow — identical tuple after app + zone normalization)
-Section: vpn_tunnels         not-comparable
-    (peer 198.51.100.7 + AES256/SHA proposal fields are normalizable, but the tunnel MODEL
-     differs: ASA policy-based crypto-map vs SRX route-based st0 / proxy-id; secret compared
-     by presence only, never value)
+Section: vpn_tunnels         unchanged 1  added 0  removed 0  changed 0  (proposal fields only)
+    (peer 198.51.100.7 pairs; IKE proposal normalizes EQUAL both sides — enc aes-256,
+     auth sha-256, DH group14, lifetime 86400; psk present on both, compared by presence only.
+     The tunnel MODEL — ASA policy-based crypto-map vs SRX route-based st0 / proxy-id vs
+     traffic-selector — is `not-comparable` and listed below, not a diff.)
 Section: security_services   not-comparable
-    (SRX `permit application-services` SecIntel/IDP/AppFW has no classic-ASA equivalent —
-     coarse "threat inspection attached?" boolean only; A=none, B=present)
-Not comparable: vpn_tunnels (crypto-map vs route-based st0 model), security_services
-  (SRX application-services vs ASA: no UTM on classic ASA), physical interface names,
-  ASA security-level trust ordering
+    (threat-inspection attachment is a coarse present/absent boolean only between NGFW-capable
+     vendors; classic ASA has no UTM/NGFW object, so to/from ASA the attachment and all
+     profile contents are `not-comparable` — SRX `permit application-services` SecIntel/IDP
+     has nothing to pair against on A. Not reported as a missing policy.)
+Not comparable: vpn_tunnels tunnel-model (ASA crypto-map vs SRX route-based st0 / proxy-id vs
+  traffic-selector — proposal fields above DID compare equal), security_services (no UTM on
+  classic ASA — threat attachment not-comparable to/from ASA), physical interface names,
+  ASA `security-level` trust ordering and implicit high→low permit
 
 Parity verdict: EQUIVALENT  (A=cisco-asa, B=srx)
 ```
 
-The comparable sections are equivalent; the non-isomorphic VPN and threat-profile features
-are excluded from add/removed/changed rather than reported as false differences.
+The comparable sections — including the VPN **proposal fields** — are equivalent; only the
+non-isomorphic pieces (the VPN tunnel-model, and threat profiles to/from a classic ASA that
+has no UTM) are excluded from add/removed/changed rather than reported as false differences.
 
 ---
 
@@ -174,7 +196,9 @@ self-contained — the conversion skill is named, never path-referenced.)
 **B — schema from re-parsing the emitted SRX (abridged):** the conversion emits
 `set security address-book global address WEB 10.0.1.10/32`, the policy as
 `junos-https` with `then log session-close`, `HTTPS-ALT` as a **custom application**
-(not a service object), and interfaces remapped to `ge-0/0/0` / `ge-0/0/1`. Re-parsed:
+(not a service object — it re-parses into `applications[]` with `vendor_name: HTTPS-ALT` and
+no canonical key, `confidence: 0.0`), and interfaces remapped to `ge-0/0/0` / `ge-0/0/1`.
+Re-parsed:
 
 ```json
 {
@@ -184,7 +208,7 @@ self-contained — the conversion skill is named, never path-referenced.)
   ],
   "service_objects": [],
   "applications": [
-    {"name": "HTTPS-ALT", "protocol": "tcp", "port_range": "8443"}
+    {"vendor_name": "HTTPS-ALT", "canonical": null, "confidence": 0.0, "category": "custom"}
   ],
   "security_policies": [
     {"name": "010-OUTSIDE-IN-1", "src_zones": ["outside"], "dst_zones": ["outside"],
@@ -216,26 +240,36 @@ Section: zones               unchanged 2  added 0  removed 0  changed 0
     (zone names outside/inside preserved by the conversion — isomorphic)
 Section: service_objects     unchanged 0  added 0  removed 1  changed 0
   - [A] HTTPS-ALT tcp/8443: ASA `object service` re-emitted by the conversion as an SRX
-        custom `application`, so it lands in B's applications section, not service_objects.
-        Recovered by value (tcp/8443) under applications — section-shape fidelity gap, not a
-        true loss of the object.
+        custom `application`, so the service_objects section genuinely loses it — a real
+        section-shape fidelity gap, counted here as the one comparable difference. Its intent
+        is recovered by value (tcp/8443) under B's `applications`, but that B-side custom app
+        has no canonical key (`confidence: 0.0`) and so is `not-comparable`, not a B add.
 Section: interfaces          unchanged 2  added 0  removed 0  changed 0  (paired by address)
-  ~ [A→B] interface @203.0.113.2/24: name GigabitEthernet0/0 → ge-0/0/0.0  (lossy rename —
-        name is not-comparable across platforms; reported as a fidelity note, not a true diff)
-  ~ [A→B] interface @10.0.0.1/24:   name GigabitEthernet0/1 → ge-0/0/1.0  (same)
-Not comparable: physical interface names (GigabitEthernet0/x vs ge-0/0/x — paired by IP);
-  ASA `nameif` + `security-level` semantics (implicit high→low permit has no SRX equivalent —
-  the conversion drops it, so SRX default-deny would block inside→outside until an explicit
-  permit policy is added; this intent loss is a fidelity gap, not a schema add/remove)
+    (both addresses 203.0.113.2/24 and 10.0.0.1/24 pair cleanly; the only delta is the
+     physical name remap GigabitEthernet0/x → ge-0/0/x.0, which is `not-comparable` across
+     platforms — listed below, NOT counted as a changed pair)
+Not comparable: physical interface names (GigabitEthernet0/x vs ge-0/0/x.0 — paired by IP, the
+  name remap is excluded from the diff count); B-side custom application HTTPS-ALT
+  (unresolved, no Cisco canonical equivalent); ASA `nameif` + `security-level` semantics
+  (implicit high→low permit has no SRX equivalent — the conversion drops it, so SRX
+  default-deny would block inside→outside until an explicit permit policy is added; this
+  intent loss is a fidelity gap, not a schema add/remove)
 
-Parity verdict: DIFFERENCES FOUND (3)  (A=cisco-asa, B=srx)
+Parity verdict: DIFFERENCES FOUND (1)  (A=cisco-asa, B=srx)
 ```
 
+The verdict count is 1: the single comparable difference is the `service_objects` removal
+(removed 1). The interface name remap and the B-side custom application are `not-comparable`
+and are listed only on the `Not comparable:` line — excluded from added/removed/changed and
+from the verdict number.
+
 **Fidelity read-out:** the security-relevant content round-trips cleanly — addresses,
-the policy match-and-action tuple, NAT, zones, and routes are all `EQUIVALENT`. The gaps are
-**representational, not behavioral mismatches in the comparable rule set**: (1) the ASA
-`object service` migrates into SRX's custom-application section; (2) interface names are
-platform-bound and remap; (3) the ASA `security-level` implicit-permit semantics have no SRX
-equivalent and are dropped by the conversion — the single biggest fidelity risk, since it
-means an explicit inside→outside permit must be added on SRX. None of these are false diffs:
-each is either recovered by value in another section or flagged `not-comparable`.
+the policy match-and-action tuple, NAT, zones, routes, and the interface addresses are all
+`EQUIVALENT`. The gaps are **representational, not behavioral mismatches in the comparable
+rule set**: (1) the ASA `object service` migrates into SRX's custom-application section, the
+one counted difference (recovered by value, but the section shape is not preserved);
+(2) interface names are platform-bound and remap — `not-comparable`, not a diff; (3) the ASA
+`security-level` implicit-permit semantics have no SRX equivalent and are dropped by the
+conversion — the single biggest fidelity risk, since it means an explicit inside→outside
+permit must be added on SRX. None of (2) or (3) is a false diff: each is recovered by value or
+flagged `not-comparable`.
