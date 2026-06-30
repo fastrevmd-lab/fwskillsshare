@@ -161,6 +161,7 @@ set protocols mpls interface ge-0/0/0.0
 set protocols bgp group mp-bgp type internal
 set protocols bgp group mp-bgp local-address 1.1.1.1
 set protocols bgp group mp-bgp family inet-vpn unicast
+set protocols bgp group mp-bgp family inet6-vpn unicast   # add for IPv6 (VPNv6) L3VPN
 set protocols bgp group mp-bgp neighbor 1.1.1.2
 set routing-options autonomous-system 65500
 ```
@@ -264,7 +265,7 @@ Source NAT example:
 set security nat source pool pool-1 address 10.10.3.10/32
 set security nat source rule-set snat-1 from zone vrf-1
 set security nat source rule-set snat-1 from routing-instance vrf-1
-set security nat source rule-set snat-1 to l3vpn-vrf-group vrf-1
+set security nat source rule-set snat-1 to routing-group vrf-1
 set security nat source rule-set snat-1 rule src-nat-1 match source-address 10.0.3.0/24
 set security nat source rule-set snat-1 rule src-nat-1 then source-nat pool pool-1
 ```
@@ -272,7 +273,7 @@ set security nat source rule-set snat-1 rule src-nat-1 then source-nat pool pool
 Static NAT example pattern:
 
 ```junos
-set security nat static rule-set static-1 from l3vpn-vrf-group vrf-2
+set security nat static rule-set static-1 from routing-group vrf-2
 set security nat static rule-set static-1 rule static-1 match destination-address 10.10.3.10/32
 set security nat static rule-set static-1 rule static-1 then static-nat prefix 10.0.3.10/32
 set security nat static rule-set static-1 rule static-1 then static-nat prefix routing-instance vrf-2

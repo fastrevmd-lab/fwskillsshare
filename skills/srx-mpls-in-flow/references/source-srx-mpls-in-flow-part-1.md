@@ -823,7 +823,7 @@ here
 > request system license add terminal
 [Type ^D at a new line to end input,
 enter blank line between each license key]
-E419777401 aeaqic apaeor 4altdy arwhqb impacr i6bmed
+<REDACTED-LICENSE-KEY-SAMPLE>
 embrgu ydgmbz bqihmu 2slawu u5lonf ygk4sf
 <SNIP>
 If both AppID and IPS (referred to as IDP - Intrusion Detection and Prevention - in Juniper terminology) licenses are deployed, there are two options to download and install the AppID database for application recognition in the context of this article. Either the standalone AppID database can be downloaded and installed:
