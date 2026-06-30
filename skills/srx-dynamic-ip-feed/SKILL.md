@@ -8,11 +8,11 @@ metadata:
   hermes:
     tags: [srx, junos, dynamic-address, feed-server, firewall, security-policy, pki, tls, nginx]
     related_skills: [parsing-srx-configs]
-  source:
-    title: SRX Dynamic IP Objects aka Feed-server
-    author: Karel Hendrych
-    url: https://community.juniper.net/blogs/karel-hendrych/2025/11/30/srx-dynamic-ip-objects-aka-feed-server
-    retrieved: "2026-05-14"
+  sources:
+    - title: SRX Dynamic IP Objects aka Feed-server
+      author: Karel Hendrych
+      url: https://community.juniper.net/blogs/karel-hendrych/2025/11/30/srx-dynamic-ip-objects-aka-feed-server
+      retrieved: "2026-05-14"
 ---
 
 # SRX Dynamic IP Feed Servers
@@ -254,7 +254,7 @@ Create credentials:
 
 ```bash
 apt install apache2-utils
-htpasswd -c -b /etc/nginx/htpasswd srx juniper123
+htpasswd -c -b /etc/nginx/htpasswd srx <feed-basic-auth-password>
 systemctl restart nginx
 ```
 
@@ -268,7 +268,7 @@ Add credentials to the SRX feed server:
 
 ```junos
 set security dynamic-address feed-server debian-2 user-name srx
-set security dynamic-address feed-server debian-2 password juniper123
+set security dynamic-address feed-server debian-2 password <feed-basic-auth-password>
 ```
 
 Use a secure password management workflow for production. Avoid leaving cleartext credentials in tickets, chat, or documentation.
