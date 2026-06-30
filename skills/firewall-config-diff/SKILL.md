@@ -53,6 +53,7 @@ A and B may be the same vendor (drift, HA-pair, pre/post-change) or different ve
 ```
 Items pair across A and B by MEANING, not name or order:
 - address objects: by value (e.g. 10.0.1.10/32), not object name.
+  Nuance by mode: for SAME-vendor diffs (drift), when object names are stable, anchor pairs by name and report a value change as `changed`; for CROSS-vendor diffs, pair strictly by value (names differ), so a value change is removed + added.
 - service objects: by protocol + port(s). applications: by canonical app name.
 - address/service groups: by their expanded member set.
 - security policies: by the tuple (src_addresses, dst_addresses, service/app, action, src_zones, dst_zones), addresses compared by value.

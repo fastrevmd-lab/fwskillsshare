@@ -124,15 +124,14 @@ Section: vpn_tunnels         not-comparable
     (peer 198.51.100.7 + AES256/SHA proposal fields are normalizable, but the tunnel MODEL
      differs: ASA policy-based crypto-map vs SRX route-based st0 / proxy-id; secret compared
      by presence only, never value)
-Section: security-profiles   not-comparable
+Section: security_services   not-comparable
     (SRX `permit application-services` SecIntel/IDP/AppFW has no classic-ASA equivalent —
      coarse "threat inspection attached?" boolean only; A=none, B=present)
-Not comparable: vpn_tunnels (crypto-map vs route-based st0 model), security-profiles
+Not comparable: vpn_tunnels (crypto-map vs route-based st0 model), security_services
   (SRX application-services vs ASA: no UTM on classic ASA), physical interface names,
   ASA security-level trust ordering
 
-Parity verdict: EQUIVALENT on comparable sections (address_objects, security_policies);
-  vpn_tunnels + security-profiles not-comparable  (A=cisco-asa, B=srx)
+Parity verdict: EQUIVALENT  (A=cisco-asa, B=srx)
 ```
 
 The comparable sections are equivalent; the non-isomorphic VPN and threat-profile features
@@ -229,7 +228,7 @@ Not comparable: physical interface names (GigabitEthernet0/x vs ge-0/0/x — pai
   the conversion drops it, so SRX default-deny would block inside→outside until an explicit
   permit policy is added; this intent loss is a fidelity gap, not a schema add/remove)
 
-Parity verdict: DIFFERENCES FOUND (fidelity gaps only)  (A=cisco-asa, B=srx)
+Parity verdict: DIFFERENCES FOUND (3)  (A=cisco-asa, B=srx)
 ```
 
 **Fidelity read-out:** the security-relevant content round-trips cleanly — addresses,
