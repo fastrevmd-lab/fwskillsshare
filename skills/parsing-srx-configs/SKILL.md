@@ -123,7 +123,7 @@ Extract per-interface/unit:
 **Interface type derivation:** `ae*`=lag, `lo*`=loopback, `st0/gr-/ip-/lt-`=tunnel, `fxp0/fxp1/me0/em0/em1`=management.
 **Management interface zone exclusion:** Remove management interfaces (fxp0, me0, em0, etc.) from security zones with a warning.
 **Unit-0 normalization:** When resolving zone membership, normalize `.0` suffixed names (e.g., `ge-0/0/0.0` → `ge-0/0/0`) for matching.
-**Cluster interface exclusion:** Skip chassis-cluster-specific interfaces (`reth*`, `fab*`) with a warning.
+**Cluster interface exclusion:** Skip only true fabric/control interfaces (`fab*`) and management (`fxp*`) from security zones with a warning. `reth*` (redundant Ethernet) and `reth*.<unit>` are normal dataplane interfaces bound to security zones in a chassis cluster — parse them as usable zone interfaces, not as excluded cluster interfaces.
 After all interfaces parsed, back-populate `lag_members` on ae interfaces.
 
 ### 2. Address Objects
@@ -181,7 +181,7 @@ These are L7-aware on SRX and must be resolved to canonical names for cross-vend
 | `junos-pop3` | TCP/110 | `pop3` | email |
 | `junos-ldap` | TCP/389 | `ldap` | auth |
 | `junos-bgp` | TCP/179 | `bgp` | network-mgmt |
-| `junos-ospf` | ANY | `ospf` | network-mgmt |
+| `junos-ospf` | IP-89 | `ospf` | network-mgmt |
 | `junos-sip` | UDP/5060 | `sip` | voip |
 | `junos-h323` | TCP/1720 | `h323` | voip |
 | `junos-ms-rpc` | TCP/135 | `msrpc` | other |
@@ -191,6 +191,7 @@ These are L7-aware on SRX and must be resolved to canonical names for cross-vend
 | `junos-ike` | UDP/500 | `ipsec` | tunnel |
 | `junos-ike-nat-t` | UDP/4500 | `ipsec-nat-t` | tunnel |
 | `junos-pptp` | TCP/1723 | `pptp` | tunnel |
+| `junos-ping` | ICMP echo | `ping` | network-mgmt |
 | `junos-icmp-all` | ICMP | `ping` | network-mgmt |
 | `junos-icmpv6-all` | ICMPv6 | `ping6` | network-mgmt |
 | `junos-nntp` | TCP/119 | `nntp` | other |
@@ -232,7 +233,7 @@ For each policy extract:
 - **src_zones** / **dst_zones** — from the path (or ["any"] for global)
 - **src_addresses** / **dst_addresses** — from `match source-address` / `match destination-address`
 - **applications** — from `match application`
-- **action** — `permit` → "allow", `deny` → "deny", `reject` → "deny" (with info warning: "reject converted to deny — target may not support TCP reset")
+- **action** — `permit` → "allow", `deny` → "deny", `reject` → "reset-both" (send TCP RST; preserves reject semantics. Add info warning if the target platform may not support TCP reset.)
 - **log_start** — true if `then log session-init`
 - **log_end** — true if `then log session-close`
 - **security_profiles** — extract from `then permit application-services`:
@@ -345,6 +346,8 @@ After parsing all explicit policies, append:
 
 Present results in the **intermediate schema** format documented in `references/intermediate-schema.md`.
 
+Note: schema sections not yet populated by this pipeline (e.g., `security_profile_objects`, `routing_contexts`) are emitted empty (`[]`/`{}`); any unhandled source constructs are captured in `residual_raw` rather than dropped.
+
 
 ## Parser Quality Gates
 
@@ -389,7 +392,7 @@ After extraction, run these checks and report findings:
 2. Zone-local address books are valid in older designs; migrate or normalize to global only with a warning.
 3. Logical-systems and routing-instances are separate contexts; preserve them instead of merging names blindly.
 4. Policy matching can depend on NAT order and translated addresses; load `srx-nat` for interpretation.
-5. Management, cluster, reth, fab, and HA interfaces need special handling and should not be naively treated as ordinary security-zone interfaces.
+5. Management (`fxp*`), fabric (`fab*`), and HA control interfaces need special handling and should not be naively treated as ordinary security-zone interfaces. By contrast, `reth*` redundant-Ethernet interfaces ARE ordinary dataplane interfaces in a chassis cluster and must be parsed as zone interfaces — do not exclude them.
 
 ## Verification Checklist
 

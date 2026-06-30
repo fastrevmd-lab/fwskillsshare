@@ -267,7 +267,8 @@ Example mappings:
 | `http` | `junos-http` | `HTTP` | `web-browsing` | `HTTP` |
 | `ssh` | `junos-ssh` | `SSH` | `ssh` | `SSH` |
 | `dns` | `junos-dns-udp` | `DNS` | `dns` | `DNS` |
-| `rdp` | `junos-ms-rpc` | `RDP` | `ms-rdp` | `RDP` |
+| `rdp` | `junos-rdp` | `RDP` | `ms-rdp` | `RDP` |
+| `msrpc` | `junos-ms-rpc` | `MS-RPC` | `msrpc` | `MSRPC` |
 | `smtp` | `junos-smtp` | `SMTP` | `smtp` | `SMTP` |
 | `ntp` | `junos-ntp` | `NTP` | `ntp` | `NTP` |
 | `snmp` | `junos-snmp` | `SNMP` | `snmp` | `SNMP` |
