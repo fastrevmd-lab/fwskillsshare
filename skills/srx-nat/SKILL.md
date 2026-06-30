@@ -404,10 +404,10 @@ set security nat source rule-set LAN_TO_WAN rule LAN_WAN_PNAT_1 then source-nat 
 - intermittent website element failures
 - VPN tunnels failing through NAT with persistent mappings
 
-If persistence is not required, remove it from the specific rule/pool path:
+If persistence is not required, remove it globally (address-persistent lives at `[edit security nat source]`, not under a rule action; pool-level persistence is `pool <name> address-persistent subscriber ...`):
 
 ```text
-delete security nat source rule-set <rule-set-name> rule <rule-name> then source-nat pool <pool-name> address-persistent
+delete security nat source address-persistent
 ```
 
 If failures are related to tunnel/WAN MTU, consider a TCP MSS change after validating path MTU:
@@ -520,7 +520,7 @@ Use traceoptions for short maintenance windows only. Remove or deactivate them a
 - [ ] Specific rules and no-NAT exceptions precede broad catch-all rules.
 - [ ] Static NAT overlap with destination/source NAT is intentional and documented.
 - [ ] Destination NAT/static NAT policy matches the translated destination and post-NAT zone.
-- [ ] Source NAT pools are either routed to SRX or covered by proxy ARP on the correct interface.
+- [ ] Source NAT pools (and static/destination translated addresses) are either routed to SRX or covered by proxy ARP (IPv4) / proxy NDP (IPv6) on the correct interface.
 - [ ] Return path from translated destinations goes back through SRX.
 - [ ] Hairpin flows include inside DNAT, hairpin source NAT, and inside-to-inside policy.
 - [ ] NAT64 static NAT uses `static-nat inet`; NAT64 source NAT matches IPv4 destination.

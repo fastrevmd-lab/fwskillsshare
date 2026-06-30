@@ -31,7 +31,7 @@ When `address-persistent` is enabled:
 If the environment does not require consistent source NAT mappings, remove the `address-persistent` configuration to allow dynamic port assignment.
 
 ```text
-user@host> delete security nat source rule-set <rule-set-name> rule <rule-name> then source-nat pool <pool-name> address-persistent
+user@host> delete security nat source address-persistent   # address-persistent is global at [edit security nat source], not under a rule
 ```
 
 ### Option 2: Reduce TCP MSS to avoid fragmentation
