@@ -28,6 +28,7 @@ metadata:
     - parsing-cisco-configs
     - firewall-best-practices-audit
     - firewall-config-conversion
+    - firewall-config-diff
 ---
 
 # Parsing Palo Alto PAN-OS Configurations

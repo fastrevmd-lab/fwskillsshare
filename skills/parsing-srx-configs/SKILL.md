@@ -28,6 +28,7 @@ metadata:
     - srx-dynamic-ip-feed
     - firewall-best-practices-audit
     - firewall-config-conversion
+    - firewall-config-diff
 ---
 
 # Parsing Juniper SRX Configurations

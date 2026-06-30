@@ -27,6 +27,7 @@ metadata:
     - parsing-cisco-configs
     - firewall-best-practices-audit
     - firewall-config-conversion
+    - firewall-config-diff
 ---
 
 # Parsing Fortinet FortiGate Configurations

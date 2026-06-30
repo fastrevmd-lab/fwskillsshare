@@ -24,6 +24,7 @@ metadata:
     - parsing-fortinet-configs
     - firewall-best-practices-audit
     - firewall-config-conversion
+    - firewall-config-diff
 ---
 
 # Parsing Cisco ASA / FTD Configurations

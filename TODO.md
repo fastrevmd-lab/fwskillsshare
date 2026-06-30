@@ -57,7 +57,7 @@ parsers were built for, plus vendor-operational breadth.
    The marquee use of the shared schema. Pair with a conversion fidelity report
    (what did not translate cleanly / manual follow-ups). High per-event value.
 
-3. [ ] `firewall-config-diff` — Cross-vendor (via schema) or same-vendor snapshot
+3. [x] `firewall-config-diff` — Cross-vendor (via schema) or same-vendor snapshot
    comparison: rule parity, drift, HA-pair consistency, and pre/post-migration
    validation. Small; the validation half of `firewall-config-conversion`.
 

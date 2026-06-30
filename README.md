@@ -6,7 +6,7 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 
 ## Skills Included
 
-**19 skills** across four families — 4 config parsers, 7 Juniper SRX operational playbooks, 6 NGFW compliance assessment playbooks, and 2 vendor-neutral cross-vendor tooling skills (audit + conversion):
+**20 skills** across four families — 4 config parsers, 7 Juniper SRX operational playbooks, 6 NGFW compliance assessment playbooks, and 3 vendor-neutral cross-vendor tooling skills (audit, conversion, and diff):
 
 | Skill | Vendor / Platform | Trigger Keywords |
 |-------|-------------------|------------------|
@@ -23,6 +23,7 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 | [srx-ipsec-hub-spoke](skills/srx-ipsec-hub-spoke/) | Juniper SRX / Junos static P2P IPsec hub-and-spoke | `route-based IPsec`, `hub-and-spoke`, `point-to-point`, `per-spoke tunnel`, `st0`, `full-tunnel`, `backhaul`, `anti-recursion` |
 | [firewall-best-practices-audit](skills/firewall-best-practices-audit/) | Vendor-neutral (Cisco/Palo/FortiGate/SRX via parsers) — v1.1 (adds mgmt/control-plane/auth/security-service checks) | `firewall audit`, `best practices`, `hardening`, `rulebase review`, `shadowed rules`, `any-any`, `least privilege`, `unused objects` |
 | [firewall-config-conversion](skills/firewall-config-conversion/) | Cross-vendor (Cisco/FortiGate/Palo/SRX via parsers) | `convert firewall config`, `migrate`, `ASA to SRX`, `FortiGate to Palo`, `cross-vendor`, `fidelity report` |
+| [firewall-config-diff](skills/firewall-config-diff/) | Cross-vendor (Cisco/FortiGate/Palo/SRX via parsers) | `diff firewall config`, `compare`, `config drift`, `HA-pair`, `parity`, `migration validation`, `round-trip` |
 | [pci-ngfw-compliance](skills/pci-ngfw-compliance/) | PCI DSS / NGFW compliance support | `PCI DSS`, `CDE`, `Requirement 1`, `PCI compliant firewall`, `PCI markers`, `audit evidence` |
 | [hipaa-ngfw-compliance](skills/hipaa-ngfw-compliance/) | HIPAA Security Rule / NGFW compliance support | `HIPAA`, `HIPPA`, `ePHI`, `Security Rule`, `164.312`, `HIPAA markers`, `audit evidence` |
 | [cmmc-nist-800-171-ngfw-compliance](skills/cmmc-nist-800-171-ngfw-compliance/) | CMMC Level 2 / NIST SP 800-171 CUI compliance support | `CMMC`, `NIST 800-171`, `CUI`, `CUI enclave`, `3.13.1`, `CMMC markers`, `SSP evidence` |
@@ -103,6 +104,9 @@ cp -r fwskillsshare/skills/firewall-best-practices-audit ~/.claude/skills/
 
 # Example: install only the cross-vendor firewall config conversion skill
 cp -r fwskillsshare/skills/firewall-config-conversion ~/.claude/skills/
+
+# Example: install only the cross-vendor firewall config diff skill
+cp -r fwskillsshare/skills/firewall-config-diff ~/.claude/skills/
 ```
 
 ### Verify installation
@@ -187,6 +191,11 @@ After copying, your `~/.claude/skills/` directory should look like:
 │       ├── emit-fortinet.md
 │       ├── emit-cisco.md
 │       └── example-conversion.md
+├── firewall-config-diff/
+│   ├── SKILL.md
+│   └── references/
+│       ├── equivalence-rules.md
+│       └── example-diff.md
 ├── pci-ngfw-compliance/
 │   ├── SKILL.md
 │   └── references/
@@ -243,8 +252,9 @@ cp -r fwskillsshare/skills/iso27001-ngfw-compliance ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/soc2-ngfw-compliance ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/firewall-best-practices-audit ~/.hermes/skills/devops/
 cp -r fwskillsshare/skills/firewall-config-conversion ~/.hermes/skills/devops/
+cp -r fwskillsshare/skills/firewall-config-diff ~/.hermes/skills/devops/
 
-hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy|srx-autovpn-full-tunnel|srx-ipsec-hub-spoke|pci-ngfw-compliance|hipaa-ngfw-compliance|cmmc-nist-800-171-ngfw-compliance|cis-controls-ngfw-compliance|iso27001-ngfw-compliance|soc2-ngfw-compliance|firewall-best-practices-audit|firewall-config-conversion'
+hermes skills list | grep -E 'parsing-|srx-dynamic-ip-feed|srx-mpls-in-flow|srx-mnha|srx-nat|srx-policy|srx-autovpn-full-tunnel|srx-ipsec-hub-spoke|pci-ngfw-compliance|hipaa-ngfw-compliance|cmmc-nist-800-171-ngfw-compliance|cis-controls-ngfw-compliance|iso27001-ngfw-compliance|soc2-ngfw-compliance|firewall-best-practices-audit|firewall-config-conversion|firewall-config-diff'
 ```
 
 ## Usage
@@ -833,6 +843,7 @@ rm -rf ~/.claude/skills/iso27001-ngfw-compliance
 rm -rf ~/.claude/skills/soc2-ngfw-compliance
 rm -rf ~/.claude/skills/firewall-best-practices-audit
 rm -rf ~/.claude/skills/firewall-config-conversion
+rm -rf ~/.claude/skills/firewall-config-diff
 
 rm -rf ~/.hermes/skills/devops/pci-ngfw-compliance
 rm -rf ~/.hermes/skills/devops/hipaa-ngfw-compliance
@@ -849,4 +860,5 @@ rm -rf ~/.hermes/skills/devops/srx-autovpn-full-tunnel
 rm -rf ~/.hermes/skills/devops/srx-ipsec-hub-spoke
 rm -rf ~/.hermes/skills/devops/firewall-best-practices-audit
 rm -rf ~/.hermes/skills/devops/firewall-config-conversion
+rm -rf ~/.hermes/skills/devops/firewall-config-diff
 ```
