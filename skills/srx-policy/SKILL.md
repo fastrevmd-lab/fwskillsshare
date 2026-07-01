@@ -1,7 +1,7 @@
 ---
 name: srx-policy
 description: Use when designing, migrating, configuring, auditing, or troubleshooting Juniper SRX security policy on Junos 23.x+ non-Branch SRX platforms. Strongly prefers security policies global for greenfield and cross-vendor migrations; covers global versus zone-to-zone policy structure, address/application objects, AppID/AppFW, NextGen Web Filtering versus Enhanced Web Filtering, SecIntel, ATP integration, logging, policy order, verification, and troubleshooting.
-version: 1.0.0
+version: 1.1.0
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
@@ -186,6 +186,12 @@ Baseline behavior:
 - Policy action is normally `permit`, `deny`, or `reject`; permitted traffic can invoke application services.
 - Security services such as UTM/web-filtering are attached under `then permit application-services ...` because they inspect allowed flows.
 - The default behavior should be explicit deny with logging/counting where operationally useful.
+
+**`insert` + append ordering pitfall.** `insert security policies ... policy X before/after Y` is relative to the **current** policy order at the moment it runs. When new policies are appended and *then* others are `insert`ed, an appended rule can end up **below the default-deny and be silently shadowed**. Real example: `300-CAST-TO-FIRETV` was appended, then `999-DEFAULT-DENY` was `insert`ed `after Allow_set_for_IoT-1`, which placed `300` *after* `999` — shadowing the exact rule being added. A clean `commit check` does not prove correct order. When mixing appended global policies with `insert ... before/after`, always re-verify the final order before commit:
+
+```text
+show configuration security policies global | display set
+```
 
 Policy changes can disrupt existing sessions because the policy database is recompiled and pushed to the forwarding plane. Juniper documents `set security policies lookup-intact-on-commit` as a way to reduce disruption on eligible platforms; check eligibility and memory before enabling it.
 
@@ -400,6 +406,30 @@ show log messages | match -i "secintel|atp|utm|web-filter|threat"
 
 For ATP Appliance integration, confirm the SRX-to-ATP integration workflow in the current ATP Appliance guide and validate that SRX submits data and consumes verdicts/feeds as designed.
 
+## Multicast and Service Discovery (mDNS/SSDP) Across Zones
+
+The most common "why is traffic dropped across VLANs" question on home/IoT and campus SRX deployments is device discovery — Fire TV, Chromecast, AirPlay, Sonos, Plex — not unicast session policy. Here a `permit` policy is **necessary-but-not-sufficient**, and often not the real fix at all. Know the mechanics before promising cross-VLAN casting from a policy change.
+
+Key facts:
+
+- **Link-local discovery is not routable.** mDNS (`224.0.0.251:5353`) and SSDP (`239.255.255.250:1900`) are sent with IP **TTL=1**. A flow-mode SRX will not forward them across an L3 boundary regardless of policy — the packets never cross the zone boundary, so a permit rule for those groups gives a false sense of a fix.
+- **Routable multicast needs multicast routing, not just policy.** Flow-mode SRX does not forward multicast by default. Real multicast forwarding requires `protocols igmp` + `protocols pim` (and/or `forwarding-options`) plus the corresponding security-policy permits. This is rarely what home/IoT discovery actually needs.
+- **Cross-VLAN discovery needs an off-box reflector.** Use an mDNS/SSDP reflector (Avahi, or a controller-based reflector) with reach into both subnets to relay discovery between VLANs. Gotcha: if the **SRX** (not an L2 controller) owns inter-VLAN routing, a controller-based mDNS reflector that only bridges within the controller's L2 domain will not cross the SRX — the reflector must have an interface/reachability in each subnet the SRX routes between.
+
+The correct firewall role:
+
+1. Let the reflector handle **discovery** (mDNS/SSDP).
+2. On the SRX, permit the **post-discovery unicast** control/stream between the controller/source subnet and the device subnet, scoped to a media application set (Cast/AirPlay/DLNA control and streaming ports), not `application any`.
+3. Verify hit counts and mine the default-deny log for media ports to add:
+
+```text
+show security policies hit-count global
+show security match-policies from-zone <SRC> to-zone <DST> source-ip <client> destination-ip <device> protocol tcp destination-port <port>
+show log messages | match -i "RT_FLOW_SESSION_DENY|DEFAULT-DENY"
+```
+
+Do not promise cross-VLAN casting from a `permit` rule alone. The permit enables the unicast stream *after* discovery; without a reflector (or full multicast routing) the devices never discover each other in the first place. For extracting whether a box already runs multicast routing, see `parsing-srx-configs`.
+
 ## Migration Workflow from Another Vendor
 
 1. Parse the source firewall and preserve rule order, zones/interfaces, objects, services, applications, logging, and profiles.
@@ -498,6 +528,7 @@ commit confirmed 10
 | Symptom | Likely Cause | Check | Fix |
 |---|---|---|---|
 | Expected global policy not hit | Rule order, zone mismatch, address/application mismatch, or NAT changed destination | `show security policies hit-count global`, session extensive | Move specific rule up, fix `match from-zone/to-zone`, address, app, or NAT expectations |
+| New permit never matches despite a clean commit | Rule was appended below the default-deny because a later `insert ... before/after` reordered around it | `show configuration security policies global \| display set` | Re-`insert` the permit above the default-deny; re-dump final order before commit |
 | Zone-to-zone policy hit instead of global design | Legacy policies remain active or evaluation expectation is wrong | Full `show configuration security policies` | Consolidate into global policy and remove/disable duplicates after testing |
 | AppFW rule has zero hits | Base policy not permitting flow, AppID package missing, wrong dynamic app | AppID version, AppFW rule-set counters, session policy | Install AppID package, fix base policy, choose correct dynamic app/group |
 | Web filtering attached but no filtering | UTM policy not under `then permit`, license/service unavailable, wrong profile, wrong engine type (`ng-juniper` vs `juniper-enhanced`), or cloud/DNS/routing issue | Web-filtering status/statistics, policy config, license, DNS/routing, logs | Attach UTM policy correctly, verify license/cloud/release, confirm expected NGWF/EWF type, fix profile and reachability |
@@ -534,6 +565,10 @@ commit confirmed 10
 12. **Migrating EWF to NGWF without a window.** Juniper documents the migration as asynchronous and recommends downtime. Preserve policy names during migration because changing policy names can cause commit failure.
 
 13. **Not verifying with live counters.** A clean commit is not proof of correct policy. Check hit counts, sessions, AppFW/UTM counters, and logs.
+
+14. **Trusting `insert` order without re-dumping.** `insert ... before/after` is relative to the current order; mixing appended policies with `insert` can push a new rule below the default deny and silently shadow it. Re-verify with `show configuration security policies global | display set` before commit.
+
+15. **Expecting a `permit` to fix cross-VLAN discovery.** mDNS/SSDP are TTL=1 link-local and not routed by a flow-mode SRX; cross-VLAN casting needs an off-box reflector (or full multicast routing), with the SRX permitting only the post-discovery unicast stream.
 
 ## Verification Checklist
 
