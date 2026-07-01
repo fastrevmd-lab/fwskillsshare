@@ -1,7 +1,7 @@
 ---
 name: srx-mnha
 description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX Multi-Node High Availability (MNHA). Covers chassis-cluster migration concepts, routed/default-gateway/hybrid modes, SRG0/SRG1+ behavior, ICL/ICD links, RTO/session synchronization, eBGP/BFD failover, VIP/signal-route patterns, IPsec/IKED with floating loopbacks, multiple routing-instance caveats, NAT/proxy-ARP risks, and DHCP caveats.
-version: 1.0.0
+version: 1.1.0
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
@@ -93,6 +93,40 @@ Key design translation:
 
 Always verify platform and Junos support in Juniper Pathfinder / Feature Explorer and current Juniper documentation before deployment. MNHA feature support, scale, asymmetric-flow support, multi-node support, and platform support are release-dependent.
 
+## Chassis-Cluster to MNHA Interface Migration
+
+"Use routed node IPs where possible" hides the actual migration mechanic. A chassis-cluster **reth** is a cluster construct with **child links contributed by each node**; on MNHA there is no cluster, so each node's children must collapse into node-local interfaces. This is the biggest and most error-prone step of a cluster→MNHA conversion.
+
+Per-node reth conversion:
+
+- Each node's reth member links become either a **local `ae` bundle** (LACP) **or** one or more **single physical interfaces** on that node. There is no reth on MNHA.
+- **This is a customer/upstream question, not an automatic choice.** The source config does not tell you what the upstream switch expects.
+
+Do not assume LACP survives:
+
+- A source `set interfaces reth0 ... lacp active` (or redundant-ether-options LACP) is a **cluster-reth** construct. It does **not** prove the upstream is a real LAG toward a single node.
+- Before recreating `ae` + LACP on each MNHA node, **confirm the upstream is actually a LAG** to that node. In real migrations the customer may want single physical interfaces per node even though `reth0`/`reth1` carried `lacp active`.
+- Tradeoff to state explicitly: single physical = **no LAG bandwidth aggregation and no local link redundancy**; a per-node `ae` keeps both but requires the upstream to be configured as a LAG to that node.
+
+Sketch — a source `reth1` (two child links per node) becoming a per-node `ae` on each MNHA node:
+
+```junos
+# Source (chassis cluster): reth1 with one child per node
+# set interfaces ge-0/0/4 gigether-options redundant-parent reth1   # node0 child
+# set interfaces ge-7/0/4 gigether-options redundant-parent reth1   # node1 child
+# set interfaces reth1 redundant-ether-options lacp active
+
+# MNHA node0 (standalone) — only if the upstream is a real LAG to node0:
+set interfaces ae1 aggregated-ether-options lacp active
+set interfaces xe-0/0/4 ether-options 802.3ad ae1
+set interfaces ae1 unit 0 family inet address <NODE0_IP>/<PLEN>
+
+# MNHA node0 — single physical instead, if the customer does NOT want a LAG:
+# set interfaces xe-0/0/4 unit 0 family inet address <NODE0_IP>/<PLEN>
+```
+
+Repeat independently on node1 with its own local child interfaces and IP. Each node's interface names, member ports, and addresses are node-specific configuration (see Configuration Synchronization) and are intentionally *not* synchronized.
+
 ## Deployment Modes
 
 ### Routed / L3 MNHA
@@ -132,6 +166,16 @@ Use default-gateway mode when:
 - hosts cannot be changed away from a shared default gateway address
 - migrating from chassis cluster and preserving gateway addressing is important
 - L2 gateway semantics are required on one or more segments
+
+L2-adjacency caveats for `deployment-type switching` / default-gateway mode:
+
+- The VIP rides on the `aeN.unit` (or physical unit) directly — no IRB/bridge-domain is introduced. The gateway is an interface VIP, not a routed SVI.
+- The gateway vMAC **moves** on failover. Adjacent switches must accept that MAC move: check **MAC-move limits**, **Dynamic ARP Inspection (DAI)**, **storm-control**, and **EVPN/MLAG duplicate-MAC protection** — any of these can suppress or block the moved vMAC and silently break failover even though the SRG shows ACTIVE.
+- Use the SRG interface-monitor stanza to tie the segment's uplink to failover:
+  ```junos
+  set chassis high-availability services-redundancy-group <SRG> monitor interface <IFL>
+  ```
+- Chassis-cluster `interface-monitor` **weights do not map 1:1** to SRG monitoring. Do not port cluster monitor weights directly; redesign monitoring around SRG active/backup semantics and test failover explicitly.
 
 ### Hybrid MNHA
 
@@ -564,6 +608,31 @@ set protocols bgp group <GROUP> export MNHA-SRG1-EXPORT
 
 MED works predictably when compared between routes from the same neighboring AS and with the expected BGP decision behavior. If SRXs use different ASNs or the upstream BGP policy differs, choose a route-control mechanism appropriate to the environment.
 
+### OSPF Variant of Signal-Route Steering
+
+The signal-route examples above assume eBGP. OSPF shops need the same active/backup steering without a BGP export policy. The pattern maps as follows:
+
+- Each node has its own `router-id` and a **passive loopback** carrying the protected `/32` (do not form adjacencies on the loopback).
+- The backstop is a **higher OSPF metric on the backup node** so the active node's advertisement wins while both are up, and the backup path remains available if the active node withdraws.
+- Instead of a BGP export policy, **export the SRG-signal-route-conditioned `/32` into OSPF** with a policy gated on the same `if-route-exists` condition, so only the ACTIVE node advertises the protected prefix (or advertises it at the better metric).
+
+```junos
+set protocols ospf area 0 interface lo0.0 passive
+set protocols ospf area 0 interface <UPLINK_IFL> metric <NODE_METRIC>   # higher on the backup node
+
+set policy-options condition ACTIVE_SRG1 if-route-exists address-family inet 169.254.200.1/32
+set policy-options condition ACTIVE_SRG1 if-route-exists address-family inet table inet.0
+
+set policy-options policy-statement MNHA-SRG1-OSPF term active from route-filter <PROTECTED_PREFIX> exact
+set policy-options policy-statement MNHA-SRG1-OSPF term active from condition ACTIVE_SRG1
+set policy-options policy-statement MNHA-SRG1-OSPF term active then metric <LOW_METRIC>
+set policy-options policy-statement MNHA-SRG1-OSPF term active then accept
+set policy-options policy-statement MNHA-SRG1-OSPF term default then reject
+set protocols ospf export MNHA-SRG1-OSPF
+```
+
+Verify with `show route <PROTECTED_PREFIX>` and `show ospf database` on both nodes; confirm the active node's advertisement is preferred and the backup path appears only as a higher-cost alternative. The same BFD guidance below applies to OSPF (`set protocols ospf area 0 interface <IFL> bfd-liveness-detection ...`).
+
 ### BFD
 
 Use BFD for fast routing failure detection where supported and stable.
@@ -808,6 +877,10 @@ Use destructive clear commands only inside an approved maintenance procedure.
 14. Using proxy ARP for NAT pool reachability as if MNHA were chassis cluster. Both independent nodes can answer ARP, and return traffic can land on the wrong node.
 
 15. Reusing the same remote-access address pool across independently active SRGs without splitting ranges. Failover may preserve a pool, but active/active SRGs can collide.
+
+16. Forgetting to dissolve `groups node0` / `groups node1`. On a chassis cluster those per-node groups carried node-specific config; on MNHA each node is a standalone device, so that config must become direct `system`/interface configuration on the respective node. Leaving it as `apply-groups node0/node1` (which has no cluster context to key on) drops the settings.
+
+17. Forgetting that management/enrollment identity is per-node. `outbound-ssh`, EMS, and Security Director Cloud `device-id` are node-local: after migration each SRX re-enrolls as a **separate** managed device. Plan the re-enrollment and update inventory/licensing per node rather than expecting the cluster's single managed-device identity to carry over.
 
 ## Source Notes
 
