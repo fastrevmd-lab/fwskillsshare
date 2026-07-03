@@ -23,16 +23,17 @@ Use this table as a first-pass mapping for CMMC Level 2 / NIST SP 800-171 Rev. 2
 | 3.1.22 Public information posting | Separate public systems from internal/CUI systems | DMZ design, NAT/policy exports, no direct CUI storage exposure |
 | 3.3.1 Audit logging | Generate records for firewall/VPN/admin/security events | Syslog/SIEM forwarding, traffic/threat/admin logs, sample events |
 | 3.3.2 User accountability | Correlate admin/VPN activity to named users where possible | AAA, SSO, MFA, admin accounts, VPN user logs |
-| 3.3.3 Audit review | Support review and analysis of CUI-relevant security events | SIEM detections, alert workflow, review records |
-| 3.3.4 Audit reduction/reporting | Provide searchable, normalized firewall evidence | Log parsing, dashboards, saved searches, reports |
-| 3.3.5 Audit correlation | Synchronize time and correlate across systems | NTP, SIEM timestamps, firewall/VPN/identity correlation |
+| 3.3.3 Review logged events | Periodically review and update the set of logged event types (which firewall events are captured) | Logging-category config reviews, change records for log settings |
+| 3.3.4 Logging-failure alerting | Alert when the audit logging process fails (log pipeline down, disk full, collector unreachable) | SIEM heartbeat/monitoring alerts, syslog-failure notifications |
+| 3.3.5/3.3.6 Correlation, reduction and reporting | Correlate, analyze, and report across firewall/VPN/identity logs; provide searchable, normalized evidence | SIEM detections, alert workflow, dashboards, saved searches, reports |
+| 3.3.7 Time synchronization | Synchronize firewall clocks to an authoritative source for correlatable timestamps | NTP config, SIEM timestamp consistency checks |
 | 3.3.8 Audit protection | Protect logs from unauthorized access or modification | SIEM RBAC, immutable storage, log pipeline controls |
 | 3.4.1 Baseline configuration | Firewall configuration standards and secure baselines | Baseline template, hardening standard, approved config snapshot |
 | 3.4.3 Change tracking | Track and approve firewall rule/config changes | Change tickets, diffs, approvals, emergency change records |
 | 3.4.6 Least functionality | Disable unnecessary firewall services and broad rules | Management services, insecure protocol removal, service allowlists |
 | 3.4.7 Restrict nonessential ports/protocols | Block unnecessary ports and protocols to CUI systems | Rule review evidence, app/service inventory, deny policy |
-| 3.13.6 Deny by default | Deny network traffic by default; allow only by explicit exception | Final deny rules, implicit-deny documentation, deny logs |
 | 3.5.3 Multifactor authentication | Support MFA on remote/admin access paths where applicable | VPN/admin MFA config, IdP policy, authentication logs |
+| 3.13.6 Deny by default | Deny network traffic by default; allow only by explicit exception | Final deny rules, implicit-deny documentation, deny logs |
 | 3.5.4 Replay-resistant authentication | Use secure admin/VPN authentication mechanisms | Certificate/SSH/TLS/IPsec details, disabled weak auth |
 | 3.6.1 Incident response capability | Firewall events feed incident identification and containment | IR runbooks, alert mappings, sample investigations |
 | 3.6.2 Incident tracking/reporting | Firewall evidence supports incident tracking and lessons learned | Tickets, timelines, firewall logs, containment changes |

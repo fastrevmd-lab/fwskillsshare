@@ -79,7 +79,7 @@ ISO:<scope-or-theme> SOA:<control-id> OWNER:<team> REF:<ticket-or-evidence-id> P
 Examples:
 
 ```text
-ISO:NETSEC SOA:A8.20 OWNER:NetSec REF:NET-STD-001 PURPOSE:Production edge segmentation
+ISO:NETSEC SOA:A8.22 OWNER:NetSec REF:NET-STD-001 PURPOSE:Production edge segmentation   (A.8.22 Segregation of networks; use SOA:A8.20 for the umbrella Networks-security control)
 ISO:ACCESS SOA:A5.15 OWNER:AppOps REF:CHG-18821 PURPOSE:App to database least privilege
 ISO:LOGGING SOA:A8.15 OWNER:SecOps REF:SIEM-FW-01 PURPOSE:Forward firewall logs to SIEM   (A.8.15 Logging; use ISO:MONITOR SOA:A8.16 for monitoring activities)
 ISO:SUPPLIER SOA:A5.19 OWNER:NetOps REF:MSP-ACCESS-02 PURPOSE:Time-bound MSSP access

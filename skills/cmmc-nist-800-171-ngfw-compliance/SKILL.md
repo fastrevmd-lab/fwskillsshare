@@ -1,7 +1,7 @@
 ---
 name: cmmc-nist-800-171-ngfw-compliance
 description: Use when researching, designing, auditing, or explaining what it takes for a next-generation firewall or firewall estate to support CMMC Level 2 and NIST SP 800-171 protection of Controlled Unclassified Information. Covers CUI enclave scoping, boundary protection, least-privilege network access, remote access, external connections, audit logging, incident response, media/system boundaries, security assessment evidence, POA&M-style gaps, and audit-ready firewall description/tag markers. Emphasizes that CMMC/NIST 800-171 compliance is assessed for the contractor environment, not certified by an NGFW alone.
-version: 0.1.0
+version: 0.1.1
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
@@ -94,7 +94,7 @@ Do not mix Rev. 2 and Rev. 3 IDs without labeling them. Do not claim a Rev. 3 ma
 
 Detailed lookup material lives in `references/` to keep this skill lean; read these when you need them:
 
-- `references/control-mapping.md` — Requirement Mapping for NGFW Controls (full control-by-control matrix).
+- `references/control-mapping.md` — Requirement Mapping for NGFW Controls (first-pass matrix of NGFW/firewall-relevant requirements, not all 110 NIST SP 800-171 Rev. 2 requirements).
 - `references/assessment-workflow.md` — step-by-step assessment workflow, config evidence markers, and the evidence request checklist:
   1. Establish CUI Scope and Architecture
   2. Build a Firewall-to-Requirement Matrix

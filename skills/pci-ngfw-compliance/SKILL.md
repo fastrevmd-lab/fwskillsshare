@@ -192,7 +192,7 @@ Before finalizing a PCI/NGFW answer:
 - [ ] Confirm the PCI DSS version being used, defaulting to v4.0.1 when current.
 - [ ] State that PCI compliance applies to the entity/environment, not the NGFW alone.
 - [ ] Identify CDE scope and whether segmentation is used for scope reduction.
-- [ ] Map claims to PCI DSS requirement IDs, especially 1.x, 2.2.7, 4.2.1, 6.4.2, 10.x, 11.x, and 12.x.
+- [ ] Map claims to PCI DSS requirement IDs, especially 1.x, 2.2.7, 4.2.1, 6.4.2, 8.x, 10.x, 11.x, and 12.x.
 - [ ] Check inbound and outbound restrictions separately.
 - [ ] Verify all allowed services/protocols/ports have business need and approval.
 - [ ] Verify PCI-relevant policy, NAT, zone/segment, object, and profile entries include concise PCI evidence markers where the platform supports descriptions/tags/comments.
