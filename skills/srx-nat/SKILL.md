@@ -1,7 +1,7 @@
 ---
 name: srx-nat
 description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX NAT. Covers source NAT, destination NAT, static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, address-persistent behavior, hairpin NAT, proxy ARP, rule ordering, session verification, pool exhaustion, and source/destination NAT troubleshooting.
-version: 1.0.0
+version: 1.1.0
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
@@ -193,6 +193,17 @@ set security nat destination rule-set DNAT_IN rule WEB_HTTPS match destination-p
 set security nat destination rule-set DNAT_IN rule WEB_HTTPS then destination-nat pool WEB_SERVER
 ```
 
+Port translation (port forwarding, e.g. public `:8443` → inside `:443`) is
+configured on the **pool**, not the rule (verified on vSRX 24.4R1 — `... pool
+<name> port <port>` on the rule is a syntax error):
+
+```junos
+set security nat destination pool WEB_SERVER_443 address 192.168.10.20/32 port 443
+set security nat destination rule-set DNAT_IN rule WEB_ALT match destination-port 8443
+set security nat destination rule-set DNAT_IN rule WEB_ALT match destination-address 203.0.113.20/32
+set security nat destination rule-set DNAT_IN rule WEB_ALT then destination-nat pool WEB_SERVER_443
+```
+
 Security policy must permit the translated path:
 
 ```junos
@@ -375,6 +386,11 @@ Guidance:
 
 ### Selective Persistent NAT
 
+**Pool port behavior:** source-NAT pools PAT by default (source ports are
+translated). `set security nat source pool <name> port no-translation` keeps
+original source ports (needs enough pool IPs); `port-overloading-factor <n>`
+multiplies port capacity per pool IP at the cost of shared-port ambiguity.
+
 Persistent NAT / endpoint-independent behavior helps selected applications such as gaming, STUN, and peer-to-peer flows, but it consumes extra state. Put persistent NAT rules before broad normal NAT rules and match only the necessary applications.
 
 ```junos
@@ -395,6 +411,10 @@ Optional hardening:
 ```junos
 set security nat source rule-set LAN_TO_WAN rule LAN_WAN_PNAT_1 then source-nat pool persistent-nat block-ext-session
 ```
+
+`block-ext-session` is a valid `persistent-nat` sibling knob (verified on vSRX
+24.4R1); it requires `persistent-nat permit ...` on the same rule (already set
+above) — alone it fails commit with `Missing mandatory statement: 'permit'`.
 
 ### Address-Persistent Symptoms
 
@@ -482,6 +502,7 @@ Use traceoptions for short maintenance windows only. Remove or deactivate them a
 | Hairpin fails | Missing inside DNAT, source NAT, or trust-to-trust policy | Session In/Out tuples | Add inside-sourced DNAT, hairpin SNAT, and policy |
 | NAT64 DNS works but traffic fails | Static NAT64 or source NAT rule mismatch | Static/source NAT counters and session | Match `64:ff9b::/96` in static NAT, IPv4 destination in source NAT |
 | Native IPv6 breaks after NAT64 change | Over-broad source NAT | Session table | Ensure source NAT only matches post-static-NAT IPv4 destination |
+| Source pool port exhaustion | Too few pool IPs for the session load | `show security nat source pool all` (ports used/available), `show security nat source summary`, RT_NAT syslog drops | Add pool IPs, raise `port-overloading-factor`, or narrow the rule match |
 | PBA users cannot open new sessions | Pool/block exhaustion or max blocks per host | `show security nat source pool all`, PBA stats | Add public IPs, tune block size/max blocks/recycle timeout |
 | Gaming/P2P fails behind CGN | No persistent NAT or rule too low in order | Persistent NAT table, rule hits | Add selective persistent NAT before broad NAT rule |
 | Persistent NAT table high | Persistent NAT applied too broadly | `show security nat source persistent-nat-table summary` | Restrict to selected applications and consider `block-ext-session` |

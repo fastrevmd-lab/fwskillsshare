@@ -14,6 +14,11 @@ This article explains the purpose, use case, and potential impact of the `addres
 
 The `address-persistent` option in SRX source NAT configuration ensures that the same translated source IP address and port are consistently used for all sessions initiated by a specific source IP.
 
+> Editor's note: `address-persistent` provides address affinity only — the same
+> translated source IP for all sessions from a given source IP. Ports are still
+> allocated per session (reusing one port across concurrent sessions would
+> collide). Port preservation is a property of persistent NAT, a distinct feature.
+
 While this behavior benefits certain protocols requiring stable NAT mappings, it may cause unintended issues with applications such as speedtest.net services that rely on varying NAT flows.
 
 ## Symptoms
@@ -31,13 +36,15 @@ When `address-persistent` is enabled:
 If the environment does not require consistent source NAT mappings, remove the `address-persistent` configuration to allow dynamic port assignment.
 
 ```text
-user@host> delete security nat source address-persistent   # address-persistent is global at [edit security nat source], not under a rule
+user@host# delete security nat source address-persistent
 ```
+
+Note: `address-persistent` is global at `[edit security nat source]`, not under a rule.
 
 ### Option 2: Reduce TCP MSS to avoid fragmentation
 
 In cases where traffic passes through a tunnel or WAN interface with smaller MTU, set TCP MSS to reduce fragmentation:
 
 ```text
-user@host> set security flow tcp-mss all-tcp mss 1350
+user@host# set security flow tcp-mss all-tcp mss 1350
 ```

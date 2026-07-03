@@ -44,7 +44,7 @@ Verification:
 show system license
 show security utm web-filtering status
 show security utm web-filtering statistics
-show log messages | match -i "webfilter|web-filter|RT_UTM|URL_BLOCKED"
+show log messages | match "webfilter|web-filter|RT_UTM|URL_BLOCKED"
 ```
 
 Categorization / re-categorization:

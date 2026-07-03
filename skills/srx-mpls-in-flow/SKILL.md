@@ -1,7 +1,7 @@
 ---
 name: srx-mpls-in-flow
 description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX MPLS L3VPN in flow mode. Covers Junos 24.2R1+ decoupled MPLS packet-mode with inet/inet6 flow-mode, VRF-aware security policies, vrf-table-label, LDP/MP-BGP signaling, VRF-aware NAT/AppID, Junos 25.4R1 VRF-to-zone mapping, SRX4600/SRX4700 platform notes, PowerMode/RFP behavior, MTU, verification, and troubleshooting.
-version: 1.0.0
+version: 1.0.1
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
@@ -161,7 +161,8 @@ set protocols mpls interface ge-0/0/0.0
 set protocols bgp group mp-bgp type internal
 set protocols bgp group mp-bgp local-address 1.1.1.1
 set protocols bgp group mp-bgp family inet-vpn unicast
-set protocols bgp group mp-bgp family inet6-vpn unicast   # add for IPv6 (VPNv6) L3VPN
+# add for IPv6 (VPNv6) L3VPN:
+set protocols bgp group mp-bgp family inet6-vpn unicast
 set protocols bgp group mp-bgp neighbor 1.1.1.2
 set routing-options autonomous-system 65500
 ```
@@ -202,6 +203,7 @@ Permit customer traffic from local VRF interface zone toward MPLS only when the 
 ```junos
 set security policies from-zone vrf-1 to-zone mpls policy vrf-1 match source-address any
 set security policies from-zone vrf-1 to-zone mpls policy vrf-1 match destination-address any
+set security policies from-zone vrf-1 to-zone mpls policy vrf-1 match application any
 set security policies from-zone vrf-1 to-zone mpls policy vrf-1 match dynamic-application any
 set security policies from-zone vrf-1 to-zone mpls policy vrf-1 match destination-l3vpn-vrf-group vrf-1
 set security policies from-zone vrf-1 to-zone mpls policy vrf-1 then permit
@@ -212,6 +214,7 @@ Permit return or remote-originated VPN traffic from MPLS toward the local VRF in
 ```junos
 set security policies from-zone mpls to-zone vrf-1 policy vrf-1 match source-address any
 set security policies from-zone mpls to-zone vrf-1 policy vrf-1 match destination-address any
+set security policies from-zone mpls to-zone vrf-1 policy vrf-1 match application any
 set security policies from-zone mpls to-zone vrf-1 policy vrf-1 match dynamic-application any
 set security policies from-zone mpls to-zone vrf-1 policy vrf-1 match source-l3vpn-vrf-group vrf-1
 set security policies from-zone mpls to-zone vrf-1 policy vrf-1 then permit
@@ -225,6 +228,7 @@ Keep a final deny/reject policy with counters/logging appropriate to the environ
 set security policies global policy reject match source-address any
 set security policies global policy reject match destination-address any
 set security policies global policy reject match application any
+set security policies global policy reject match dynamic-application any
 set security policies global policy reject then reject
 ```
 
@@ -264,7 +268,6 @@ Source NAT example:
 ```junos
 set security nat source pool pool-1 address 10.10.3.10/32
 set security nat source rule-set snat-1 from zone vrf-1
-set security nat source rule-set snat-1 from routing-instance vrf-1
 set security nat source rule-set snat-1 to routing-group vrf-1
 set security nat source rule-set snat-1 rule src-nat-1 match source-address 10.0.3.0/24
 set security nat source rule-set snat-1 rule src-nat-1 then source-nat pool pool-1
@@ -367,7 +370,7 @@ Check that MPLS-facing interfaces are up, labels are installed, and transport la
 
 ```text
 show bgp summary
-show bgp neighbor <PEER> advertised-routes table bgp.l3vpn.0
+show route advertising-protocol bgp <PEER> table bgp.l3vpn.0
 show route table bgp.l3vpn.0
 show route table vrf-1.inet.0
 show route table vrf-2.inet.0
@@ -407,7 +410,7 @@ tcpdump -n -i <bridge> host <customer-ip>
 
 ```text
 show security flow session dynamic-application junos:SSH
-show security application-firewall statistics
+show services application-identification statistics applications
 show log messages | match pre-id
 ```
 

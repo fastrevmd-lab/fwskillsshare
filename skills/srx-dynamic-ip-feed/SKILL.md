@@ -12,6 +12,8 @@ metadata:
     - title: SRX Dynamic IP Objects aka Feed-server
       author: Karel Hendrych
       url: https://community.juniper.net/blogs/karel-hendrych/2025/11/30/srx-dynamic-ip-objects-aka-feed-server
+
+A faithful local extract of the source text is stored at `references/source-extract.md` for provenance and verification.
       retrieved: "2026-05-14"
 ---
 
@@ -453,7 +455,7 @@ The new IP should appear under the mapped dynamic address object after the next 
 
 | Symptom | Likely Cause | What to Check |
 |---|---|---|
-| No entries in `show security dynamic-address` | Feed file empty, path mismatch, archive mismatch, download failure | `show security dynamic-address summary`, `show log messages | match ipfd`, archive paths with `tar tzf` |
+| No entries in `show security dynamic-address` | Feed file empty, path mismatch, archive mismatch, download failure | `show security dynamic-address summary`, `show log messages \| match ipfd`, archive paths with `tar tzf` |
 | HTTP 401 in ipfd logs | Basic auth enabled on server but SRX has no/wrong credentials | `user-name`, `password`, nginx htpasswd file |
 | HTTP 403 in ipfd logs | mTLS enforced but SRX has no/invalid client certificate | local certificate load/verify, SSL initiation profile `client-certificate`, nginx client CA |
 | SSL peer certificate error | Missing/untrusted CA or server cert validation failure | CA profile, loaded CA cert, SSL initiation profile trusted CA |

@@ -782,7 +782,7 @@ Configure another security zone and specify the types of traffic that are allowe
 
 Create a policy and specify the match criteria for that policy. The match criteria specifies that the device can allow traffic from any source, to any destination, and on any application. 
 
-[edit security policies from-zone client to-zone server] user@host# set policy policy-1 match source-address any user@host# set policy policy-1 match destination-address any user@host# set policy policy-1 match application any user@host# set policy policy-1 match then permit 
+[edit security policies from-zone client to-zone server] user@host# set policy policy-1 match source-address any user@host# set policy policy-1 match destination-address any user@host# set policy policy-1 match application any user@host# set policy policy-1 then permit 
 
 Enable the policy to log traffic details at the beginning and at the end of the session. 
 
@@ -886,7 +886,7 @@ CLI Quick Configuration
 To quickly configure this example, copy the following commands, paste them into a text file, remove any line breaks, change any details necessary to match your network configuration, copy and paste the commands into the CLI at the 
 [edit] hierarchy level, and then enter commit from configuration mode. 
 
-set security zones security-zone tap-zone interfaces ge-0/0/0.0 set security zones security-zone tap-zone application-tracking set security policies from-zone tap-zone to-zone tap-zone policy tap-policy match source-address any set security policies from-zone tap-zone to-zone tap-zone policy tap-policy match destination -address any set security policies from-zone tap-zone to-
+set security zones security-zone tap-zone interfaces ge-0/0/0.0 set security zones security-zone tap-zone application-tracking set security policies from-zone tap-zone to-zone tap-zone policy tap-policy match source-address any set security policies from-zone tap-zone to-zone tap-zone policy tap-policy match destination-address any set security policies from-zone tap-zone to-
 
 [TRUNCATED]
 

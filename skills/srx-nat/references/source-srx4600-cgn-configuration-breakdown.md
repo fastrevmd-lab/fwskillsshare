@@ -74,7 +74,11 @@ A very useful and broadly applicable Junos configuration is the remote archival 
     
     
     set system archival configuration transfer-on-commit  
-    set system archival configuration archive-sites "sftp://username:password@host:folder/"
+    set system archival configuration archive-sites "sftp://<user>:<password-from-secrets-manager>@host:folder/"
+
+> Editor's note: credential placeholders substituted — never embed real
+> credentials in archival URLs; they are stored in plaintext in the
+> configuration.
 
 Archival to remove SFTP sites require saving the fingerprint of remote SSH service public key:
     
@@ -551,7 +555,7 @@ Sidenotes:
     set system syslog file messages archive files 5  
     
     set system archival configuration transfer-on-commit  
-    set system archival configuration archive-sites "sftp://user:password@host:path"  
+    set system archival configuration archive-sites "sftp://<user>:<password-from-secrets-manager>@host:path"  
     
     set chassis aggregated-devices ethernet device-count 4  
     set chassis fpc 1 pic 0 port 0 speed 100g  

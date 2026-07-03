@@ -1,7 +1,7 @@
 ---
 name: srx-policy
 description: Use when designing, migrating, configuring, auditing, or troubleshooting Juniper SRX security policy on Junos 23.x+ non-Branch SRX platforms. Strongly prefers security policies global for greenfield and cross-vendor migrations; covers global versus zone-to-zone policy structure, address/application objects, AppID/AppFW, NextGen Web Filtering versus Enhanced Web Filtering, SecIntel, ATP integration, logging, policy order, verification, and troubleshooting.
-version: 1.1.0
+version: 1.2.0
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
@@ -356,7 +356,7 @@ show system license
 show security utm web-filtering status
 show security utm web-filtering statistics
 show security policies hit-count global
-show log messages | match -i "webfilter|web-filter|RT_UTM|URL_BLOCKED"
+show log messages | match "webfilter|web-filter|RT_UTM|URL_BLOCKED"
 ```
 
 Useful NGWF categorization and migration commands:
@@ -371,7 +371,7 @@ show security utm web-filtering category migrate-to-ng-juniper status
 
 EWF-to-NGWF migration pitfall: Juniper documents the migration as asynchronous and recommends doing it during downtime. Do not rename policy names during migration; Juniper notes configuration commit can fail if policy names are changed during migration.
 
-Use conservative fallback behavior. Note the leaf semantics: `fallback-settings default` only accepts `permit` or `block` — `log-and-permit` is NOT valid for the `default` fallback leaf. The `log-and-permit` value is valid for the specific fallback leaves `server-connectivity`, `timeout`, and `too-many-requests`. If the cloud/reputation service is unavailable, choose whether to fail open (`permit`) or fail closed (`block`) for the default fallback leaf, and set granular fallback leaves (`server-connectivity`, `timeout`, `too-many-requests`) to `log-and-permit` or `block` based on traffic class requirements, not as a uniform global setting.
+Use conservative fallback behavior. If the cloud/reputation service is unavailable, decide deliberately whether to fail open (`permit` / `log-and-permit`) or fail closed (`block`) for the `default` fallback leaf, and set the granular fallback leaves (`server-connectivity`, `timeout`, `too-many-requests`) per traffic-class requirements rather than as a uniform global setting. Leaf-value note: `fallback-settings default log-and-permit` commits on current images (verified on vSRX 24.4R1 for both `ng-juniper` and `juniper-enhanced`); some older guidance restricts the `default` leaf to `permit`/`block` — validate on your target release.
 
 Important IPv6 caveat from Juniper's policy documentation: Content Security for IPv6 sessions is not supported in the referenced policy documentation. If a policy uses wildcard `any` and Content Security features are enabled, use `any-ipv4` for the inspected policy and create separate IPv6 rules without unsupported Content Security services.
 
@@ -401,7 +401,7 @@ Operational checks vary by deployment, but collect at least:
 show system license
 show security policies hit-count global
 show security flow session source-prefix <source> extensive
-show log messages | match -i "secintel|atp|utm|web-filter|threat"
+show log messages | match "secintel|atp|utm|web-filter|threat"
 ```
 
 For ATP Appliance integration, confirm the SRX-to-ATP integration workflow in the current ATP Appliance guide and validate that SRX submits data and consumes verdicts/feeds as designed.
@@ -425,7 +425,7 @@ The correct firewall role:
 ```text
 show security policies hit-count global
 show security match-policies from-zone <SRC> to-zone <DST> source-ip <client> destination-ip <device> protocol tcp destination-port <port>
-show log messages | match -i "RT_FLOW_SESSION_DENY|DEFAULT-DENY"
+show log messages | match "RT_FLOW_SESSION_DENY|DEFAULT-DENY"
 ```
 
 Do not promise cross-VLAN casting from a `permit` rule alone. The permit enables the unicast stream *after* discovery; without a reflector (or full multicast routing) the devices never discover each other in the first place. For extracting whether a box already runs multicast routing, see `parsing-srx-configs`.

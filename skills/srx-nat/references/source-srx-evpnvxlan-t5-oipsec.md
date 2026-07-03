@@ -817,7 +817,7 @@ vSRX-left:
     set security ike proposal ike-prop encryption-algorithm aes-256-gcm  
     set security ike proposal ike-prop lifetime-seconds 28800  
     set security ike policy ike-policy proposals ike-prop  
-    set security ike policy ike-policy pre-shared-key ascii-text ""  
+    set security ike policy ike-policy pre-shared-key ascii-text "<REDACTED_STRONG_PSK>"  
     set security ike gateway vsrx-right ike-policy ike-policy  
     set security ike gateway vsrx-right address 10.0.0.10  
     set security ike gateway vsrx-right dead-peer-detection probe-idle-tunnel  
@@ -940,7 +940,7 @@ vSRX-right:
     set security ike proposal ike-prop encryption-algorithm aes-256-gcm  
     set security ike proposal ike-prop lifetime-seconds 28800  
     set security ike policy ike-policy proposals ike-prop  
-    set security ike policy ike-policy pre-shared-key ascii-text ""  
+    set security ike policy ike-policy pre-shared-key ascii-text "<REDACTED_STRONG_PSK>"  
     set security ike gateway vsrx-left ike-policy ike-policy  
     set security ike gateway vsrx-left address 10.0.1.10  
     set security ike gateway vsrx-left dead-peer-detection probe-idle-tunnel  

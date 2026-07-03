@@ -1,7 +1,7 @@
 ---
 name: srx-ipsec-hub-spoke
 description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX static point-to-point route-based IPsec hub-and-spoke with full-tunnel backhaul, where each spoke has one explicit tunnel and the hub is the centralized internet egress and spoke-to-spoke hairpin. Covers per-spoke IKE gateways pinned by peer WAN IP, IKEv2 with PSK, route-based VPNs with default proxy-id (no traffic selectors, no ARI), one st0 unit per spoke, manual per-spoke static routes, the spoke default route into st0, the anti-recursion host route, the vSRX management-default ECMP caveat, hub source-NAT, VPN-to-untrust and VPN-to-VPN policies, when to switch to AutoVPN, and verification.
-version: 1.0.0
+version: 1.0.1
 author:
   - fastrevmd-lab
   - Jason Anderson
@@ -152,7 +152,7 @@ A single route-based SA (proxy-id `0.0.0.0/0`) carries all of it.
 
 | Route | Purpose |
 |-------|---------|
-| `192.168.2.0/24 → st0.0` | Reach/return to srx02 (also receives srx-to-srx02 hairpin) |
+| `192.168.2.0/24 → st0.0` | Reach/return to srx02 (also receives srx03/srx04-to-srx02 hairpin) |
 | `192.168.3.0/24 → st0.1` | Reach/return to srx03 |
 | `192.168.4.0/24 → st0.2` | Reach/return to srx04 |
 | `0.0.0.0/0 → <WAN next-hop>` | Internet egress for de-encapsulated spoke traffic |
@@ -206,8 +206,12 @@ stay un-NAT'd — real private IPs preserved between sites.
 All tunnel interfaces share one **VPN** zone, so the spoke-to-spoke hairpin
 (srx02's `st0.0` → srx03's `st0.1`) is an **intra-zone** `VPN → VPN` flow — one
 policy covers every spoke pair. Return traffic is stateful — no reverse policy.
-**Spoke** policies do not change; the spoke's `trust → untrust` becomes dead (no
-local breakout) but is harmless.
+On the **spoke**, all LAN egress now exits via zone `VPN` (`st0.0`), so the
+spoke's `trust → VPN` policy must permit the **full backhaul scope**
+(`destination-address any` or the intended backhauled prefixes) — a policy
+scoped to the hub LAN would leave the tunnel up while user internet traffic is
+silently denied. The spoke's `trust → untrust` becomes dead (no local
+breakout) but is harmless.
 
 ## Config Skeleton (`set` format)
 
@@ -228,7 +232,6 @@ set security ike proposal IKE-PROP dh-group group14
 set security ike proposal IKE-PROP authentication-algorithm sha-256
 set security ike proposal IKE-PROP encryption-algorithm aes-256-cbc
 set security ike proposal IKE-PROP lifetime-seconds 86400
-set security ike policy IKE-POL mode main
 set security ike policy IKE-POL proposals IKE-PROP
 set security ike policy IKE-POL pre-shared-key ascii-text "$IPSEC_PSK"
 set security ipsec proposal IPSEC-PROP protocol esp
@@ -291,7 +294,6 @@ set security ike proposal IKE-PROP dh-group group14
 set security ike proposal IKE-PROP authentication-algorithm sha-256
 set security ike proposal IKE-PROP encryption-algorithm aes-256-cbc
 set security ike proposal IKE-PROP lifetime-seconds 86400
-set security ike policy IKE-POL mode main
 set security ike policy IKE-POL proposals IKE-PROP
 set security ike policy IKE-POL pre-shared-key ascii-text "$IPSEC_PSK"
 set security ipsec proposal IPSEC-PROP protocol esp
@@ -308,6 +310,22 @@ set security ipsec vpn VPN-hub bind-interface st0.0
 set security ipsec vpn VPN-hub ike gateway GW-hub
 set security ipsec vpn VPN-hub ike ipsec-policy IPSEC-POL
 set security ipsec vpn VPN-hub establish-tunnels immediately
+
+# --- Zones: st0.0 in the VPN zone; untrust must accept IKE ---
+set security zones security-zone untrust host-inbound-traffic system-services ike
+set security zones security-zone untrust interfaces ge-0/0/0.0
+set security zones security-zone trust interfaces ge-0/0/1.0
+set security zones security-zone VPN interfaces st0.0
+
+# --- Policy: ALL LAN egress now exits via zone VPN — destination must be any ---
+set security policies from-zone trust to-zone VPN policy LAN-TO-TUNNEL match source-address any
+set security policies from-zone trust to-zone VPN policy LAN-TO-TUNNEL match destination-address any
+set security policies from-zone trust to-zone VPN policy LAN-TO-TUNNEL match application any
+set security policies from-zone trust to-zone VPN policy LAN-TO-TUNNEL then permit
+set security policies from-zone VPN to-zone trust policy TUNNEL-TO-LAN match source-address any
+set security policies from-zone VPN to-zone trust policy TUNNEL-TO-LAN match destination-address any
+set security policies from-zone VPN to-zone trust policy TUNNEL-TO-LAN match application any
+set security policies from-zone VPN to-zone trust policy TUNNEL-TO-LAN then permit
 
 # Routing: default into the tunnel + ANTI-RECURSION host route to the hub WAN
 set routing-options static route 0.0.0.0/0 next-hop st0.0
@@ -349,9 +367,9 @@ the flow **entering on one `st0` unit and leaving on another**, zone `VPN → VP
 | Fragmentation | Large flows fail, small ones work | Tunnel MTU/MSS — keep/lower `tcp-mss ipsec-vpn` |
 
 IKE tracing: `set security ike traceoptions file ike-trace` / `flag ike` / `level
-detail`; read `show log ike-trace`; `clear security ike|ipsec
-security-associations` to renegotiate. Live daemon log: `show log iked` (modern) or
-`show log kmd` (older).
+detail`; read `show log ike-trace`; renegotiate with `clear security ike
+security-associations` and `clear security ipsec security-associations`. Live
+daemon log: `show log iked` (modern) or `show log kmd` (older).
 
 ## Caveats and Tradeoffs
 
