@@ -4,13 +4,15 @@
       "name": "trust",
       "interfaces": [
         "ethernet1/2"
-      ]
+      ],
+      "zone_type": "layer3"
     },
     {
       "name": "untrust",
       "interfaces": [
         "ethernet1/1"
-      ]
+      ],
+      "zone_type": "layer3"
     }
   ],
   "address_objects": [
@@ -63,6 +65,54 @@
       "_vsys": "vsys1"
     },
     {
+      "name": "Implicit: Intra-zone Allow (trust)",
+      "src_zones": [
+        "trust"
+      ],
+      "dst_zones": [
+        "trust"
+      ],
+      "src_addresses": [
+        "any"
+      ],
+      "dst_addresses": [
+        "any"
+      ],
+      "applications": [
+        "any"
+      ],
+      "services": [],
+      "action": "allow",
+      "disabled": false,
+      "_rule_index": 2,
+      "_implicit": true,
+      "_vsys": "vsys1"
+    },
+    {
+      "name": "Implicit: Intra-zone Allow (untrust)",
+      "src_zones": [
+        "untrust"
+      ],
+      "dst_zones": [
+        "untrust"
+      ],
+      "src_addresses": [
+        "any"
+      ],
+      "dst_addresses": [
+        "any"
+      ],
+      "applications": [
+        "any"
+      ],
+      "services": [],
+      "action": "allow",
+      "disabled": false,
+      "_rule_index": 3,
+      "_implicit": true,
+      "_vsys": "vsys1"
+    },
+    {
       "name": "default-deny",
       "src_zones": [
         "any"
@@ -82,8 +132,9 @@
       "services": [],
       "action": "deny",
       "disabled": false,
-      "_rule_index": 2,
-      "_implicit": true
+      "_rule_index": 4,
+      "_implicit": true,
+      "_vsys": "vsys1"
     }
   ],
   "nat_rules": [],

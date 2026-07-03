@@ -119,7 +119,7 @@ PAN-OS has two implicit rules (not in the config XML):
 2. **Interzone Default Deny** — traffic between different zones is denied by default
    - Create one global implicit rule: src/dst zones = ["any"], action: "deny"
 
-Both should be tagged `_implicit: true` and `added_by_fpic: true`.
+Both should be tagged `_implicit: true` (the single canonical flag for parser-synthesized rules).
 
 ## Common Warnings
 

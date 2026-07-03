@@ -231,9 +231,9 @@ nat (inside,outside) source dynamic internal-net interface
 nat (inside,outside) 1 source static web-server 203.0.113.10 service tcp-80 tcp-80
 ```
 
-Format: `nat (<real>,<mapped>) [<section>] source <static|dynamic> <real-src> <mapped-src> [destination <static> <real-dst> <mapped-dst>] [service <real-svc> <mapped-svc>]`
+Format: `nat (<real>,<mapped>) [<line>] [after-auto] source <static|dynamic> <real-src> <mapped-src> [destination <static> <real-dst> <mapped-dst>] [service <real-svc> <mapped-svc>]`
 
-Section numbers: 1 = manual/twice NAT before auto (default when no section keyword is given); 2 = object/auto NAT (inside `object network` blocks); `after-auto` keyword = section 3 (manual NAT placed after all auto NAT).
+The optional numeric token is a **line number** (rule position within its manual NAT section), NOT a section selector. Section is derived from rule form: manual/twice NAT without `after-auto` = Section 1; object/auto NAT (inside `object network` blocks) = Section 2; manual NAT with the `after-auto` keyword = Section 3 (evaluated after all auto NAT).
 
 ## Static Routes
 

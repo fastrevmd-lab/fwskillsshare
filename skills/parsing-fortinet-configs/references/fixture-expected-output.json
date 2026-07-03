@@ -49,9 +49,10 @@
       ],
       "action": "allow",
       "schedule": "always",
-      "log_start": true,
+      "log_start": false,
       "log_end": true,
-      "_rule_index": 1
+      "_rule_index": 1,
+      "disabled": false
     },
     {
       "name": "default-deny",

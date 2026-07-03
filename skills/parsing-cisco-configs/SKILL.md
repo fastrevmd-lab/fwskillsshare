@@ -1,9 +1,9 @@
 ---
 name: parsing-cisco-configs
-description: 'Parse and analyze Cisco ASA and FTD firewall configurations. Use this skill when the user pastes, uploads, or references a Cisco ASA or FTD config — line-oriented format with indented sub-commands from "show running-config". Trigger on keywords: ASA, FTD, Cisco, "access-list", "access-group", "object network", "object-group", "object service", "nameif", "security-level", "nat (", "object network", "subnet", "host", "range", "interface GigabitEthernet", "interface Management", "failover", "threat-detection". Also trigger when the user asks to convert, audit, summarize, or explain a Cisco ASA/FTD config.
+description: 'Use when the user pastes, uploads, or references a Cisco ASA or FTD config — parses and analyzes Cisco ASA and FTD firewall configurations in the line-oriented format with indented sub-commands from "show running-config". Trigger on keywords: ASA, FTD, Cisco, "access-list", "access-group", "object network", "object-group", "object service", "nameif", "security-level", "nat (", "object network", "subnet", "host", "range", "interface GigabitEthernet", "interface Management", "failover", "threat-detection". Also trigger when the user asks to convert, audit, summarize, or explain a Cisco ASA/FTD config.
 
   '
-version: 1.1.0
+version: 1.1.1
 author: Hermes Agent
 license: MIT
 metadata:
@@ -217,10 +217,10 @@ Found inside `object network` blocks as `nat (<real-iface>,<mapped-iface>) <type
 - `nat (inside,outside) dynamic pat-pool <name>` → dynamic PAT to pool
 
 **Twice NAT (Manual NAT):**
-Top-level: `nat (<real-iface>,<mapped-iface>) [<section>] source <type> <real-src> <mapped-src> [destination <type> <real-dst> <mapped-dst>] [service <real-svc> <mapped-svc>]`
+Top-level: `nat (<real-iface>,<mapped-iface>) [after-auto] [<line>] source <type> <real-src> <mapped-src> [destination <type> <real-dst> <mapped-dst>] [service <real-svc> <mapped-svc>]`
 
 Parse `source static|dynamic` and optional `destination static` components.
-Section numbers determine NAT rule ordering: Section 1 = manual/twice NAT before object/auto NAT (the default when no section keyword is given); Section 2 = object/auto NAT (rules inside `object network` blocks); Section 3 = manual NAT placed after all auto NAT via the `after-auto` keyword.
+The optional numeric token is a line number — the rule's position within its manual NAT section — NOT a section selector. Derive the section from rule form: Section 1 = manual/twice NAT without `after-auto` (evaluated before object/auto NAT); Section 2 = object/auto NAT (rules inside `object network` blocks); Section 3 = manual NAT with the `after-auto` keyword (evaluated after all auto NAT).
 
 ### 11. Time Ranges (Schedules)
 Source: `time-range <name>` blocks
@@ -348,12 +348,21 @@ When in transparent mode:
 - Zones derived from nameifs still work the same way
 
 ### 19. Implicit Rules
-After building all policies from ACLs + access-groups, append:
-- **Implicit: Default Deny** — action: "deny", all any, `_implicit: true`
+The ASA implicit deny is scoped per bound ACL, not global: each ACL applied via `access-group`
+ends with an implicit deny for that interface/direction only. Applying an ACL on one interface
+does NOT disable security-level defaults for other interface pairs.
 
-Note: ASA has implicit rules based on security-level (higher-to-lower is permitted by default
-without ACLs), but since configs with ACLs override this behavior, the implicit deny is the
-standard final rule.
+After building all policies from ACLs + access-groups, append:
+- **Implicit: Default Deny** — one per access-group binding — action: "deny",
+  `src_zones: [<bound nameif>]` for `in` direction (`dst_zones` for `out`; all any for
+  `global`), remaining fields any, `_implicit: true`
+- When every traffic-passing interface has a bound ACL (or a `global` access-group exists),
+  the per-binding denies may be collapsed into a single final any→any deny, `_implicit: true`
+- For interfaces with NO ACL bound: do not fabricate a deny — security-level defaults still
+  apply (higher-to-lower permitted, lower-to-higher denied). Add a `metadata.warnings` entry
+  ("no ACL bound on <nameif> — security-level high-to-low permit applies") and, if downstream
+  consumers need explicit rules, model the default permit as an `_implicit: true` allow policy
+  from that zone to lower-security zones
 
 ## Output Format
 
@@ -395,8 +404,15 @@ After extraction, report:
 - `references/intermediate-schema.md` — Output schema specification
 - `references/parsing-patterns.md` — Edge cases, port name mapping, security-level logic
 
+- `references/example-sample-parse.md` — Worked end-to-end example (input config → parsed JSON)
 - `references/fixture-minimal-input.md` — Minimal parser fixture input
 - `references/fixture-expected-output.json` — Expected high-level intermediate-schema output for the minimal fixture
+
+Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are free-form labels; consumers must match implicit rules on `_implicit: true`, never on the name.
+
+## Secret Handling
+
+Never emit secrets raw. Tunnel-group pre-shared keys, `username ... password` hashes, BGP neighbor passwords, and SNMP community strings must be masked as `"****"` (or represented as a presence flag) with a `metadata.warnings` entry noting the secret was redacted — matching the shared-schema convention (`"psk": "****"`).
 
 ## Common Pitfalls
 

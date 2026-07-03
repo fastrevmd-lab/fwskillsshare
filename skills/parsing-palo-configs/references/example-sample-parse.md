@@ -162,7 +162,7 @@
 - Apps (canonical): `{vendor_name: "ssl", canonical: "https", confidence: 1.0, category: "web"}`
 - Services: application-default
 - Action: allow | Log: session-start, session-end
-- Security profiles (PAN-OS → schema key): virus → `antivirus`=default, vulnerability → `idp`=strict
+- Security profiles (PAN-OS → schema key): virus → `virus`=default, vulnerability → `idp`=strict
 
 **Policy 3: block-crypto** (rule_index: 3)
 - Zones: any → any

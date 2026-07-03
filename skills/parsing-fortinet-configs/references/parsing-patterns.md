@@ -54,11 +54,11 @@ FortiGate application names (typically uppercase) to Junos equivalents:
 | FTP | junos-ftp |
 | SMTP | junos-smtp |
 | NTP | junos-ntp |
-| SNMP | junos-snmp |
+| SNMP | *custom app required (no predefined junos-snmp)* |
 | TELNET | junos-telnet |
 | PING / PING_ICMP | junos-ping |
 | RDP | junos-rdp |
-| MySQL | junos-mysql |
+| MySQL | *custom app required (no predefined junos-mysql)* |
 | MSSQL | junos-ms-sql |
 | IMAP | junos-imap |
 | POP3 | junos-pop3 |
@@ -113,16 +113,16 @@ the schema has no such field.
 
 | FortiGate Setting | Intermediate Mapping |
 |---|---|
-| `set logtraffic all` | log_start: true, log_end: true |
-| `set logtraffic utm` | log_start: false, log_end: false (UTM events only) |
+| `set logtraffic all` | log_end: true (log_start only if `logtraffic-start enable`) |
+| `set logtraffic utm` | log_start: false, log_end: false (UTM events only — add info warning) |
 | `set logtraffic disable` | log_start: false, log_end: false |
-| `set logtraffic-start enable` | log_start: true (additional to logtraffic) |
+| `set logtraffic-start enable` | log_start: true (controlled separately from `logtraffic`) |
 
 ## Schedule Handling
 
 | Schedule Name | Meaning |
 |---|---|
-| `"always"` | No time restriction — leave schedule field empty |
+| `"always"` | No time restriction — emit `"always"` as-is; flag only non-always schedules for conversion caveats |
 | Any other name | Reference to schedule object |
 
 Parse schedule definitions from:

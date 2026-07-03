@@ -138,7 +138,7 @@ end
 |---|---|---|
 | trust | port1 | allow |
 | untrust | port2 | deny |
-| port3 (auto) | port3 | deny (default) |
+| port3 (auto) | port3 | — (no intrazone setting) |
 
 Note: `port3` is used directly in policies but not part of any zone — auto-created as its own zone.
 
@@ -170,7 +170,7 @@ Note: `port3` is used directly in policies but not part of any zone — auto-cre
 - Zones: trust → untrust
 - Source: internal-net → Destination: all
 - Services: HTTP, HTTPS
-- Action: allow | Log: all (start + end)
+- Action: allow | Log: end (logtraffic all; no logtraffic-start)
 - Profiles: virus=default, url-filtering=default, idp=protect_client, ssl-proxy=certificate-inspection
 - NAT: source NAT enabled (policy-based)
 
@@ -178,7 +178,7 @@ Note: `port3` is used directly in policies but not part of any zone — auto-cre
 - Zones: untrust → port3
 - Source: all → Destination: web-vip (VIP: 203.0.113.10 → 192.168.10.10)
 - Services: HTTPS
-- Action: allow | Log: all + start
+- Action: allow | Log: start + end (logtraffic all + logtraffic-start)
 - Profile group: strict-security
 - Warning: "Policy uses VIP for destination NAT — review NAT mapping"
 
@@ -186,7 +186,7 @@ Note: `port3` is used directly in policies but not part of any zone — auto-cre
 - Zones: trust → port3
 - Source: internal-net → Destination: dmz-servers
 - Services: SSH, HTTPS, custom-app
-- Action: allow | Log: all
+- Action: allow | Log: end (logtraffic all)
 - **DISABLED** (status: disable)
 
 **Policy 4: Implicit: Intra-zone Allow (trust)** (rule_index: 4, _implicit: true)
@@ -195,11 +195,10 @@ Note: `port3` is used directly in policies but not part of any zone — auto-cre
 **Policy 5: Implicit: Intra-zone Deny (untrust)** (rule_index: 5, _implicit: true)
 - Zones: untrust → untrust | Action: deny
 
-**Policy 6: Implicit: Intra-zone Deny (port3)** (rule_index: 6, _implicit: true)
-- Zones: port3 → port3 | Action: deny
-
-**Policy 7: Implicit: Default Deny** (rule_index: 7, _implicit: true)
+**Policy 6: Implicit: Default Deny** (rule_index: 6, _implicit: true)
 - Zones: any → any | Action: deny
+
+Note: no intra-zone rule is modeled for `port3` — it is an auto-zone from a raw interface reference, never declared in `config system zone`, so it has no intrazone setting.
 
 ### NAT Rules (from VIPs)
 | Name | Type | External | Translated | Port |

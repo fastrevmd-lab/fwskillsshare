@@ -43,11 +43,11 @@ When encountering non-Junos application names (from imported configs), map to Ju
 | FTP / ftp | junos-ftp |
 | SMTP / smtp | junos-smtp |
 | NTP / ntp | junos-ntp |
-| SNMP / snmp | junos-snmp |
+| SNMP / snmp | *custom app required (no predefined junos-snmp)* |
 | syslog | junos-syslog |
 | ICMP / icmp / ping | junos-ping |
 | RDP / rdp / ms-rdp | junos-rdp |
-| MySQL / mysql | junos-mysql |
+| MySQL / mysql | *custom app required (no predefined junos-mysql)* |
 | MSSQL / ms-sql | junos-ms-sql |
 
 ## Well-Known Ports Reverse Lookup
@@ -64,9 +64,9 @@ When a service is defined by protocol/port only, check if it matches a predefine
 | udp/53 | junos-dns-udp |
 | tcp/53 | junos-dns-tcp |
 | udp/123 | junos-ntp |
-| udp/161 | junos-snmp |
+| udp/161 | *no predefined match — keep custom* |
 | udp/514 | junos-syslog |
-| tcp/3306 | junos-mysql |
+| tcp/3306 | *no predefined match — keep custom* |
 | tcp/3389 | junos-rdp |
 
 ## Global Policies
@@ -89,7 +89,7 @@ From policy `then permit application-services`:
 ```
 utm-policy <name>        → profile_group: "<name>"
 idp-policy <name>        → security_profiles.idp: "<name>"
-ssl-proxy profile <name> → security_profiles.ssl-proxy: "<name>"
+ssl-proxy profile-name <name> → security_profiles.ssl-proxy: "<name>"
 ```
 
 UTM policy references are set as `profile_group`. Individual IDP and SSL proxy are set

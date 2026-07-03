@@ -1,9 +1,9 @@
 ---
 name: parsing-srx-configs
-description: 'Parse and analyze Juniper SRX / Junos firewall configurations. Use this skill when the user pastes, uploads, or references an SRX configuration — either in "set" command format (show configuration | display set) or hierarchical curly-brace format (show configuration). Trigger on keywords: SRX, Junos, Juniper, "set security", "security zones", "address-book", "applications", "security policies", "from-zone", "to-zone", "nat rule-set", "chassis cluster", "logical-systems", "routing-instances". Also trigger when the user asks to convert, audit, summarize, or explain an SRX config.
+description: 'Use when the user pastes, uploads, or references a Juniper SRX / Junos firewall configuration — parses and analyzes SRX configs in either "set" command format (show configuration | display set) or hierarchical curly-brace format (show configuration). Trigger on keywords: SRX, Junos, Juniper, "set security", "security zones", "address-book", "applications", "security policies", "from-zone", "to-zone", "nat rule-set", "chassis cluster", "logical-systems", "routing-instances". Also trigger when the user asks to convert, audit, summarize, or explain an SRX config.
 
   '
-version: 1.3.0
+version: 1.3.1
 author: Hermes Agent
 license: MIT
 metadata:
@@ -137,9 +137,11 @@ Types to handle:
 
 - `ip-prefix <cidr>` / `ipv6-prefix <cidr>` — explicit keywords in hierarchical format (normalize away during hierarchical-to-set conversion)
 
-**Zone-attached address books:**
-Path: `security.address-book.<zone-name>.address.<name>` (in addition to `global`)
-Zone-attached books are common in older Junos configs. Migrate to global scope with a warning.
+**Zone-attached address books — two valid forms:**
+- **Named books with zone attachment:** `security.address-book.<book-name>.address.<name>` plus `security.address-book.<book-name>.attach.zone.<zone>`. The book name is arbitrary (operators often name it after the zone) — derive zone scope from the `attach zone` statement, never from the book name.
+- **Legacy zone-local books:** `security.zones.security-zone.<zone>.address-book.address.<name>` (older configs; a zone cannot use both forms at once).
+
+Migrate both forms to global scope with a warning.
 
 Auto-detect IP version (v4 vs v6) from the value.
 
@@ -172,10 +174,8 @@ These are L7-aware on SRX and must be resolved to canonical names for cross-vend
 | `junos-dns-udp` | UDP/53 | `dns` | network-mgmt |
 | `junos-dns-tcp` | TCP/53 | `dns` | network-mgmt |
 | `junos-ntp` | UDP/123 | `ntp` | network-mgmt |
-| `junos-snmp` | UDP/161 | `snmp` | network-mgmt |
-| `junos-snmptrap` | UDP/162 | `snmp-trap` | network-mgmt |
 | `junos-smtp` | TCP/25 | `smtp` | email |
-| `junos-smtps` | TCP/465 | `smtps` | email |
+| `junos-smtps` | TCP/587, TCP/465 | `smtps` | email |
 | `junos-imap` | TCP/143 | `imap` | email |
 | `junos-imaps` | TCP/993 | `imaps` | email |
 | `junos-pop3` | TCP/110 | `pop3` | email |
@@ -184,19 +184,27 @@ These are L7-aware on SRX and must be resolved to canonical names for cross-vend
 | `junos-ospf` | IP-89 | `ospf` | network-mgmt |
 | `junos-sip` | UDP/5060 | `sip` | voip |
 | `junos-h323` | TCP/1720 | `h323` | voip |
-| `junos-ms-rpc` | TCP/135 | `msrpc` | other |
+| `junos-ms-rpc` | TCP+UDP/135 (application-set) | `msrpc` | other |
 | `junos-ms-sql` | TCP/1433 | `mssql` | database |
-| `junos-mysql` | TCP/3306 | `mysql` | database |
-| `junos-smb` | TCP/445 | `smb` | file-transfer |
+| `junos-smb` | TCP/139, TCP/445 | `smb` | file-transfer |
 | `junos-ike` | UDP/500 | `ipsec` | tunnel |
-| `junos-ike-nat-t` | UDP/4500 | `ipsec-nat-t` | tunnel |
+| `junos-ike-nat` | UDP/4500 | `ipsec-nat-t` | tunnel |
 | `junos-pptp` | TCP/1723 | `pptp` | tunnel |
-| `junos-ping` | ICMP echo | `ping` | network-mgmt |
-| `junos-icmp-all` | ICMP | `ping` | network-mgmt |
-| `junos-icmpv6-all` | ICMPv6 | `ping6` | network-mgmt |
+| `junos-ping` | ICMP (proto 1, all types) | `ping` | network-mgmt |
+| `junos-icmp-ping` | ICMP echo-request | `ping` | network-mgmt |
+| `junos-icmp-all` | ICMP (all types) | `icmp-all` | network-mgmt |
+| `junos-pingv6` | ICMPv6 (proto 58, all types) | `ping6` | network-mgmt |
+| `junos-icmp6-all` | ICMPv6 (all types) | `icmpv6-all` | network-mgmt |
 | `junos-nntp` | TCP/119 | `nntp` | other |
 | `junos-rdp` | TCP/3389 | `rdp` | remote-access |
 | `junos-syslog` | UDP/514 | `syslog` | network-mgmt |
+
+Names verified against `show configuration groups junos-defaults applications` on
+Junos 24.4. Note there is **no** predefined `junos-snmp`, `junos-snmptrap`,
+`junos-mysql`, `junos-ike-nat-t`, `junos-icmpv6-all`, or `junos-ping6` — SNMP and
+MySQL matching require custom `applications application` definitions (extract
+those as custom apps); the NAT-T/ICMPv6 predefined names are `junos-ike-nat`,
+`junos-icmp6-all`, and `junos-pingv6`.
 
 **Resolution in policies:** When `match application` lists a predefined app:
 1. Look up in the table above
@@ -233,7 +241,7 @@ For each policy extract:
 - **src_zones** / **dst_zones** — from the path (or ["any"] for global)
 - **src_addresses** / **dst_addresses** — from `match source-address` / `match destination-address`
 - **applications** — from `match application`
-- **action** — `permit` → "allow", `deny` → "deny", `reject` → "reset-both" (send TCP RST; preserves reject semantics. Add info warning if the target platform may not support TCP reset.)
+- **action** — `permit` → "allow", `deny` → "deny", `reject` → "reset-both" (the schema's reject-family value). Note: SRX `reject` notifies the **source only** — TCP RST to the client, ICMP unreachable for other protocols — not both sides; emit an info warning so conversions do not overstate reset-both semantics on the target platform.
 - **log_start** — true if `then log session-init`
 - **log_end** — true if `then log session-close`
 - **security_profiles** — extract from `then permit application-services`:
@@ -261,7 +269,7 @@ translated source/destination/port.
 **Destination NAT specifics:**
 - `destination-port <port>` → original service match
 - `then destination-nat pool <poolname>` → translated destination from pool
-- `then destination-nat pool <poolname> port <port>` → translated destination + port
+- Port translation lives on the **pool object**, not the rule: `security.nat.destination.pool.<name>` carries `address <ip/prefix>` and optional `port <port>` — resolve translated address AND port from the referenced pool definition (`... pool <name> port <port>` on the rule is not valid Junos)
 - Handle hierarchical `ip addr <ip>` form for inline destination translation
 
 **Static NAT specifics:**
@@ -393,8 +401,11 @@ After extraction, run these checks and report findings:
 - `references/intermediate-schema.md` — Output schema specification
 - `references/parsing-patterns.md` — Edge cases, predefined apps, and name sanitization
 
+- `references/example-sample-parse.md` — Worked end-to-end example (input config → parsed JSON)
 - `references/fixture-minimal-input.md` — Minimal parser fixture input
 - `references/fixture-expected-output.json` — Expected high-level intermediate-schema output for the minimal fixture
+
+Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are free-form labels; consumers must match implicit rules on `_implicit: true`, never on the name.
 
 ## Common Pitfalls
 

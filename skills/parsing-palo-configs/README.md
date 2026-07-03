@@ -9,7 +9,7 @@ Parses both XML and set-format (`show config flat`) configs from device-level or
 - Zones (layer3, layer2, virtual-wire, tap)
 - Address objects (ip-netmask, ip-range, fqdn, ip-wildcard)
 - Address groups (static and dynamic tag-based)
-- Service objects (TCP/UDP/SCTP/ICMP) and service groups
+- Service objects (TCP/UDP, plus SCTP on 9.0+ platforms with SCTP security enabled) and service groups
 - Custom applications
 - Security policies with profile settings
 - NAT rules (source and destination)
@@ -18,7 +18,6 @@ Parses both XML and set-format (`show config flat`) configs from device-level or
 - HA configuration
 - Zone protection profiles
 - IPv6 address types and routes
-- ICMP/ICMPv6 services
 - Interfaces (ethernet, LAG, loopback, tunnel, VLAN)
 - System config (hostname, DNS, NTP, management services)
 - Admin users
@@ -67,10 +66,11 @@ cp -r parsing-palo-configs ~/.claude/skills/
 ```
 parsing-palo-configs/
 ├── SKILL.md                          # Main skill instructions
-├── references/
-│   ├── config-format.md              # PAN-OS XML structure, entry/member patterns
-│   ├── intermediate-schema.md        # Vendor-neutral output schema
-│   └── parsing-patterns.md           # XML parsing, profile groups, dynamic groups
 └── references/
-    └── sample-parse.md               # Worked example with input/output
+    ├── config-format.md              # Vendor config syntax reference
+    ├── intermediate-schema.md        # Vendor-neutral output schema
+    ├── parsing-patterns.md           # Edge cases, port mappings
+    ├── example-sample-parse.md       # Worked example with input/output
+    ├── fixture-minimal-input.md      # Minimal test fixture (input)
+    └── fixture-expected-output.json  # Minimal test fixture (expected output)
 ```

@@ -148,6 +148,6 @@ SRX has predefined applications that don't need explicit definition:
 - `junos-ftp` (TCP/21), `junos-dns-udp` (UDP/53), `junos-dns-tcp` (TCP/53)
 - `junos-ping` (ICMP), `junos-icmp-all` (ICMP all types)
 - `junos-smtp` (TCP/25), `junos-ntp` (UDP/123)
-- `junos-snmp` (UDP/161), `junos-syslog` (UDP/514)
+- `junos-syslog` (UDP/514) — note: there is no predefined `junos-snmp`; SNMP needs a custom application
 - `junos-dhcp-client` (UDP/68), `junos-dhcp-server` (UDP/67)
 - `any` — matches all applications

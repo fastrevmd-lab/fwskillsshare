@@ -60,10 +60,11 @@ cp -r parsing-cisco-configs ~/.claude/skills/
 ```
 parsing-cisco-configs/
 ├── SKILL.md                          # Main skill instructions
-├── references/
-│   ├── config-format.md              # ASA config syntax reference
-│   ├── intermediate-schema.md        # Vendor-neutral output schema
-│   └── parsing-patterns.md           # Edge cases, port mappings
 └── references/
-    └── sample-parse.md               # Worked example with input/output
+    ├── config-format.md              # Vendor config syntax reference
+    ├── intermediate-schema.md        # Vendor-neutral output schema
+    ├── parsing-patterns.md           # Edge cases, port mappings
+    ├── example-sample-parse.md       # Worked example with input/output
+    ├── fixture-minimal-input.md      # Minimal test fixture (input)
+    └── fixture-expected-output.json  # Minimal test fixture (expected output)
 ```

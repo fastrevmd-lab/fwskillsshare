@@ -54,7 +54,15 @@
       "action": "allow",
       "log_end": true,
       "_rule_index": 1,
-      "_implicit": false
+      "_implicit": false,
+      "apps": [
+        {
+          "vendor_name": "APP-HTTPS",
+          "canonical": "https",
+          "confidence": 0.9,
+          "category": "web"
+        }
+      ]
     },
     {
       "name": "default-deny",

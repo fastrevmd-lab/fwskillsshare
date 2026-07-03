@@ -167,10 +167,16 @@ nat (inside,outside) 1 source static web-server pub-web-server service tcp-80 tc
 Token parsing:
 1. `nat` keyword
 2. `(<real-iface>,<mapped-iface>)` — interfaces
-3. Optional section number (`1`, `2`)
-4. `source <static|dynamic> <real-src> <mapped-src>`
-5. Optional: `destination <static> <real-dst> <mapped-dst>`
-6. Optional: `service <real-svc> <mapped-svc>`
+3. Optional `after-auto` keyword — places the rule in Section 3 (after object/auto NAT)
+4. Optional line number (`1`, `2`, ...) — the rule's position within its manual NAT section, NOT a section number
+5. `source <static|dynamic> <real-src> <mapped-src>`
+6. Optional: `destination <static> <real-dst> <mapped-dst>`
+7. Optional: `service <real-svc> <mapped-svc>`
+
+Derive the NAT section from rule form, never from the numeric token:
+- Manual/twice NAT without `after-auto` → Section 1
+- Object/auto NAT (`nat` inside `object network` blocks) → Section 2
+- Manual/twice NAT with `after-auto` → Section 3
 
 ## Threat Detection to Screen Mapping
 
@@ -213,6 +219,6 @@ Day keywords: `weekdays`, `weekend`, `daily`, `Monday`, `Tuesday`, etc.
 | `inactive` ACL entry | info | "ACL entry is inactive" |
 | Transparent mode | info | "Firewall in transparent (bridge) mode" |
 | Failover detected | info | "HA failover configuration present" |
-| Object NAT + Twice NAT | info | "Mixed NAT types — review ordering (section 1 → auto → section 2)" |
+| Object NAT + Twice NAT | info | "Mixed NAT types — review ordering (section 1 manual → section 2 auto → section 3 after-auto)" |
 | `interface` as NAT target | info | "NAT translates to interface IP (PAT)" |
 | Security-level based permit | warning | "Implicit high-to-low permit may exist without ACLs" |

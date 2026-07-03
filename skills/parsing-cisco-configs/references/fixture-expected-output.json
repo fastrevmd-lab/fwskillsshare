@@ -56,12 +56,20 @@
       ],
       "action": "allow",
       "log_end": true,
-      "_rule_index": 1
+      "_rule_index": 1,
+      "apps": [
+        {
+          "vendor_name": "tcp/443",
+          "canonical": "https",
+          "confidence": 0.9,
+          "category": "web"
+        }
+      ]
     },
     {
       "name": "default-deny",
       "src_zones": [
-        "any"
+        "outside"
       ],
       "dst_zones": [
         "any"
@@ -70,9 +78,6 @@
         "any"
       ],
       "dst_addresses": [
-        "any"
-      ],
-      "applications": [
         "any"
       ],
       "services": [],
@@ -141,7 +146,8 @@
   "metadata": {
     "source_vendor": "cisco_asa",
     "warnings": [
-      "ACL destination zone may require route/interface resolution beyond access-group binding"
+      "ACL destination zone may require route/interface resolution beyond access-group binding",
+      "no ACL bound on inside \u2014 security-level high-to-low permit applies"
     ]
   }
 }

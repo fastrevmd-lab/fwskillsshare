@@ -65,10 +65,11 @@ cp -r parsing-srx-configs ~/.claude/skills/
 ```
 parsing-srx-configs/
 ├── SKILL.md                          # Main skill instructions
-├── references/
-│   ├── config-format.md              # Set format, hierarchical format, predefined apps
-│   ├── intermediate-schema.md        # Vendor-neutral output schema
-│   └── parsing-patterns.md           # Name sanitization, IP detection, app mapping
 └── references/
-    └── sample-parse.md               # Worked example with input/output
+    ├── config-format.md              # Vendor config syntax reference
+    ├── intermediate-schema.md        # Vendor-neutral output schema
+    ├── parsing-patterns.md           # Edge cases, port mappings
+    ├── example-sample-parse.md       # Worked example with input/output
+    ├── fixture-minimal-input.md      # Minimal test fixture (input)
+    └── fixture-expected-output.json  # Minimal test fixture (expected output)
 ```

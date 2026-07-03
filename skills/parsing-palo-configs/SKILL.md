@@ -1,9 +1,9 @@
 ---
 name: parsing-palo-configs
-description: 'Parse and analyze Palo Alto PAN-OS firewall configurations in XML format. Use this skill when the user pastes, uploads, or references a PAN-OS or Panorama configuration export. Trigger on keywords: PAN-OS, Palo Alto, Panorama, NGFW, "vsys", "security rulebase", "address-group", "application-default", "security-profile-group", "device-group", "<entry name=", "<member>", "tag-based", "User-ID". Also trigger when the user asks to convert, audit, summarize, or explain a Palo Alto config.
+description: 'Use when the user pastes, uploads, or references a Palo Alto PAN-OS or Panorama configuration export — parses and analyzes PAN-OS firewall configurations in XML format. Trigger on keywords: PAN-OS, Palo Alto, Panorama, NGFW, "vsys", "security rulebase", "address-group", "application-default", "security-profile-group", "device-group", "<entry name=", "<member>", "tag-based", "User-ID". Also trigger when the user asks to convert, audit, summarize, or explain a Palo Alto config.
 
   '
-version: 1.1.0
+version: 1.1.1
 author: Hermes Agent
 license: MIT
 metadata:
@@ -125,9 +125,9 @@ Path: `service.entry[]`
 Extract from `<protocol>`:
 - `<tcp><port>` / `<tcp><source-port>` → protocol: "tcp"
 - `<udp><port>` / `<udp><source-port>` → protocol: "udp"
-- `<sctp><port>` → protocol: "sctp" (warn: limited support)
-- `<icmp>` → protocol: "icmp" (extract type/code if present)
-- `<icmp6>` → protocol: "icmpv6"
+- `<sctp><port>` → protocol: "sctp" — platform-conditional: valid only on PAN-OS 9.0+ platforms with SCTP security enabled (warn: limited support)
+
+PAN-OS service objects are TCP/UDP (and conditionally SCTP) port objects only. ICMP matching is application-based (the `ping`/`icmp` App-IDs), not a service-object protocol. If any other protocol child element appears, capture its XML in `residual_raw` and add a warning.
 Also extract `<description>` from service objects.
 
 ### 5. Service Groups
@@ -173,7 +173,7 @@ For each rule extract:
 `security_profiles` schema keys (left = PAN-OS XML element, right = schema key):
 - `<group><member>` → profile_group name, then resolve from profile-group definitions
 - `<profiles>` → individual profiles:
-  - `<virus><member>` → `antivirus`
+  - `<virus><member>` → `virus`
   - `<spyware><member>` → `anti-spyware`
   - `<vulnerability><member>` → `idp` (PAN-OS calls this Vulnerability Protection / IPS; the schema key is `idp`)
   - `<url-filtering><member>` → `url-filtering`
@@ -401,8 +401,11 @@ After extraction, run these checks and report findings:
 - `references/intermediate-schema.md` — Output schema specification
 - `references/parsing-patterns.md` — Edge cases, app mapping, profile resolution
 
+- `references/example-sample-parse.md` — Worked end-to-end example (input XML → parsed JSON)
 - `references/fixture-minimal-input.md` — Minimal parser fixture input
 - `references/fixture-expected-output.json` — Expected high-level intermediate-schema output for the minimal fixture
+
+Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are free-form labels; consumers must match implicit rules on `_implicit: true`, never on the name.
 
 ## Common Pitfalls
 

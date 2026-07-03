@@ -191,7 +191,7 @@ end
 | Field | Values | Notes |
 |---|---|---|
 | `action` | `accept`, `deny` | No "reject" in FortiGate |
-| `logtraffic` | `all`, `utm`, `disable` | `all` = log start + end, `utm` = UTM events only |
+| `logtraffic` | `all`, `utm`, `disable` | `all` = log session end (start requires `logtraffic-start enable`), `utm` = UTM events only |
 | `status` | `enable`, `disable` | Disabled policies are inactive |
 | `nat` | `enable`, `disable` | Enable source NAT on this policy |
 | `utm-status` | `enable`, `disable` | Enables UTM profile inspection |

@@ -271,7 +271,7 @@ Example mappings:
 | `msrpc` | `junos-ms-rpc` | `MS-RPC` | `msrpc` | `MSRPC` |
 | `smtp` | `junos-smtp` | `SMTP` | `smtp` | `SMTP` |
 | `ntp` | `junos-ntp` | `NTP` | `ntp` | `NTP` |
-| `snmp` | `junos-snmp` | `SNMP` | `snmp` | `SNMP` |
+| `snmp` | *custom app* (UDP/161; no predefined) | `SNMP` | `snmp` | `SNMP` |
 
 Resolution algorithm:
 1. **Pass 1 — Vendor-name match:** Look up the source vendor's name across all canonical entries

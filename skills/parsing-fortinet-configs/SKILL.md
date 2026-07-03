@@ -1,9 +1,9 @@
 ---
 name: parsing-fortinet-configs
-description: 'Parse and analyze Fortinet FortiGate / FortiOS firewall configurations. Use this skill when the user pastes, uploads, or references a FortiGate config — the "config/edit/set/next/end" block format from "show full-configuration" or backup exports. Trigger on keywords: FortiGate, FortiOS, Fortinet, VDOM, "config firewall policy", "config firewall address", "config firewall service custom", "config system interface", "edit", "set srcintf", "set dstintf", "set srcaddr", "set dstaddr", "set action accept", "set utm-status enable", "set av-profile", "set webfilter-profile", "set ips-sensor". Also trigger when the user asks to convert, audit, summarize, or explain a FortiGate config.
+description: 'Use when the user pastes, uploads, or references a Fortinet FortiGate / FortiOS config to parse and analyze — the "config/edit/set/next/end" block format from "show full-configuration" or backup exports. Trigger on keywords: FortiGate, FortiOS, Fortinet, VDOM, "config firewall policy", "config firewall address", "config firewall service custom", "config system interface", "edit", "set srcintf", "set dstintf", "set srcaddr", "set dstaddr", "set action accept", "set utm-status enable", "set av-profile", "set webfilter-profile", "set ips-sensor". Also trigger when the user asks to convert, audit, summarize, or explain a FortiGate config.
 
   '
-version: 1.1.0
+version: 1.1.1
 author: Hermes Agent
 license: MIT
 metadata:
@@ -127,7 +127,7 @@ Classify `allowaccess` values into management services (ssh, https, http, telnet
 Path: `config firewall address` → `edit <name>`
 
 Types — detect from `set type` or infer from fields:
-- `set type ipmask` + `set subnet <ip> <mask>` → type: "subnet" (convert mask to CIDR)
+- `set type ipmask` + `set subnet <ip> <mask>` → type: "subnet" (convert mask to CIDR); promote a /32 (or IPv6 /128) result to type: "host"
 - `set type iprange` + `set start-ip` / `set end-ip` → type: "range", value: "start-end"
 - `set type fqdn` + `set fqdn <domain>` → type: "fqdn"
 - `set type geography` + `set country <code>` → type: "geo" (warn: limited cross-platform support)
@@ -173,8 +173,8 @@ For each policy extract:
 - **services** — `set service <list>`
 - **applications** — `set application <list>` (application control IDs/names)
 - **action** — `set action accept` → "allow", `set action deny` → "deny"
-- **log_start** — `set logtraffic-start enable`
-- **log_end** — inferred from `set logtraffic all` or `set logtraffic utm`
+- **log_start** — `set logtraffic-start enable` (start logging is controlled separately from `logtraffic`)
+- **log_end** — `set logtraffic all`. `set logtraffic utm` logs UTM/security events only, NOT end-of-session traffic — map to log_end: false and note UTM-only logging in `metadata.warnings`
 - **disabled** — `set status disable`
 - **description** — `set comments <value>`
 - **schedule** — `set schedule <value>`
@@ -188,7 +188,7 @@ FortiGate per-policy source NAT (`set nat enable`, optionally with `set ippool e
 
 **Default values** when fields are omitted from config:
 - `action` defaults to `accept` (→ "allow")
-- `logtraffic` defaults to `disable` (→ log_end: false)
+- `logtraffic` defaults to `utm` on accept policies (→ log_end: false; UTM-event logging only)
 - `status` defaults to `enable` (→ disabled: false)
 
 **UTM / Security Profiles** — when `set utm-status enable`:
@@ -321,16 +321,16 @@ Parse full profile objects for reference:
 - **Static routes (IPv6):** `config router static6` → `edit <id>` with same fields using IPv6 prefixes
 - **BGP:** `config router bgp` — extract:
   - `set as`, `set router-id`, global `set keepalive-timer`/`set holdtime-timer`
-  - Per-neighbor (in `config neighbor`): `remote-as`, `description`, `update-source`, `password`, per-neighbor timers (override global), `next-hop-self`, `soft-reconfiguration`, `route-reflector-client`, `status enable|disable`
+  - Per-neighbor (in `config neighbor`): `remote-as`, `description`, `update-source`, `password` (record presence only — redact the value, never emit it), per-neighbor timers (override global), `next-hop-self`, `soft-reconfiguration`, `route-reflector-client`, `status enable|disable`
   - `config network` entries (prefix advertisements)
   - `config redistribute` with `set status enable|disable`
   - Warn: route-map/prefix-list references are not converted
 - **OSPF:** `config router ospf` — extract:
   - `set router-id`, `set auto-cost-reference-bandwidth`
   - `config area`: area ID, type (stub/nssa with no-summary), default-cost, authentication
-  - `config ospf-interface`: area assignment, passive flag, cost, priority, hello/dead intervals, network-type (point-to-point/broadcast), MD5 authentication with key ID and key
+  - `config ospf-interface`: area assignment, passive flag, cost, priority, hello/dead intervals, network-type (point-to-point/broadcast), MD5 authentication with key ID (record key presence only — redact the key value)
   - `config redistribute`: source, status, metric, metric-type
-  - Warn: MD5 keys in cleartext
+  - Warn: MD5 keys in cleartext in source config (key values are never emitted in output)
 - **OSPFv3:** `config router ospf6` — same structure but uses `config ospf6-interface` (not `ospf-interface`)
 - **Policy routing:** `config router policy` → PBF rules
 
@@ -346,7 +346,7 @@ Parse full profile objects for reference:
 - **Syslog:** `config log syslogd setting`
 - **DHCP Server:** `config system dhcp server` — extract top-level fields (`set default-gateway`, `set netmask`, `set interface`, `set domain`, `set lease-time`, `set dns-server1/dns-server2`) plus nested `config ip-range` (start-ip/end-ip) and `config reserved-address` (mac, ip, description). Derive network CIDR from gateway + netmask.
 - **VPN IPsec:**
-  - `config vpn ipsec phase1-interface`: IKE version, remote-gw, proposal (compound strings — parse enc/integrity/prf separately; GCM tokens have no integrity, `prf*` suffix is phase1-only — see "FortiOS compound proposal parsing"), DH group, key lifetime, PSK, certificate auth detection
+  - `config vpn ipsec phase1-interface`: IKE version, remote-gw, proposal (compound strings — parse enc/integrity/prf separately; GCM tokens have no integrity, `prf*` suffix is phase1-only — see "FortiOS compound proposal parsing"), DH group, key lifetime, PSK presence (mask the value as `"****"` per the schema — never emit the raw key), certificate auth detection
   - `config vpn ipsec phase2-interface`: phase1name reference, proposal, PFS, DH group, key lifetime
   - Phase1 name auto-creates a tunnel interface of the same name
   - Resolve tunnel IP from matching interface, associate static routes through tunnel interfaces
@@ -410,8 +410,11 @@ After extraction, report:
 - `references/intermediate-schema.md` — Output schema specification
 - `references/parsing-patterns.md` — Edge cases, mask conversion, application mapping
 
+- `references/example-sample-parse.md` — Worked end-to-end example (input config → parsed JSON)
 - `references/fixture-minimal-input.md` — Minimal parser fixture input
 - `references/fixture-expected-output.json` — Expected high-level intermediate-schema output for the minimal fixture
+
+Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are free-form labels; consumers must match implicit rules on `_implicit: true`, never on the name.
 
 ## Common Pitfalls
 
@@ -420,6 +423,7 @@ After extraction, report:
 3. Central SNAT and per-policy NAT are different models; detect both and warn when both are present.
 4. Quoted multi-value fields require tokenizer-aware parsing; whitespace splitting corrupts names with spaces.
 5. Profile groups and individual UTM profiles must be expanded while preserving unmapped FortiGate-specific profile fields.
+6. Never emit raw secrets: mask VPN PSKs as `"****"` and represent BGP neighbor passwords and OSPF MD5 keys as presence flags plus a `metadata.warnings` note — shared secrets, passwords, and keys must never appear verbatim in parse output.
 
 ## Verification Checklist
 
@@ -430,3 +434,4 @@ After extraction, report:
 - [ ] Unresolved references, unsupported blocks, and parser assumptions are listed in `metadata.warnings` and/or `residual_raw`
 - [ ] Rule order and NAT order are preserved with `_rule_index` or equivalent ordering metadata
 - [ ] Cross-vendor conversion caveats are called out before suggesting target-platform config
+- [ ] No raw secrets in output — PSKs masked as `"****"`, BGP/OSPF passwords and keys reduced to presence flags with warnings
