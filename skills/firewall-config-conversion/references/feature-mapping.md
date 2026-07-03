@@ -48,8 +48,8 @@ This table is the **reverse** direction: canonical → what to emit per target.
 | `tftp` | UDP/69 | `junos-tftp` | `tftp` | `TFTP` | `udp/69` |
 | `dns` | UDP/53 (+TCP/53) | `junos-dns-udp` / `junos-dns-tcp` | `dns` | `DNS` | `udp/53` (+`tcp/53`) |
 | `ntp` | UDP/123 | `junos-ntp` | `ntp` | `NTP` | `udp/123` |
-| `snmp` | UDP/161 | `junos-snmp` | `snmp` | `SNMP` | `udp/161` |
-| `snmp-trap` | UDP/162 | `junos-snmptrap` | `snmp-trap` | `SNMP` (trap) | `udp/162` |
+| `snmp` | UDP/161 | *custom app* (no predefined) | `snmp` | `SNMP` | `udp/161` |
+| `snmp-trap` | UDP/162 | *custom app* (no predefined) | `snmp-trap` | `SNMP` (trap) | `udp/162` |
 | `smtp` | TCP/25 | `junos-smtp` | `smtp` | `SMTP` | `tcp/25` |
 | `smtps` | TCP/465 | `junos-smtps` | `smtp` (ssl) | `SMTPS` | `tcp/465` |
 | `imap` | TCP/143 | `junos-imap` | `imap` | `IMAP` | `tcp/143` |
@@ -62,16 +62,18 @@ This table is the **reverse** direction: canonical → what to emit per target.
 | `h323` | TCP/1720 | `junos-h323` | `h.323` | `H323` | `tcp/1720` |
 | `msrpc` | TCP/135 | `junos-ms-rpc` | `msrpc` | `MS-RPC` | `tcp/135` |
 | `mssql` | TCP/1433 | `junos-ms-sql` | `mssql-db` | `MS-SQL` | `tcp/1433` |
-| `mysql` | TCP/3306 | `junos-mysql` | `mysql` | `MYSQL` | `tcp/3306` |
+| `mysql` | TCP/3306 | *custom app* (no predefined) | `mysql` | `MYSQL` | `tcp/3306` |
 | `smb` | TCP/445 | `junos-smb` | `ms-ds-smb` | `SMB` | `tcp/445` |
 | `rdp` | TCP/3389 | `junos-rdp` | `ms-rdp` | `RDP` | `tcp/3389` |
 | `ipsec` (IKE) | UDP/500 | `junos-ike` | `ike` | `IKE` | `udp/500` |
-| `ipsec-nat-t` | UDP/4500 | `junos-ike-nat-t` | `ipsec-esp-udp` | `IKE` (nat-t) | `udp/4500` |
-| `esp` | IP/50 | `junos-esp` | `ipsec-esp` | `ESP` | `50` (IP proto) |
-| `ah` | IP/51 | `junos-ah` | `ipsec-ah` | `AH` | `51` (IP proto) |
+| `ipsec-nat-t` | UDP/4500 | `junos-ike-nat` | `ipsec-esp-udp` | `IKE` (nat-t) | `udp/4500` |
+| `esp` | IP/50 | *custom app* (protocol 50; no predefined) | `ipsec-esp` | `ESP` | `50` (IP proto) |
+| `ah` | IP/51 | *custom app* (protocol 51; no predefined) | `ipsec-ah` | `AH` | `51` (IP proto) |
 | `pptp` | TCP/1723 | `junos-pptp` | `pptp` | `PPTP` | `tcp/1723` |
-| `ping` | ICMP | `junos-icmp-all` | `ping`/`icmp` | `PING`/`ALL_ICMP` | `icmp` |
-| `ping6` | ICMPv6 | `junos-icmpv6-all` | `ipv6-icmp` | `PING6` | `icmp6` |
+| `ping` | ICMP echo | `junos-icmp-ping` (echo-only; `junos-ping` matches all of proto 1) | `ping` | `PING` | `icmp` (echo) |
+| `icmp-all` | ICMP (all types) | `junos-icmp-all` | `icmp` | `ALL_ICMP` | `icmp` |
+| `ping6` | ICMPv6 echo | `junos-pingv6` | `ping6` | `PING6` | `icmp6` |
+| `icmpv6-all` | ICMPv6 (all types) | `junos-icmp6-all` | `ipv6-icmp` | `ALL_ICMP6` | `icmp6` |
 | `nntp` | TCP/119 | `junos-nntp` | `nntp` | `NNTP` | `tcp/119` |
 | `syslog` | UDP/514 | `junos-syslog` | `syslog` | `SYSLOG` | `udp/514` |
 

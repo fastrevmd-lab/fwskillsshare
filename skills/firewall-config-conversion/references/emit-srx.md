@@ -128,8 +128,7 @@ set security zones security-zone TRUST host-inbound-traffic system-services ssh
 
 ## security_policies
 
-**Classification: converted-with-caveats** (action/logging map cleanly; profiles and any
-unresolved apps are lossy). **Preserve source rule order** — emit a stable numeric prefix
+**Classification: converted** when actions/logging/apps all resolve cleanly; **converted-with-caveats** when profiles or unresolved apps are present (both are lossy). **Preserve source rule order** — emit a stable numeric prefix
 (`010-`, `100-`, `999-`) so order survives. Default to `security policies global` with
 `match from-zone` / `match to-zone` leaves.
 
@@ -199,6 +198,7 @@ set security nat source rule-set RS-TRUST-UNTRUST to zone UNTRUST
 set security nat source rule-set RS-TRUST-UNTRUST rule R10-USERS match source-address 10.10.0.0/16
 set security nat source rule-set RS-TRUST-UNTRUST rule R10-USERS then source-nat interface
 set security nat source pool PNAT-EGRESS address 203.0.113.10/32 to 203.0.113.20/32
+set security nat source rule-set RS-TRUST-UNTRUST rule R20-SERVERS match source-address 10.20.0.0/16
 set security nat source rule-set RS-TRUST-UNTRUST rule R20-SERVERS then source-nat pool PNAT-EGRESS
 ```
 
@@ -215,6 +215,7 @@ set security nat destination rule-set RS-DST-UNTRUST rule R10-WEB then destinati
 Static NAT (1:1):
 
 ```
+set security nat static rule-set RS-STATIC from zone UNTRUST
 set security nat static rule-set RS-STATIC rule R10-MAIL match destination-address 203.0.113.60/32
 set security nat static rule-set RS-STATIC rule R10-MAIL then static-nat prefix 10.20.40.10/32
 ```

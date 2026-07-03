@@ -9,7 +9,7 @@
 > context-adjusted examples. Where they appear to differ, this catalog wins.
 
 Schema field names use the vendor-neutral intermediate schema (canonical reference:
-the canonical intermediate schema (documented in the `parsing-srx-configs` skill)). The brief used
+the copy documented in the `parsing-srx-configs` skill). The brief used
 shorthand aliases (e.g. `rules[]`, `objects`, `vpn.ike`) which are mapped here to
 their real top-level keys: `security_policies[]`, `address_objects` / `service_objects`,
 `vpn_tunnels[].ike`, etc.

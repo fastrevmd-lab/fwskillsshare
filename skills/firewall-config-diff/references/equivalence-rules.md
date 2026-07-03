@@ -215,11 +215,11 @@ following all normalize to the same key and are `unchanged` across vendors:
 
 | Canonical | Junos SRX | Palo Alto PAN-OS | FortiGate | Cisco ASA/FTD |
 |-----------|-----------|------------------|-----------|---------------|
-| `https` | `junos-https` | `ssl` / `web-browsing` (App-ID) | `HTTPS` | `tcp/443` |
+| `https` | `junos-https` | `ssl` | `HTTPS` | `tcp/443` |
 | `http`  | `junos-http`  | `web-browsing` | `HTTP`  | `tcp/80`  |
 | `ssh`   | `junos-ssh`   | `ssh`          | `SSH`   | `tcp/22`  |
 | `dns`   | `junos-dns-udp` | `dns`        | `DNS`   | `udp/53`  |
-| `rdp`   | `junos-rdp`/`junos-ms-rpc` | `ms-rdp` | `RDP` | `tcp/3389` |
+| `rdp`   | `junos-rdp`   | `ms-rdp`       | `RDP`   | `tcp/3389` |
 
 So `junos-https` (SRX) == `ssl` (Palo) == `HTTPS` (FortiGate) == `tcp/443` (Cisco) — they are
 **not** a diff. A port-based side (FortiGate base policy, Cisco ASA) carries the canonical app

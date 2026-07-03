@@ -279,7 +279,8 @@ rotate any weak/shared pre-shared key to a long unique secret stored out of band
       next
   end
   ```
-- **Juniper SRX:** group14, AES-256-GCM, SHA-256, IKEv2 only, PFS group14:
+- **Juniper SRX:** group14, AES-256-CBC with SHA-256 for IKE, AES-256-GCM for ESP,
+  IKEv2 only, PFS group14:
   ```
   set security ike proposal IKE-PROP authentication-method pre-shared-keys
   set security ike proposal IKE-PROP dh-group group14
@@ -411,10 +412,27 @@ plane resists brute-force and exhaustion. SRX is authoritative below.
   set system services ssh rate-limit 4
   set system services ssh protocol-version v2
   ```
-- **Cross-vendor:** Cisco `no ip http server` + `ip ssh version 2` / `ip ssh
-  authentication-retries <n>` and an ACL on the vty/SSH lines; Palo PAN-OS / FortiGate
-  restrict admin SSH/HTTPS to a permitted-IP / trusthost management allowlist and
-  disable plaintext admin (see Plaintext-management family).
+- **Cross-vendor:** Cisco ASA/FTD `ssh version 2` + `ssh cipher encryption high`,
+  scope SSH to trusted management subnets with `ssh <subnet> <mask> <interface>`,
+  authenticate via `aaa authentication ssh console LOCAL`, and disable or scope the
+  HTTP server (`no http server enable`, or `http <subnet> <mask> <interface>`);
+  Palo PAN-OS:
+  ```
+  set deviceconfig system permitted-ip <mgmt-subnet>/<len>
+  set deviceconfig system service disable-telnet yes
+  set deviceconfig system service disable-http yes
+  ```
+  FortiGate:
+  ```
+  config system admin
+      edit <admin-name>
+          set trusthost1 <mgmt-subnet> <mask>
+      next
+  end
+  config system global
+      set admin-telnet disable
+  end
+  ```
 
 Verify (SRX): `show configuration system services ssh | display set`.
 
@@ -545,6 +563,54 @@ Verify (SRX): `show configuration system login | display set`.
 ---
 
 ## Notes
+
+## SEC-LARGE-PORTRANGE — Oversized port ranges
+
+- **Vendor-neutral:** replace broad ranges (>100 ports) with the specific ports the
+  application actually uses; where a range is genuinely required, document it in the
+  rule description and scope source/destination tightly.
+- **SRX:** define narrow custom applications (`set applications application <name>
+  protocol tcp destination-port <p>`); Cisco: per-port `object service` entries or an
+  `object-group service` enumerating exact ports; Palo: tighten the `service` object
+  or move to App-ID with `application-default`; FortiGate: narrow the custom service
+  `tcp-portrange`.
+
+## SEC-IPV6-POSTURE — Unmanaged IPv6
+
+- **Vendor-neutral:** decide explicitly — either manage IPv6 with policies mirroring
+  IPv4 intent (including a final logged IPv6 deny), or disable IPv6 on transit
+  interfaces so it cannot bypass IPv4-only policy.
+- **SRX:** add `any-ipv6`-scoped policies (or a global IPv6 deny); Cisco: `ipv6
+  access-list` bound per interface; Palo: explicit ipv6 rules (wildcard `any` covers
+  both — verify intent); FortiGate: `config firewall policy6` (or unified policy) with
+  a final deny.
+
+## SEC-NO-CONTROL-PLANE-PROTECTION — Missing RE/control-plane filter
+
+- **Vendor-neutral:** apply a management-plane ACL/filter that permits only approved
+  management sources/protocols to the device itself and drops the rest, with logging.
+- **SRX:** stateless lo0 input filter (`set firewall family inet filter RE-PROTECT ...`
+  then `set interfaces lo0 unit 0 family inet filter input RE-PROTECT`); Cisco ASA:
+  scoped `ssh`/`http` statements + `icmp` interface rules; Palo: interface-mgmt
+  profiles with permitted-ip; FortiGate: interface `allowaccess` minimized + trusthost.
+
+## OPS-ZERO-HIT — Zero-hit / stale rules
+
+- **Vendor-neutral:** confirm over a representative window (include monthly/quarterly
+  jobs), then disable first, monitor, and remove in a later change window; never
+  delete on a single snapshot.
+- Evidence: Cisco `show access-list | include hitcnt=0`; SRX `show security policies
+  hit-count`; Palo rule-usage view / `show running rule-use rule-base security`;
+  FortiGate policy hit counters in `diagnose firewall iprope show`.
+
+## OPS-LOG-COMPLETENESS — Incomplete logging pipeline
+
+- **Vendor-neutral:** enable session logging on permits at trust boundaries and on the
+  final deny, and forward to an external collector (syslog/SIEM) with time sync.
+- **SRX:** `then log session-close` on permits + `set security log stream <name> host
+  <collector>`; Cisco: per-ACE `log` + `logging host <if> <collector>`; Palo:
+  log-end + log-forwarding profile on rules; FortiGate: `set logtraffic all` +
+  `config log syslogd setting`.
 
 - These are change templates, not turnkey configs — confirm interface names, zone
   names, object names, and platform/version syntax against the live device.

@@ -51,7 +51,8 @@ Section: address_objects     unchanged 1  added 0  removed 0  changed 1
 Section: service_objects     unchanged 1  added 0  removed 0  changed 0
     (HTTPS-ALT tcp/8443 unchanged — it is now referenced by the new policy, but the object
      definition itself did not change)
-Section: security_policies   unchanged 0  added 1  removed 0  changed 1  | order: 0 reordered
+Section: security_policies   unchanged 1  added 1  removed 0  changed 1  | order: 0 reordered
+    (the fixture's implicit default-deny pairs implicit-to-implicit on both sides — unchanged)
   + [B] INSIDE-WEB-1: inside → outside, INSIDE-NET → any, tcp/8443 (HTTPS-ALT), allow
   ~ [A→B] OUTSIDE-IN-1 (any → WEB, tcp/443, allow): log_end true → false
     (effective destination also moved with WEB: 10.0.1.10/32 → 10.0.1.20/32)
@@ -102,6 +103,7 @@ crypto map OUT_MAP 10 set ikev2 ipsec-proposal AES256-SHA256
 
 ```text
 set security address-book global address host-A 10.0.1.10/32
+set security policies global policy ALLOW-WEB match from-zone outside
 set security policies global policy ALLOW-WEB match source-address any
 set security policies global policy ALLOW-WEB match destination-address host-A
 set security policies global policy ALLOW-WEB match application junos-https
@@ -112,9 +114,11 @@ set security ike proposal IKE-PROP authentication-algorithm sha-256
 set security ike proposal IKE-PROP dh-group group14
 set security ike proposal IKE-PROP lifetime-seconds 86400
 set security ike policy IKE-POL proposals IKE-PROP
+set security ike gateway GW-SITEB ike-policy IKE-POL
+set security ike gateway GW-SITEB address 198.51.100.7
+set security ike gateway GW-SITEB version v2-only
 set security ipsec vpn VPN-SITEB bind-interface st0.0
-set security ipsec vpn VPN-SITEB ike gateway GW-SITEB address 198.51.100.7
-set security ipsec vpn VPN-SITEB ike gateway GW-SITEB ike-policy IKE-POL
+set security ipsec vpn VPN-SITEB ike gateway GW-SITEB
 # pre-shared-key <redacted>            (secret never compared by value)
 ```
 
@@ -125,8 +129,10 @@ set security ipsec vpn VPN-SITEB ike gateway GW-SITEB ike-policy IKE-POL
 - ASA `eq https` (tcp/443) and SRX `junos-https` both normalize to canonical app `https` —
   equal, not a diff.
 - ASA derives a pseudo-zone `outside` from `nameif outside` (`security-level 0`); the SRX side
-  uses a `security policies global` rule (zone-agnostic match), so the comparable policy pairs
-  on addresses + app without any zone conflict. The ASA `security-level` trust ordering and
+  uses a `security policies global` rule scoped with `match from-zone outside`, so the ingress
+  scope pairs — the ASA ACL applied inbound on `outside` and the zone-scoped global rule cover
+  the same traffic. (An *unscoped* global rule would be broader than the interface-scoped ACL
+  and would pair as `changed`, not equal.) The ASA `security-level` trust ordering and
   its implicit high→low permit have no SRX equivalent and are `not-comparable`.
 - VPN crypto **proposal fields** normalize and compare: ASA `crypto ikev2 policy` (aes-256 /
   sha256 / DH group14 / lifetime 86400) and SRX `IKE-PROP` (aes-256-cbc / sha-256 / group14 /

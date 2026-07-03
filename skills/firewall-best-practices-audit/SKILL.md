@@ -55,8 +55,8 @@ Graceful degradation: the schema is static, so some checks have no input (for ex
 | Severity | One-line criterion |
 |----------|--------------------|
 | Critical | Direct, exploitable exposure — any-any-allow across a trust boundary, dangerous service open to untrust, plaintext admin reachable externally, broken/keyless VPN. |
-| High | Strong weakness — overly permissive allow, missing deny-all, weak VPN/IKE crypto (DES/3DES/MD5/SHA1/DH<14), no logging on permit-to-untrust. |
-| Medium | Material hygiene gap — shadowed/redundant/overlapping rules, oversized any in one field, SNMPv1/2c, missing logging on internal allows. |
+| High | Strong weakness — overly permissive allow, shadowed rules hiding later policy, weak VPN/IKE crypto (DES/3DES/MD5/SHA1/DH<14), no logging on permit-to-untrust. |
+| Medium | Material hygiene gap — missing explicit deny-all, redundant/overlapping rules, oversized any in one field, SNMPv1/2c, missing logging on internal allows. |
 | Low | Minor hardening or correctness nit — overlapping objects, weak naming, narrow over-broad object. |
 | Info | Operational cleanup with no direct risk — unused/duplicate objects, oversized groups, missing descriptions, consolidation opportunities, disabled rules. |
 

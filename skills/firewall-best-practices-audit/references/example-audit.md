@@ -191,7 +191,7 @@ Fix (SRX):
 ```text
 Posture: Not hardened — the policy set is empty while live zones, NAT, and a full inspection stack exist, so intended traffic is dropped and AppID/IDP/SecIntel/AAMW/UTM inspect nothing; direct root SSH login is also allowed. Edge screen, auth hardening, control-plane filter, and remote logging are present (no findings there). This is a hygiene report, not a "secure"/"compliant" verdict.
 Findings: Critical 0  High 3  Medium 2  Low 1  Info 0
-Checks skipped (no data): SEC-WEAK-IKE, SEC-WEAK-IPSEC, SEC-PSK-WEAK (no vpn_tunnels in the parse); OPS-ZERO-HIT (schema carries no hit_count / last-used data). Not fired because the control is present: SEC-NO-SCREEN (untrust screen untrust-screen bound), SEC-AUTH-HARDENING (password policy + login lockout present), OPS-LOG-COMPLETENESS (security log stream to 192.168.1.150:514), SEC-HOST-INBOUND-EXPOSURE (untrust host-inbound is ping only).
+Checks skipped (no data): SEC-WEAK-IKE, SEC-WEAK-IPSEC, SEC-PSK-WEAK (no vpn_tunnels in the parse); OPS-ZERO-HIT (schema carries no hit_count / last-used data). Not fired because the control is present: SEC-NO-SCREEN (untrust screen untrust-screen bound), SEC-AUTH-HARDENING (password policy + login lockout present), SEC-NO-CONTROL-PLANE-PROTECTION (lo0 RE-protection filter present), OPS-LOG-COMPLETENESS (security log stream to 192.168.1.150:514), SEC-HOST-INBOUND-EXPOSURE (untrust host-inbound is ping only).
 Top fixes (prioritized):
   1. SEC-EMPTY-POLICYSET / SEC-ZONES-NAT-NO-POLICY — add the intended trust→untrust and IoT→untrust permit policies (with logging), then a final logged global deny.
   2. SEC-SSH-ROOT-LOGIN — set ssh root-login deny and tighten connection/rate limits.
