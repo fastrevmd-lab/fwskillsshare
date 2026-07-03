@@ -44,6 +44,11 @@ The hub binds one VPN to `st0.0` for **all** spokes, with traffic-selector
 `TS-ALL local-ip 0.0.0.0/0` + `remote-ip 192.168.0.0/16` (see SKILL.md *Config
 Skeleton* for the `set` commands). Selector matrix (split vs. full tunnel):
 
+> **Version note (24.4R1+):** the spoke `remote-ip 0.0.0.0/0` below commits only on
+> older images (this lab: 23.2R2.21). On 24.4R1/25.4R1 it is rejected when the
+> gateway has a static `address` — use the `0.0.0.0/1` + `128.0.0.0/1` split
+> (see SKILL.md, Traffic Selectors).
+
 | Selector | Split | Full-tunnel |
 |----------|-------|-------------|
 | Spoke `local-ip` | `192.168.x.0/24` | `192.168.x.0/24` |
