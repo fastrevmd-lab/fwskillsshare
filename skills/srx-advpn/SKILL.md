@@ -1,7 +1,7 @@
 ---
 name: srx-advpn
-description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX Auto Discovery VPN (ADVPN) — hub-and-spoke IPsec that dynamically builds direct spoke-to-spoke shortcut tunnels so branch-to-branch traffic bypasses the hub. Covers suggester and partner roles, the shortcut lifecycle, the multipoint st0 overlay, OSPF p2mp with dynamic-neighbors over the overlay, the certificate-authentication requirement (IKEv2 PSK with dynamic ike-user-type is rejected on modern Junos), PKI enrollment, the chassis-cluster certificate-load gotcha, verification, and troubleshooting including the vSRX 'No public key found' IKE_AUTH failure.
-version: 1.0.0
+description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX Auto Discovery VPN (ADVPN) — hub-and-spoke IPsec that dynamically builds direct spoke-to-spoke shortcut tunnels so branch-to-branch traffic bypasses the hub. Covers suggester and partner roles, the shortcut lifecycle, the multipoint st0 overlay, OSPF p2mp with dynamic-neighbors over the overlay, the certificate-authentication requirement (IKEv2 PSK with dynamic ike-user-type is rejected on modern Junos), PKI enrollment, the chassis-cluster certificate-load gotcha, verification, and troubleshooting including the vSRX 'No public key found' IKE_AUTH failure (root-caused to the dynamic cert-gateway responder path — use per-spoke static-address cert gateways).
+version: 1.1.0
 author:
   - fastrevmd-lab
   - Claude
@@ -255,7 +255,7 @@ from the hub once the shortcut carries it).
 | Stage | Symptom | Cause / fix |
 |-------|---------|-------------|
 | Commit | `IKEv2 with authentication-method pre-shared-key is not allowed` | PSK + `dynamic ike-user-type` is rejected (24.4R1/25.4R1) — use certificate auth; there is no PSK ADVPN on these images |
-| IKE_AUTH | Hub logs `ikev2_reply_cb_public_key: Error: No public key found` → `N(AUTHENTICATION_FAILED)` to every spoke | **Open field blocker on vSRX3** — see below |
+| IKE_AUTH | Hub logs `ikev2_reply_cb_public_key: Error: No public key found` → `N(AUTHENTICATION_FAILED)` to every spoke | **Root-caused on vSRX3**: the *dynamic* `distinguished-name` / `group-ike-id` gateway responder path never hands the peer CERT to pkid. Use per-spoke static-address cert gateways on the hub. See below. |
 | NAT-T | IKE_SA_INIT (500) completes; 4500 IKE_AUTH retransmits forever, responder side shows UP | Double NAT in the underlay (carrier PAT + hub-behind-static-NAT) drops the 4500 return — collapse to a single NAT hop |
 | NAT-T | Same 4500-retransmit symptom, single NAT | Initiator's `untrust` zone missing `host-inbound-traffic system-services ike` |
 | Shortcut | Hub tunnel up, spokes reach each other only via hub, no shortcut SA | Roles wrong (`advpn suggester/partner disable` on the wrong end), partner `connection-limit` reached, or suggester never sees transit traffic (flows not crossing the hub st0) |
@@ -264,34 +264,63 @@ from the hub once the shortcut carries it).
 | PKI (cluster) | `error load certid<...>` loading a cert | Keypair on the non-RG0-primary node — fail RG0 over to that node, then load |
 | Fragmentation | Small flows work, large fail | ESP overhead — keep `tcp-mss ipsec-vpn 1350`, lower on PMTU issues |
 
-### Open blocker: `No public key found` at IKE_AUTH (vSRX3 24.4R1 / 25.4R1)
+### Root cause: `No public key found` is specific to the *dynamic* cert gateway (vSRX3 24.4R1 / 25.4R1)
 
-Field state as of 2026-07: a 6-spoke vSRX3 ADVPN lab is PKI-enrolled but
-blocked — the hub (responder, chassis cluster) rejects **every** spoke cert at
+**Symptom.** The hub (responder) rejects **every** spoke cert at
 `ikev2_state_auth_responder_in_verify_signature` with
 `ikev2_reply_cb_public_key: Error: No public key found`, then sends
 `N(AUTHENTICATION_FAILED)`. IKE_SA_INIT completes; the fragmented IKE_AUTH is
-received.
+received and decoded (the CERT payload is present and decodes fine).
 
-Ruled out (all tested): Junos version (identical on 24.4R1.9 and 25.4R1.12);
+**Root cause (isolated on a live vSRX3 by comparing iked traces of a failing
+vs a working tunnel on the same box).** The failure is **not** in the
+certificates, CA, EKU, clock, Junos version, or PKI — a plain IKEv2
+certificate VPN pinned by a **static `address` gateway** authenticates and
+comes up **on the exact same image, certs, CA-profile, and proposals**. The
+break is in the iked responder path taken by a **dynamic gateway** (`dynamic
+distinguished-name` / `dynamic ike-user-type group-ike-id`):
+
+- **Static-address gateway path (works):** after the ID matches, iked calls
+  `iked_policy_public_key` → `ssh_policy_find_public_key_send_ipc` → hands the
+  received CERT to pkid over IPC (`IKED-PKID-IPC 1 cert, len1<917>`), pkid
+  returns the key, `ssh_cm_cert_get_x509` succeeds, and
+  `ikev2_state_auth_verify_cb: Signature verification ok`.
+- **Dynamic-gateway path (fails):** after the same `Container identity matched`
+  / `id based lookup found: Sa_cfg:ADVPN-HUB`, iked goes down the
+  `iked_pm_ike_public_key look up sa_cfg based on ike-id for main-mode dialup`
+  branch and returns `No public key found` **without ever calling
+  `send_ipc`** — the peer CERT is never handed to pkid. That is exactly why
+  `show log pki-trace` shows pkid is never consulted at IKE time.
+
+This is an **iked-internal defect in the dynamic-gateway cert-auth responder on
+vSRX3** for these releases, not a misconfiguration. Ruled out along the way (so
+you don't repeat them): Junos version (identical on 24.4R1.9 and 25.4R1.12);
 cert chain (`openssl verify` and on-device `request security pki
-local-certificate verify` pass on every node); clock skew (NTP-synced, certs
-in validity — the classic cause, and it is *not* it here); EKU (re-issued
-leaves with id-kp-ipsecIKE `1.3.6.1.5.5.7.3.17` + serverAuth + clientAuth —
-same failure); `group-ike-id` vs per-spoke static cert gateways; `trusted-ca
-use-all` vs explicit profile; `revocation-check disable`; `restart
-pki-service` and `restart ipsec-key-management`.
+local-certificate verify` pass on every node); clock skew; EKU (id-kp-ipsecIKE
+`1.3.6.1.5.5.7.3.17` + serverAuth + clientAuth); `trusted-ca use-all` vs
+explicit profile; `revocation-check disable`; `restart pki-service` /
+`restart ipsec-key-management`; `peer-certificate-type x509-signature`;
+`dynamic distinguished-name wildcard` vs `container`.
 
-Best diagnostic lead: `show log pki-trace` shows **pkid is never consulted at
-IKE connect time** — iked fails internally before handing the peer CERT
-payload to pkid, pointing at iked-internal peer-cert handling on vSRX3 or a
-missing IKE-policy certificate knob.
+> **Separate latent bug worth fixing regardless:** on this hub the dynamic
+> gateway's `get_cas` returned **0 CAs** (`ikev2_reply_cb_get_cas: Got 0 CAs`)
+> — iked had no trust anchor to advertise — because the CA cert had been loaded
+> only into pkid's store, not re-fed to iked. `request security pki
+> ca-certificate load ca-profile <p> filename <ca.pem>` (from a real
+> **PEM** file — the RPC cannot read Junos's internal `/usr/share/ui/support`
+> copies) followed by `restart ipsec-key-management` fixes the CA advertisement.
+> It does **not** fix the dynamic-gateway path above, but you want it fixed
+> before diagnosing anything cert-related.
 
-Try next (untried at time of writing): `set security ike policy <pol>
-certificate peer-certificate-type x509-signature`; check for an RFC 7427
-digital-signature vs PKCS#1 `rsa-signatures` mismatch; build a minimal
-non-ADVPN, non-cluster IKEv2 cert VPN on the same image to isolate whether
-cert auth works at all; open a JTAC case with the iked/pki traces.
+**Working fix / recommendation.** Terminate spokes on the hub with **per-spoke
+static-address certificate gateways** (`set security ike gateway <GW> address
+<spoke-WAN>` + `remote-identity distinguished-name container O=<org>`), the
+same shape this skill already recommends for PSK on 24.4R1+. This costs
+zero-touch (one hub gateway/VPN/`st0` unit per spoke) but the certificate
+responder path works. True zero-touch ADVPN with a dynamic group gateway needs
+either a fixed Junos release or a JTAC-supplied knob; open a JTAC case with the
+paired failing/working iked traces (the `send_ipc`-vs-no-`send_ipc` divergence
+is the actionable evidence).
 
 ## Choose ADVPN vs AutoVPN vs Static
 
