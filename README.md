@@ -6,14 +6,14 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 
 ## Skills Included
 
-**20 skills** across four families — 4 config parsers, 7 Juniper SRX operational playbooks, 6 NGFW compliance assessment playbooks, and 3 vendor-neutral cross-vendor tooling skills (audit, conversion, and diff):
+**21 skills** across four families — 4 config parsers, 8 Juniper SRX operational playbooks, 6 NGFW compliance assessment playbooks, and 3 vendor-neutral cross-vendor tooling skills (audit, conversion, and diff):
 
 | Skill | Vendor / Platform | Trigger Keywords |
 |-------|-------------------|------------------|
 | [parsing-cisco-configs](skills/parsing-cisco-configs/) | Cisco ASA & FTD | `ASA`, `FTD`, `access-list`, `object network`, `nameif` |
 | [parsing-fortinet-configs](skills/parsing-fortinet-configs/) | Fortinet FortiGate / FortiOS | `FortiGate`, `FortiOS`, `config firewall policy`, `set srcintf` |
 | [parsing-palo-configs](skills/parsing-palo-configs/) | Palo Alto PAN-OS & Panorama | `PAN-OS`, `Palo Alto`, `Panorama`, `vsys`, `<entry name=` |
-| [parsing-srx-configs](skills/parsing-srx-configs/) | Juniper SRX / Junos — v1.2.0 | `SRX`, `Junos`, `Juniper`, `set security`, `from-zone` |
+| [parsing-srx-configs](skills/parsing-srx-configs/) | Juniper SRX / Junos | `SRX`, `Junos`, `Juniper`, `set security`, `from-zone` |
 | [srx-dynamic-ip-feed](skills/srx-dynamic-ip-feed/) | Juniper SRX / Junos dynamic-address feed servers | `dynamic-address`, `feed-server`, `IPFD`, `show security dynamic-address`, `ipfd` |
 | [srx-mpls-in-flow](skills/srx-mpls-in-flow/) | Juniper SRX / Junos MPLS L3VPN in flow mode | `MPLS in Flow`, `family mpls mode packet-based`, `inet-vpn`, `vrf-table-label`, `VRF-to-zone` |
 | [srx-mnha](skills/srx-mnha/) | Juniper SRX / Junos Multi-Node High Availability | `MNHA`, `Multi-Node High Availability`, `chassis high-availability`, `SRG`, `ICL`, `ICD` |
@@ -21,6 +21,7 @@ A collection of Claude Code / Hermes skills for parsing, auditing, converting, a
 | [srx-policy](skills/srx-policy/) | Juniper SRX / Junos security policy | `security policies global`, `from-zone`, `to-zone`, `AppFW`, `AppID`, `NGWF`, `EWF`, `web-filtering`, `SecIntel`, `ATP` |
 | [srx-autovpn-full-tunnel](skills/srx-autovpn-full-tunnel/) | Juniper SRX / Junos AutoVPN full-tunnel backhaul | `AutoVPN`, `full-tunnel`, `backhaul`, `traffic-selector`, `ARI`, `group-ike-id`, `centralized egress`, `anti-recursion` |
 | [srx-ipsec-hub-spoke](skills/srx-ipsec-hub-spoke/) | Juniper SRX / Junos static P2P IPsec hub-and-spoke | `route-based IPsec`, `hub-and-spoke`, `point-to-point`, `per-spoke tunnel`, `st0`, `full-tunnel`, `backhaul`, `anti-recursion` |
+| [srx-advpn](skills/srx-advpn/) | Juniper SRX / Junos Auto Discovery VPN (dynamic spoke-to-spoke) | `ADVPN`, `Auto Discovery VPN`, `suggester`, `partner`, `shortcut`, `multipoint st0`, `OSPF p2mp`, `dynamic-neighbors`, `PKI` |
 | [firewall-best-practices-audit](skills/firewall-best-practices-audit/) | Vendor-neutral (Cisco/Palo/FortiGate/SRX via parsers) — v1.1 (adds mgmt/control-plane/auth/security-service checks) | `firewall audit`, `best practices`, `hardening`, `rulebase review`, `shadowed rules`, `any-any`, `least privilege`, `unused objects` |
 | [firewall-config-conversion](skills/firewall-config-conversion/) | Cross-vendor (Cisco/FortiGate/Palo/SRX via parsers) | `convert firewall config`, `migrate`, `ASA to SRX`, `FortiGate to Palo`, `cross-vendor`, `fidelity report` |
 | [firewall-config-diff](skills/firewall-config-diff/) | Cross-vendor (Cisco/FortiGate/Palo/SRX via parsers) | `diff firewall config`, `compare`, `config drift`, `HA-pair`, `parity`, `migration validation`, `round-trip` |
@@ -45,15 +46,15 @@ Some `references/` files contain source-derived notes or extracts from Juniper, 
 
 ## Quality and Review
 
-All **20 / 20 skills** have passed an independent technical review (2026-06-30) covering schema/field accuracy, vendor command/syntax correctness (Cisco ASA/FTD, FortiGate, PAN-OS, Junos SRX), standards/control-ID accuracy for the compliance playbooks, and secret hygiene. Findings were remediated and the four `parsing-*` skills share one byte-identical intermediate schema (verified by `scripts/check-shared-schema.py`).
+All **21 / 21 skills** have passed independent technical review — first on 2026-06-30, then re-reviewed on 2026-07-02 with a two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax correctness for Cisco ASA/FTD, FortiGate, PAN-OS, and Junos SRX; schema/field accuracy; standards/control-ID accuracy; secret hygiene) followed by per-skill application QA tests (fixture execution for the parsers, engineer-walkthrough scenarios for the playbooks, control-ID spot-checks for the compliance skills). Disputed Junos syntax claims were settled empirically by commit-checking on a live vSRX 24.4R1. All findings were remediated and the four `parsing-*` skills share one byte-identical intermediate schema (verified by `scripts/check-shared-schema.py`).
 
 | Family | Skills | Reviewed |
 |--------|-------:|:--------:|
 | Config parsers | 4 | 4 / 4 |
-| SRX operational playbooks | 7 | 7 / 7 |
+| SRX operational playbooks | 8 | 8 / 8 |
 | NGFW compliance playbooks | 6 | 6 / 6 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
-| **Total** | **20** | **20 / 20** |
+| **Total** | **21** | **21 / 21** |
 
 These are research/operational and assessment-support skills, not certified products: review their output against current vendor documentation, live device behavior, and (for compliance work) a qualified assessor before relying on it.
 
@@ -94,6 +95,9 @@ cp -r fwskillsshare/skills/srx-autovpn-full-tunnel ~/.claude/skills/
 
 # Example: install only the SRX static P2P IPsec hub-and-spoke skill
 cp -r fwskillsshare/skills/srx-ipsec-hub-spoke ~/.claude/skills/
+
+# Example: install only the SRX ADVPN (Auto Discovery VPN) skill
+cp -r fwskillsshare/skills/srx-advpn ~/.claude/skills/
 
 # Example: install only the PCI NGFW compliance skill
 cp -r fwskillsshare/skills/pci-ngfw-compliance ~/.claude/skills/
@@ -190,6 +194,10 @@ After copying, your `~/.claude/skills/` directory should look like:
 │   └── references/
 │       ├── source-index.md
 │       └── source-design-summary.md
+├── srx-advpn/
+│   ├── SKILL.md
+│   └── references/
+│       └── field-notes-vsrx-advpn-lab.md
 ├── firewall-best-practices-audit/
 │   ├── SKILL.md
 │   └── references/
