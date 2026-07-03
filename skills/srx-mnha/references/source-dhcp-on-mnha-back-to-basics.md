@@ -281,7 +281,7 @@ Each node serves a non-overlapping range and uses its own physical IP as server-
     set routing-instances PROD access address-assignment pool DHCP-MNHA-252 family inet dhcp-attributes server-identifier 192.168.252.9  
     
     MNHA-SRX-B  
-    set routing-instances PROD access address-assignment pool DHCP-MNHA-252 family inet dhcp-attributes server-identifier 192.168.252.10<
+    set routing-instances PROD access address-assignment pool DHCP-MNHA-252 family inet dhcp-attributes server-identifier 192.168.252.10
 
 **Normal Operation** : No duplicate address assignment. No cross-node NAK traffic. Each node only processes Requests that cite its own physical IP in Option 54. T1 renewals unicast directly to the issuing node and are ACKed. Lease databases remain authoritative per node.
 

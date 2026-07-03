@@ -217,6 +217,11 @@ set security policies from-zone EXT to-zone EXT policy IKE-ESP match destination
 set security policies from-zone EXT to-zone EXT policy IKE-ESP match application junos-ike
 set security policies from-zone EXT to-zone EXT policy IKE-ESP match application ESP
 set security policies from-zone EXT to-zone EXT policy IKE-ESP then permit
+
+> Editor's note: bare `ESP` is not a Junos built-in application — the source
+> assumes a custom application was defined first, e.g.
+> `set applications application ESP protocol esp`. See SKILL.md.
+
 How do we get IKE packets to and from the SRX to build the tunnel? The answer seems straightforward... but it's not just a reachability answer. The IKE gateway lookup process is centric with the external interface and its associated routing instance. Include MNHA and we need to consider that the external interface (the floating IP) MNHA is tracking, is also associated with a routing instance. These two routing instances need to be the same. MNHA's perspective routing instance is from where the Inter Chassis Link (ICL) is configured.
 Route leaking between two different instances isn't viable in the situation where the ICL and the floating IP-based loopback are in different routing instances.
 The IKE gateway lookup is a control plane operation. While data plane flows can leverage route leaking to forward transit traffic across L3 boundaries, the IKE daemon initiates or responds to packets based on "local" routes (IPs configured directly on interfaces within that instance). It bypasses imported routes from other instances for this type of self-traffic decision. The floating IP and the ICL's management context need to be aligned within the same routing table to maintain session state and synchronization.

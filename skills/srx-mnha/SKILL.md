@@ -1,7 +1,7 @@
 ---
 name: srx-mnha
 description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX Multi-Node High Availability (MNHA). Covers chassis-cluster migration concepts, routed/default-gateway/hybrid modes, SRG0/SRG1+ behavior, ICL/ICD links, RTO/session synchronization, eBGP/BFD failover, VIP/signal-route patterns, IPsec/IKED with floating loopbacks, multiple routing-instance caveats, NAT/proxy-ARP risks, and DHCP caveats.
-version: 1.1.0
+version: 1.2.0
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
@@ -171,10 +171,20 @@ L2-adjacency caveats for `deployment-type switching` / default-gateway mode:
 
 - The VIP rides on the `aeN.unit` (or physical unit) directly — no IRB/bridge-domain is introduced. The gateway is an interface VIP, not a routed SVI.
 - The gateway vMAC **moves** on failover. Adjacent switches must accept that MAC move: check **MAC-move limits**, **Dynamic ARP Inspection (DAI)**, **storm-control**, and **EVPN/MLAG duplicate-MAC protection** — any of these can suppress or block the moved vMAC and silently break failover even though the SRG shows ACTIVE.
-- Use the SRG interface-monitor stanza to tie the segment's uplink to failover:
+- Use an SRG monitor-object to tie the segment's uplink to failover (interface
+  monitoring hangs off a named monitor-object with weights and thresholds, not
+  a bare `monitor interface` knob):
   ```junos
-  set chassis high-availability services-redundancy-group <SRG> monitor interface <IFL>
+  set chassis high-availability services-redundancy-group <SRG> monitor monitor-object <NAME> interface interface-name <IFD> weight 100
+  set chassis high-availability services-redundancy-group <SRG> monitor monitor-object <NAME> interface threshold 100
+  set chassis high-availability services-redundancy-group <SRG> monitor monitor-object <NAME> object-threshold 100
+  set chassis high-availability services-redundancy-group <SRG> monitor srg-threshold 100
   ```
+  `interface-name` takes the physical IFD (e.g. `ge-0/0/2`). Failover fires
+  when accumulated weight reaches the interface threshold, the object
+  threshold, and the SRG threshold — size weights accordingly (see
+  `references/source-hybrid-mnha-with-ebgp.md` for a weighted BFD + interface
+  example).
 - Chassis-cluster `interface-monitor` **weights do not map 1:1** to SRG monitoring. Do not port cluster monitor weights directly; redesign monitoring around SRG active/backup semantics and test failover explicitly.
 
 ### Hybrid MNHA
@@ -613,8 +623,8 @@ MED works predictably when compared between routes from the same neighboring AS 
 The signal-route examples above assume eBGP. OSPF shops need the same active/backup steering without a BGP export policy. The pattern maps as follows:
 
 - Each node has its own `router-id` and a **passive loopback** carrying the protected `/32` (do not form adjacencies on the loopback).
-- The backstop is a **higher OSPF metric on the backup node** so the active node's advertisement wins while both are up, and the backup path remains available if the active node withdraws.
-- Instead of a BGP export policy, **export the SRG-signal-route-conditioned `/32` into OSPF** with a policy gated on the same `if-route-exists` condition, so only the ACTIVE node advertises the protected prefix (or advertises it at the better metric).
+- **Both roles advertise, at different metrics** — mirror the eBGP pattern: an `active` term at the low metric gated on the active signal route, and a `backup` term at a higher metric gated on the backup signal route. That keeps a standby path in the OSPF database while both nodes are up; on failover the signal routes swap and metrics follow.
+- Instead of a BGP export policy, **export the SRG-signal-route-conditioned `/32` into OSPF** with a policy gated on the `if-route-exists` conditions.
 
 ```junos
 set protocols ospf area 0 interface lo0.0 passive
@@ -622,11 +632,17 @@ set protocols ospf area 0 interface <UPLINK_IFL> metric <NODE_METRIC>   # higher
 
 set policy-options condition ACTIVE_SRG1 if-route-exists address-family inet 169.254.200.1/32
 set policy-options condition ACTIVE_SRG1 if-route-exists address-family inet table inet.0
+set policy-options condition BACKUP_SRG1 if-route-exists address-family inet 169.254.200.2/32
+set policy-options condition BACKUP_SRG1 if-route-exists address-family inet table inet.0
 
 set policy-options policy-statement MNHA-SRG1-OSPF term active from route-filter <PROTECTED_PREFIX> exact
 set policy-options policy-statement MNHA-SRG1-OSPF term active from condition ACTIVE_SRG1
 set policy-options policy-statement MNHA-SRG1-OSPF term active then metric <LOW_METRIC>
 set policy-options policy-statement MNHA-SRG1-OSPF term active then accept
+set policy-options policy-statement MNHA-SRG1-OSPF term backup from route-filter <PROTECTED_PREFIX> exact
+set policy-options policy-statement MNHA-SRG1-OSPF term backup from condition BACKUP_SRG1
+set policy-options policy-statement MNHA-SRG1-OSPF term backup then metric <HIGH_METRIC>
+set policy-options policy-statement MNHA-SRG1-OSPF term backup then accept
 set policy-options policy-statement MNHA-SRG1-OSPF term default then reject
 set protocols ospf export MNHA-SRG1-OSPF
 ```
@@ -881,6 +897,25 @@ Use destructive clear commands only inside an approved maintenance procedure.
 16. Forgetting to dissolve `groups node0` / `groups node1`. On a chassis cluster those per-node groups carried node-specific config; on MNHA each node is a standalone device, so that config must become direct `system`/interface configuration on the respective node. Leaving it as `apply-groups node0/node1` (which has no cluster context to key on) drops the settings.
 
 17. Forgetting that management/enrollment identity is per-node. `outbound-ssh`, EMS, and Security Director Cloud `device-id` are node-local: after migration each SRX re-enrolls as a **separate** managed device. Plan the re-enrollment and update inventory/licensing per node rather than expecting the cluster's single managed-device identity to carry over.
+
+18. Leaving a stray static default route via an unzoned management/extra leg. vSRX images (and staged builds) often carry `0.0.0.0/0` via an unzoned interface (e.g. a `ge-0/0/3` management leg); it silently black-holes transit **return** traffic because the flow leaves via an interface with no zone/policy context. Remove the stray static (let the routing-protocol-learned default win) or put management in a dedicated routing instance.
+
+## Field-Confirmed Behaviors
+
+Two behaviors independently confirmed on a live MNHA pair (vSRX3, Junos
+24.4R1.9, SRG0+SRG1 hybrid, ICL on a dedicated VLAN, VIP as downstream
+gateway — [fwskillsshare issue #7](https://github.com/fastrevmd-lab/fwskillsshare/issues/7)):
+
+- **Unzoned-leg default route black-holes transit** (pitfall 18): nodes
+  shipped with a static default via an unzoned `ge-0/0/3` management leg;
+  transit return traffic silently disappeared. Removing the static default so
+  the BGP-learned default from the upstream won fixed transit immediately.
+- **The backup node does not service SRG data traffic**: a datapath test
+  sourced from the *backup* node's interface fails (0 replies) while the same
+  test via the VIP / active node works. `show chassis high-availability
+  services-redundancy-group 1` shows `Process Packet In Backup State: NO` —
+  expected behavior, not a fault. Test through the VIP or the active node
+  before chasing a non-bug.
 
 ## Source Notes
 
