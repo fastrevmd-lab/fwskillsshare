@@ -1,7 +1,7 @@
 ---
 name: parsing-palo-configs
 description: 'Use when the user pastes, uploads, or references a Palo Alto PAN-OS or Panorama configuration export — parses and analyzes PAN-OS firewall configurations in XML format or flat set-command format ("show config" output). Trigger on keywords: PAN-OS, Palo Alto, Panorama, NGFW, "vsys", "security rulebase", "address-group", "application-default", "security-profile-group", "device-group", "set deviceconfig", "<entry name=", "<member>", "tag-based", "User-ID". Also trigger when the user asks to convert, audit, summarize, or explain a Palo Alto config.'
-version: 1.1.2
+version: 1.1.3
 author: Hermes Agent
 license: MIT
 metadata:
@@ -48,7 +48,7 @@ Use this skill when:
 
 Do not use this skill as a substitute for device-specific validation. When the parse result will drive production changes, verify against current vendor documentation and live device output where available.
 
-Not this skill: for Cisco ASA/FTD configs use parsing-cisco-configs, FortiGate use parsing-fortinet-configs, Juniper SRX use parsing-srx-configs. Downstream consumers of this parse: firewall-best-practices-audit, firewall-config-conversion, firewall-config-diff.
+Not this skill: for Cisco ASA/FTD configs use parsing-cisco-configs, FortiGate use parsing-fortinet-configs, Juniper SRX use parsing-srx-configs. Format tripwire — stop and hand off if the input shows column-0 commands with space-indented sub-commands and `nameif`/`access-list`/`object network` (Cisco ASA/FTD), `config`/`edit`/`set`/`next`/`end` blocks (FortiGate), or curly-brace hierarchy / `set security zones|policies` (SRX). Downstream consumers of this parse: firewall-best-practices-audit, firewall-config-conversion, firewall-config-diff.
 
 ## Input Format
 

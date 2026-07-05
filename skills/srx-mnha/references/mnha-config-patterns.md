@@ -43,7 +43,7 @@ set protocols bgp group <GROUP> export MNHA-SRG1-EXPORT
 ## OSPF Variant of Signal-Route Steering (Full Example)
 
 ```junos
-set protocols ospf area 0 interface lo0.0 passive
+set protocols ospf area 0 interface lo0.0 passive   # lo0.0 carries <PROTECTED_PREFIX> — the /32 the route-filter terms below match
 set protocols ospf area 0 interface <UPLINK_IFL> metric <NODE_METRIC>   # higher on the backup node
 
 set policy-options condition ACTIVE_SRG1 if-route-exists address-family inet 169.254.200.1/32

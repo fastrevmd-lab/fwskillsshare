@@ -1,7 +1,7 @@
 ---
 name: parsing-fortinet-configs
 description: 'Use when the user pastes, uploads, or references a Fortinet FortiGate / FortiOS config to parse and analyze — the "config/edit/set/next/end" block format from "show full-configuration" or backup exports. Trigger on keywords: FortiGate, FortiOS, Fortinet, VDOM, "config firewall policy", "config firewall address", "config firewall service custom", "config system interface", "edit", "set srcintf", "set dstintf", "set srcaddr", "set dstaddr", "set action accept", "set utm-status enable", "set av-profile", "set webfilter-profile", "set ips-sensor". Also trigger when the user asks to convert, audit, summarize, or explain a FortiGate config.'
-version: 1.1.2
+version: 1.1.3
 author: Hermes Agent
 license: MIT
 metadata:
@@ -47,7 +47,7 @@ Use this skill when:
 
 Do not use this skill as a substitute for device-specific validation. When the parse result will drive production changes, verify against current vendor documentation and live device output where available.
 
-Not this skill: for Cisco ASA/FTD configs use parsing-cisco-configs, PAN-OS/Panorama use parsing-palo-configs, Juniper SRX use parsing-srx-configs. Downstream consumers of this parse: firewall-best-practices-audit, firewall-config-conversion, firewall-config-diff.
+Not this skill: for Cisco ASA/FTD configs use parsing-cisco-configs, PAN-OS/Panorama use parsing-palo-configs, Juniper SRX use parsing-srx-configs. Format tripwire — stop and hand off if the input shows column-0 commands with space-indented sub-commands and `nameif`/`access-list`/`object network` (Cisco ASA/FTD), XML `<entry name=` or flat `set deviceconfig`/`set rulebase` (PAN-OS), or curly-brace hierarchy / `set security zones|policies` (SRX). Downstream consumers of this parse: firewall-best-practices-audit, firewall-config-conversion, firewall-config-diff.
 
 ## Input Format
 

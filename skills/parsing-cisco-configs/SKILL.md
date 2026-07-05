@@ -1,7 +1,7 @@
 ---
 name: parsing-cisco-configs
 description: 'Use when the user pastes, uploads, or references a Cisco ASA or FTD config — parses and analyzes Cisco ASA and FTD firewall configurations in the line-oriented format with indented sub-commands from "show running-config". Trigger on keywords: ASA, FTD, Cisco, "access-list", "access-group", "object network", "object-group", "object service", "nameif", "security-level", "nat (", "interface GigabitEthernet", "interface Management", "failover", "threat-detection". Also trigger when the user asks to convert, audit, summarize, or explain a Cisco ASA/FTD config.'
-version: 1.1.3
+version: 1.1.4
 author: Hermes Agent
 license: MIT
 metadata:
@@ -44,7 +44,7 @@ Use this skill when:
 
 Do not use this skill as a substitute for device-specific validation. When the parse result will drive production changes, verify against current vendor documentation and live device output where available.
 
-Not this skill: for FortiGate configs use parsing-fortinet-configs, PAN-OS/Panorama use parsing-palo-configs, Juniper SRX use parsing-srx-configs. Downstream consumers of this parse: firewall-best-practices-audit, firewall-config-conversion, firewall-config-diff.
+Not this skill: for FortiGate configs use parsing-fortinet-configs, PAN-OS/Panorama use parsing-palo-configs, Juniper SRX use parsing-srx-configs. Format tripwire — stop and hand off if the input shows `config`/`edit`/`set`/`next`/`end` blocks (FortiGate), XML `<entry name=` or flat `set deviceconfig`/`set rulebase` (PAN-OS), or curly-brace hierarchy / `set security zones|policies` (SRX). Downstream consumers of this parse: firewall-best-practices-audit, firewall-config-conversion, firewall-config-diff.
 
 ## Input Format
 

@@ -1,7 +1,7 @@
 ---
 name: srx-mnha
 description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX Multi-Node High Availability (MNHA, chassis high-availability). Covers chassis-cluster migration concepts, routed/default-gateway/hybrid modes, SRG0/SRG1+ behavior, ICL/ICD links, RTO/session synchronization and Active/Warm state, eBGP/BFD failover, VIP/signal-route patterns, IPsec/IKED with floating loopbacks, multiple routing-instance caveats, NAT/proxy-ARP risks, and DHCP caveats.
-version: 1.2.1
+version: 1.2.2
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:

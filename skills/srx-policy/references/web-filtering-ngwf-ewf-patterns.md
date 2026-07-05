@@ -76,6 +76,6 @@ request security utm web-filtering category migrate-to-ng-juniper
 show security utm web-filtering category migrate-to-ng-juniper status
 ```
 
-The `categorize`/`recategorize` verbs require the `url <url>` argument — the bare forms fail with a syntax error (live-verified on vSRX 24.4R1).
+The `categorize`/`recategorize` verbs require the `url <url>` argument — the bare forms fail with a syntax error (live-verified on vSRX 24.4R1). The `migrate-to-ng-juniper` request takes no arguments (trailing arguments are a syntax error); before it has been triggered, the status command reports `migrate-to-ng-juniper command is not yet triggered. Please run the request command.`
 
 EWF-to-NGWF migration pitfall: Juniper documents the migration as asynchronous and recommends doing it during downtime. Do not rename policy names during migration; Juniper notes configuration commit can fail if policy names are changed during migration.
