@@ -1,7 +1,7 @@
 ---
 name: srx-autovpn-full-tunnel
-description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX AutoVPN hub-and-spoke IPsec with full-tunnel backhaul, where spokes send all non-local traffic up the tunnel and the hub is the centralized internet egress. Covers the dynamic group-ike-id hub gateway, IKEv2 authentication (including the Junos 24.4R1+ rule that group-ike-id with IKEv2 requires certificates — PSK needs per-spoke gateways), traffic selectors (including the 0.0.0.0/1 + 128.0.0.0/1 split for the full-tunnel spoke selector), Auto Route Insertion (ARI), the single shared st0.0, the spoke default route into st0, the anti-recursion host route, the vSRX management-default ECMP caveat, NAT-T through double NAT, hub source-NAT egress, VPN-to-untrust and VPN-to-VPN hairpin policies, verification, and when static per-spoke tunnels fit better.
-version: 1.1.0
+description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX AutoVPN hub-and-spoke IPsec with full-tunnel backhaul, where spokes send all non-local traffic up the tunnel and the hub is the centralized internet egress. Covers the dynamic group-ike-id hub gateway, the Junos 24.4R1+ commit errors 'IKEv2 with authentication-method pre-shared-key is not allowed' (use certificates, or per-spoke PSK gateways) and 'Remote-ip 0.0.0.0/0 in traffic-selector is not supported' (use the 0.0.0.0/1 + 128.0.0.0/1 split), traffic selectors, Auto Route Insertion (ARI), the single shared st0.0, the spoke default route into st0, the anti-recursion host route, the vSRX management-default ECMP caveat, NAT-T through double NAT, hub source-NAT egress, VPN-to-untrust and VPN-to-VPN hairpin policies, and when static per-spoke tunnels (srx-ipsec-hub-spoke) or spoke-to-spoke shortcuts (srx-advpn) fit better.
+version: 1.1.1
 author:
   - fastrevmd-lab
   - Jason Anderson
@@ -82,6 +82,9 @@ When **not** to use:
   (`srx-ipsec-hub-spoke`). See *Choose This vs. Static Hub-Spoke* below.
 - Spokes that need **local breakout** (split tunnel). Full tunnel concentrates
   all spoke internet traffic on the hub's WAN, CPU, and NAT table.
+- Branch-to-branch traffic is heavy enough that hairpinning it through the hub
+  adds unacceptable latency or hub load — use `srx-advpn` (dynamic
+  spoke-to-spoke shortcut tunnels; requires certificate auth).
 
 ## Topology Model
 
@@ -399,16 +402,17 @@ IKE tracing when an SA won't establish:
 ```
 set security ike traceoptions file ike-trace
 set security ike traceoptions flag ike
-set security ike traceoptions level detail
+set security ike traceoptions level 15
 ```
 Read with `show log ike-trace`; force renegotiation with `clear security ike
-security-associations` / `clear security ipsec security-associations`. Live daemon
+security-associations` / `clear security ipsec security-associations`.
+(iked-based platforms take a numeric trace level; word levels like `level
+detail` fail commit on Junos 24.4R1 — live-verified.) Live daemon
 log is `show log iked` on modern (iked) platforms, `show log kmd` on older (kmd).
 
 ## Caveats and Tradeoffs
 
-1. **Anti-recursion route** — the single most common break; keep `HUB_WAN/32`
-   more-specific than the spoke default.
+1. **Anti-recursion route** — the single most common break (see Routing Changes).
 2. **No local breakout** — all spoke internet traffic concentrates on the hub's
    WAN, CPU (encrypt/decrypt), and NAT table. This is the central capacity-planning
    decision; the upside is centralized inspection/logging.
@@ -443,6 +447,9 @@ log is `show log iked` on modern (iked) platforms, `show log kmd` on older (kmd)
 Backhaul behavior, NAT, anti-recursion, and the management-default caveat are
 **identical** between the two. Pick AutoVPN when spoke count grows or churns; pick
 static when you want every tunnel spelled out in config.
+
+If the problem is spoke-to-spoke hairpin latency rather than hub config churn,
+compare `srx-advpn` (see its three-way ADVPN vs AutoVPN vs Static table).
 
 ## Verification Checklist
 

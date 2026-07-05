@@ -1,13 +1,13 @@
 ---
 name: srx-nat
-description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX NAT. Covers source NAT, destination NAT, static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, address-persistent behavior, hairpin NAT, proxy ARP, rule ordering, session verification, pool exhaustion, and source/destination NAT troubleshooting.
-version: 1.1.0
+description: "Use when designing, configuring, auditing, or troubleshooting Juniper SRX NAT. Covers source NAT, destination NAT, static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, address-persistent behavior, hairpin NAT, proxy ARP, rule ordering, session verification, pool exhaustion, and source/destination NAT troubleshooting. Trigger on: security nat source/destination/static, rule-set, static-nat inet, port forwarding, port block-allocation, port-overloading, show security nat source rule all, RT_NAT."
+version: 1.1.1
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [srx, junos, nat, source-nat, destination-nat, static-nat, nat64, dns64, cgn, pba, persistent-nat, hairpin, proxy-arp]
-    related_skills: [parsing-srx-configs, srx-mnha, srx-mpls-in-flow, srx-autovpn-full-tunnel, srx-ipsec-hub-spoke]
+    related_skills: [parsing-srx-configs, srx-policy, srx-mnha, srx-mpls-in-flow, srx-autovpn-full-tunnel, srx-ipsec-hub-spoke]
   sources:
     - title: DNS64 and NAT64 on SRX Series
       author: Steven Jacques
@@ -81,7 +81,7 @@ Use this skill when the user asks about:
 - address-persistent problems, VPN over NAT problems, speedtest issues, or TCP MSS workarounds
 - troubleshooting with `show security nat ...`, `show security flow session ...`, flow traceoptions, or proxy ARP checks
 
-Do not use this as the primary skill for parsing an entire SRX config. Load `parsing-srx-configs` first for extraction, then use this skill to interpret and fix the NAT behavior.
+Do not use this as the primary skill for parsing an entire SRX config. Load `parsing-srx-configs` first for extraction, then use this skill to interpret and fix the NAT behavior. For policy design on the post-NAT path, load `srx-policy`.
 
 ## NAT Processing Order
 
@@ -239,12 +239,15 @@ For tenant or VPN designs with overlapping prefixes, use static NAT prefixes and
 Conceptual pattern:
 
 ```junos
-set security nat static rule-set TENANT1_TO_TENANT3 from routing-group tenant-1
+set security l3vpn vrf-group VRF-GRP-TENANT-1 vrf tenant-1
+set security nat static rule-set TENANT1_TO_TENANT3 from routing-group VRF-GRP-TENANT-1
 set security nat static rule-set TENANT1_TO_TENANT3 rule T1_TO_T3 match source-address 10.1.0.0/16
 set security nat static rule-set TENANT1_TO_TENANT3 rule T1_TO_T3 match destination-address 10.23.0.0/16
 set security nat static rule-set TENANT1_TO_TENANT3 rule T1_TO_T3 then static-nat prefix 10.1.0.0/16
 set security nat static rule-set TENANT1_TO_TENANT3 rule T1_TO_T3 then static-nat prefix routing-instance tenant-3
 ```
+
+Live-verified on vSRX 24.4R1: `from routing-group` references a `security l3vpn vrf-group` name, not a routing-instance — pointing it at a routing instance fails commit with `Vrf-group must be defined`.
 
 Verify route tables and session wings in every routing instance involved.
 
@@ -293,10 +296,13 @@ set security nat source rule-set HAIRPIN_SNAT rule HAIRPIN then source-nat pool 
 Policy:
 
 ```junos
-set security policies from-zone trust to-zone trust policy PERMIT_HAIRPIN match source-address any
-set security policies from-zone trust to-zone trust policy PERMIT_HAIRPIN match destination-address any
-set security policies from-zone trust to-zone trust policy PERMIT_HAIRPIN match application any
+set security address-book global address LAN_CLIENTS 192.168.1.0/24
+set security address-book global address WEB_SERVER_ADDR 192.168.10.20/32
+set security policies from-zone trust to-zone trust policy PERMIT_HAIRPIN match source-address LAN_CLIENTS
+set security policies from-zone trust to-zone trust policy PERMIT_HAIRPIN match destination-address WEB_SERVER_ADDR
+set security policies from-zone trust to-zone trust policy PERMIT_HAIRPIN match application junos-https
 set security policies from-zone trust to-zone trust policy PERMIT_HAIRPIN then permit
+set security policies from-zone trust to-zone trust policy PERMIT_HAIRPIN then log session-close
 ```
 
 For CGN or persistent NAT hairpin cases, use a dedicated inside-to-inside policy and inspect session-close/update logs. Avoid broad `any any permit` hairpin policy without logging and a change record.
@@ -356,7 +362,7 @@ NAT64 caveats:
 
 - DNS64 is required for hostname-based access unless the client explicitly uses embedded NAT64 notation.
 - Native IPv6 destinations should not be caught by the NAT64 source NAT rule.
-- NAT64 is not supported in PowerMode IPsec mode according to the Juniper NAT overview, although NAT64 works in normal mode when PMI is enabled. Verify current release/platform behavior before relying on it.
+- Per the Juniper NAT overview, NAT64 traffic is not processed on the PowerMode IPsec (PMI) fast path; with PMI enabled, NAT64 flows are handled in the normal processing path instead. Verify current release/platform behavior before relying on it.
 
 ## CGN, PBA, and Persistent NAT
 
@@ -454,7 +460,6 @@ Rule counters:
 show security nat source rule all
 show security nat destination rule all
 show security nat static rule all
-show security nat source pool all
 show security nat proxy-arp
 ```
 
@@ -553,4 +558,4 @@ Use traceoptions for short maintenance windows only. Remove or deactivate them a
 
 ## Source Notes
 
-This skill is a synthesized operational playbook from Juniper Community TechPosts, Juniper NAT documentation, and Juniper Support resolution guides. Full source extracts and condensed support portal notes are stored in `references/` for provenance.
+This skill is a synthesized operational playbook from Juniper Community TechPosts, Juniper NAT documentation, and Juniper Support resolution guides. Full source extracts and condensed support portal notes are stored under `references/` (see `references/source-index.md`) for provenance.

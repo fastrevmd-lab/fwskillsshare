@@ -1,7 +1,7 @@
 ---
 name: srx-ipsec-hub-spoke
 description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX static point-to-point route-based IPsec hub-and-spoke with full-tunnel backhaul, where each spoke has one explicit tunnel and the hub is the centralized internet egress and spoke-to-spoke hairpin. Covers per-spoke IKE gateways pinned by peer WAN IP, IKEv2 with PSK, route-based VPNs with default proxy-id (no traffic selectors, no ARI), one st0 unit per spoke, manual per-spoke static routes, the spoke default route into st0, the anti-recursion host route, the vSRX management-default ECMP caveat, hub source-NAT, VPN-to-untrust and VPN-to-VPN policies, when to switch to AutoVPN, and verification.
-version: 1.0.1
+version: 1.0.2
 author:
   - fastrevmd-lab
   - Jason Anderson
@@ -10,7 +10,7 @@ license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [srx, junos, ipsec, vpn, route-based, hub-and-spoke, point-to-point, p2p, full-tunnel, backhaul, ikev2, pre-shared-key, source-nat, anti-recursion, hairpin, centralized-egress, st0, static-routing]
-    related_skills: [srx-autovpn-full-tunnel, srx-nat, srx-mnha, srx-policy, parsing-srx-configs]
+    related_skills: [srx-autovpn-full-tunnel, srx-advpn, srx-nat, srx-mnha, srx-policy, parsing-srx-configs]
   sources:
     - title: "SRX Static Point-to-Point Hub-and-Spoke — Full-Tunnel Backhaul (lab)"
       author: Jason Anderson
@@ -76,6 +76,9 @@ When **not** to use:
   `st0` + route). That is what AutoVPN solves — use `srx-autovpn-full-tunnel`.
 - Spokes that need **local breakout** (split tunnel) — full tunnel concentrates all
   spoke internet traffic on the hub.
+- Branch-to-branch traffic is heavy and the through-the-hub hairpin adds
+  unacceptable latency — use `srx-advpn` (dynamic spoke-to-spoke shortcut
+  tunnels; requires certificate auth).
 
 ## Topology Model
 
@@ -342,6 +345,7 @@ show security ipsec security-associations           # one IPsec SA per spoke, bo
 show security ipsec security-associations detail     # proxy-id 0.0.0.0/0 <-> 0.0.0.0/0 (no selectors)
 show route 192.168.2.0/24                            # static, via the correct st0 unit
 show security nat source rule all                    # SNAT-INTERNET hit count incrementing
+show security nat source summary
 show security flow session                           # spoke-src -> internet, xlated to hub WAN IP
 show system core-dumps                               # must stay zero
 ```
@@ -366,15 +370,17 @@ the flow **entering on one `st0` unit and leaving on another**, zone `VPN → VP
 | Spoke-to-spoke | One direction only | Hub missing the destination spoke's `/24 → st0.n` route or `VPN→VPN` policy |
 | Fragmentation | Large flows fail, small ones work | Tunnel MTU/MSS — keep/lower `tcp-mss ipsec-vpn` |
 
-IKE tracing: `set security ike traceoptions file ike-trace` / `flag ike` / `level
-detail`; read `show log ike-trace`; renegotiate with `clear security ike
+IKE tracing: `set security ike traceoptions file ike-trace` / `flag ike` /
+`level 15` (iked-based platforms take a numeric trace level; `level detail`
+fails commit on Junos 24.4R1 — live-verified); read `show log ike-trace`;
+renegotiate with `clear security ike
 security-associations` and `clear security ipsec security-associations`. Live
 daemon log: `show log iked` (modern) or `show log kmd` (older).
 
 ## Caveats and Tradeoffs
 
-1. **Anti-recursion route** — the single most common break; keep `HUB_WAN/32`
-   more-specific than the spoke default.
+1. **Anti-recursion route** — the single most common break (see the anti-recursion
+   callout above).
 2. **Adding a spoke is a hub change** — a new IKE gateway, IPsec VPN, `st0` unit,
    and static route on the hub. The defining tradeoff of the static approach: fine
    for a few stable sites, painful at scale.
@@ -400,6 +406,9 @@ daemon log: `show log iked` (modern) or `show log kmd` (older).
 Backhaul behavior, NAT, anti-recursion, and the management-default caveat are
 **identical** between the two. Start static for a handful of explicit sites; switch
 to AutoVPN when spoke count grows or churns.
+
+If neither fits because spoke-to-spoke traffic dominates, see `srx-advpn` for its
+three-way ADVPN vs AutoVPN vs Static comparison.
 
 ## Verification Checklist
 

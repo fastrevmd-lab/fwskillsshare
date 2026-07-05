@@ -142,6 +142,8 @@ Same pattern as logical-systems but under `tenants`.
 
 ## Key Predefined Applications
 
+Partial list — the authoritative, live-verified table is in SKILL.md "Application Mapping (L7 → Canonical)".
+
 SRX has predefined applications that don't need explicit definition:
 - `junos-http` (TCP/80), `junos-https` (TCP/443)
 - `junos-ssh` (TCP/22), `junos-telnet` (TCP/23)

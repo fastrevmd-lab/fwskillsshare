@@ -1,13 +1,13 @@
 ---
 name: cis-controls-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining how a next-generation firewall or firewall estate can support CIS Critical Security Controls v8/v8.1 safeguards. Covers CIS-aligned network inventory, secure firewall configuration, network infrastructure management, access control, logging, malware/threat prevention, data protection, vulnerability management, service-provider access, incident response, penetration testing, audit evidence, and firewall description/tag markers. Emphasizes that CIS alignment is assessed for the implemented environment and security program, not certified by an NGFW alone.
-version: 0.1.0
+description: Use when researching, designing, auditing, or explaining how a next-generation firewall or firewall estate can support CIS Critical Security Controls v8/v8.1 safeguards. Covers CIS-aligned network inventory, secure firewall configuration, network infrastructure management, access control, logging, malware/threat prevention, data protection, vulnerability management, service-provider access, incident response, penetration testing, audit evidence, and firewall description/tag markers. Triggers include Implementation Groups (IG1/IG2/IG3) and Safeguard IDs such as 4.2 or 13.3. Distinct from CIS Benchmarks (per-product hardening guides), though firewall hardening questions may involve both. Emphasizes that CIS alignment is assessed for the implemented environment and security program, not certified by an NGFW alone.
+version: 0.1.1
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [cis-controls, cis-v8, compliance, firewall, ngfw, safeguards, audit, evidence, network-infrastructure, logging, access-control, incident-response]
-    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, pci-ngfw-compliance, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, iso27001-ngfw-compliance, soc2-ngfw-compliance]
+    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, firewall-best-practices-audit, pci-ngfw-compliance, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, iso27001-ngfw-compliance, soc2-ngfw-compliance]
   sources:
     - title: "CIS Critical Security Controls v8"
       author: Center for Internet Security
@@ -19,14 +19,13 @@ metadata:
       retrieved: "2026-06-27"
 ---
 
-
 # CIS Controls NGFW Compliance Research
 
 ## Overview
 
 Use this skill to answer questions like “how should my firewall support CIS Controls v8?” or “is this NGFW design aligned with CIS Critical Security Controls?” The core answer is: an NGFW is not “CIS compliant” by itself. CIS Controls alignment is assessed across the organization’s implemented safeguards, processes, assets, people, evidence, and operating practices. A firewall estate can be a major technical control and evidence source, but it must be configured, monitored, reviewed, maintained, and tied to the organization’s CIS implementation group, risk, and operational context.
 
-The CIS Controls are prioritized cyber defense practices. They are useful as a practical baseline even when the organization is not pursuing a formal regulatory certification. For firewall work, the most directly relevant areas are Control 3 (Data Protection), Control 4 (Secure Configuration), Control 5 (Account Management) and Control 6 (Access Control Management), Control 7 (Continuous Vulnerability Management), Control 8 (Audit Log Management), Control 10 (Malware Defenses), Control 11 (Data Recovery), Control 12 (Network Infrastructure Management), Control 13 (Network Monitoring and Defense), Control 15 (Service Provider Management), Control 17 (Incident Response), and Control 18 (Penetration Testing).
+The CIS Controls are prioritized cyber defense practices. They are useful as a practical baseline even when the organization is not pursuing a formal regulatory certification. For firewall work, most directly relevant are Controls 3-8, 10-13, 15, 17, and 18 (see references/control-mapping.md). CIS Controls v8.1 (June 2024) is an iterative refresh of v8 that preserves the Control/Safeguard numbering while adding a Governance security function aligned to NIST CSF 2.0; confirm which version the organization uses.
 
 Treat this as security-control assessment guidance, not legal advice and not a certification claim. When producing final language, cite CIS Control and Safeguard IDs where known, label assumptions, and distinguish “supports CIS Controls” from “fully implemented across the enterprise.”
 
@@ -42,7 +41,7 @@ Use this skill when the user asks about:
 - preparing audit-ready evidence requests, gap findings, roadmap items, or prioritized remediation plans using CIS language
 - comparing Palo Alto, FortiGate, Juniper SRX, Cisco ASA/FTD, Check Point, cloud-native firewalls, host firewalls, SASE/ZTNA, or microsegmentation controls against CIS baseline needs
 
-Do not use this skill as a substitute for parsing a vendor config. Load the relevant parser skill first when raw config is provided, then use this skill to interpret CIS implications.
+Do not use this skill as a substitute for parsing a raw firewall configuration. Load the matching parsing-cisco/fortinet/palo/srx skill first, then use this skill to interpret CIS implications. For framework-independent rulebase hygiene (any-any rules, shadowed/orphaned rules, weak crypto, cleanup), use the firewall-best-practices-audit skill; use this skill when findings must map to CIS Controls and audit evidence.
 
 ## Baseline Interpretation
 

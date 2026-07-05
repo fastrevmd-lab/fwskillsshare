@@ -1,13 +1,13 @@
 ---
 name: srx-mpls-in-flow
-description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX MPLS L3VPN in flow mode. Covers Junos 24.2R1+ decoupled MPLS packet-mode with inet/inet6 flow-mode, VRF-aware security policies, vrf-table-label, LDP/MP-BGP signaling, VRF-aware NAT/AppID, Junos 25.4R1 VRF-to-zone mapping, SRX4600/SRX4700 platform notes, PowerMode/RFP behavior, MTU, verification, and troubleshooting.
-version: 1.0.1
+description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX MPLS L3VPN in flow mode (secure PE / secure CPE). Covers Junos 24.2R1+ decoupled family mpls mode packet-based with inet/inet6 flow-mode, VRF-aware security policies with l3vpn vrf-group (source-l3vpn-vrf-group / destination-l3vpn-vrf-group), vrf-table-label, LDP/MP-BGP inet-vpn signaling, VRF-aware NAT/AppID, Junos 25.4R1 VRF-to-zone mapping, SRX4600/SRX4700 platform notes, PowerMode/RFP behavior, MTU, verification, and troubleshooting.
+version: 1.0.2
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [srx, junos, mpls, l3vpn, flow-mode, vrf, vrf-to-zone, bgp, ldp, nat, appid, powermode]
-    related_skills: [parsing-srx-configs]
+    related_skills: [parsing-srx-configs, srx-policy, srx-nat]
   sources:
     - title: SRX MPLS in Flow
       author: Karel Hendrych
@@ -54,7 +54,7 @@ Use this skill when the user asks about:
 - PowerMode versus Regular Flow Path (RFP) for SRX MPLS traffic
 - troubleshooting MPLS/VPN routes, labels, session classification, NAT, or policy matching on SRX
 
-Do not use this as the primary skill for parsing arbitrary SRX configuration. Load `parsing-srx-configs` first for full config extraction, then use this skill for MPLS-in-flow interpretation.
+Do not use this as the primary skill for parsing arbitrary SRX configuration. Load `parsing-srx-configs` first for full config extraction, then use this skill for MPLS-in-flow interpretation. For non-VRF SRX policy design use srx-policy; for general SRX NAT use srx-nat — this skill covers only their VRF/MPLS-context behavior.
 
 ## Version and Platform Notes
 
@@ -62,8 +62,8 @@ Always verify the current Junos release notes, Feature Explorer, and platform do
 
 - Junos 24.2R1 introduced the decoupled treatment of `family mpls` versus `family inet` and `family inet6` for selected SRX platforms.
 - The older explicit flow mode for `family mpls` use cases on vSRX3, available from Junos 21.4 for specific PE cases, is deprecated in favor of decoupled family controls.
-- Platforms called out for the new MPLS/flow model include SRX300 series, SRX1500, SRX4100/4200, SRX1600/2300(4210)/4300, SRX4600/SRX4700 as of Junos 25.4, and vSRX.
-- As of the source articles, global packet mode is not supported on newer mid-range SRX1600/2300(4120)/4300, SRX4600/4700, and SRX5K platforms.
+- Platforms called out for the new MPLS/flow model include SRX300 series, SRX1500, SRX4100/4200, SRX1600/SRX2300/SRX4120/SRX4300, SRX4600/SRX4700 as of Junos 25.4, and vSRX.
+- As of the source articles, global packet mode is not supported on newer mid-range SRX1600/SRX2300/SRX4120/SRX4300, SRX4600/4700, and SRX5K platforms.
 - Global packet mode remains supported on SRX300 series, SRX1500, vSRX, and SRX4100/4200. If those platforms are upgraded to Junos 24.2R1 or later and need global packet-mode behavior, explicitly configure `family inet` packet mode.
 - Junos 25.4R1 adds SRX4600/SRX4700 MPLS L3VPN support and VRF-to-zone mapping support used by Part 2 of the source material.
 - On SRX4600/SRX4700, MPLS traffic is not Express Path accelerated as of 25.4R1, but the hardware PFE can load-balance toward SPU resources by hashing on inner IP/L4 headers rather than only MPLS labels.
@@ -289,16 +289,7 @@ set security policies pre-id-default-policy then log session-close
 set security policies pre-id-default-policy then log session-update 1
 ```
 
-Verify AppID/NAT with session output:
-
-```text
-show security flow session dynamic-application junos:SSH
-show security nat source rule all
-show security nat static rule all
-show security policies hit-count
-```
-
-Look for:
+Verify with the session/NAT/hit-count commands in Verification Workflow steps 4 and 6, looking for:
 
 - policy name and zone direction
 - `L3VPN VRF Group` or `VRF Zone` annotations
@@ -345,14 +336,7 @@ set security flow drop-flow max-sessions 0
 show security flow status
 ```
 
-Expected for MPLS-in-flow:
-
-```text
-Inet forwarding mode: flow based
-Inet6 forwarding mode: flow based
-MPLS forwarding mode: packet based
-ISO forwarding mode: drop
-```
+Expected: the MPLS-in-flow baseline shown in Forwarding Mode Baselines (inet/inet6 flow based, MPLS packet based, ISO drop).
 
 ### 2. MPLS and label distribution
 
@@ -451,16 +435,6 @@ Verify unidentified or pre-ID sessions are not silently bypassing intended contr
 
 8. Using SRX4600/SRX4700 performance numbers as guaranteed sizing. The source figures are controlled lab results; production sizing must include services, traffic mix, concurrent sessions, logging, and failure modes.
 
-## Source Notes
-
-This skill is synthesized from two Juniper Community TechPosts by Karel Hendrych:
-
-- `references/source-srx-mpls-in-flow-part-1.md` - Junos 24.2R1 MPLS/flow-mode behavior, vSRX L3VPN lab, VRF-aware policy, NAT/AppID, verification, and appendices.
-- `references/source-srx-mpls-in-flow-part-2.md` - Junos 25.4R1 SRX4600/SRX4700 platform support, VRF-to-zone mapping, SRX4600 performance testing, PowerMode observations, and physical-lab configs.
-- `references/source-index.md` - reference index.
-
-The main playbook intentionally extracts reusable operational guidance instead of mirroring the full articles.
-
 ## Verification Checklist
 
 - [ ] Confirm Junos release and SRX platform support for MPLS L3VPN in flow mode.
@@ -474,3 +448,13 @@ The main playbook intentionally extracts reusable operational guidance instead o
 - [ ] Confirm policy hit counters, session details, NAT translations, and AppID output match the intended VRF.
 - [ ] Confirm packet capture shows MPLS labels on the underlay and customer packets on access interfaces.
 - [ ] Confirm PowerMode/drop-flow choices are deliberate and documented for the workload.
+
+## Source Notes
+
+This skill is synthesized from two Juniper Community TechPosts by Karel Hendrych:
+
+- `references/source-srx-mpls-in-flow-part-1.md` - Junos 24.2R1 MPLS/flow-mode behavior, vSRX L3VPN lab, VRF-aware policy, NAT/AppID, verification, and appendices.
+- `references/source-srx-mpls-in-flow-part-2.md` - Junos 25.4R1 SRX4600/SRX4700 platform support, VRF-to-zone mapping, SRX4600 performance testing, PowerMode observations, and physical-lab configs.
+- `references/source-index.md` - reference index.
+
+The main playbook intentionally extracts reusable operational guidance instead of mirroring the full articles.

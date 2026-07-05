@@ -1,7 +1,7 @@
 ---
 name: firewall-config-diff
 description: "Use when comparing two firewall / NGFW configurations to find differences, drift, or parity — same-vendor (config drift, HA-pair consistency, pre/post-change) or cross-vendor (migration parity, round-trip conversion validation). Operates on the parsing-* intermediate schema; for raw config, run the matching parsing-cisco/fortinet/palo/srx skill first. Compares by meaning (order- and name-insensitive), not text: pairs objects/policies/NAT/zones/routing/etc. by semantic identity and reports added / removed / changed per section plus a parity verdict. Cross-vendor features with no equivalent are flagged not-comparable, never a false diff."
-version: 1.0.1
+version: 1.0.2
 author:
   - fastrevmd-lab
   - Claude
@@ -70,8 +70,6 @@ Name-anchoring convention (resolves how value changes are reported):
   report the value/attribute delta as `changed` (applies to address objects, service objects,
   address/service groups, AND security policies). A policy whose referenced object value
   shifts stays paired by name; the shift is noted on the `changed` pair, not as add+remove.
-Identity is never anchored by name ALONE — but a stable name is a legitimate anchor for
-same-vendor drift.
 ```
 
 ## Diff Workflow
@@ -111,7 +109,7 @@ Framings: **drift** (A=old, B=new → what changed) and **parity** (A vs B → e
 - Treating a rename or a reorder as add+remove — match by semantic identity, and report order separately.
 - Emitting false diffs on cross-vendor non-isomorphic features — flag them `not-comparable` instead.
 - Re-implementing parsing instead of delegating to the matching `parsing-*` skill.
-- Comparing object NAMES instead of VALUES across vendors — two configs can use different names for the same subnet (for same-vendor drift a stable name is a valid anchor; the value/attribute delta is then a `changed`).
+- Comparing object NAMES instead of VALUES across vendors — two configs can use different names for the same subnet (same-vendor drift may anchor by stable name — see Name-anchoring convention).
 - Forgetting that NAT can change the effective meaning of traffic when reasoning about policy equivalence.
 - Path-referencing another skill's files in the round-trip example — keep this skill self-contained with inline snippets.
 

@@ -1,22 +1,22 @@
 ---
 name: firewall-best-practices-audit
-description: Use when auditing or reviewing a firewall or NGFW rulebase for security and operational best-practice hygiene, independent of any compliance framework. Covers overly permissive and any-any rules, shadowed/redundant/overlapping/orphaned rules, missing deny-all and logging, dangerous exposed services, plaintext management (telnet/http/SNMPv1-2c), weak VPN/IKE/IPsec crypto, and operational cleanup (unused/duplicate objects, oversized groups, naming/description gaps, rule consolidation). Operates on the parsing-* intermediate schema; for raw config, run the matching parsing-cisco/fortinet/palo/srx skill first. Emits prioritized findings with severity, confidence, and vendor-neutral plus source-vendor remediation.
-version: 1.1.0
+description: Use when auditing or reviewing a firewall or NGFW rulebase for security and operational best-practice hygiene, independent of any compliance framework. Covers overly permissive and any-any rules, shadowed/redundant/overlapping/orphaned rules, missing deny-all and logging, dangerous exposed services, plaintext management (telnet/http/SNMPv1-2c), weak VPN/IKE/IPsec crypto, device-plane hardening (SSH root-login, host-inbound exposure, missing zone screens, auth/password lockout policy, control-plane/RE filters, unreferenced/inert security services, empty policy sets, IPv6 posture), and operational cleanup (unused/duplicate objects, oversized groups, naming/description gaps, rule consolidation). Operates on the parsing-* intermediate schema; for raw config, run the matching parsing-cisco/fortinet/palo/srx skill first. Emits prioritized findings with severity, confidence, and vendor-neutral plus source-vendor remediation.
+version: 1.1.1
 author:
   - fastrevmd-lab
   - Claude
 license: MIT
 metadata:
   hermes:
-    tags: [firewall, ngfw, audit, best-practices, hardening, rulebase-review, security-hygiene, shadowed-rules, least-privilege, logging, vpn-crypto, object-cleanup, vendor-neutral]
-    related_skills: [parsing-cisco-configs, parsing-fortinet-configs, parsing-palo-configs, parsing-srx-configs, pci-ngfw-compliance, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance, iso27001-ngfw-compliance, soc2-ngfw-compliance]
+    tags: [firewall, ngfw, audit, best-practices, hardening, rulebase-review, security-hygiene, shadowed-rules, least-privilege, logging, vpn-crypto, object-cleanup, vendor-neutral, ssh-hardening, host-inbound, screens, device-hardening, ipv6-posture]
+    related_skills: [parsing-cisco-configs, parsing-fortinet-configs, parsing-palo-configs, parsing-srx-configs, firewall-config-conversion, firewall-config-diff, pci-ngfw-compliance, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance, iso27001-ngfw-compliance, soc2-ngfw-compliance]
 ---
 
 # Firewall Best-Practices Audit
 
 ## Overview
 
-Use this skill to audit a firewall or NGFW rulebase for security and operational hygiene, vendor-neutrally, over the `parsing-*` intermediate JSON schema. The audit reads normalized `security_policies`, `nat_rules`, address/service objects and groups, `zones`, `vpn_tunnels`, `system`, and `admin_users`, then emits prioritized findings — overly permissive and any-any rules, shadowed/redundant/overlapping/orphaned rules, missing deny-all and logging, dangerous exposed services, plaintext management, weak VPN/IKE/IPsec crypto, and operational cleanup. Each finding carries a severity, a confidence, the affected references, why it matters, and remediation.
+Use this skill to audit a firewall or NGFW rulebase for security and operational hygiene, vendor-neutrally, over the `parsing-*` intermediate JSON schema. The audit reads normalized `security_policies`, `nat_rules`, address/service objects and groups, `zones`, `vpn_tunnels`, `system`, and `admin_users`, then emits prioritized findings across the security and operational check families (full catalog: `references/check-catalog.md`). Each finding carries a severity, a confidence, the affected references, why it matters, and remediation.
 
 This skill is deliberately framework-agnostic. It answers "is this rulebase hardened by general best practice" — not "does this satisfy PCI/HIPAA/CMMC/CIS/ISO/SOC 2." That mapping is the job of the `*-ngfw-compliance` skills, which take a framework's control IDs and produce assessor-ready evidence. This skill stays in the lane of general hygiene: it never cites a control ID and never claims an environment is compliant. Use it before or alongside a compliance review, or on its own when someone just wants the rulebase cleaned up and tightened.
 
@@ -37,13 +37,15 @@ Do NOT use this skill when:
 
 - The ask is to map controls to a compliance framework (PCI, HIPAA, CMMC, NIST 800-171, CIS, ISO 27001, SOC 2) — route to the matching `*-ngfw-compliance` skill instead.
 - You are handed raw vendor config for a vendor that has a parser — run the matching `parsing-*` skill first to produce the intermediate schema, then audit. Do not hand-audit raw text.
+- The ask is to convert/migrate the config to another vendor — route to firewall-config-conversion.
+- The ask is to compare two configs for drift or parity — route to firewall-config-diff.
 
 ## Input Handling
 
 Route on what you were given:
 
 - **Parsed intermediate schema** (the vendor-neutral JSON produced by any `parsing-*` skill; the schema definition lives in the `parsing-srx-configs` skill) — audit directly. Read `metadata.source_vendor` to drive vendor-specific remediation snippets. `metadata.source_vendor` is the canonical schema field; for robustness also accept a legacy `metadata.vendor` key if a non-conformant parse provides one — read whichever is present.
-- **Raw config** — identify the vendor from the syntax, run the matching `parsing-*` skill (`parsing-cisco-configs`, `parsing-fortinet-configs`, `parsing-palo-configs`, `parsing-srx-configs`) to produce the intermediate schema, then audit the result. Never re-implement parsing in this skill.
+- **Raw config** — identify the vendor from the syntax, run the matching `parsing-*` skill (`parsing-cisco-configs`, `parsing-fortinet-configs`, `parsing-palo-configs`, `parsing-srx-configs`) to produce the intermediate schema, then audit the result. Never re-implement parsing in this skill. For a single live device pulled via NETCONF/MCP, parsing-srx-configs permits auditing from the extracted hierarchical sections without full schema emission — still route the extraction through that skill; never hand-parse raw text ad hoc.
 - **Unsupported vendor with no parser** — say so plainly: there is no parser for this vendor, so a structured audit cannot be produced; offer to audit a manually-normalized schema or to reason about pasted excerpts without finding IDs.
 
 As of v1.1 the audit also reads `system.ssh`, `system.auth`, `system.control_plane_protection`, `zones[].screen`, and `security_services` to cover device-plane hardening (SSH/management hardening, password/lockout policy, screen presence, and unreferenced security services); any of these fields that is absent simply skips its dependent check.
@@ -56,7 +58,7 @@ Graceful degradation: the schema is static, so some checks have no input (for ex
 |----------|--------------------|
 | Critical | Direct, exploitable exposure — any-any-allow across a trust boundary, dangerous service open to untrust, plaintext admin reachable externally, broken/keyless VPN. |
 | High | Strong weakness — overly permissive allow, shadowed rules hiding later policy, weak VPN/IKE crypto (DES/3DES/MD5/SHA1/DH<14), no logging on permit-to-untrust. |
-| Medium | Material hygiene gap — missing explicit deny-all, redundant/overlapping rules, oversized any in one field, SNMPv1/2c, missing logging on internal allows. |
+| Medium | Material hygiene gap — missing explicit deny-all, redundant/overlapping rules, oversized any in one field, missing logging on internal allows. |
 | Low | Minor hardening or correctness nit — overlapping objects, weak naming, narrow over-broad object. |
 | Info | Operational cleanup with no direct risk — unused/duplicate objects, oversized groups, missing descriptions, consolidation opportunities, disabled rules. |
 

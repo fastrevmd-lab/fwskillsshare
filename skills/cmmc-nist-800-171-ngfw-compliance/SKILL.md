@@ -1,13 +1,13 @@
 ---
 name: cmmc-nist-800-171-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining what it takes for a next-generation firewall or firewall estate to support CMMC Level 2 and NIST SP 800-171 protection of Controlled Unclassified Information. Covers CUI enclave scoping, boundary protection, least-privilege network access, remote access, external connections, audit logging, incident response, media/system boundaries, security assessment evidence, POA&M-style gaps, and audit-ready firewall description/tag markers. Emphasizes that CMMC/NIST 800-171 compliance is assessed for the contractor environment, not certified by an NGFW alone.
-version: 0.1.1
+description: Use when researching, designing, auditing, or explaining what it takes for a next-generation firewall or firewall estate to support CMMC Level 2 and NIST SP 800-171 protection of Controlled Unclassified Information. Covers CUI enclave scoping, boundary protection, least-privilege network access, remote access, external connections, audit logging, incident response, media/system boundaries, security assessment evidence, POA&M-style gaps, and audit-ready firewall description/tag markers. Triggers include SSP boundary language, C3PAO assessment preparation, DFARS 252.204-7012, DIB contractor networks, and requirement IDs like 3.1.1 or 3.13.1. Emphasizes that CMMC/NIST 800-171 compliance is assessed for the contractor environment, not certified by an NGFW alone.
+version: 0.1.2
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [cmmc, nist-800-171, cui, compliance, firewall, ngfw, boundary-protection, audit, evidence, segmentation, access-control, remote-access, logging]
-    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, pci-ngfw-compliance, hipaa-ngfw-compliance, cis-controls-ngfw-compliance, iso27001-ngfw-compliance, soc2-ngfw-compliance]
+    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, firewall-best-practices-audit, pci-ngfw-compliance, hipaa-ngfw-compliance, cis-controls-ngfw-compliance, iso27001-ngfw-compliance, soc2-ngfw-compliance]
   sources:
     - title: "NIST SP 800-171 Rev. 2: Protecting Controlled Unclassified Information in Nonfederal Systems and Organizations"
       author: National Institute of Standards and Technology
@@ -22,7 +22,6 @@ metadata:
       url: https://dodcio.defense.gov/CMMC/
       retrieved: "2026-06-27"
 ---
-
 
 # CMMC / NIST 800-171 NGFW Compliance Research
 
@@ -45,7 +44,7 @@ Use this skill when the user asks about:
 - preparing SSP language, assessment evidence, gap findings, POA&M-style remediation tasks, or rule-review evidence for CMMC/NIST 800-171
 - comparing Palo Alto, FortiGate, Juniper SRX, Cisco ASA/FTD, Check Point, cloud security groups, host firewalls, ZTNA/SASE, or microsegmentation controls against CUI protection needs
 
-Do not use this skill as a substitute for parsing a vendor config. Load the relevant parser skill first when raw config is provided, then use this skill to interpret CMMC/NIST 800-171 implications.
+Do not use this skill as a substitute for parsing a raw firewall configuration. Load the matching parsing-cisco/fortinet/palo/srx skill first, then use this skill to interpret CMMC/NIST 800-171 implications. For framework-independent rulebase hygiene (any-any rules, shadowed/orphaned rules, weak crypto, cleanup), use the firewall-best-practices-audit skill; use this skill when findings must map to CMMC/NIST 800-171 controls and audit evidence.
 
 ## Baseline Interpretation
 
@@ -86,7 +85,7 @@ Do not assume a VLAN, zone, VPC/VNet, subnet, tag, “CUI enclave” label, or �
 
 ### CMMC Level 2 and NIST 800-171 Version Awareness
 
-CMMC Level 2 has historically aligned to the 110 security requirements in NIST SP 800-171 Rev. 2. NIST SP 800-171 Rev. 3 changes organization and requirement text. When answering, confirm which contractual or assessment basis applies. If the user does not specify, default to CMMC Level 2 / NIST SP 800-171 Rev. 2 style requirement IDs for CMMC work, while noting that Rev. 3 exists and may matter for non-CMMC or future alignment work.
+CMMC Level 2 aligns to the 110 security requirements in NIST SP 800-171 Rev. 2 (verified 2026-07: the May 2024 DFARS class deviation keeps assessments on Rev. 2 with no expiration; Rev. 3 adoption requires future rulemaking). NIST SP 800-171 Rev. 3 changes organization and requirement text. When answering, confirm which contractual or assessment basis applies. If the user does not specify, default to CMMC Level 2 / NIST SP 800-171 Rev. 2 style requirement IDs for CMMC work, while noting that Rev. 3 exists and may matter for non-CMMC or future alignment work.
 
 Do not mix Rev. 2 and Rev. 3 IDs without labeling them. Do not claim a Rev. 3 mapping satisfies a CMMC assessment unless the user’s assessment basis says so.
 

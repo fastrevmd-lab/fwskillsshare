@@ -562,8 +562,6 @@ Verify (SRX): `show configuration system login | display set`.
 
 ---
 
-## Notes
-
 ## SEC-LARGE-PORTRANGE — Oversized port ranges
 
 - **Vendor-neutral:** replace broad ranges (>100 ports) with the specific ports the
@@ -611,6 +609,8 @@ Verify (SRX): `show configuration system login | display set`.
   <collector>`; Cisco: per-ACE `log` + `logging host <if> <collector>`; Palo:
   log-end + log-forwarding profile on rules; FortiGate: `set logtraffic all` +
   `config log syslogd setting`.
+
+## Notes
 
 - These are change templates, not turnkey configs — confirm interface names, zone
   names, object names, and platform/version syntax against the live device.

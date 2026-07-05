@@ -1,13 +1,13 @@
 ---
 name: iso27001-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining how a next-generation firewall or firewall estate can support an ISO/IEC 27001:2022 information security management system and Annex A controls. Covers ISMS-scoped network security, access control, secure configuration, logging and monitoring, supplier access, change management, incident management, backup/recovery, audit evidence, Statement of Applicability support, and firewall description/tag markers. Emphasizes that ISO 27001 certification applies to the ISMS scope, not to an NGFW product alone.
-version: 0.1.0
+description: Use when researching, designing, auditing, or explaining how a next-generation firewall or firewall estate can support an ISO/IEC 27001:2022 information security management system and Annex A controls. Covers ISMS-scoped network security, access control, secure configuration, logging and monitoring, supplier access, change management, incident management, backup/recovery, audit evidence, Statement of Applicability (SoA) support, and firewall description/tag markers. Triggers include Annex A control IDs (A.5.15, A.8.20-A.8.23), ISO 27002, certification and surveillance audits, and nonconformity/corrective-action evidence. Emphasizes that ISO 27001 certification applies to the ISMS scope, not to an NGFW product alone.
+version: 0.1.1
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [iso27001, iso-27001-2022, compliance, firewall, ngfw, isms, annex-a, audit, evidence, access-control, network-security, logging]
-    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, pci-ngfw-compliance, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance, soc2-ngfw-compliance]
+    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, firewall-best-practices-audit, pci-ngfw-compliance, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance, soc2-ngfw-compliance]
   sources:
     - title: "ISO/IEC 27001:2022 Information security management systems"
       author: International Organization for Standardization
@@ -18,7 +18,6 @@ metadata:
       url: https://www.iso.org/standard/75652.html
       retrieved: "2026-06-27"
 ---
-
 
 # ISO 27001 NGFW Compliance Research
 
@@ -41,7 +40,7 @@ Use this skill when the user asks about:
 - adding concise ISO/ISMS control markers to firewall descriptions, tags, comments, or external evidence repositories
 - comparing Palo Alto, FortiGate, Juniper SRX, Cisco ASA/FTD, Check Point, cloud-native firewalls, WAFs, host firewalls, and ZTNA/SASE against ISO-oriented control objectives
 
-Do not use this skill as a substitute for parsing a raw firewall configuration. Load the relevant parser skill first, then use this skill to interpret ISO 27001 implications.
+Do not use this skill as a substitute for parsing a raw firewall configuration. Load the matching parsing-cisco/fortinet/palo/srx skill first, then use this skill to interpret ISO 27001 implications. For framework-independent rulebase hygiene (any-any rules, shadowed/orphaned rules, weak crypto, cleanup), use the firewall-best-practices-audit skill; use this skill when findings must map to ISO 27001 controls and audit evidence.
 
 ## Baseline Interpretation
 
@@ -84,6 +83,19 @@ Detailed lookup material lives in `references/` to keep this skill lean; read th
   4. Add ISO Evidence Markers to Firewall Configs
   5. Validate Operations and Operating Effectiveness
 
+## NGFW Feature Expectations
+
+Core expectations for a firewall estate supporting ISMS network-security controls:
+
+- Stateful filtering aligned to the ISMS network-segregation policy, with a documented zone model
+- Default deny between zones, with explicit, owner-attributed allow rules
+- Description/tag marker fields populated on policies, NAT, zones, VPNs, objects, and profiles
+- Management-plane hardening: encrypted admin access, MFA/named accounts, restricted management sources
+- Centralized logging to the SIEM with synchronized NTP time sources
+- Configuration backup, restore testing, and change control tied to ISMS change management
+
+NGFW-feature-to-Annex-A mapping is in `references/control-mapping.md`.
+
 ## Output Templates
 
 ### Short Assessment Summary
@@ -106,10 +118,12 @@ Recommendation: Restrict vendor access by named identity, MFA, source, service, 
 
 ```text
 Recommended description:
-ISO:LOGGING SOA:A8.15 OWNER:SecOps REF:SIEM-FW-01 PURPOSE:Forward firewall/threat logs to SIEM   (use ISO:MONITOR SOA:A8.16 for alert-review/monitoring evidence)
+ISO:LOGGING SOA:A8.15 OWNER:SecOps REF:SIEM-FW-01 PURPOSE:Forward firewall/threat logs to SIEM
 
 Do not include secrets, personal data, customer data, vulnerability detail, incident detail, or sensitive architecture. Store detailed support in the GRC/ticket/evidence repository.
 ```
+
+For alert-review/monitoring evidence use `ISO:MONITOR SOA:A8.16` instead.
 
 ## Common Pitfalls
 

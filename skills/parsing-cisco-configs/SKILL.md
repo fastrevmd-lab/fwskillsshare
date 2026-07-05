@@ -1,9 +1,7 @@
 ---
 name: parsing-cisco-configs
-description: 'Use when the user pastes, uploads, or references a Cisco ASA or FTD config — parses and analyzes Cisco ASA and FTD firewall configurations in the line-oriented format with indented sub-commands from "show running-config". Trigger on keywords: ASA, FTD, Cisco, "access-list", "access-group", "object network", "object-group", "object service", "nameif", "security-level", "nat (", "object network", "subnet", "host", "range", "interface GigabitEthernet", "interface Management", "failover", "threat-detection". Also trigger when the user asks to convert, audit, summarize, or explain a Cisco ASA/FTD config.
-
-  '
-version: 1.1.1
+description: 'Use when the user pastes, uploads, or references a Cisco ASA or FTD config — parses and analyzes Cisco ASA and FTD firewall configurations in the line-oriented format with indented sub-commands from "show running-config". Trigger on keywords: ASA, FTD, Cisco, "access-list", "access-group", "object network", "object-group", "object service", "nameif", "security-level", "nat (", "interface GigabitEthernet", "interface Management", "failover", "threat-detection". Also trigger when the user asks to convert, audit, summarize, or explain a Cisco ASA/FTD config.'
+version: 1.1.2
 author: Hermes Agent
 license: MIT
 metadata:
@@ -46,9 +44,7 @@ Use this skill when:
 
 Do not use this skill as a substitute for device-specific validation. When the parse result will drive production changes, verify against current vendor documentation and live device output where available.
 
-You are an expert at parsing Cisco ASA and FTD firewall configurations. When given raw
-ASA/FTD config text, extract all components into a structured intermediate
-format.
+Not this skill: for FortiGate configs use parsing-fortinet-configs, PAN-OS/Panorama use parsing-palo-configs, Juniper SRX use parsing-srx-configs. Downstream consumers of this parse: firewall-best-practices-audit, firewall-config-conversion, firewall-config-diff.
 
 ## Input Format
 
@@ -76,11 +72,7 @@ Key syntax rules:
 
 ### Building Command Blocks
 
-Group indented lines under their parent top-level command:
-1. Lines starting with no indentation → new block
-2. Indented lines → children of the current block
-3. `!` lines → section separator (ignore)
-4. Result: array of `{ command: "<top-level>", children: ["<sub1>", "<sub2>", ...] }`
+Group indented lines under their parent top-level command — see references/parsing-patterns.md "Building Command Blocks" for the algorithm and worked example.
 
 ## Extraction Pipeline
 
@@ -265,7 +257,7 @@ Sub-commands:
   - `crypto ipsec profile <name>`: link proposals to PFS groups
   - `tunnel-group <ip> ipsec-attributes`: PSK, certificates, authentication method
   - VTI assembly: match Tunnel interfaces to IPsec profiles, resolve tunnel source/destination, collect routes through tunnel nameifs
-  - Canonicalize algorithm names (e.g., aes-256 → aes-256, sha → sha1)
+  - Canonicalize algorithm names (ASA encryption names are mostly already canonical; e.g., sha → sha1, esp-3des → 3des)
   - Flag weak algorithms (DES/3DES, MD5, DH group ≤ 5)
 - **Syslog:** `logging host <nameif> <ip>`
 - **DHCP Server:** `dhcpd address <start>-<end> <nameif>` (pool range),
@@ -312,12 +304,7 @@ For each service object or inline port match, check if the protocol+port maps to
 | TCP | 5060 | `sip` | voip |
 | UDP | 5060 | `sip` | voip |
 
-**ASA named port keywords:** Map ASA port names to numbers before resolving:
-`www`→80, `https`→443, `ssh`→22, `telnet`→23, `ftp`→21, `ftp-data`→20, `smtp`→25,
-`pop3`→110, `imap4`→143, `domain`→53, `ntp`→123, `snmp`→161, `snmptrap`→162,
-`tftp`→69, `syslog`→514, `tacacs`→49, `radius`→1812, `ldap`→389, `ldaps`→636,
-`sqlnet`→1521, `h323`→1720, `sip`→5060, `rtsp`→554, `kerberos`→88, `msrpc`→135,
-`netbios-ssn`→139, `microsoft-ds`→445, `bgp`→179, `lpd`→515, `pptp`→1723
+**ASA named port keywords:** Map ASA port names to numbers before resolving — full table in references/parsing-patterns.md "Port Name Resolution".
 
 **On policy output:** When a service match resolves to a known application, populate the policy's
 `apps` array with `{ vendor_name: "tcp/443", canonical: "https", confidence: 1.0, category: "web" }`.
@@ -364,9 +351,15 @@ After building all policies from ACLs + access-groups, append:
   consumers need explicit rules, model the default permit as an `_implicit: true` allow policy
   from that zone to lower-security zones
 
+Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are free-form labels; consumers must match implicit rules on `_implicit: true`, never on the name.
+
 ## Output Format
 
 Present results in the **intermediate schema** format documented in `references/intermediate-schema.md`.
+
+Note: schema sections not yet populated by this pipeline (e.g., `security_profile_objects`, `routing_contexts`) are emitted empty (`[]`/`{}`); any unhandled source constructs are captured in `residual_raw` rather than dropped.
+
+**Full intermediate-schema emission is optional for single live-device work.** The complete JSON schema exists primarily for cross-vendor conversion and multi-config diffing. When interpreting or auditing a *single* live device pulled via SSH/API for an ops/audit task, it is fine to reason directly from the running config and skip full schema emission — extract the sections relevant to the question. Emit the full schema when the parse will feed `firewall-config-conversion`, `firewall-config-diff`, or another config for comparison.
 
 
 ## Parser Quality Gates
@@ -387,7 +380,7 @@ A high-quality parse is not just valid JSON: it must make uncertainty visible. P
 
 ## Analysis Checks
 
-After extraction, report:
+After extraction, run these checks and report findings:
 1. **Unused objects** — network/service objects not referenced in any ACL
 2. **Shadowed ACL entries** — rules that can never match due to earlier entries
 3. **Overly permissive** — `permit ip any any` or broad rules
@@ -403,12 +396,9 @@ After extraction, report:
 - `references/config-format.md` — Cisco ASA config syntax reference
 - `references/intermediate-schema.md` — Output schema specification
 - `references/parsing-patterns.md` — Edge cases, port name mapping, security-level logic
-
 - `references/example-sample-parse.md` — Worked end-to-end example (input config → parsed JSON)
 - `references/fixture-minimal-input.md` — Minimal parser fixture input
 - `references/fixture-expected-output.json` — Expected high-level intermediate-schema output for the minimal fixture
-
-Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are free-form labels; consumers must match implicit rules on `_implicit: true`, never on the name.
 
 ## Secret Handling
 
@@ -431,3 +421,4 @@ Never emit secrets raw. Tunnel-group pre-shared keys, `username ... password` ha
 - [ ] Unresolved references, unsupported blocks, and parser assumptions are listed in `metadata.warnings` and/or `residual_raw`
 - [ ] Rule order and NAT order are preserved with `_rule_index` or equivalent ordering metadata
 - [ ] Cross-vendor conversion caveats are called out before suggesting target-platform config
+- [ ] No raw secrets in output — PSKs masked as `"****"`, routing-protocol passwords/keys reduced to presence flags with warnings

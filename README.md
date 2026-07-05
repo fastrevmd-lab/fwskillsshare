@@ -1,6 +1,6 @@
 # Firewall Config Parsing Skills
 
-Unofficial / community project. This repository is an independent, community-driven project. It is not affiliated with, endorsed by, sponsored by, or supported by Hewlett Packard Enterprise, Cisco, Palo Alto Networks, or Juniper Networks. "HPE", ", "Juniper", "Cisco", "Fortinet", "Palo Alto Networks" and "Juniper SRX" are trademarks of their respective owners and are used here only to describe what this software interoperates with. Please direct support and licensing questions about those products to the respective vendors
+Unofficial / community project. This repository is an independent, community-driven project. It is not affiliated with, endorsed by, sponsored by, or supported by Hewlett Packard Enterprise, Cisco, Palo Alto Networks, or Juniper Networks. "HPE", "Juniper", "Cisco", "Fortinet", "Palo Alto Networks", and "Juniper SRX" are trademarks of their respective owners and are used here only to describe what this software interoperates with. Please direct support and licensing questions about those products to the respective vendors
 
 A collection of Claude Code / Hermes skills for parsing, auditing, converting, and analyzing enterprise firewall configurations, plus Juniper SRX operational playbooks derived from field/research material.
 
@@ -135,12 +135,13 @@ After copying, your `~/.claude/skills/` directory should look like:
 ~/.claude/skills/
 ├── parsing-cisco-configs/
 │   ├── SKILL.md
-│   ├── references/
-│   │   ├── config-format.md
-│   │   ├── intermediate-schema.md
-│   │   └── parsing-patterns.md
 │   └── references/
-│       └── sample-parse.md
+│       ├── config-format.md
+│       ├── intermediate-schema.md
+│       ├── parsing-patterns.md
+│       ├── example-sample-parse.md
+│       ├── fixture-minimal-input.md
+│       └── fixture-expected-output.json
 ├── parsing-fortinet-configs/
 │   └── (same structure)
 ├── parsing-palo-configs/
@@ -161,9 +162,11 @@ After copying, your `~/.claude/skills/` directory should look like:
 │   ├── SKILL.md
 │   └── references/
 │       ├── source-index.md
+│       ├── mnha-config-patterns.md
 │       ├── source-dhcp-on-mnha-back-to-basics.md
 │       ├── source-multi-node-high-availability-basics.md
 │       ├── source-hybrid-mnha-with-ebgp.md
+│       ├── source-mnha-ipsec-and-multiple-routing-instances.md
 │       └── source-srx-from-chassis-cluster-to-mnha.md
 ├── srx-nat/
 │   ├── SKILL.md
@@ -301,9 +304,16 @@ Use slash commands to explicitly invoke a skill:
 /srx-policy
 /srx-autovpn-full-tunnel
 /srx-ipsec-hub-spoke
+/srx-advpn
 /pci-ngfw-compliance
 /hipaa-ngfw-compliance
 /cmmc-nist-800-171-ngfw-compliance
+/cis-controls-ngfw-compliance
+/iso27001-ngfw-compliance
+/soc2-ngfw-compliance
+/firewall-best-practices-audit
+/firewall-config-conversion
+/firewall-config-diff
 ```
 
 ### What you can do
@@ -674,7 +684,7 @@ skills/srx-policy/references/source-secintel-feeds-overview-and-benefits.md
 
 ### srx-mnha
 
-`srx-mnha` is a conservative SRX Multi-Node High Availability research/playbook skill built from four Juniper Community TechPosts. The source articles contained some conflicting or ambiguous details, so the main skill intentionally includes only non-conflicting operational guidance and keeps the extracted source material in `references/` for provenance.
+`srx-mnha` is a conservative SRX Multi-Node High Availability research/playbook skill built from five Juniper Community TechPosts. The source articles contained some conflicting or ambiguous details, so the main skill intentionally includes only non-conflicting operational guidance and keeps the extracted source material in `references/` for provenance.
 
 Use it for:
 
@@ -708,7 +718,9 @@ skills/srx-mnha/references/source-index.md
 skills/srx-mnha/references/source-dhcp-on-mnha-back-to-basics.md
 skills/srx-mnha/references/source-multi-node-high-availability-basics.md
 skills/srx-mnha/references/source-hybrid-mnha-with-ebgp.md
+skills/srx-mnha/references/source-mnha-ipsec-and-multiple-routing-instances.md
 skills/srx-mnha/references/source-srx-from-chassis-cluster-to-mnha.md
+skills/srx-mnha/references/mnha-config-patterns.md
 ```
 
 ### srx-autovpn-full-tunnel

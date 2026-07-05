@@ -102,12 +102,25 @@ ASA accepts named ports. Map to numbers:
 | snmp | 161 | udp |
 | snmptrap | 162 | udp |
 | syslog | 514 | udp |
+| tftp | 69 | udp |
+| tacacs | 49 | tcp/udp |
+| radius | 1645 | udp |
+| radius-acct | 1646 | udp |
+| kerberos | 750 | tcp/udp |
 | ldap | 389 | tcp |
 | ldaps | 636 | tcp |
 | sqlnet | 1521 | tcp |
 | h323 | 1720 | tcp |
 | sip | 5060 | tcp/udp |
 | rtsp | 554 | tcp |
+| msrpc | 135 | tcp |
+| netbios-ssn | 139 | tcp |
+| microsoft-ds | 445 | tcp |
+| bgp | 179 | tcp |
+| lpd | 515 | tcp |
+| pptp | 1723 | tcp |
+
+ASA port literals predate IANA assignments (Cisco documents radius=1645, radius-acct=1646, kerberos=750); do not "correct" them to IANA values when parsing.
 
 ## Combining ACLs with Access-Groups
 

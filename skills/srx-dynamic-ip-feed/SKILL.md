@@ -1,20 +1,19 @@
 ---
 name: srx-dynamic-ip-feed
-description: Use when configuring, auditing, or troubleshooting Juniper SRX dynamic IP objects from HTTPS feed servers. Covers bundle archive (.tgz) feeds, feed-name to dynamic-address mapping, certificate validation, HTTP basic authentication, mutual TLS client certificates, session-scan behavior, routing-instance reachability, and verification with show security dynamic-address and ipfd logs.
-version: 1.0.0
+description: Use when configuring, auditing, or troubleshooting Juniper SRX dynamic IP objects from HTTPS feed servers. Covers bundle archive (.tgz) feeds, feed-name to dynamic-address mapping, certificate validation, HTTP basic authentication, mutual TLS client certificates, session-scan behavior, routing-instance reachability, and verification with show security dynamic-address and ipfd logs. Includes IPFD_DA_FEED_HTTPS_STATUS and IPFD_DA_FEED_CERT_SUBJ_CHECK_FAIL log interpretation.
+version: 1.0.1
 author: Hermes Agent
 license: CC-BY-NC-SA-4.0-source-derived-summary
 metadata:
   hermes:
-    tags: [srx, junos, dynamic-address, feed-server, firewall, security-policy, pki, tls, nginx]
-    related_skills: [parsing-srx-configs]
+    tags: [srx, junos, dynamic-address, feed-server, ipfd, feed-name, session-scan, mutual-tls, basic-auth, firewall, security-policy, pki, tls, nginx]
+    related_skills: [parsing-srx-configs, srx-policy]
   sources:
     - title: SRX Dynamic IP Objects aka Feed-server
       author: Karel Hendrych
       url: https://community.juniper.net/blogs/karel-hendrych/2025/11/30/srx-dynamic-ip-objects-aka-feed-server
-
-A faithful local extract of the source text is stored at `references/source-extract.md` for provenance and verification.
       retrieved: "2026-05-14"
+      local_extract: references/source-extract.md
 ---
 
 # SRX Dynamic IP Feed Servers
@@ -48,6 +47,8 @@ Use this skill when the user asks about:
 - feed-server reachability through a non-default routing instance
 
 Do not use this as the primary skill for general SRX parsing; load `parsing-srx-configs` for full config extraction. Use this skill for design, implementation, and troubleshooting of dynamic-address feeds.
+
+For Juniper-curated threat feeds via SecIntel/ATP rather than self-hosted feed servers, see `srx-policy` (SecIntel section) instead.
 
 ## Prerequisites and Version Notes
 
@@ -370,6 +371,8 @@ set routing-instances vr-1 instance-type virtual-router
 set security dynamic-address feed-server debian-1 routing-table vr-1.inet
 ```
 
+Live-verified on vSRX 24.4R1: the table name takes NO trailing `.0` — `routing-table vr-1.inet.0` and even `inet.0` are rejected with `routing table ... cannot find`, while the bare form `inet` (default instance) and `<instance>.inet` are accepted. The referenced instance's table must already exist on the device when the commit is validated: defining the routing instance in the same candidate still fails commit check with "cannot find" — commit the instance first.
+
 Verify routing and source reachability from the relevant routing instance before troubleshooting TLS or feed syntax.
 
 ## Verification Commands
@@ -505,3 +508,5 @@ The new IP should appear under the mapped dynamic address object after the next 
 This skill is a condensed, operationalized SRX playbook based on Karel Hendrych's Juniper Community TechPost, “SRX Dynamic IP Objects aka Feed-server,” published 2025-11-30:
 
 https://community.juniper.net/blogs/karel-hendrych/2025/11/30/srx-dynamic-ip-objects-aka-feed-server
+
+A faithful local extract of the source text is stored at `references/source-extract.md` for provenance and verification.

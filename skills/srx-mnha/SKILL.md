@@ -1,13 +1,13 @@
 ---
 name: srx-mnha
-description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX Multi-Node High Availability (MNHA). Covers chassis-cluster migration concepts, routed/default-gateway/hybrid modes, SRG0/SRG1+ behavior, ICL/ICD links, RTO/session synchronization, eBGP/BFD failover, VIP/signal-route patterns, IPsec/IKED with floating loopbacks, multiple routing-instance caveats, NAT/proxy-ARP risks, and DHCP caveats.
-version: 1.2.0
+description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX Multi-Node High Availability (MNHA, chassis high-availability). Covers chassis-cluster migration concepts, routed/default-gateway/hybrid modes, SRG0/SRG1+ behavior, ICL/ICD links, RTO/session synchronization and Active/Warm state, eBGP/BFD failover, VIP/signal-route patterns, IPsec/IKED with floating loopbacks, multiple routing-instance caveats, NAT/proxy-ARP risks, and DHCP caveats.
+version: 1.2.1
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [srx, junos, mnha, high-availability, chassis-cluster, srg, icl, icd, bgp, bfd, ipsec, ike, nat, routing-instance, dhcp]
-    related_skills: [parsing-srx-configs, srx-autovpn-full-tunnel, srx-ipsec-hub-spoke]
+    related_skills: [parsing-srx-configs, srx-nat, srx-policy, srx-autovpn-full-tunnel, srx-ipsec-hub-spoke]
   sources:
     - title: "DHCP on MNHA: Back to Basics"
       author: James Rathbun
@@ -39,8 +39,6 @@ Multi-Node High Availability (MNHA) is Juniper SRX high availability built aroun
 
 Use MNHA as an L3-first HA design. Routing policy, BFD, link monitoring, service redundancy groups, and optional VIP behavior determine which node handles traffic. Avoid treating MNHA as a drop-in chassis-cluster clone; it solves different problems and has different failure modes.
 
-This skill intentionally includes only source material that is consistent across the supplied Juniper articles or can be stated conservatively. Ambiguous source details are omitted rather than encoded as hard guidance.
-
 ## When to Use
 
 Use this skill when the user asks about:
@@ -57,7 +55,7 @@ Use this skill when the user asks about:
 - DHCP relay or DHCP local-server behavior on MNHA
 - troubleshooting `show chassis high-availability`, `show security flow session`, BGP/BFD convergence, VIP installation, IPsec SAs, or IKE gateway lookup failures
 
-Do not use this as the primary skill for parsing a full SRX configuration. Load `parsing-srx-configs` first when the task is to extract or audit an arbitrary SRX config, then use this skill for MNHA-specific interpretation.
+Do not use this as the primary skill for parsing a full SRX configuration. Load `parsing-srx-configs` first when the task is to extract or audit an arbitrary SRX config, then use this skill for MNHA-specific interpretation. For general SRX NAT design detail use srx-nat; for security-policy design/migration use srx-policy — this skill covers only their MNHA-specific behavior.
 
 ## Chassis Cluster vs MNHA
 
@@ -351,6 +349,8 @@ show security flow session source-prefix <SRC> destination-prefix <DST> pretty
 show log messages | match "MNHA forward|re-route failed|reject NH|ICD"
 ```
 
+(these strings come from flow traceoptions output — they appear in the configured security flow trace file, not the default messages log, unless traceoptions target messages)
+
 Look for `ICD Data` counters when traffic is actually crossing the ICD. A valid Active/Warm session with packet counters split across nodes does not by itself prove the ICD is forwarding every packet.
 
 ## IPsec VPNs on MNHA with Multiple Routing Instances
@@ -536,19 +536,7 @@ Safe methods:
 - Security Director / Security Director Cloud for supported policy/security management use cases
 - rigorous config-diff checks in CI or change management
 
-Commit peer synchronization pattern:
-
-```junos
-set groups MNHA-SYNC when peers [ <NODE_A> <NODE_B> ]
-set groups MNHA-SYNC security policies ...
-set groups MNHA-SYNC security nat ...
-set apply-groups MNHA-SYNC
-set system commit peers-synchronize
-set system commit peers <PEER_HOSTNAME> user <USERNAME>
-set system commit peers <PEER_HOSTNAME> authentication "<SECRET>"
-set system static-host-mapping <PEER_HOSTNAME> inet <PEER_MANAGEMENT_OR_ICL_IP>
-set security ssh-known-hosts fetch-from-server <PEER_HOSTNAME>
-```
+Commit peer synchronization pattern: key statements are `groups <NAME> when peers [ ... ]` + `apply-groups`, `system commit peers-synchronize`, and `system commit peers <PEER_HOSTNAME>` with authentication and static-host-mapping. Full stanza in `references/mnha-config-patterns.md`.
 
 Do not store real secrets in skill files, tickets, or chat. Replace them with placeholders.
 
@@ -599,22 +587,19 @@ set policy-options condition ACTIVE_SRG1 if-route-exists address-family inet 169
 set policy-options condition ACTIVE_SRG1 if-route-exists address-family inet table inet.0
 set policy-options condition BACKUP_SRG1 if-route-exists address-family inet 169.254.200.2/32
 set policy-options condition BACKUP_SRG1 if-route-exists address-family inet table inet.0
+```
 
-set policy-options policy-statement MNHA-SRG1-EXPORT term active from protocol direct
-set policy-options policy-statement MNHA-SRG1-EXPORT term active from route-filter <PROTECTED_PREFIX> exact
+Skeleton — an `active` term at the better metric gated on ACTIVE_SRG1 and a `backup` term at a worse metric gated on BACKUP_SRG1, both route-filtered to the protected prefix, with a final reject term:
+
+```junos
 set policy-options policy-statement MNHA-SRG1-EXPORT term active from condition ACTIVE_SRG1
 set policy-options policy-statement MNHA-SRG1-EXPORT term active then metric 10
-set policy-options policy-statement MNHA-SRG1-EXPORT term active then accept
-
-set policy-options policy-statement MNHA-SRG1-EXPORT term backup from protocol direct
-set policy-options policy-statement MNHA-SRG1-EXPORT term backup from route-filter <PROTECTED_PREFIX> exact
 set policy-options policy-statement MNHA-SRG1-EXPORT term backup from condition BACKUP_SRG1
 set policy-options policy-statement MNHA-SRG1-EXPORT term backup then metric 20
-set policy-options policy-statement MNHA-SRG1-EXPORT term backup then accept
-
-set policy-options policy-statement MNHA-SRG1-EXPORT term default then reject
 set protocols bgp group <GROUP> export MNHA-SRG1-EXPORT
 ```
+
+Full route-filtered export policy example in `references/mnha-config-patterns.md`.
 
 MED works predictably when compared between routes from the same neighboring AS and with the expected BGP decision behavior. If SRXs use different ASNs or the upstream BGP policy differs, choose a route-control mechanism appropriate to the environment.
 
@@ -626,26 +611,7 @@ The signal-route examples above assume eBGP. OSPF shops need the same active/bac
 - **Both roles advertise, at different metrics** — mirror the eBGP pattern: an `active` term at the low metric gated on the active signal route, and a `backup` term at a higher metric gated on the backup signal route. That keeps a standby path in the OSPF database while both nodes are up; on failover the signal routes swap and metrics follow.
 - Instead of a BGP export policy, **export the SRG-signal-route-conditioned `/32` into OSPF** with a policy gated on the `if-route-exists` conditions.
 
-```junos
-set protocols ospf area 0 interface lo0.0 passive
-set protocols ospf area 0 interface <UPLINK_IFL> metric <NODE_METRIC>   # higher on the backup node
-
-set policy-options condition ACTIVE_SRG1 if-route-exists address-family inet 169.254.200.1/32
-set policy-options condition ACTIVE_SRG1 if-route-exists address-family inet table inet.0
-set policy-options condition BACKUP_SRG1 if-route-exists address-family inet 169.254.200.2/32
-set policy-options condition BACKUP_SRG1 if-route-exists address-family inet table inet.0
-
-set policy-options policy-statement MNHA-SRG1-OSPF term active from route-filter <PROTECTED_PREFIX> exact
-set policy-options policy-statement MNHA-SRG1-OSPF term active from condition ACTIVE_SRG1
-set policy-options policy-statement MNHA-SRG1-OSPF term active then metric <LOW_METRIC>
-set policy-options policy-statement MNHA-SRG1-OSPF term active then accept
-set policy-options policy-statement MNHA-SRG1-OSPF term backup from route-filter <PROTECTED_PREFIX> exact
-set policy-options policy-statement MNHA-SRG1-OSPF term backup from condition BACKUP_SRG1
-set policy-options policy-statement MNHA-SRG1-OSPF term backup then metric <HIGH_METRIC>
-set policy-options policy-statement MNHA-SRG1-OSPF term backup then accept
-set policy-options policy-statement MNHA-SRG1-OSPF term default then reject
-set protocols ospf export MNHA-SRG1-OSPF
-```
+The OSPF export policy (`MNHA-SRG1-OSPF`) mirrors the BGP one — reuse the same if-route-exists conditions as the BGP pattern above — full config in `references/mnha-config-patterns.md`.
 
 Verify with `show route <PROTECTED_PREFIX>` and `show ospf database` on both nodes; confirm the active node's advertisement is preferred and the backup path appears only as a higher-cost alternative. The same BFD guidance below applies to OSPF (`set protocols ospf area 0 interface <IFL> bfd-liveness-detection ...`).
 
@@ -734,20 +700,7 @@ If local DHCP on the SRX nodes is required, use conservative design:
 - exclude infrastructure addresses from pools
 - keep lease times aligned with operational failure behavior
 
-Local DHCP pattern, node A:
-
-```junos
-set routing-instances <RI> interface <CLIENT_INTERFACE>
-set security zones security-zone <ZONE> host-inbound-traffic system-services dhcp
-set routing-instances <RI> system services dhcp-local-server group <GROUP> interface <CLIENT_INTERFACE>
-set routing-instances <RI> access address-assignment pool <POOL> family inet network <SUBNET>
-set routing-instances <RI> access address-assignment pool <POOL> family inet range NODE-A low <NODE_A_POOL_LOW>
-set routing-instances <RI> access address-assignment pool <POOL> family inet range NODE-A high <NODE_A_POOL_HIGH>
-set routing-instances <RI> access address-assignment pool <POOL> family inet dhcp-attributes router <VIP_GATEWAY>
-set routing-instances <RI> access address-assignment pool <POOL> family inet dhcp-attributes server-identifier <NODE_A_INTERFACE_IP>
-```
-
-Node B uses the same pool name/network if desired, but a different non-overlapping range and its own physical interface IP as `server-identifier`.
+Local DHCP pattern: per-node dhcp-local-server with a non-overlapping range per node, the VIP as the router option, and each node's own interface IP as `server-identifier`. Full node-A config (and the node-B variation) in `references/mnha-config-patterns.md`.
 
 DHCP verification:
 
@@ -755,7 +708,10 @@ DHCP verification:
 show dhcp server binding routing-instance <RI>
 show dhcp server statistics routing-instance <RI>
 show chassis high-availability services-redundancy-group <SRG>
+clear dhcp server binding routing-instance <RI> all
 ```
+
+Use destructive clear commands only inside an approved maintenance procedure.
 
 DHCP pitfalls:
 
@@ -809,58 +765,11 @@ ICL and HA liveness:
 ```text
 show route <PEER_ICL_IP>
 ping routing-instance <ICL_RI> <PEER_ICL_IP>
-show security ipsec security-associations
-show security ike security-associations
+show security ipsec security-associations    # only when ICL encryption is enabled
+show security ike security-associations      # only when ICL encryption is enabled
 ```
 
-Sessions and runtime state:
-
-```text
-show security flow session destination-prefix <PREFIX>
-show security flow session source-prefix <PREFIX>
-show security flow session tunnel
-show security flow session | match "HA State|HA Wing State|Session ID|In:|Out:"
-```
-
-IPsec/IKE:
-
-```text
-show system processes | match "iked|ikemd|kmd"
-show security ike security-associations
-show security ike security-associations srg-id <SRG>
-show security ipsec security-associations
-show interfaces st0.<UNIT> | match packets
-```
-
-Routing/BGP/BFD:
-
-```text
-show bgp summary
-show bfd session
-show route <PREFIX>
-show route <SIGNAL_ROUTE>
-show route table <RI>.inet.0 <PREFIX>
-show route <PREFIX> receive-protocol bgp <NEIGHBOR>
-show route <PREFIX> advertising-protocol bgp <NEIGHBOR>
-```
-
-VIPs and ARP:
-
-```text
-show chassis high-availability services-redundancy-group <SRG>
-show interfaces <INTERFACE> | match "address:"
-show arp no-resolve | match <VIP>
-```
-
-DHCP:
-
-```text
-show dhcp server binding routing-instance <RI>
-show dhcp server statistics routing-instance <RI>
-clear dhcp server binding routing-instance <RI> all
-```
-
-Use destructive clear commands only inside an approved maintenance procedure.
+Session, IPsec, routing, VIP, and DHCP checks are listed inline in their sections above.
 
 ## Common Pitfalls
 
@@ -898,7 +807,7 @@ Use destructive clear commands only inside an approved maintenance procedure.
 
 17. Forgetting that management/enrollment identity is per-node. `outbound-ssh`, EMS, and Security Director Cloud `device-id` are node-local: after migration each SRX re-enrolls as a **separate** managed device. Plan the re-enrollment and update inventory/licensing per node rather than expecting the cluster's single managed-device identity to carry over.
 
-18. Leaving a stray static default route via an unzoned management/extra leg. vSRX images (and staged builds) often carry `0.0.0.0/0` via an unzoned interface (e.g. a `ge-0/0/3` management leg); it silently black-holes transit **return** traffic because the flow leaves via an interface with no zone/policy context. Remove the stray static (let the routing-protocol-learned default win) or put management in a dedicated routing instance.
+18. Leaving a stray static default route via an unzoned management/extra leg — black-holes transit return traffic. See Field-Confirmed Behaviors below.
 
 ## Field-Confirmed Behaviors
 
@@ -916,9 +825,13 @@ gateway — [fwskillsshare issue #7](https://github.com/fastrevmd-lab/fwskillssh
   services-redundancy-group 1` shows `Process Packet In Backup State: NO` —
   expected behavior, not a fault. Test through the VIP or the active node
   before chasing a non-bug.
+- The host-inbound-traffic system-services high-availability zone knob
+  commit-checks clean on vSRX 24.4R1 (live-verified 2026-07).
 
 ## Source Notes
 
 This skill is a synthesized operational playbook based on five Juniper Community TechPosts by James Rathbun, Steven Jacques, and Laurent Paumelle. Full extracted source references are stored under `references/` for local provenance.
+
+Sections on chassis-cluster interface migration, SRG monitor-object syntax, and pitfalls 16-18 are field/QA additions beyond the five source articles; live-verified items are called out in Field-Confirmed Behaviors.
 
 Per user instruction, ambiguous or conflicting article details were not encoded as hard guidance. Where support depends on platform or Junos release, this skill points operators to current Juniper documentation instead of freezing a source-specific matrix.

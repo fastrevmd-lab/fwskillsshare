@@ -1,9 +1,7 @@
 ---
 name: parsing-fortinet-configs
-description: 'Use when the user pastes, uploads, or references a Fortinet FortiGate / FortiOS config to parse and analyze — the "config/edit/set/next/end" block format from "show full-configuration" or backup exports. Trigger on keywords: FortiGate, FortiOS, Fortinet, VDOM, "config firewall policy", "config firewall address", "config firewall service custom", "config system interface", "edit", "set srcintf", "set dstintf", "set srcaddr", "set dstaddr", "set action accept", "set utm-status enable", "set av-profile", "set webfilter-profile", "set ips-sensor". Also trigger when the user asks to convert, audit, summarize, or explain a FortiGate config.
-
-  '
-version: 1.1.1
+description: 'Use when the user pastes, uploads, or references a Fortinet FortiGate / FortiOS config to parse and analyze — the "config/edit/set/next/end" block format from "show full-configuration" or backup exports. Trigger on keywords: FortiGate, FortiOS, Fortinet, VDOM, "config firewall policy", "config firewall address", "config firewall service custom", "config system interface", "edit", "set srcintf", "set dstintf", "set srcaddr", "set dstaddr", "set action accept", "set utm-status enable", "set av-profile", "set webfilter-profile", "set ips-sensor". Also trigger when the user asks to convert, audit, summarize, or explain a FortiGate config.'
+version: 1.1.2
 author: Hermes Agent
 license: MIT
 metadata:
@@ -49,9 +47,7 @@ Use this skill when:
 
 Do not use this skill as a substitute for device-specific validation. When the parse result will drive production changes, verify against current vendor documentation and live device output where available.
 
-You are an expert at parsing Fortinet FortiGate / FortiOS firewall configurations. When given
-raw FortiOS config text, extract all components into a structured intermediate
-format.
+Not this skill: for Cisco ASA/FTD configs use parsing-cisco-configs, PAN-OS/Panorama use parsing-palo-configs, Juniper SRX use parsing-srx-configs. Downstream consumers of this parse: firewall-best-practices-audit, firewall-config-conversion, firewall-config-diff.
 
 ## Input Format
 
@@ -74,13 +70,9 @@ end
 ```
 
 Key syntax rules:
-- `config <section>` opens a section
-- `edit <name>` or `edit <id>` creates/selects an entry (name may be quoted)
-- `set <key> <value>` sets a property (value may contain spaces if quoted)
-- `next` closes the current `edit` entry
-- `end` closes the current `config` section
 - Values with spaces are quoted: `set comment "Allow web traffic"`
 - Multi-value fields use space-separated values: `set srcaddr "addr1" "addr2"`
+- Full block-syntax rules: `references/config-format.md`
 
 ### Building the Config Tree
 
@@ -204,7 +196,7 @@ FortiGate per-policy source NAT (`set nat enable`, optionally with `set ippool e
 
 ### 7. NAT Rules
 **Source NAT (IP Pools):** `config firewall ippool` → `edit <name>`
-  Extract: `set startip`, `set endip`, `set type` (overload, one-to-one, fixed-port-range)
+  Extract: `set startip`, `set endip`, `set type` (overload, one-to-one, fixed-port-range), `set associated-interface <name>` — binds pool to specific egress interface
 
 **Central SNAT:** `config firewall central-snat-map` → `edit <id>`
   Extract the full FortiOS central-SNAT field set so real rules are not missed:
@@ -221,10 +213,6 @@ FortiGate per-policy source NAT (`set nat enable`, optionally with `set ippool e
   Extract: `set extip` (original dest), `set mappedip` (translated dest),
   `set extintf`, `set portforward enable` + `set extport` / `set mappedport`
   Note: VIPs are referenced in policies via `set dstaddr <vip-name>`
-
-**Central SNAT field names:** `set orig-addr <list>`, `set nat-ippool <list>` (also `set natippool` variant)
-**IP Pool additional field:** `set associated-interface <name>` — binds pool to specific egress interface
-**Tunnel route association:** Static routes with `set device <tunnel-interface>` should be associated with the corresponding VPN tunnel, not treated as regular routes.
 
 ### 8. Schedules
 **Recurring:** `config firewall schedule recurring` → `edit <name>`
@@ -270,18 +258,6 @@ FortiOS application IDs or names from the application control database.
 | `Slack` | `slack` | collaboration |
 | `YouTube` | `youtube` | streaming |
 | `Netflix` | `netflix` | streaming |
-
-**FortiOS compound proposal parsing for VPN:**
-FortiOS encodes IKE/IPsec proposals as compound strings. Do NOT assume every proposal is a simple
-`encryption-integrity` pair — parse encryption / integrity / prf separately:
-- **Simple enc-integrity:** `aes256-sha256` → encryption (`aes256` → canonical `aes-256`) + integrity (`sha256`).
-- **AEAD GCM (no separate integrity):** `aes256gcm`, `aes128gcm`, `chacha20poly1305` carry their own
-  authentication — integrity is N/A. Phase2 GCM is the bare token (e.g. `aes256gcm`, no integrity suffix).
-- **IKEv2 phase1 PRF suffix (phase1-only):** `aes256gcm-prfsha384` → encryption `aes256gcm`, prf `sha384`,
-  no separate integrity. The `prf*` suffix appears only on phase1 proposals, never phase2.
-- **null:** `null` encryption (no confidentiality) and `null` integrity also exist — flag as weak.
-Multiple proposals are space-separated: `aes256-sha256 aes128-sha1 aes256gcm`. Tokenize each on `-`,
-then classify each segment as encryption, integrity, or prf rather than assuming a fixed two-part split.
 
 **On policy output:** When `set application` values are resolved, populate the policy's `apps` array
 with `{ vendor_name: "HTTPS", canonical: "https", confidence: 1.0, category: "web" }`.
@@ -345,8 +321,20 @@ Parse full profile objects for reference:
 - **Screen/DoS:** `config firewall DoS-policy` + IPS sensor definitions
 - **Syslog:** `config log syslogd setting`
 - **DHCP Server:** `config system dhcp server` — extract top-level fields (`set default-gateway`, `set netmask`, `set interface`, `set domain`, `set lease-time`, `set dns-server1/dns-server2`) plus nested `config ip-range` (start-ip/end-ip) and `config reserved-address` (mac, ip, description). Derive network CIDR from gateway + netmask.
+**FortiOS compound proposal parsing for VPN:**
+FortiOS encodes IKE/IPsec proposals as compound strings. Do NOT assume every proposal is a simple
+`encryption-integrity` pair — parse encryption / integrity / prf separately:
+- **Simple enc-integrity:** `aes256-sha256` → encryption (`aes256` → canonical `aes-256`) + integrity (`sha256`).
+- **AEAD GCM (no separate integrity):** `aes256gcm`, `aes128gcm`, `chacha20poly1305` carry their own
+  authentication — integrity is N/A. Phase2 GCM is the bare token (e.g. `aes256gcm`, no integrity suffix).
+- **IKEv2 phase1 PRF suffix (phase1-only):** `aes256gcm-prfsha384` → encryption `aes256gcm`, prf `sha384`,
+  no separate integrity. The `prf*` suffix appears only on phase1 proposals, never phase2.
+- **null:** `null` encryption (no confidentiality) and `null` integrity also exist — flag as weak.
+Multiple proposals are space-separated: `aes256-sha256 aes128-sha1 aes256gcm`. Tokenize each on `-`,
+then classify each segment as encryption, integrity, or prf rather than assuming a fixed two-part split.
+
 - **VPN IPsec:**
-  - `config vpn ipsec phase1-interface`: IKE version, remote-gw, proposal (compound strings — parse enc/integrity/prf separately; GCM tokens have no integrity, `prf*` suffix is phase1-only — see "FortiOS compound proposal parsing"), DH group, key lifetime, PSK presence (mask the value as `"****"` per the schema — never emit the raw key), certificate auth detection
+  - `config vpn ipsec phase1-interface`: IKE version, remote-gw, proposal (compound strings — see "FortiOS compound proposal parsing" above), DH group, key lifetime, PSK presence (mask the value as `"****"` per the schema — never emit the raw key), certificate auth detection
   - `config vpn ipsec phase2-interface`: phase1name reference, proposal, PFS, DH group, key lifetime
   - Phase1 name auto-creates a tunnel interface of the same name
   - Resolve tunnel IP from matching interface, associate static routes through tunnel interfaces
@@ -370,9 +358,15 @@ After parsing all explicit policies, append:
   (interfaces never declared in `config system zone`).
 - **Implicit: Default Deny** — action: "deny", all any, `_implicit: true`
 
+Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are free-form labels; consumers must match implicit rules on `_implicit: true`, never on the name.
+
 ## Output Format
 
 Present results in the **intermediate schema** format documented in `references/intermediate-schema.md`.
+
+Note: schema sections not yet populated by this pipeline (e.g., `security_profile_objects`, `routing_contexts`) are emitted empty (`[]`/`{}`); any unhandled source constructs are captured in `residual_raw` rather than dropped.
+
+**Full intermediate-schema emission is optional for single live-device work.** The complete JSON schema exists primarily for cross-vendor conversion and multi-config diffing. When interpreting or auditing a *single* live device pulled via SSH/API for an ops/audit task, it is fine to reason directly from the raw FortiOS config and skip full schema emission — extract the sections relevant to the question. Emit the full schema when the parse will feed `firewall-config-conversion`, `firewall-config-diff`, or another config for comparison.
 
 
 ## Parser Quality Gates
@@ -393,7 +387,7 @@ A high-quality parse is not just valid JSON: it must make uncertainty visible. P
 
 ## Analysis Checks
 
-After extraction, report:
+After extraction, run these checks and report findings:
 1. **Unused objects** — addresses/services not referenced by any policy
 2. **Shadowed policies** — rules fully covered by earlier rules
 3. **Overly permissive** — rules with "all" in src+dst addresses and services
@@ -409,12 +403,13 @@ After extraction, report:
 - `references/config-format.md` — FortiOS config block syntax reference
 - `references/intermediate-schema.md` — Output schema specification
 - `references/parsing-patterns.md` — Edge cases, mask conversion, application mapping
-
 - `references/example-sample-parse.md` — Worked end-to-end example (input config → parsed JSON)
 - `references/fixture-minimal-input.md` — Minimal parser fixture input
 - `references/fixture-expected-output.json` — Expected high-level intermediate-schema output for the minimal fixture
 
-Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are free-form labels; consumers must match implicit rules on `_implicit: true`, never on the name.
+## Secret Handling
+
+Never emit secrets raw. IKE/VPN pre-shared keys, routing-protocol authentication keys (BGP/OSPF), and user password hashes must be masked as `"****"` (or reduced to a presence flag) with a `metadata.warnings` entry noting the redaction — matching the shared-schema convention (`"psk": "****"`).
 
 ## Common Pitfalls
 

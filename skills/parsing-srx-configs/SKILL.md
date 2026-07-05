@@ -1,9 +1,7 @@
 ---
 name: parsing-srx-configs
-description: 'Use when the user pastes, uploads, or references a Juniper SRX / Junos firewall configuration — parses and analyzes SRX configs in either "set" command format (show configuration | display set) or hierarchical curly-brace format (show configuration). Trigger on keywords: SRX, Junos, Juniper, "set security", "security zones", "address-book", "applications", "security policies", "from-zone", "to-zone", "nat rule-set", "chassis cluster", "logical-systems", "routing-instances". Also trigger when the user asks to convert, audit, summarize, or explain an SRX config.
-
-  '
-version: 1.3.1
+description: 'Use when the user pastes, uploads, or references a Juniper SRX / Junos firewall configuration — parses and analyzes SRX configs in either "set" command format (show configuration | display set) or hierarchical curly-brace format (show configuration). Trigger on keywords: SRX, Junos, Juniper, "set security", "security zones", "address-book", "applications", "security policies", "from-zone", "to-zone", "nat rule-set", "chassis cluster", "logical-systems", "routing-instances". Also trigger when the user asks to convert, audit, summarize, or explain an SRX config.'
+version: 1.3.2
 author: Hermes Agent
 license: MIT
 metadata:
@@ -26,6 +24,9 @@ metadata:
     - srx-mnha
     - srx-mpls-in-flow
     - srx-dynamic-ip-feed
+    - parsing-cisco-configs
+    - parsing-fortinet-configs
+    - parsing-palo-configs
     - firewall-best-practices-audit
     - firewall-config-conversion
     - firewall-config-diff
@@ -50,8 +51,7 @@ Use this skill when:
 
 Do not use this skill as a substitute for device-specific validation. When the parse result will drive production changes, verify against current vendor documentation and live device output where available.
 
-You are an expert at parsing Juniper SRX / Junos firewall configurations. When given raw SRX
-config text, extract all components into a structured intermediate format.
+Not this skill: for Cisco ASA/FTD configs use parsing-cisco-configs, FortiGate use parsing-fortinet-configs, PAN-OS/Panorama use parsing-palo-configs. Downstream consumers of this parse: firewall-best-practices-audit, firewall-config-conversion, firewall-config-diff.
 
 ## Input Format Detection
 
@@ -183,7 +183,7 @@ These are L7-aware on SRX and must be resolved to canonical names for cross-vend
 | `junos-bgp` | TCP/179 | `bgp` | network-mgmt |
 | `junos-ospf` | IP-89 | `ospf` | network-mgmt |
 | `junos-sip` | UDP/5060 | `sip` | voip |
-| `junos-h323` | TCP/1720 | `h323` | voip |
+| `junos-h323` | TCP/1720 (+UDP/1719 RAS, TCP/1503/389/522/1731 — multi-term) | `h323` | voip |
 | `junos-ms-rpc` | TCP+UDP/135 (application-set) | `msrpc` | other |
 | `junos-ms-sql` | TCP/1433 | `mssql` | database |
 | `junos-smb` | TCP/139, TCP/445 | `smb` | file-transfer |
@@ -285,14 +285,14 @@ Extract: name, type (daily-except/daily), start-date, stop-date, days of week, t
 - **Routing Instances / VRF:** `routing-instances.<name>` — extract interface membership, per-VR static routes (IPv4+IPv6), per-VR OSPF/BGP config
 - **BGP:** `protocols.bgp` — extract:
   - Local-AS, router-ID
-  - Per-group: type (ebgp/ibgp), peer-as, local-address, authentication-key, hold-time, keepalive
-  - Per-neighbor overrides: peer-as, description, local-address, authentication-key, hold/keepalive timers, next-hop-self, route-reflector-client
+  - Per-group: type (ebgp/ibgp), peer-as, local-address, authentication-key (presence only — redact), hold-time, keepalive
+  - Per-neighbor overrides: peer-as, description, local-address, authentication-key (presence only — redact), hold/keepalive timers, next-hop-self, route-reflector-client
   - `deactivate` support for disabled neighbors
   - Merge group-level defaults with neighbor-level overrides
 - **OSPF:** `protocols.ospf` — extract:
   - Router-ID, reference-bandwidth (with unit parsing: g/m/k suffixes)
   - Areas: area ID, type (normal/stub/nssa with no-summary), default-cost
-  - Area authentication type and key
+  - Area authentication type and key presence (redact the key value)
   - Per-interface: passive, metric, priority, hello/dead intervals, link-type (p2p/broadcast), per-interface authentication
   - Redistribute: source, metric, metric-type
   - `deactivate` support for disabled OSPF interfaces
@@ -330,7 +330,7 @@ Extract:
 - **Control-plane / RE protection:** when a stateless `firewall { family inet filter <name> }` is applied as an interface input filter on `lo0` (`interfaces lo0 unit N family inet filter input <name>`), set `system.control_plane_protection { re_filter_present: true, applied_to: ["lo0.<N>"] }`. The filter terms still go to `residual_raw`; this is a presence flag, not a full parse.
 - **VPN/IPsec:** Full IKE/IPsec chain resolution:
   - IKE proposals: encryption, integrity, DH group, lifetime, auth method (PSK vs certificate including RSA/DSA/ECDSA)
-  - IKE policies: mode, proposals list, PSK value, local certificate
+  - IKE policies: mode, proposals list, PSK presence (mask the value as `"****"`), local certificate
   - IKE gateways: peer address, external interface, IKE version (v1-only/v2-only), local/remote identity
   - IPsec proposals: encryption, integrity, lifetime
   - IPsec policies: proposals list, PFS group
@@ -357,6 +357,8 @@ Capture all unhandled `set` lines. Categorize into: IDS Screens, PKI/Certificate
 After parsing all explicit policies, append:
 - **Implicit: Default Deny** — action: "deny", src/dst zones: ["any"], src/dst addresses: ["any"],
   applications: ["any"], disabled: false, `_implicit: true`
+
+Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are free-form labels; consumers must match implicit rules on `_implicit: true`, never on the name.
 
 ## Output Format
 
@@ -400,12 +402,13 @@ After extraction, run these checks and report findings:
 - `references/config-format.md` — Detailed SRX config syntax reference
 - `references/intermediate-schema.md` — Output schema specification
 - `references/parsing-patterns.md` — Edge cases, predefined apps, and name sanitization
-
 - `references/example-sample-parse.md` — Worked end-to-end example (input config → parsed JSON)
 - `references/fixture-minimal-input.md` — Minimal parser fixture input
 - `references/fixture-expected-output.json` — Expected high-level intermediate-schema output for the minimal fixture
 
-Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are free-form labels; consumers must match implicit rules on `_implicit: true`, never on the name.
+## Secret Handling
+
+Never emit secrets raw. IKE/VPN pre-shared keys, routing-protocol authentication keys (BGP/OSPF), and user password hashes must be masked as `"****"` (or reduced to a presence flag) with a `metadata.warnings` entry noting the redaction — matching the shared-schema convention (`"psk": "****"`).
 
 ## Common Pitfalls
 
@@ -424,3 +427,4 @@ Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are 
 - [ ] Unresolved references, unsupported blocks, and parser assumptions are listed in `metadata.warnings` and/or `residual_raw`
 - [ ] Rule order and NAT order are preserved with `_rule_index` or equivalent ordering metadata
 - [ ] Cross-vendor conversion caveats are called out before suggesting target-platform config
+- [ ] No raw secrets in output — PSKs masked as `"****"`, routing-protocol passwords/keys reduced to presence flags with warnings

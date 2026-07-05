@@ -50,7 +50,7 @@ General rules that apply to every section:
   the same but the declared type differs; `ip_version`. `description`/`tags` are cosmetic —
   note as `changed` only if the report is configured to include metadata, otherwise ignore.
 - **CROSS-vendor:** same value on both sides → `unchanged`; value only in A → `removed`; only in B → `added`. (Names differ across vendors, so value is the only stable identity anchor.)
-- **SAME-vendor (drift):** when object names are stable, anchor pairs by name; a value change on a same-named object is reported `changed` (not removed + added). The value-only-in-A → removed / only-in-B → added rule applies to the cross-vendor case; for same-vendor drift an object value shift on a name-anchored pair is a `changed` attribute.
+- **SAME-vendor (drift):** when object names are stable, anchor pairs by name; a value change on a same-named object is reported `changed` (not removed + added).
 
 ### address_groups
 - **Identity:** the **expanded member set** (each member resolved to its address value and

@@ -1,9 +1,7 @@
 ---
 name: parsing-palo-configs
-description: 'Use when the user pastes, uploads, or references a Palo Alto PAN-OS or Panorama configuration export — parses and analyzes PAN-OS firewall configurations in XML format. Trigger on keywords: PAN-OS, Palo Alto, Panorama, NGFW, "vsys", "security rulebase", "address-group", "application-default", "security-profile-group", "device-group", "<entry name=", "<member>", "tag-based", "User-ID". Also trigger when the user asks to convert, audit, summarize, or explain a Palo Alto config.
-
-  '
-version: 1.1.1
+description: 'Use when the user pastes, uploads, or references a Palo Alto PAN-OS or Panorama configuration export — parses and analyzes PAN-OS firewall configurations in XML format or flat set-command format ("show config" output). Trigger on keywords: PAN-OS, Palo Alto, Panorama, NGFW, "vsys", "security rulebase", "address-group", "application-default", "security-profile-group", "device-group", "set deviceconfig", "<entry name=", "<member>", "tag-based", "User-ID". Also trigger when the user asks to convert, audit, summarize, or explain a Palo Alto config.'
+version: 1.1.2
 author: Hermes Agent
 license: MIT
 metadata:
@@ -50,9 +48,7 @@ Use this skill when:
 
 Do not use this skill as a substitute for device-specific validation. When the parse result will drive production changes, verify against current vendor documentation and live device output where available.
 
-You are an expert at parsing Palo Alto PAN-OS firewall configurations in XML format.
-When given raw PAN-OS XML config, extract all components into a structured
-intermediate format.
+Not this skill: for Cisco ASA/FTD configs use parsing-cisco-configs, FortiGate use parsing-fortinet-configs, Juniper SRX use parsing-srx-configs. Downstream consumers of this parse: firewall-best-practices-audit, firewall-config-conversion, firewall-config-diff.
 
 ## Input Format
 
@@ -238,13 +234,13 @@ Derive network CIDR from the interface IP for the DHCP scope.
 - **BGP:** `protocol.bgp` — extract:
   - Local AS, router-ID, enable/disable
   - Peer groups: type (ebgp/ibgp), group-level peer-as
-  - Per-peer: address, remote-as (fallback to group AS), description, update-source, password, keepalive/hold timers, next-hop-self, route-reflector-client, enabled
+  - Per-peer: address, remote-as (fallback to group AS), description, update-source, password (presence only — redact), keepalive/hold timers, next-hop-self, route-reflector-client, enabled
   - Advertise-network entries
   - Redistribution rules
 - **OSPF:** `protocol.ospf` — extract:
   - Router-ID, reference-bandwidth
   - Areas: area ID, type (normal/stub/nssa), no-summary, default-cost
-  - Area authentication: type (md5), key
+  - Area authentication: type (md5), key presence (redact the key value)
   - Interfaces per area: passive, enabled, metric, priority, hello/dead intervals, link-type, per-interface auth
   - Redistribute: source, metric, metric-type
 - **OSPFv3:** `protocol.ospfv3` — same structure as OSPFv2
@@ -252,7 +248,7 @@ Derive network CIDR from the interface IP for the DHCP scope.
 - **VPN/IPsec:**
   - IKE crypto profiles: encryption, integrity, DH groups, lifetime
   - IPsec crypto profiles: ESP encryption/authentication, DH group (PFS), lifetime
-  - IKE gateways: version (IKEv1/v2), auth method (PSK or certificate), PSK, local/peer address, local/peer ID, crypto profile reference, local cert + CA profile
+  - IKE gateways: version (IKEv1/v2), auth method (PSK or certificate), PSK presence (mask the value as `"****"`), local/peer address, local/peer ID, crypto profile reference, local cert + CA profile
   - IPsec tunnels: IKE gateway reference, IPsec crypto profile reference, tunnel interface binding
   - Resolve tunnel IPs, find VR containing tunnel, collect routes through tunnel interfaces
   - Flag weak algorithms (DES/3DES, MD5, DH group ≤ 5)
@@ -350,18 +346,24 @@ If multiple vsys entries found:
 - Merge into flat arrays
 - Re-index `_rule_index` sequentially
 
-### 18. Implicit Rules
+### 18. Residual Config Capture
+Capture unhandled configuration sections. In XML mode, serialize unhandled elements back to XML strings. Categorize into: VPN Tunnels, IKE, IPsec Crypto, QoS, DNS Proxy, Shared Objects, PKI/Certificates, Security Profiles, Custom Applications, Policy-Based Forwarding, Panorama Config, Other. Store in `residual_raw`.
+
+### 19. Implicit Rules
 After parsing all explicit policies, append per-context:
 - **Implicit: Intra-zone Allow** — per zone, action: "allow", `_implicit: true`
   (for each zone, src_zones = dst_zones = [zone_name])
 - **Implicit: Interzone Default Deny** — action: "deny", src/dst zones: ["any"], `_implicit: true`
 
-### 19. Residual Config Capture
-Capture unhandled configuration sections. In XML mode, serialize unhandled elements back to XML strings. Categorize into: VPN Tunnels, IKE, IPsec Crypto, QoS, DNS Proxy, Shared Objects, PKI/Certificates, Security Profiles, Custom Applications, Policy-Based Forwarding, Panorama Config, Other. Store in `residual_raw`.
+Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are free-form labels; consumers must match implicit rules on `_implicit: true`, never on the name.
 
 ## Output Format
 
 Present results in the **intermediate schema** format documented in `references/intermediate-schema.md`.
+
+Note: schema sections not yet populated by this pipeline (e.g., `security_profile_objects`, `routing_contexts`) are emitted empty (`[]`/`{}`); any unhandled source constructs are captured in `residual_raw` rather than dropped.
+
+**Full intermediate-schema emission is optional for single live-device work.** The complete JSON schema exists primarily for cross-vendor conversion and multi-config diffing. When interpreting or auditing a *single* live device pulled via the XML API for an ops/audit task, it is fine to reason directly from the XML config and skip full schema emission — extract the sections relevant to the question. Emit the full schema when the parse will feed `firewall-config-conversion`, `firewall-config-diff`, or another config for comparison.
 
 
 ## Parser Quality Gates
@@ -400,12 +402,13 @@ After extraction, run these checks and report findings:
 - `references/config-format.md` — PAN-OS XML structure reference
 - `references/intermediate-schema.md` — Output schema specification
 - `references/parsing-patterns.md` — Edge cases, app mapping, profile resolution
-
 - `references/example-sample-parse.md` — Worked end-to-end example (input XML → parsed JSON)
 - `references/fixture-minimal-input.md` — Minimal parser fixture input
 - `references/fixture-expected-output.json` — Expected high-level intermediate-schema output for the minimal fixture
 
-Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are free-form labels; consumers must match implicit rules on `_implicit: true`, never on the name.
+## Secret Handling
+
+Never emit secrets raw. IKE/VPN pre-shared keys, routing-protocol authentication keys (BGP/OSPF), and user password hashes must be masked as `"****"` (or reduced to a presence flag) with a `metadata.warnings` entry noting the redaction — matching the shared-schema convention (`"psk": "****"`).
 
 ## Common Pitfalls
 
@@ -424,3 +427,4 @@ Implicit-rule `name` values (e.g. "default-deny", "Implicit: Default Deny") are 
 - [ ] Unresolved references, unsupported blocks, and parser assumptions are listed in `metadata.warnings` and/or `residual_raw`
 - [ ] Rule order and NAT order are preserved with `_rule_index` or equivalent ordering metadata
 - [ ] Cross-vendor conversion caveats are called out before suggesting target-platform config
+- [ ] No raw secrets in output — PSKs masked as `"****"`, routing-protocol passwords/keys reduced to presence flags with warnings

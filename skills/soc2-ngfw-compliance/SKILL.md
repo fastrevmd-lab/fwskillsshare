@@ -1,13 +1,13 @@
 ---
 name: soc2-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining how a next-generation firewall or firewall estate can support SOC 2 Trust Services Criteria for service organizations, SaaS platforms, MSPs, and cloud providers. Covers security, availability, confidentiality, privacy-supporting network controls, logical access, system operations, change management, risk mitigation, logging/monitoring, vendor access, incident response, audit evidence, operating effectiveness samples, and firewall description/tag markers. Emphasizes that SOC 2 reports cover system controls over a period, not certification of an NGFW product alone.
-version: 0.1.0
+description: Use when researching, designing, auditing, or explaining how a next-generation firewall or firewall estate can support SOC 2 Trust Services Criteria for service organizations, SaaS platforms, MSPs, and cloud providers. Covers security, availability, confidentiality, privacy-supporting network controls, logical access, system operations, change management, risk mitigation, logging/monitoring, vendor access, incident response, audit evidence, operating effectiveness samples, and firewall description/tag markers. Triggers include Type I and Type II examinations, AICPA common criteria IDs such as CC6.1, CC6.6, CC7.2, and CC8.1, and auditor evidence-sample requests. Emphasizes that SOC 2 reports cover system controls over a period, not certification of an NGFW product alone.
+version: 0.1.1
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [soc2, trust-services-criteria, compliance, firewall, ngfw, audit, evidence, logical-access, system-operations, change-management, availability, confidentiality]
-    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, pci-ngfw-compliance, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance, iso27001-ngfw-compliance]
+    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, firewall-best-practices-audit, pci-ngfw-compliance, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance, iso27001-ngfw-compliance]
   sources:
     - title: "SOC Suite of Services"
       author: AICPA & CIMA
@@ -18,7 +18,6 @@ metadata:
       url: https://www.aicpa-cima.com/resources/download/2017-trust-services-criteria-with-revised-points-of-focus-2022
       retrieved: "2026-06-27"
 ---
-
 
 # SOC 2 NGFW Compliance Research
 
@@ -41,7 +40,7 @@ Use this skill when the user asks about:
 - assessing whether firewall policy, NAT, remote access, admin access, vendor access, change control, logging, or incident response evidence is SOC 2 ready
 - adding concise SOC 2 evidence markers to firewall rules, NAT, zones, VPN entries, objects, security profiles, or external source-of-truth records
 
-Do not use this skill as a substitute for parsing a raw firewall configuration. Load the relevant parser skill first, then use this skill to interpret SOC 2 implications.
+Do not use this skill as a substitute for parsing a raw firewall configuration. Load the matching parsing-cisco/fortinet/palo/srx skill first, then use this skill to interpret SOC 2 implications. For framework-independent rulebase hygiene (any-any rules, shadowed/orphaned rules, weak crypto, cleanup), use the firewall-best-practices-audit skill; use this skill when findings must map to SOC 2 controls and audit evidence.
 
 ## Baseline Interpretation
 
@@ -83,6 +82,19 @@ Detailed lookup material lives in `references/` to keep this skill lean; read th
   3. Review Firewall Policy for SOC 2 Control Operation
   4. Add SOC 2 Evidence Markers to Firewall Configs
   5. Validate Type II Operating Effectiveness
+
+## NGFW Feature Expectations
+
+Core expectations for a firewall estate supporting SOC 2 controls, per the system description and control matrix:
+
+- Stateful filtering aligned to the described system boundaries, with a documented zone/segment model
+- Default deny between segments, with explicit, owner-attributed allow rules
+- Description/tag marker fields populated on policies, NAT, zones, VPNs, objects, and profiles
+- Management-plane hardening: encrypted admin access, MFA/named accounts, restricted management sources
+- Centralized logging to the SIEM with synchronized NTP time sources, retained across the report period
+- Configuration backup, restore testing, and change control tied to the change-management control set
+
+NGFW-feature-to-TSC mapping is in `references/control-mapping.md`.
 
 ## Output Templates
 

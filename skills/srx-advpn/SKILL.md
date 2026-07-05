@@ -1,7 +1,7 @@
 ---
 name: srx-advpn
 description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX Auto Discovery VPN (ADVPN) — hub-and-spoke IPsec that dynamically builds direct spoke-to-spoke shortcut tunnels so branch-to-branch traffic bypasses the hub. Covers suggester and partner roles, the shortcut lifecycle, the multipoint st0 overlay, OSPF p2mp with dynamic-neighbors over the overlay, the certificate-authentication requirement (IKEv2 PSK with dynamic ike-user-type is rejected on modern Junos), PKI enrollment, the chassis-cluster certificate-load gotcha, verification, and troubleshooting including the vSRX 'No public key found' IKE_AUTH failure (root-caused to the dynamic cert-gateway responder path — use per-spoke static-address cert gateways).
-version: 1.1.0
+version: 1.1.1
 author:
   - fastrevmd-lab
   - Claude
@@ -9,7 +9,7 @@ license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [srx, junos, advpn, auto-discovery-vpn, ipsec, vpn, spoke-to-spoke, shortcut, dynamic-mesh, suggester, partner, multipoint, st0, ospf, p2mp, dynamic-neighbors, pki, certificates, ikev2]
-    related_skills: [srx-autovpn-full-tunnel, srx-ipsec-hub-spoke, srx-nat, srx-policy, parsing-srx-configs]
+    related_skills: [srx-autovpn-full-tunnel, srx-ipsec-hub-spoke, srx-nat, srx-mnha, srx-policy, parsing-srx-configs]
   sources:
     - title: Auto Discovery VPNs | Junos OS
       author: Juniper Networks
@@ -264,6 +264,15 @@ from the hub once the shortcut carries it).
 | PKI (cluster) | `error load certid<...>` loading a cert | Keypair on the non-RG0-primary node — fail RG0 over to that node, then load |
 | Fragmentation | Small flows work, large fail | ESP overhead — keep `tcp-mss ipsec-vpn 1350`, lower on PMTU issues |
 
+IKE tracing when reproducing the failures below (live-verified on vSRX 24.4R1 —
+`level` is numeric on iked platforms):
+```
+set security ike traceoptions file ike-trace
+set security ike traceoptions flag ike
+set security ike traceoptions level 15
+```
+Read with `show log iked` (and `show log pki-trace` for pkid activity).
+
 ### Root cause: `No public key found` is specific to the *dynamic* cert gateway (vSRX3 24.4R1 / 25.4R1)
 
 **Symptom.** The hub (responder) rejects **every** spoke cert at
@@ -335,6 +344,17 @@ is the actionable evidence).
 
 Centralized-egress backhaul and ADVPN compose: originate the default from the
 hub into OSPF and shortcuts still form for branch↔branch flows.
+
+## Verification Checklist
+
+- [ ] `st0` unit is `multipoint` with a numbered overlay address (no `traffic-selector` on the VPN)
+- [ ] Certificate auth end-to-end: `request security pki local-certificate verify` passes on every node
+- [ ] Hub gateway has `advpn partner disable`; every spoke gateway has `advpn suggester disable`
+- [ ] VPN zone permits `protocols ospf`; `untrust` permits `system-services ike` on every node
+- [ ] OSPF on `st0.1`: `interface-type p2mp` + `dynamic-neighbors`; each site LAN advertised
+- [ ] Anti-recursion host routes to hub (and partner) WAN IPs more specific than any default into `st0`
+- [ ] Shortcut proof: new IKE SA between spoke WAN IPs and the A<->B session gone from the hub flow table
+- [ ] On vSRX3 24.4R1/25.4R1 hubs: per-spoke static-address cert gateways (dynamic cert gateway hits 'No public key found')
 
 ## Source Notes
 

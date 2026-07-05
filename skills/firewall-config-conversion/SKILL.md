@@ -1,14 +1,14 @@
 ---
 name: firewall-config-conversion
 description: Use when converting or migrating a firewall / NGFW configuration from one vendor to another (Cisco ASA/FTD, FortiGate, Palo Alto PAN-OS, Juniper SRX) — translating objects, security policies, NAT, zones, interfaces, routing, system, HA, and VPN from a parsed config into a target vendor's native config. Operates on the parsing-* intermediate schema; for raw config, run the matching parsing-cisco/fortinet/palo/srx skill first. Emits the target's native CLI plus a per-section fidelity report (converted / converted-with-caveats / manual-not-converted) flagging everything that does not translate cleanly. Output is a migration draft requiring review, never production-ready; secrets are never emitted.
-version: 1.0.0
+version: 1.0.1
 author:
   - fastrevmd-lab
   - Claude
 license: MIT
 metadata:
   hermes:
-    tags: [firewall, ngfw, conversion, migration, cross-vendor, cisco, fortigate, panos, srx, intermediate-schema, fidelity-report, vendor-neutral]
+    tags: [firewall, ngfw, conversion, migration, cross-vendor, cisco, fortigate, panos, srx, intermediate-schema, fidelity-report, vendor-neutral, asa, ftd, palo-alto]
     related_skills: [parsing-cisco-configs, parsing-fortinet-configs, parsing-palo-configs, parsing-srx-configs, firewall-config-diff, firewall-best-practices-audit]
 ---
 
@@ -16,7 +16,7 @@ metadata:
 
 ## Overview
 
-Use this skill to convert a firewall or NGFW configuration from one vendor to another by pivoting through the `parsing-*` intermediate JSON schema. Any source vendor that has a parser (Cisco ASA/FTD, FortiGate, Palo Alto PAN-OS, Juniper SRX) can be converted to any of the four supported targets, because every conversion reads the same normalized schema — `address_objects`, `address_groups`, `service_objects`, `service_groups`, `security_policies`, `nat_rules`, `zones`, `interfaces`, `static_routes` / `virtual_routers` / routing, `vpn_tunnels`, `ha_config`, and `system` (abbreviated; see the canonical `intermediate-schema.md` in the `parsing-srx-configs` skill for the full top-level structure, including `applications`, `application_groups`, `schedules`, `security_profile_objects`, `screen_config`, `syslog_config`, `dhcp_config`, `admin_users`, `security_services`, `routing_contexts`, and `residual_raw`) — and re-emits it in the target's native CLI. This schema-pivot design means there is one emitter per target rather than one translator per source/target pair.
+Use this skill to convert a firewall or NGFW configuration from one vendor to another by pivoting through the `parsing-*` intermediate JSON schema. Any source vendor that has a parser (Cisco ASA/FTD, FortiGate, Palo Alto PAN-OS, Juniper SRX) can be converted to any of the four supported targets, because every conversion reads the same normalized schema — `address_objects`, `address_groups`, `service_objects`, `service_groups`, `security_policies`, `nat_rules`, `zones`, `interfaces`, `static_routes` / `virtual_routers` / routing, `vpn_tunnels`, `ha_config`, and `system` (abbreviated — see the canonical `intermediate-schema.md` in the `parsing-srx-configs` skill for the full top-level structure) — and re-emits it in the target's native CLI. This schema-pivot design means there is one emitter per target rather than one translator per source/target pair.
 
 The output is always two parts: the target vendor's native configuration, followed by a per-section fidelity report. The config carries inline `# CAVEAT:` comments wherever a translation is lossy or approximate, and the fidelity report classifies each schema section as converted, converted-with-caveats, or manual-not-converted, then lists the manual follow-up items that a human must complete on the target device.
 
@@ -26,7 +26,7 @@ This skill produces a migration draft, never a production-ready config. Vendor s
 
 Use this skill when the user asks to:
 
-- "convert / migrate / translate this <vendor> config to <vendor>" (e.g. "turn this ASA config into SRX")
+- "convert / migrate / translate this <vendor> config to <vendor>" (e.g. "ASA to SRX", "FortiGate to Palo Alto", "PAN-OS to FortiGate", "turn this ASA config into SRX")
 - perform a vendor refresh or hardware replacement onto a different platform
 - consolidate firewalls after a merger or acquisition onto one vendor
 - migrate off an end-of-life or end-of-support platform to a current one
@@ -42,7 +42,7 @@ Do NOT use this skill when:
 
 Route on what you were given:
 
-- **Parsed intermediate schema** (the vendor-neutral JSON produced by any `parsing-*` skill; the schema definition lives in the `parsing-srx-configs` skill) — convert directly. Read `metadata.source_vendor` to label the draft and to choose source-aware caveats (the source vendor is `metadata.source_vendor` per the canonical schema; for robustness also accept a legacy `metadata.vendor` key if a non-conformant parse provides one — read whichever is present).
+- **Parsed intermediate schema** (the vendor-neutral JSON produced by any `parsing-*` skill; the schema definition lives in the `parsing-srx-configs` skill) — convert directly. Read `metadata.source_vendor` to label the draft and to choose source-aware caveats (`metadata.source_vendor` is the canonical schema field; for robustness also accept a legacy `metadata.vendor` key if a non-conformant parse provides one — read whichever is present).
 - **Raw config** — identify the vendor from the syntax, run the matching `parsing-*` skill (`parsing-cisco-configs`, `parsing-fortinet-configs`, `parsing-palo-configs`, `parsing-srx-configs`) to produce the intermediate schema, then convert the result. Never re-implement parsing in this skill.
 - **Target vendor** — the user must pick the target (Cisco ASA/FTD, FortiGate, PAN-OS, or SRX). If they did not, ask before emitting; there is one emitter per target and the wrong one produces unusable output.
 
@@ -70,11 +70,13 @@ Route on what you were given:
 ```text
 Fidelity report (<source> -> <target>)
 Section: address_objects     → <converted|converted-with-caveats|manual-not-converted> (<n/m or note>)
+Section: zones               → ...
 Section: security_policies   → ...
 Section: nat_rules           → ...
 Section: interfaces          → ...
 Section: routing             → ...
 Section: vpn_tunnels         → ...
+Section: ha_config           → ...
 Section: system / admin      → ...
 Manual items (must do on target):
   1. <e.g. re-key all VPN PSKs — secrets are not emitted>

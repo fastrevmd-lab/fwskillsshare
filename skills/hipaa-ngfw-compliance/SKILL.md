@@ -1,13 +1,13 @@
 ---
 name: hipaa-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining what it takes for a next-generation firewall or firewall estate to support HIPAA Security Rule safeguards for electronic protected health information. Covers HIPAA scope, ePHI network segmentation, access control, audit controls, integrity, transmission security, risk analysis, risk management, security incident procedures, business associate considerations, firewall evidence, and audit-ready descriptions/tags. Emphasizes that HIPAA compliance is assessed for the covered entity or business associate environment, not certified by an NGFW alone.
-version: 0.1.0
+description: Use when researching, designing, auditing, or explaining what it takes for a next-generation firewall or firewall estate to support HIPAA (often misspelled "HIPPA") Security Rule safeguards for electronic protected health information (ePHI, 45 CFR 164.312). Covers HIPAA scope, ePHI network segmentation, access control, audit controls, integrity, transmission security, risk analysis, risk management, security incident procedures, business associate considerations, firewall evidence, and audit-ready descriptions/tags. Triggers include BAA/business associate access and OCR audit preparation. Emphasizes that HIPAA compliance is assessed for the covered entity or business associate environment, not certified by an NGFW alone.
+version: 0.1.1
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [hipaa, compliance, firewall, ngfw, ephi, security-rule, audit, evidence, segmentation, access-control, transmission-security, logging]
-    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, pci-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance, iso27001-ngfw-compliance, soc2-ngfw-compliance]
+    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, firewall-best-practices-audit, pci-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance, iso27001-ngfw-compliance, soc2-ngfw-compliance]
   sources:
     - title: "45 CFR Part 164 Subpart C: Security Standards for the Protection of Electronic Protected Health Information"
       author: U.S. Department of Health and Human Services / eCFR
@@ -18,7 +18,6 @@ metadata:
       url: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-66r2.pdf
       retrieved: "2026-06-27"
 ---
-
 
 # HIPAA NGFW Compliance Research
 
@@ -43,7 +42,7 @@ Use this skill when the user asks about:
 - comparing Palo Alto, FortiGate, Juniper SRX, Cisco ASA/FTD, Check Point, cloud security groups, or host firewalls against HIPAA needs
 - writing a gap analysis, risk register, evidence request list, or compliance-ready firewall review for a healthcare environment
 
-Do not use this skill as a substitute for parsing a vendor config. Load the relevant parser skill first when raw config is provided, then use this skill to interpret HIPAA implications.
+Do not use this skill as a substitute for parsing a raw firewall configuration. Load the matching parsing-cisco/fortinet/palo/srx skill first, then use this skill to interpret HIPAA implications. For framework-independent rulebase hygiene (any-any rules, shadowed/orphaned rules, weak crypto, cleanup), use the firewall-best-practices-audit skill; use this skill when findings must map to HIPAA controls and audit evidence.
 
 ## Baseline Interpretation
 
@@ -85,6 +84,8 @@ Do not assume a VLAN, zone, VPC/VNet, subnet, tag, or “clinical network” lab
 The HIPAA Security Rule includes required and addressable implementation specifications. Addressable does not mean optional. For addressable specifications, the entity must assess whether the safeguard is reasonable and appropriate; implement it when reasonable and appropriate; or document why it is not reasonable and appropriate and implement an equivalent alternative measure when reasonable and appropriate.
 
 Firewall-related addressable implementation specifications often include encryption/decryption (164.312(a)(2)(iv)), automatic logoff (164.312(a)(2)(iii)), mechanisms to authenticate ePHI (164.312(c)(2)), and the transmission-security implementation specifications — integrity controls (164.312(e)(2)(i)) and encryption (164.312(e)(2)(ii)). Note 164.312(e)(1) is the required standard; its implementation specifications are the addressable items. If the firewall design does not use a common safeguard, require a documented rationale and alternative control mapping.
+
+Status note (verified 2026-07): the HHS NPRM of January 2025 proposes eliminating the required/addressable distinction, but no final rule has issued — the distinction remains current law. Re-check before relying on it in new assessments.
 
 ## Reference Material (load on demand)
 
@@ -188,16 +189,18 @@ Do not include PHI or patient context in the description. Put detailed business 
 
 ## Verification Checklist
 
-- [ ] ePHI systems, data flows, and connected networks identified
-- [ ] firewall boundaries mapped to ePHI access and transmission paths
-- [ ] HIPAA Security Rule safeguard matrix completed for firewall estate
-- [ ] firewall rules touching ePHI systems have owner, purpose, approval, and review evidence
-- [ ] HIPAA markers/descriptions/tags applied where supported for policies, NAT, zones, VPNs, objects, and profiles
-- [ ] descriptions contain no PHI, patient identifiers, secrets, credentials, or sensitive incident detail
-- [ ] vendor/business associate access is restricted, authenticated, logged, reviewed, and contractually covered where applicable
-- [ ] remote/admin access uses encrypted protocols and strong authentication
-- [ ] ePHI transmission paths use approved encryption or documented alternatives
-- [ ] logs are forwarded, time-synchronized, protected, retained, and reviewed
-- [ ] firewall changes are approved, traceable, backed up, and periodically reviewed
-- [ ] risks, exceptions, and alternative measures are documented and assigned owners/dates
-- [ ] final output avoids product-compliance claims and frames the NGFW as a supporting safeguard
+Before finalizing a HIPAA NGFW answer:
+
+- [ ] ePHI systems, data flows, and connected networks identified.
+- [ ] Firewall boundaries mapped to ePHI access and transmission paths.
+- [ ] HIPAA Security Rule safeguard matrix completed for firewall estate.
+- [ ] Firewall rules touching ePHI systems have owner, purpose, approval, and review evidence.
+- [ ] HIPAA markers/descriptions/tags applied where supported for policies, NAT, zones, VPNs, objects, and profiles.
+- [ ] Descriptions contain no PHI, patient identifiers, secrets, credentials, or sensitive incident detail.
+- [ ] Vendor/business associate access is restricted, authenticated, logged, reviewed, and contractually covered where applicable.
+- [ ] Remote/admin access uses encrypted protocols and strong authentication.
+- [ ] ePHI transmission paths use approved encryption or documented alternatives.
+- [ ] Logs are forwarded, time-synchronized, protected, retained, and reviewed.
+- [ ] Firewall changes are approved, traceable, backed up, and periodically reviewed.
+- [ ] Risks, exceptions, and alternative measures are documented and assigned owners/dates.
+- [ ] Final output avoids product-compliance claims and frames the NGFW as a supporting safeguard.

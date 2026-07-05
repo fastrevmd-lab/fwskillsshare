@@ -1,13 +1,13 @@
 ---
 name: pci-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining what it takes for a next-generation firewall or firewall estate to support PCI DSS v4.0.1 compliance. Covers PCI scoping, CDE segmentation, network security controls, inbound and outbound restriction, rule review evidence, logging, IDS/IPS, WAF-adjacent controls, admin access, change control, and assessor-ready evidence. Emphasizes that PCI DSS compliance is assessed for the entity/environment, not certified by an NGFW alone.
-version: 0.1.0
+description: Use when researching, designing, auditing, or explaining what it takes for a next-generation firewall or firewall estate to support PCI DSS v4.0.1 compliance. Covers PCI scoping, CDE segmentation, network security controls, inbound and outbound restriction, rule review evidence, logging, IDS/IPS, WAF-adjacent controls, admin access, change control, and assessor-ready evidence. Triggers include Requirement 1 network security controls, QSA/ROC/SAQ evidence requests, six-month rule review, and "PCI 4.0" questions. Emphasizes that PCI DSS compliance is assessed for the entity/environment, not certified by an NGFW alone.
+version: 0.1.1
 author: Hermes Agent
 license: source-derived-summary-local-use
 metadata:
   hermes:
     tags: [pci-dss, compliance, firewall, ngfw, network-security-controls, cde, segmentation, audit, evidence, ids, ips, waf, logging]
-    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance, iso27001-ngfw-compliance, soc2-ngfw-compliance]
+    related_skills: [srx-policy, srx-nat, parsing-srx-configs, parsing-palo-configs, parsing-fortinet-configs, parsing-cisco-configs, firewall-best-practices-audit, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance, iso27001-ngfw-compliance, soc2-ngfw-compliance]
   sources:
     - title: "Payment Card Industry Data Security Standard: Requirements and Testing Procedures, v4.0.1"
       author: PCI Security Standards Council
@@ -18,7 +18,6 @@ metadata:
       url: https://docs-pub.pcisecuritystandards.org/doc_library.json
       retrieved: "2026-06-27"
 ---
-
 
 # PCI NGFW Compliance Research
 
@@ -43,7 +42,7 @@ Use this skill when the user asks about:
 - comparing Palo Alto, FortiGate, Juniper SRX, Cisco ASA/FTD, Check Point, cloud security groups, or other firewalls against PCI DSS needs
 - writing an audit checklist, gap analysis, or assessor-ready evidence request list for firewall controls
 
-Do not use this skill as a substitute for parsing a vendor config. Load the relevant parser skill first when raw config is provided, then use this skill to interpret PCI implications.
+Do not use this skill as a substitute for parsing a raw firewall configuration. Load the matching parsing-cisco/fortinet/palo/srx skill first, then use this skill to interpret PCI implications. For framework-independent rulebase hygiene (any-any rules, shadowed/orphaned rules, weak crypto, cleanup), use the firewall-best-practices-audit skill; use this skill when findings must map to PCI DSS controls and audit evidence.
 
 ## Baseline Interpretation
 
@@ -59,16 +58,9 @@ A compliant firewall estate needs more than product features. It needs:
 
 1. defined CDE scope and connected networks;
 2. accurate network and data-flow diagrams;
-3. documented configuration standards;
-4. approved business need for every allowed service, protocol, and port;
-5. inbound and outbound least-privilege rules;
-6. explicit deny behavior for unauthorized traffic;
-7. stateful boundary controls between trusted and untrusted networks;
-8. segmentation controls that are tested if used for scope reduction;
-9. secure admin access and hardened management plane;
-10. logging, retention, review, alerting, and incident response;
-11. change control and periodic rule review;
-12. evidence showing the above is implemented and maintained.
+3. approved business need for every allowed service, protocol, and port;
+4. segmentation controls that are tested if used for scope reduction;
+5. evidence showing the above is implemented and maintained (see NGFW Feature Expectations and the Verification Checklist for the full operational list).
 
 ### PCI DSS Scope Comes First
 
@@ -133,9 +125,9 @@ Useful features that may support PCI evidence:
 
 Do not overclaim NGFW features. PCI DSS Requirement 1 can be met with firewalls and other NSCs; “next-generation” functions often support Requirements 5, 6, 10, 11, and 12, but only if configured, monitored, updated, and evidenced.
 
-## Output Patterns
+## Output Templates
 
-### Short Answer to “Is This NGFW PCI Compliant?”
+### Short Assessment Summary
 
 Use language like:
 
@@ -143,7 +135,7 @@ Use language like:
 An NGFW is not PCI DSS compliant by itself; PCI DSS compliance is assessed for the entity and its in-scope environment. This NGFW can support PCI DSS if it is configured and operated as an effective network security control: documented CDE scope, least-privilege inbound and outbound rules, explicit deny, secure management, change control, six-month rule reviews, centralized logging, IDS/IPS or equivalent monitoring where required, segmentation testing if used for scope reduction, and evidence tying each rule to business need.
 ```
 
-### Gap Finding Format
+### Firewall Finding
 
 ```text
 Finding: Broad outbound CDE Internet access
@@ -165,25 +157,34 @@ Open gaps: Rule 145 lacks owner; IPS signature update evidence missing for FW-B;
 Conclusion: Substantially aligned with Requirement 1 pending remediation/evidence for listed gaps; final determination belongs to the assessor.
 ```
 
+### Evidence Marker Recommendation
+
+```text
+Recommended description:
+PCI:CDE REQ:1.3.1 OWNER:Payments REF:CHG12345 PURPOSE:Payment API inbound from DMZ
+```
+
+Do not include PAN, cardholder names, customer data, secrets, or incident detail in the description. Put detailed justification in the ticket/evidence repository.
+
 ## Common Pitfalls
 
-1. Saying a product is “PCI compliant.” Prefer “supports PCI DSS controls when properly configured and operated.”
-2. Starting with firewall rules before establishing CDE scope and data flows.
-3. Treating segmentation as valid without penetration test evidence.
-4. Ignoring outbound CDE traffic. PCI DSS v4.0.1 explicitly addresses outbound restriction from the CDE.
-5. Assuming an NGFW IPS profile automatically satisfies 11.5.1 without verifying traffic coverage, alerting, update status, and response.
-6. Assuming a firewall URL filtering or IPS feature automatically satisfies 6.4.2 for public-facing web applications. Confirm WAF/WAAP or equivalent web-attack detection/prevention.
-7. Reviewing only Internet edge firewalls while ignoring internal segmentation, cloud security groups, VPN, wireless, management, and third-party paths.
-8. Ignoring NAT. Published services and translated addresses often change what is actually exposed.
-9. Keeping broad object groups without expanding them during audit.
-10. Accepting “business need: required” as justification. Every allowed service/protocol/port needs a specific business purpose.
-11. Relying on hit counts alone. Unused rules may still be required for DR or seasonal processing, but they need owner approval and documented rationale.
-12. Forgetting management-plane controls: admin encryption, RBAC, MFA, AAA, management interface exposure, logging, and backups.
-13. Logging too little for audit or too much for operations. Align logging to detection and review processes.
-14. Missing service-provider/shared-responsibility boundaries for managed firewalls, cloud firewalls, WAF, SIEM, or SOC.
-15. Producing compliance conclusions without evidence IDs, dates, and open gaps.
-16. Leaving PCI-relevant firewall config unmarked. Where possible, policy, NAT, zone/segment, object, and security-profile descriptions/tags should carry concise `PCI:`/`REQ:` evidence markers.
-17. Putting sensitive data in descriptions. Markers should reference evidence IDs and business purpose, never PAN, customer data, credentials, or incident details.
+1. **Saying a product is “PCI compliant.”** Prefer “supports PCI DSS controls when properly configured and operated.”
+2. **Starting with firewall rules before establishing CDE scope and data flows.**
+3. **Treating segmentation as valid without penetration test evidence.**
+4. **Ignoring outbound CDE traffic.** PCI DSS v4.0.1 explicitly addresses outbound restriction from the CDE.
+5. **Assuming an NGFW IPS profile automatically satisfies 11.5.1** without verifying traffic coverage, alerting, update status, and response.
+6. **Assuming a firewall URL filtering or IPS feature automatically satisfies 6.4.2** for public-facing web applications. Confirm WAF/WAAP or equivalent web-attack detection/prevention.
+7. **Reviewing only Internet edge firewalls** while ignoring internal segmentation, cloud security groups, VPN, wireless, management, and third-party paths.
+8. **Ignoring NAT.** Published services and translated addresses often change what is actually exposed.
+9. **Keeping broad object groups without expanding them during audit.**
+10. **Accepting “business need: required” as justification.** Every allowed service/protocol/port needs a specific business purpose.
+11. **Relying on hit counts alone.** Unused rules may still be required for DR or seasonal processing, but they need owner approval and documented rationale.
+12. **Forgetting management-plane controls:** admin encryption, RBAC, MFA, AAA, management interface exposure, logging, and backups.
+13. **Logging too little for audit or too much for operations.** Align logging to detection and review processes.
+14. **Missing service-provider/shared-responsibility boundaries** for managed firewalls, cloud firewalls, WAF, SIEM, or SOC.
+15. **Producing compliance conclusions without evidence IDs, dates, and open gaps.**
+16. **Leaving PCI-relevant firewall config unmarked.** Where possible, policy, NAT, zone/segment, object, and security-profile descriptions/tags should carry concise `PCI:`/`REQ:` evidence markers.
+17. **Putting sensitive data in descriptions.** Markers should reference evidence IDs and business purpose, never PAN, customer data, credentials, or incident details.
 
 ## Verification Checklist
 
