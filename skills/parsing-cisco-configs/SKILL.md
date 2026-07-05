@@ -1,7 +1,7 @@
 ---
 name: parsing-cisco-configs
 description: 'Use when the user pastes, uploads, or references a Cisco ASA or FTD config — parses and analyzes Cisco ASA and FTD firewall configurations in the line-oriented format with indented sub-commands from "show running-config". Trigger on keywords: ASA, FTD, Cisco, "access-list", "access-group", "object network", "object-group", "object service", "nameif", "security-level", "nat (", "interface GigabitEthernet", "interface Management", "failover", "threat-detection". Also trigger when the user asks to convert, audit, summarize, or explain a Cisco ASA/FTD config.'
-version: 1.1.2
+version: 1.1.3
 author: Hermes Agent
 license: MIT
 metadata:
@@ -304,7 +304,7 @@ For each service object or inline port match, check if the protocol+port maps to
 | TCP | 5060 | `sip` | voip |
 | UDP | 5060 | `sip` | voip |
 
-**ASA named port keywords:** Map ASA port names to numbers before resolving — full table in references/parsing-patterns.md "Port Name Resolution".
+**ASA named port keywords:** Map ASA port names to numbers before resolving — full table in references/parsing-patterns.md "Port Name Resolution". Caution: ASA literals predate IANA assignments (`radius`=1645, `radius-acct`=1646, `kerberos`=750) — do not "correct" them from prior knowledge; use the reference table.
 
 **On policy output:** When a service match resolves to a known application, populate the policy's
 `apps` array with `{ vendor_name: "tcp/443", canonical: "https", confidence: 1.0, category: "web" }`.

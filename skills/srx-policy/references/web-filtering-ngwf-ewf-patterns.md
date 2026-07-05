@@ -1,6 +1,6 @@
 # NGWF and EWF Configuration Patterns (srx-policy reference)
 
-Moved out of SKILL.md for token-efficient progressive disclosure; content unchanged and previously reviewed.
+Moved out of SKILL.md for token-efficient progressive disclosure; reviewed, with categorize/recategorize and fallback-settings details live-verified on vSRX 24.4R1 (2026-07).
 
 NGWF facts to remember from Juniper docs:
 
@@ -33,6 +33,7 @@ set services ssl initiation profile SSL-INIT-NGWF trusted-ca all
 set security utm feature-profile web-filtering ng-juniper profile WF-NG-BASE category NG_Gambling_in_general action block
 set security utm feature-profile web-filtering ng-juniper profile WF-NG-BASE default log-and-permit
 set security utm feature-profile web-filtering ng-juniper profile WF-NG-BASE fallback-settings default permit
+# fallback-settings default also accepts log-and-permit on current images (commit-checked on vSRX 24.4R1); older docs list only permit/block
 set security utm feature-profile web-filtering ng-juniper profile WF-NG-BASE fallback-settings server-connectivity log-and-permit
 set security utm feature-profile web-filtering ng-juniper profile WF-NG-BASE fallback-settings timeout log-and-permit
 set security utm feature-profile web-filtering ng-juniper profile WF-NG-BASE fallback-settings too-many-requests log-and-permit
@@ -68,11 +69,13 @@ show log messages | match "webfilter|web-filter|RT_UTM|URL_BLOCKED"
 Useful NGWF categorization and migration commands:
 
 ```text
-request security utm web-filtering categorize
-request security utm web-filtering recategorize
-request security utm web-filtering recategorize url <url> status
+request security utm web-filtering categorize url <url>
+request security utm web-filtering recategorize url <url>
+request security utm web-filtering recategorize url <url> status   # status check for the recategorize request above
 request security utm web-filtering category migrate-to-ng-juniper
 show security utm web-filtering category migrate-to-ng-juniper status
 ```
+
+The `categorize`/`recategorize` verbs require the `url <url>` argument — the bare forms fail with a syntax error (live-verified on vSRX 24.4R1).
 
 EWF-to-NGWF migration pitfall: Juniper documents the migration as asynchronous and recommends doing it during downtime. Do not rename policy names during migration; Juniper notes configuration commit can fail if policy names are changed during migration.
