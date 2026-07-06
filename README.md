@@ -1,4 +1,4 @@
-# Firewall Skills For Real Network Engineers
+# Firewall Skills For Network & Secuirty Engineers
 
 ![skills](https://img.shields.io/badge/skills-21-1f6feb) ![reviewed](https://img.shields.io/badge/reviewed-21%2F21-2ea043) ![license](https://img.shields.io/badge/license-MIT-blue) ![vendors](https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-8957e5)
 
