@@ -1,6 +1,6 @@
 ---
 name: srx-mpls-in-flow
-description: Design, configure, audit, or troubleshoot Juniper SRX MPLS L3VPN in flow mode. Use for Junos 24.2R1+ packet-based family mpls with inet or inet6 flow, secure PE or CPE, VRFs, LDP or MP-BGP, l3vpn vrf-group policy, 25.4R1 VRF-to-zone mapping, VRF-aware NAT or AppID, PowerMode or RFP, MTU, and label or policy troubleshooting.
+description: Design, configure, audit, and troubleshoot Juniper SRX MPLS L3VPN in flow mode. Use when handling Junos 24.2R1+ family mpls with inet or inet6 flow, secure PE or CPE, VRFs, LDP, MP-BGP, l3vpn vrf-group policy, VRF-to-zone mapping, VRF-aware NAT or AppID, PowerMode or RFP, MTU, labels, or policy matching.
 version: 1.0.3
 author:
   - fastrevmd-lab
@@ -41,23 +41,9 @@ The operational pattern is:
 
 Do not treat this as "global packet mode MPLS." The value is that only MPLS label switching remains packet-based while the inner customer traffic can enter normal SRX flow processing.
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks about:
-
-- SRX MPLS in flow mode or "MPLS in Flow"
-- Junos 24.2R1+ `security forwarding-options family mpls mode packet-based`
-- replacing older selective packet-mode designs for SRX MPLS L3VPN
-- SRX as MPLS L3VPN PE, secure CPE, or secure PE with stateful services
-- MP-BGP `family inet-vpn`, LDP-signaled MPLS, VRFs, route distinguishers, route targets, or `vrf-table-label` on SRX
-- VRF-aware security policy with `source-l3vpn-vrf-group` / `destination-l3vpn-vrf-group`
-- Junos 25.4R1 VRF-to-zone mapping for SRX MPLS L3VPN security policies
-- VRF-aware NAT, AppID, IPS/IDP, source NAT/static NAT in MPLS VPN contexts
-- SRX4600/SRX4700 MPLS L3VPN support and performance expectations
-- PowerMode versus Regular Flow Path (RFP) for SRX MPLS traffic
-- troubleshooting MPLS/VPN routes, labels, session classification, NAT, or policy matching on SRX
-
-Do not use this as the primary skill for parsing arbitrary SRX configuration. Load `parsing-srx-configs` first for full config extraction, then use this skill for MPLS-in-flow interpretation. For non-VRF SRX policy design use srx-policy; for general SRX NAT use srx-nat — this skill covers only their VRF/MPLS-context behavior.
+Use this skill only for MPLS or VRF flow-mode behavior. Use `parsing-srx-configs` for full-config extraction, `srx-policy` for non-VRF policy design, and `srx-nat` for NAT outside MPLS contexts.
 
 ## Version and Platform Notes
 

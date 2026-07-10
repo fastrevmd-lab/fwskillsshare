@@ -1,6 +1,6 @@
 ---
 name: srx-ipsec-hub-spoke
-description: Design, configure, audit, or troubleshoot Juniper SRX static route-based IPsec hub-and-spoke with full-tunnel backhaul. Use for explicit per-spoke IKE gateways, one st0 per spoke, static routes, anti-recursion, centralized source NAT, VPN-to-untrust policy, and spoke-to-spoke hub hairpinning.
+description: Design, configure, audit, and troubleshoot Juniper SRX static route-based IPsec hub-and-spoke. Use when handling per-spoke IKE gateways, one st0 per spoke, static routes, anti-recursion, centralized source NAT, VPN-to-untrust policy, or hub hairpinning. Use AutoVPN for changing spokes and ADVPN for direct shortcuts.
 version: 1.0.3
 author:
   - fastrevmd-lab
@@ -60,25 +60,9 @@ is standard route-based IPsec.
 > (Junos OS 23.2R2.21) plus a Cisco IOS-XE WAN transit router. See
 > `references/source-design-summary.md`.
 
-## When to Use
+## Scope and routing
 
-- A **small, stable** set of sites (operationally ≈ <5 spokes) where adding a
-  spoke rarely happens and the hub edit is trivial.
-- You want **every tunnel visible in config** — each peer, key, `st0`, and route
-  spelled out (operators/auditors who prefer explicit membership over a dynamic
-  gateway).
-- Spokes are **third-party or mixed-vendor** and you are pinning each by IP anyway.
-- The hub must be the **single internet egress** and provide **spoke-to-spoke**
-  through-the-hub connectivity.
-
-When **not** to use:
-- **Many or churning** spokes: every new spoke is a hub change (gateway + VPN +
-  `st0` + route). That is what AutoVPN solves — use `srx-autovpn-full-tunnel`.
-- Spokes that need **local breakout** (split tunnel) — full tunnel concentrates all
-  spoke internet traffic on the hub.
-- Branch-to-branch traffic is heavy and the through-the-hub hairpin adds
-  unacceptable latency — use `srx-advpn` (dynamic spoke-to-spoke shortcut
-  tunnels; requires certificate auth).
+Use static tunnels for a small stable estate where every peer, `st0`, and route must be explicit. Use `srx-autovpn-full-tunnel` for many or changing spokes, `srx-advpn` for direct branch shortcuts, and another design when spokes need local breakout.
 
 ## Topology Model
 

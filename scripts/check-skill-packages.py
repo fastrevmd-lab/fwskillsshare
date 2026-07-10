@@ -61,7 +61,6 @@ def list_field(frontmatter: str, key: str) -> list[str] | None:
 
 def main() -> int:
     errors: list[str] = []
-    warnings: list[str] = []
     description_characters = 0
     skill_files = sorted(SKILLS_DIR.glob("*/SKILL.md"))
 
@@ -89,6 +88,10 @@ def main() -> int:
             errors.append(f"{skill_file}: description is required")
         if len(description) > 1024:
             errors.append(f"{skill_file}: description exceeds 1024 characters")
+        if ". Use when " not in description:
+            errors.append(
+                f"{skill_file}: description must state what the skill does, then include 'Use when'"
+            )
         if "<" in description or ">" in description:
             errors.append(f"{skill_file}: description contains angle brackets")
         if not fields.get("version"):
@@ -124,8 +127,8 @@ def main() -> int:
 
         line_count = text.count("\n") + 1
         if line_count > 500:
-            warnings.append(
-                f"{skill_file}: {line_count} lines; keep reviewing opportunities for progressive disclosure"
+            errors.append(
+                f"{skill_file}: {line_count} lines exceeds the 500-line progressive-disclosure limit"
             )
 
     if description_characters > 8000:
@@ -134,8 +137,6 @@ def main() -> int:
             f"({description_characters})"
         )
 
-    for warning in warnings:
-        print(f"WARN: {warning}")
     for error in errors:
         print(f"ERROR: {error}", file=sys.stderr)
 

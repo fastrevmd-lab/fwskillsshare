@@ -1,6 +1,6 @@
 ---
 name: parsing-palo-configs
-description: Parse Palo Alto PAN-OS and Panorama XML or set-format exports into the shared firewall schema. Trigger on PAN-OS, Panorama, vsys, device-group, security rulebase, address-group, application-default, security-profile-group, set deviceconfig, XML entry or member elements, or requests to audit, convert, diff, summarize, or explain the config.
+description: Parse PAN-OS and Panorama XML or set-format exports into the shared firewall schema. Use when input contains vsys, device-group, security rulebase, address-group, application-default, security-profile-group, set deviceconfig, or XML entry/member elements, including audit, conversion, diff, summary, and explanation tasks.
 version: 1.1.4
 author:
   - fastrevmd-lab
@@ -40,18 +40,9 @@ Use this skill to parse Palo Alto PAN-OS firewall or Panorama configuration expo
 
 Panorama inheritance and rulebase placement are critical. Preserve shared/device-group/vsys context, distinguish pre-rules and post-rules, and record unresolved inherited references rather than flattening them silently.
 
-## When to Use
+## Scope and routing
 
-Use this skill when:
-
-- the user pastes or references PAN-OS, Palo Alto, Panorama, XML export, or `show config` output
-- the task is to parse, audit, summarize, compare, or convert a PAN-OS/Panorama configuration
-- the config contains `vsys`, `device-group`, `security rulebase`, `address-group`, `application-default`, `<entry name=`, or `<member>`
-- you need vendor-neutral JSON before migration to SRX, FortiGate, ASA/FTD, or another platform
-
-Do not use this skill as a substitute for device-specific validation. When the parse result will drive production changes, verify against current vendor documentation and live device output where available.
-
-Not this skill: for Cisco ASA/FTD configs use parsing-cisco-configs, FortiGate use parsing-fortinet-configs, Juniper SRX use parsing-srx-configs. Format tripwire — stop and hand off if the input shows column-0 commands with space-indented sub-commands and `nameif`/`access-list`/`object network` (Cisco ASA/FTD), `config`/`edit`/`set`/`next`/`end` blocks (FortiGate), or curly-brace hierarchy / `set security zones|policies` (SRX). Downstream consumers of this parse: firewall-best-practices-audit, firewall-config-conversion, firewall-config-diff.
+Use only for PAN-OS or Panorama XML and set-format syntax. Hand off ASA/FTD `access-list`, `nameif`, or `object network` input to `parsing-cisco-configs`, FortiOS blocks to `parsing-fortinet-configs`, and Junos hierarchy or `set security` to `parsing-srx-configs`. Verify production-bound results against current device documentation and output. Downstream consumers are the audit, conversion, and diff skills.
 
 ## Input Format
 

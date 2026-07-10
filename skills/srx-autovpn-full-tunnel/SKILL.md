@@ -1,6 +1,6 @@
 ---
 name: srx-autovpn-full-tunnel
-description: Design, configure, audit, or troubleshoot Juniper SRX AutoVPN full-tunnel hub-and-spoke backhaul. Use for dynamic group-ike-id gateways, traffic selectors and ARI, shared st0, anti-recursion routes, centralized source NAT, VPN hairpin policy, NAT-T, or Junos 24.4R1+ PSK and 0.0.0.0/0 commit errors.
+description: Design, configure, audit, and troubleshoot Juniper SRX AutoVPN full-tunnel hub backhaul. Use when handling group-ike-id gateways, traffic selectors, ARI, shared st0, anti-recursion routes, source NAT, VPN hairpinning, NAT-T, or Junos 24.4R1+ PSK and 0.0.0.0/0 commit errors. Use ADVPN for direct spoke shortcuts.
 version: 1.1.2
 author:
   - fastrevmd-lab
@@ -66,25 +66,9 @@ dynamic-gateway mechanics — is standard AutoVPN.
 > validated on four vSRX (Junos OS 23.2R2.21) plus a Cisco IOS-XE WAN transit
 > router. See `references/source-design-summary.md`.
 
-## When to Use
+## Scope and routing
 
-- Designing or migrating a **hub-and-spoke IPsec** overlay where the hub must be
-  the **single internet egress** for all spokes (centralized inspection/logging).
-- Many or churning spoke sites: AutoVPN adds spokes with **zero hub change**.
-- Spokes must reach **each other** through the hub (hairpin) as well as the
-  internet.
-- Auditing or troubleshooting an existing full-tunnel AutoVPN: tunnels up but no
-  traffic, asymmetric/black-holed internet, NAT not applying, or recursion.
-
-When **not** to use:
-- A handful of small, stable, explicitly-pinned sites where every tunnel should
-  be visible in config — use static per-spoke tunnels instead
-  (`srx-ipsec-hub-spoke`). See *Choose This vs. Static Hub-Spoke* below.
-- Spokes that need **local breakout** (split tunnel). Full tunnel concentrates
-  all spoke internet traffic on the hub's WAN, CPU, and NAT table.
-- Branch-to-branch traffic is heavy enough that hairpinning it through the hub
-  adds unacceptable latency or hub load — use `srx-advpn` (dynamic
-  spoke-to-spoke shortcut tunnels; requires certificate auth).
+Use this design when all spoke internet and inter-spoke traffic must traverse a centralized hub. Use `srx-ipsec-hub-spoke` for a small explicit estate, `srx-advpn` when direct spoke shortcuts are required, and another design when spokes need local breakout.
 
 ## Topology Model
 

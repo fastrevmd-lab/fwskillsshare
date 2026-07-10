@@ -1,6 +1,6 @@
 ---
 name: firewall-config-conversion
-description: Convert firewall configurations between Cisco ASA/FTD, FortiGate, PAN-OS, and Juniper SRX through the shared parsing-* schema. Use for migrations of objects, policy, NAT, zones, routing, HA, and VPN. Produce native target CLI plus a fidelity report; never present output as production-ready.
+description: Convert parsed configurations among Cisco ASA/FTD, FortiGate, PAN-OS, and Juniper SRX with a fidelity report. Use when migrating objects, policy, NAT, zones, routing, HA, or VPN and producing target-native CLI with converted, caveat, and manual classifications. Parse raw configs first; output is not production-ready.
 version: 1.0.2
 author:
   - fastrevmd-lab
@@ -23,21 +23,9 @@ The output is always two parts: the target vendor's native configuration, follow
 
 This skill produces a migration draft, never a production-ready config. Vendor security models differ enough — zones versus security-levels, App-ID versus port-based services, routing-instances versus contexts or vsys — that no automated conversion is safe to commit unreviewed. Secrets are never emitted: VPN pre-shared keys, certificates, and admin passwords are always replaced with placeholders and flagged as manual items, so the draft can be shared and reviewed without leaking credentials.
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks to:
-
-- "convert / migrate / translate this <vendor> config to <vendor>" (e.g. "ASA to SRX", "FortiGate to Palo Alto", "PAN-OS to FortiGate", "turn this ASA config into SRX")
-- perform a vendor refresh or hardware replacement onto a different platform
-- consolidate firewalls after a merger or acquisition onto one vendor
-- migrate off an end-of-life or end-of-support platform to a current one
-
-Do NOT use this skill when:
-
-- The ask is to audit or harden a rulebase — route to `firewall-best-practices-audit`.
-- The ask is to compare or diff two configs — route to `firewall-config-diff`.
-- The requested target vendor has no emitter in `references/` — say so plainly; do not improvise a target syntax this skill cannot support.
-- You were handed raw vendor config — run the matching `parsing-*` skill first to produce the schema, then convert (see Input Handling).
+Convert only normalized parser output and only to vendors with an emitter in `references/`; never improvise unsupported target syntax. Route audits to `firewall-best-practices-audit` and comparisons to `firewall-config-diff`.
 
 ## Input Handling
 

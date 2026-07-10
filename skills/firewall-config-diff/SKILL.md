@@ -1,6 +1,6 @@
 ---
 name: firewall-config-diff
-description: Compare two firewall or NGFW configurations semantically for drift, HA parity, pre/post-change validation, or cross-vendor migration fidelity. Use the shared parsing-* schema, match objects and rules by meaning rather than text, and report added, removed, changed, and not-comparable items.
+description: Compare two parsed firewall configurations by semantic intent rather than text. Use when checking drift, HA parity, pre/post-change results, migration fidelity, or round-trip conversion. Parse raw configs first; use a text diff for literal line changes.
 version: 1.0.3
 author:
   - fastrevmd-lab
@@ -23,22 +23,9 @@ The comparison is always semantic, never textual. Items are paired by what they 
 
 The output is always two parts: a per-section report listing what was added, removed, and changed, followed by a single parity verdict (`EQUIVALENT` or `DIFFERENCES FOUND`). Where a feature on one side has no equivalent on the other — common in cross-vendor comparisons — it is flagged `not-comparable` and excluded from the diff rather than reported as a false difference. The report never claims more than the schema supports and always lists what could not be compared.
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks to:
-
-- "diff / compare these two configs" or "what changed between these two firewalls"
-- check **config drift** — a device against its known-good baseline or against its own earlier snapshot
-- verify **HA-pair consistency** — that two cluster members carry the same policy and object set
-- confirm **pre/post-change** or **pre/post-migration parity** — that a change or a vendor migration preserved the intended ruleset
-- validate a **round-trip conversion** — parse vendor A, convert to vendor B, re-parse B, and confirm B still means what A meant
-
-Do NOT use this skill when:
-
-- The ask is to produce a target-vendor config — route to `firewall-config-conversion`.
-- The ask is to assess a single rulebase for hardening or hygiene — route to `firewall-best-practices-audit`.
-- The user genuinely wants a textual line-by-line diff of the raw files — that is what the `diff` tool is for; this skill deliberately does not do that.
-- You were handed raw vendor config — run the matching `parsing-*` skill first to produce the schema, then diff (see Input Handling).
+Compare two normalized parser outputs. Use a text-diff tool for literal line changes, `firewall-config-conversion` to emit target syntax, and `firewall-best-practices-audit` to assess one rulebase.
 
 ## Input Handling
 

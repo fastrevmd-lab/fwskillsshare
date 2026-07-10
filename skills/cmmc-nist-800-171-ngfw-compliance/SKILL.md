@@ -1,6 +1,6 @@
 ---
 name: cmmc-nist-800-171-ngfw-compliance
-description: Assess firewall support for CMMC Level 2 and NIST SP 800-171 CUI protection. Use for CUI enclave boundaries, least privilege, remote or external access, logging, SSP evidence, POA&M gaps, C3PAO preparation, DFARS 252.204-7012, and requirement IDs such as 3.1.1 or 3.13.1.
+description: Map firewall controls, evidence, and gaps to CMMC Level 2 and NIST SP 800-171. Use when assessing CUI boundaries, least privilege, remote access, SSP or POA&M evidence, C3PAO readiness, DFARS 252.204-7012, or requirements such as 3.1.1 and 3.13.1. Parse raw configs first.
 version: 0.1.3
 author:
   - fastrevmd-lab
@@ -36,18 +36,9 @@ An NGFW can be a major supporting control. It can enforce CUI enclave segmentati
 
 Treat this as research and assessment guidance, not legal advice and not a C3PAO, assessor, DoD, or contracting-officer determination. When producing formal compliance language, cite NIST SP 800-171 requirement IDs and CMMC practice language where applicable, label assumptions, and defer final interpretation to the organization’s CMMC lead, compliance team, legal counsel, prime/customer, or authorized assessor.
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks about:
-
-- CMMC Level 2 or NIST SP 800-171 firewall, NGFW, perimeter firewall, internal segmentation firewall, VPN, cloud firewall, IDS/IPS, or remote-access requirements
-- CUI enclave design, contractor networks, defense industrial base (DIB) environments, or supplier compliance evidence
-- mapping firewall capabilities to NIST 800-171 Access Control, Audit and Accountability, Configuration Management, Identification and Authentication, Incident Response, Risk Assessment, Security Assessment, System and Communications Protection, or System and Information Integrity requirements
-- boundary protection, external system connections, public-access systems, wireless boundaries, cloud security groups, zero-trust segmentation, or vendor/third-party access to CUI systems
-- preparing SSP language, assessment evidence, gap findings, POA&M-style remediation tasks, or rule-review evidence for CMMC/NIST 800-171
-- comparing Palo Alto, FortiGate, Juniper SRX, Cisco ASA/FTD, Check Point, cloud security groups, host firewalls, ZTNA/SASE, or microsegmentation controls against CUI protection needs
-
-Do not use this skill as a substitute for parsing a raw firewall configuration. Load the matching parsing-cisco/fortinet/palo/srx skill first, then use this skill to interpret CMMC/NIST 800-171 implications. For framework-independent rulebase hygiene (any-any rules, shadowed/orphaned rules, weak crypto, cleanup), use the firewall-best-practices-audit skill; use this skill when findings must map to CMMC/NIST 800-171 controls and audit evidence.
+Parse raw configurations with the matching `parsing-*` skill first. Use this skill when findings must map to CMMC or NIST SP 800-171 requirements and CUI evidence; use `firewall-best-practices-audit` for framework-neutral hygiene.
 
 ## Baseline Interpretation
 

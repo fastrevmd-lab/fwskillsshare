@@ -1,6 +1,6 @@
 ---
 name: srx-advpn
-description: Design, configure, audit, or troubleshoot Juniper SRX Auto Discovery VPN (ADVPN) for dynamic spoke-to-spoke IPsec shortcuts. Use for suggester or partner roles, multipoint st0, OSPF p2mp, certificate authentication, PKI, shortcut lifecycle, and No public key found IKE_AUTH failures.
+description: Design, configure, audit, and troubleshoot Juniper SRX ADVPN spoke-to-spoke IPsec shortcuts. Use when handling suggester or partner roles, multipoint st0, OSPF p2mp, certificates, PKI, shortcut lifecycle, or “No public key found” IKE_AUTH failures. Use AutoVPN for hub backhaul and static IPsec for small fixed estates.
 version: 1.1.2
 author:
   - fastrevmd-lab
@@ -53,22 +53,9 @@ overlay**, and **certificate authentication**.
 > RSA/ECDSA certificate auth. Plan PKI first — do not burn a day on a PSK
 > ADVPN that cannot commit.
 
-## When to Use
+## Scope and routing
 
-- Branch↔branch traffic is significant (VoIP, file transfer, replication) and
-  hairpinning it through the hub adds latency or load — but a static full mesh
-  is unmanageable.
-- Many or churning spokes that still need direct any-to-any reachability.
-- Auditing or troubleshooting an existing ADVPN: shortcuts not forming,
-  shortcuts flapping, OSPF adjacencies missing, cert-auth failures.
-
-When **not** to use:
-- Spoke-to-spoke traffic is rare or policy requires central inspection of it —
-  use `srx-autovpn-full-tunnel` (hub hairpin, zero-touch spokes, PSK possible
-  with per-spoke gateways).
-- A handful of stable sites — static per-spoke tunnels
-  (`srx-ipsec-hub-spoke`) or a small static mesh is simpler.
-- No PKI and no appetite to build one: ADVPN needs certificates (see above).
+Use ADVPN when direct branch-to-branch traffic justifies dynamic shortcuts and PKI is available. Use `srx-autovpn-full-tunnel` when central inspection or hub hairpinning is required, and `srx-ipsec-hub-spoke` for a small stable estate.
 
 ## Roles and the Shortcut Lifecycle
 

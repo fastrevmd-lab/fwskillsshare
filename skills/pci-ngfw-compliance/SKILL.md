@@ -1,6 +1,6 @@
 ---
 name: pci-ngfw-compliance
-description: Assess firewall support for PCI DSS v4.0.1. Use for CDE scope and segmentation, Requirement 1 network security controls, inbound or outbound restriction, six-month rule review, logging, IDS/IPS, admin access, change control, and QSA, ROC, or SAQ evidence. Treat compliance as an environment assessment, not an NGFW certification.
+description: Map firewall controls, evidence, and gaps to PCI DSS v4.0.1. Use when assessing CDE scope, segmentation, Requirement 1, traffic restrictions, six-month rule review, logging, IDS/IPS, admin access, change control, or QSA, ROC, and SAQ evidence. Treat compliance as an environment assessment, not an NGFW certification.
 version: 0.1.2
 author:
   - fastrevmd-lab
@@ -32,20 +32,9 @@ For PCI DSS v4.0.1, the most directly relevant NGFW areas are Requirement 1 (Ins
 
 Treat this as research and assessment guidance, not legal advice and not a QSA decision. When producing final compliance language, cite PCI DSS v4.0.1 requirement IDs and defer final interpretation to the entity’s QSA/ISA, acquirer, or payment brand.
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks about:
-
-- PCI DSS firewall, NGFW, perimeter firewall, internal segmentation firewall, or cloud firewall requirements
-- “PCI compliant firewall” or “PCI compliant NGFW” claims
-- designing or auditing CDE segmentation with firewalls
-- mapping firewall features to PCI DSS controls
-- evidence needed for PCI firewall review or ROC/AOC support
-- rulebase review cadence, least privilege, default deny, inbound/outbound restrictions, DMZ design, wireless-to-CDE controls, admin access, logging, IDS/IPS, or WAF-related expectations
-- comparing Palo Alto, FortiGate, Juniper SRX, Cisco ASA/FTD, Check Point, cloud security groups, or other firewalls against PCI DSS needs
-- writing an audit checklist, gap analysis, or assessor-ready evidence request list for firewall controls
-
-Do not use this skill as a substitute for parsing a raw firewall configuration. Load the matching parsing-cisco/fortinet/palo/srx skill first, then use this skill to interpret PCI implications. For framework-independent rulebase hygiene (any-any rules, shadowed/orphaned rules, weak crypto, cleanup), use the firewall-best-practices-audit skill; use this skill when findings must map to PCI DSS controls and audit evidence.
+Parse raw configurations with the matching `parsing-*` skill first. Use this skill when findings must map to PCI DSS requirements or assessor evidence; use `firewall-best-practices-audit` for framework-neutral hygiene.
 
 ## Baseline Interpretation
 

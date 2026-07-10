@@ -1,6 +1,6 @@
 ---
 name: soc2-ngfw-compliance
-description: Assess firewall support for SOC 2 Trust Services Criteria. Use for Type I or Type II examinations, logical access, operations, change management, logging and monitoring, vendor access, incident response, operating-effectiveness samples, and criteria such as CC6.1, CC6.6, CC7.2, or CC8.1.
+description: Map firewall controls, evidence, and gaps to SOC 2 Trust Services Criteria. Use when assessing Type I or II, logical access, operations, change management, logging, vendor access, incident response, operating-effectiveness samples, or CC6.1, CC6.6, CC7.2, and CC8.1. Parse raw configs first.
 version: 0.1.2
 author:
   - fastrevmd-lab
@@ -32,18 +32,9 @@ SOC 2 work is especially common for SaaS, MSP, MSSP, cloud-hosted services, plat
 
 Treat this as audit-readiness and control-mapping guidance, not legal advice and not an auditor’s opinion. For formal reporting, defer to the organization’s CPA firm, audit lead, control owners, legal/compliance team, and customer commitments.
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks about:
-
-- SOC 2 Type I or Type II firewall, NGFW, VPN, WAF, IDS/IPS, SASE/ZTNA, security group, or cloud network controls
-- AICPA Trust Services Criteria, especially common criteria around logical access, system operations, change management, risk mitigation, and monitoring
-- service organizations, SaaS platforms, MSP/MSSP environments, cloud providers, managed firewalls, production network boundaries, customer data, availability, confidentiality, or privacy support
-- preparing firewall evidence for auditors: control descriptions, evidence requests, samples, screenshots, exports, logs, tickets, rule reviews, alerts, and exceptions
-- assessing whether firewall policy, NAT, remote access, admin access, vendor access, change control, logging, or incident response evidence is SOC 2 ready
-- adding concise SOC 2 evidence markers to firewall rules, NAT, zones, VPN entries, objects, security profiles, or external source-of-truth records
-
-Do not use this skill as a substitute for parsing a raw firewall configuration. Load the matching parsing-cisco/fortinet/palo/srx skill first, then use this skill to interpret SOC 2 implications. For framework-independent rulebase hygiene (any-any rules, shadowed/orphaned rules, weak crypto, cleanup), use the firewall-best-practices-audit skill; use this skill when findings must map to SOC 2 controls and audit evidence.
+Parse raw configurations with the matching `parsing-*` skill first. Use this skill when findings must map to SOC 2 criteria and examination evidence; use `firewall-best-practices-audit` for framework-neutral hygiene.
 
 ## Baseline Interpretation
 
