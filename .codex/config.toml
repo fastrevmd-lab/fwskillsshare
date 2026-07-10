@@ -1,0 +1,35 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = false
+writable_roots = []
+exclude_tmpdir_env_var = true
+exclude_slash_tmp = true
+
+[mcp_servers.gbrain]
+enabled = false
+
+[mcp_servers.hpe-mcp]
+enabled = false
+
+[mcp_servers.proxmox-mcp]
+enabled = false
+
+[mcp_servers.unifi-mcp]
+enabled = false
+
+[mcp_servers.rust-junosmcp]
+enabled = false
+
+[mcp_servers.rust-srxmcp]
+enabled = false
+
+[mcp_servers.panos-mcp]
+enabled = false
+
+[mcp_servers.openaiDeveloperDocs]
+enabled = true
+enabled_tools = ["search_openai_docs", "fetch_openai_doc"]

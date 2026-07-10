@@ -12,3 +12,15 @@ entities.json
 # Python validation artifacts
 __pycache__/
 *.py[cod]
+.env
+.env.*
+!.env.example
+.direnv/
+.venv/
+.ruff_cache/
+.mypy_cache/
+coverage/
+dist/
+build/
+*.agekey
+*.decrypted.*
