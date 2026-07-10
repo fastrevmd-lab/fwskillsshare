@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRX Security Policy"
+  short_description: "Design and troubleshoot Juniper SRX policy"
+  default_prompt: "Use $srx-policy to design, review, or troubleshoot this Juniper SRX security policy."

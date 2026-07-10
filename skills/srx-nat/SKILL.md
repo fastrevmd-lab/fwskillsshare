@@ -1,8 +1,11 @@
 ---
 name: srx-nat
-description: "Use when designing, configuring, auditing, or troubleshooting Juniper SRX NAT. Covers source NAT, destination NAT, static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, address-persistent behavior, hairpin NAT, proxy ARP, rule ordering, session verification, pool exhaustion, and source/destination NAT troubleshooting. Trigger on: security nat source/destination/static, rule-set, static-nat inet, port forwarding, port block-allocation, port-overloading, show security nat source rule all, RT_NAT."
-version: 1.1.1
-author: Hermes Agent
+description: Design, configure, audit, and troubleshoot Juniper SRX NAT. Use when handling source, destination, static, NAT64, DNS64, CGN, PBA, persistent or address-persistent NAT, hairpinning, proxy ARP, rule order, pool exhaustion, security nat configuration, show security nat output, sessions, or RT_NAT logs.
+version: 1.1.2
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:
@@ -65,23 +68,9 @@ Core SRX NAT types:
 
 Always inspect the translated session, not only the configuration. Correct NAT configuration with wrong routes, policy, proxy ARP, or return path still fails.
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks about:
-
-- Juniper SRX NAT design, validation, migration, audit, or troubleshooting
-- `security nat source`, `security nat destination`, `security nat static`, or `security nat proxy-arp`
-- interface source NAT, pool source NAT, PAT, NAT pools, address pooling, or address persistence
-- published servers, port forwarding, destination NAT, or static NAT
-- source NAT or destination NAT rule counters and translation hits
-- NAT rule order, rule-set specificity, static NAT precedence, or policy lookup after NAT
-- hairpin NAT / NAT reflection / inside users accessing an inside server through its public IP
-- DNS64 and NAT64 on SRX
-- CGN, SRX4600 carrier-grade NAT, port block allocation, paired address pooling, persistent NAT, endpoint-independent mapping, or NAT logging
-- address-persistent problems, VPN over NAT problems, speedtest issues, or TCP MSS workarounds
-- troubleshooting with `show security nat ...`, `show security flow session ...`, flow traceoptions, or proxy ARP checks
-
-Do not use this as the primary skill for parsing an entire SRX config. Load `parsing-srx-configs` first for extraction, then use this skill to interpret and fix the NAT behavior. For policy design on the post-NAT path, load `srx-policy`.
+Use this skill for SRX NAT behavior after relevant configuration is identified. Use `parsing-srx-configs` for full-config extraction and `srx-policy` for post-translation policy design.
 
 ## NAT Processing Order
 
@@ -307,140 +296,9 @@ set security policies from-zone trust to-zone trust policy PERMIT_HAIRPIN then l
 
 For CGN or persistent NAT hairpin cases, use a dedicated inside-to-inside policy and inspect session-close/update logs. Avoid broad `any any permit` hairpin policy without logging and a change record.
 
-## NAT64 with DNS64
+## Advanced NAT
 
-DNS64 synthesizes an IPv6 AAAA record from an IPv4 A record. With the well-known prefix `64:ff9b::/96`, the last 32 bits encode the IPv4 destination. SRX NAT64 extracts those last 32 bits and translates the IPv6 destination to IPv4.
-
-Process:
-
-1. IPv6-only client queries a DNS64 resolver.
-2. DNS64 returns an address under `64:ff9b::/96` with the IPv4 address embedded in the last 32 bits.
-3. SRX static NAT64 matches the NAT64 prefix and uses `static-nat inet` to extract the IPv4 destination.
-4. SRX source NAT translates the IPv6 client source to an IPv4 source.
-5. Return traffic maps back through the SRX session.
-
-Static NAT64 destination extraction:
-
-```junos
-set security nat static rule-set NAT64 from zone trust
-set security nat static rule-set NAT64 rule NAT64 match source-address ::/0
-set security nat static rule-set NAT64 rule NAT64 match destination-address 64:ff9b::/96
-set security nat static rule-set NAT64 rule NAT64 then static-nat inet
-```
-
-Source NAT for NAT64:
-
-```junos
-set security nat source rule-set NAT64_SNAT from zone trust
-set security nat source rule-set NAT64_SNAT to zone untrust
-set security nat source rule-set NAT64_SNAT rule NAT64_SNAT match source-address ::/0
-set security nat source rule-set NAT64_SNAT rule NAT64_SNAT match destination-address 0.0.0.0/0
-set security nat source rule-set NAT64_SNAT rule NAT64_SNAT then source-nat interface
-```
-
-The `destination-address 0.0.0.0/0` is intentional. Static NAT64 has already translated the destination to IPv4 before source NAT rule evaluation. If you match `64:ff9b::/96` in the source NAT rule, the source NAT rule will not match the translated flow.
-
-Verification:
-
-```text
-host www.juniper.net
-ping www.juniper.net
-curl -6 https://www.juniper.net
-show security nat static rule all
-show security nat source rule all
-show security flow session destination-port 443 extensive
-```
-
-Expected session pattern:
-
-```text
-In:  <IPv6-client> --> 64:ff9b::<embedded-v4>/443
-Out: <real-IPv4-destination>/443 --> <translated-IPv4-source>/<port>
-```
-
-NAT64 caveats:
-
-- DNS64 is required for hostname-based access unless the client explicitly uses embedded NAT64 notation.
-- Native IPv6 destinations should not be caught by the NAT64 source NAT rule.
-- Per the Juniper NAT overview, NAT64 traffic is not processed on the PowerMode IPsec (PMI) fast path; with PMI enabled, NAT64 flows are handled in the normal processing path instead. Verify current release/platform behavior before relying on it.
-
-## CGN, PBA, and Persistent NAT
-
-Carrier-grade NAT on SRX should be treated as a capacity-managed service, not just a large source NAT pool.
-
-### Port Block Allocation
-
-PBA allocates blocks of ports to subscribers. Example pattern from the SRX4600 CGN source:
-
-```junos
-set security nat source pool POOL_1 address 1.2.84.0/24
-set security nat source pool POOL_1 address 1.2.85.0/24
-set security nat source pool POOL_1 address 1.2.86.0/24
-set security nat source pool POOL_1 address 1.2.87.0/24
-set security nat source pool POOL_1 port block-allocation block-size 1280
-set security nat source pool POOL_1 port block-allocation maximum-blocks-per-host 3
-set security nat source pool POOL_1 port block-allocation last-block-recycle-timeout 300
-set security nat source pool POOL_1 address-pooling paired
-```
-
-Guidance:
-
-- `address-pooling paired` keeps a subscriber paired with the same NAT pool address and overrides global hash-based `address-persistent` behavior.
-- `last-block-recycle-timeout` prevents the final allocated block from remaining allocated forever after the subscriber has no sessions.
-- Start with realistic subscriber/session telemetry. Do not blindly copy lab block sizes.
-- Active/active chassis cluster behavior can effectively reserve port ranges and reduce usable ports per public IP; size using observed platform behavior, not theoretical 65k ports.
-
-### Selective Persistent NAT
-
-**Pool port behavior:** source-NAT pools PAT by default (source ports are
-translated). `set security nat source pool <name> port no-translation` keeps
-original source ports (needs enough pool IPs); `port-overloading-factor <n>`
-multiplies port capacity per pool IP at the cost of shared-port ambiguity.
-
-Persistent NAT / endpoint-independent behavior helps selected applications such as gaming, STUN, and peer-to-peer flows, but it consumes extra state. Put persistent NAT rules before broad normal NAT rules and match only the necessary applications.
-
-```junos
-set security nat source rule-set LAN_TO_WAN from zone LAN
-set security nat source rule-set LAN_TO_WAN to zone WAN
-set security nat source rule-set LAN_TO_WAN rule LAN_WAN_PNAT_1 match source-address 100.64.0.0/10
-set security nat source rule-set LAN_TO_WAN rule LAN_WAN_PNAT_1 match destination-address 0.0.0.0/0
-set security nat source rule-set LAN_TO_WAN rule LAN_WAN_PNAT_1 match application GAMING_CONSOLES_TUNED
-set security nat source rule-set LAN_TO_WAN rule LAN_WAN_PNAT_1 then source-nat pool POOL_1
-set security nat source rule-set LAN_TO_WAN rule LAN_WAN_PNAT_1 then source-nat pool persistent-nat permit any-remote-host
-set security nat source rule-set LAN_TO_WAN rule LAN_WAN_NAT_1 match source-address 100.64.0.0/10
-set security nat source rule-set LAN_TO_WAN rule LAN_WAN_NAT_1 match destination-address 0.0.0.0/0
-set security nat source rule-set LAN_TO_WAN rule LAN_WAN_NAT_1 then source-nat pool POOL_1
-```
-
-Optional hardening:
-
-```junos
-set security nat source rule-set LAN_TO_WAN rule LAN_WAN_PNAT_1 then source-nat pool persistent-nat block-ext-session
-```
-
-`block-ext-session` is a valid `persistent-nat` sibling knob (verified on vSRX
-24.4R1); it requires `persistent-nat permit ...` on the same rule (already set
-above) — alone it fails commit with `Missing mandatory statement: 'permit'`.
-
-### Address-Persistent Symptoms
-
-`address-persistent` keeps translated source mapping stable for a source IP. It can help protocols that require stable NAT mapping but can also cause symptoms such as:
-
-- speedtest.net or similar services failing or underperforming
-- intermittent website element failures
-- VPN tunnels failing through NAT with persistent mappings
-
-If persistence is not required, remove it globally (address-persistent lives at `[edit security nat source]`, not under a rule action; pool-level persistence is `pool <name> address-persistent subscriber ...`):
-
-```text
-delete security nat source address-persistent
-```
-
-If failures are related to tunnel/WAN MTU, consider a TCP MSS change after validating path MTU:
-
-```junos
-set security flow tcp-mss all-tcp mss 1350
-```
+Read `references/advanced-nat.md` for NAT64/DNS64, CGN capacity planning, port block allocation, persistent NAT, pool port behavior, and address-persistent troubleshooting. Load only the relevant subsection for the task.
 
 ## Verification Commands
 

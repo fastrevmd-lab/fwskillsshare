@@ -1,8 +1,11 @@
 ---
 name: hipaa-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining what it takes for a next-generation firewall or firewall estate to support HIPAA (often misspelled "HIPPA") Security Rule safeguards for electronic protected health information (ePHI, 45 CFR 164.312). Covers HIPAA scope, ePHI network segmentation, access control, audit controls, integrity, transmission security, risk analysis, risk management, security incident procedures, business associate considerations, firewall evidence, and audit-ready descriptions/tags. Triggers include BAA/business associate access and OCR audit preparation. Emphasizes that HIPAA compliance is assessed for the covered entity or business associate environment, not certified by an NGFW alone.
-version: 0.1.1
-author: Hermes Agent
+description: Map firewall controls, evidence, and gaps to HIPAA Security Rule safeguards for ePHI. Use when assessing segmentation, access and audit controls, transmission security, risk management, BAA or vendor access, OCR evidence, 45 CFR 164.312, or “HIPPA.” Parse raw configs first.
+version: 0.1.2
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:
@@ -29,20 +32,9 @@ An NGFW can be an important technical safeguard and evidence source. It can enfo
 
 Treat this as research and assessment guidance, not legal advice and not an OCR determination. When producing final compliance language, cite 45 CFR Part 164 Subpart C sections and defer final interpretation to the entity’s privacy/security officer, counsel, compliance team, or qualified assessor.
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks about:
-
-- HIPAA or “HIPPA” firewall, NGFW, perimeter firewall, internal segmentation firewall, VPN, IDS/IPS, or cloud firewall requirements
-- what it takes for a firewall estate to support HIPAA Security Rule compliance
-- mapping firewall features to ePHI confidentiality, integrity, and availability safeguards
-- segmenting systems that create, receive, maintain, or transmit ePHI
-- access controls between clinical, administrative, vendor, guest, IoT/medical device, datacenter, cloud, backup, and user networks
-- audit evidence for firewall policies, NAT, zones, VPNs, logging, IDS/IPS, SIEM, threat prevention, or remote access
-- comparing Palo Alto, FortiGate, Juniper SRX, Cisco ASA/FTD, Check Point, cloud security groups, or host firewalls against HIPAA needs
-- writing a gap analysis, risk register, evidence request list, or compliance-ready firewall review for a healthcare environment
-
-Do not use this skill as a substitute for parsing a raw firewall configuration. Load the matching parsing-cisco/fortinet/palo/srx skill first, then use this skill to interpret HIPAA implications. For framework-independent rulebase hygiene (any-any rules, shadowed/orphaned rules, weak crypto, cleanup), use the firewall-best-practices-audit skill; use this skill when findings must map to HIPAA controls and audit evidence.
+Parse raw configurations with the matching `parsing-*` skill first. Use this skill when findings must map to HIPAA safeguards and ePHI evidence; use `firewall-best-practices-audit` for framework-neutral hygiene.
 
 ## Baseline Interpretation
 

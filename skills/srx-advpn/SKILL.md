@@ -1,10 +1,11 @@
 ---
 name: srx-advpn
-description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX Auto Discovery VPN (ADVPN) — hub-and-spoke IPsec that dynamically builds direct spoke-to-spoke shortcut tunnels so branch-to-branch traffic bypasses the hub. Covers suggester and partner roles, the shortcut lifecycle, the multipoint st0 overlay, OSPF p2mp with dynamic-neighbors over the overlay, the certificate-authentication requirement (IKEv2 PSK with dynamic ike-user-type is rejected on modern Junos), PKI enrollment, the chassis-cluster certificate-load gotcha, verification, and troubleshooting including the vSRX 'No public key found' IKE_AUTH failure (root-caused to the dynamic cert-gateway responder path — use per-spoke static-address cert gateways).
-version: 1.1.1
+description: Design, configure, audit, and troubleshoot Juniper SRX ADVPN spoke-to-spoke IPsec shortcuts. Use when handling suggester or partner roles, multipoint st0, OSPF p2mp, certificates, PKI, shortcut lifecycle, or “No public key found” IKE_AUTH failures. Use AutoVPN for hub backhaul and static IPsec for small fixed estates.
+version: 1.1.2
 author:
   - fastrevmd-lab
   - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:
@@ -52,22 +53,9 @@ overlay**, and **certificate authentication**.
 > RSA/ECDSA certificate auth. Plan PKI first — do not burn a day on a PSK
 > ADVPN that cannot commit.
 
-## When to Use
+## Scope and routing
 
-- Branch↔branch traffic is significant (VoIP, file transfer, replication) and
-  hairpinning it through the hub adds latency or load — but a static full mesh
-  is unmanageable.
-- Many or churning spokes that still need direct any-to-any reachability.
-- Auditing or troubleshooting an existing ADVPN: shortcuts not forming,
-  shortcuts flapping, OSPF adjacencies missing, cert-auth failures.
-
-When **not** to use:
-- Spoke-to-spoke traffic is rare or policy requires central inspection of it —
-  use `srx-autovpn-full-tunnel` (hub hairpin, zero-touch spokes, PSK possible
-  with per-spoke gateways).
-- A handful of stable sites — static per-spoke tunnels
-  (`srx-ipsec-hub-spoke`) or a small static mesh is simpler.
-- No PKI and no appetite to build one: ADVPN needs certificates (see above).
+Use ADVPN when direct branch-to-branch traffic justifies dynamic shortcuts and PKI is available. Use `srx-autovpn-full-tunnel` when central inspection or hub hairpinning is required, and `srx-ipsec-hub-spoke` for a small stable estate.
 
 ## Roles and the Shortcut Lifecycle
 

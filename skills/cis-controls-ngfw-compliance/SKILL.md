@@ -1,8 +1,11 @@
 ---
 name: cis-controls-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining how a next-generation firewall or firewall estate can support CIS Critical Security Controls v8/v8.1 safeguards. Covers CIS-aligned network inventory, secure firewall configuration, network infrastructure management, access control, logging, malware/threat prevention, data protection, vulnerability management, service-provider access, incident response, penetration testing, audit evidence, and firewall description/tag markers. Triggers include Implementation Groups (IG1/IG2/IG3) and Safeguard IDs such as 4.2 or 13.3. Distinct from CIS Benchmarks (per-product hardening guides), though firewall hardening questions may involve both. Emphasizes that CIS alignment is assessed for the implemented environment and security program, not certified by an NGFW alone.
-version: 0.1.1
-author: Hermes Agent
+description: Map firewall controls, evidence, and gaps to CIS Controls v8/v8.1 safeguards. Use when assessing IG1/IG2/IG3, inventory, secure configuration, access, logging, threat prevention, or safeguard IDs such as 4.2 and 13.3. Excludes product-specific CIS Benchmarks.
+version: 0.1.2
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:
@@ -29,19 +32,9 @@ The CIS Controls are prioritized cyber defense practices. They are useful as a p
 
 Treat this as security-control assessment guidance, not legal advice and not a certification claim. When producing final language, cite CIS Control and Safeguard IDs where known, label assumptions, and distinguish “supports CIS Controls” from “fully implemented across the enterprise.”
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks about:
-
-- CIS Controls v8 or v8.1 firewall, NGFW, perimeter firewall, internal segmentation firewall, cloud firewall, IDS/IPS, VPN, or network infrastructure expectations
-- mapping firewall features to CIS Critical Security Controls safeguards
-- creating a practical security baseline for organizations that do not have a more specific framework requirement
-- assessing firewall rulebases, NAT, zones, VPN, routing, IDS/IPS, DNS security, URL filtering, malware defense, logging, SIEM forwarding, or incident-response evidence against CIS
-- reviewing network infrastructure management, secure configuration, administrative access, service-provider access, or cloud security group controls
-- preparing audit-ready evidence requests, gap findings, roadmap items, or prioritized remediation plans using CIS language
-- comparing Palo Alto, FortiGate, Juniper SRX, Cisco ASA/FTD, Check Point, cloud-native firewalls, host firewalls, SASE/ZTNA, or microsegmentation controls against CIS baseline needs
-
-Do not use this skill as a substitute for parsing a raw firewall configuration. Load the matching parsing-cisco/fortinet/palo/srx skill first, then use this skill to interpret CIS implications. For framework-independent rulebase hygiene (any-any rules, shadowed/orphaned rules, weak crypto, cleanup), use the firewall-best-practices-audit skill; use this skill when findings must map to CIS Controls and audit evidence.
+Parse raw configurations with the matching `parsing-*` skill first. Use this skill when findings must map to CIS Controls safeguards and evidence; use `firewall-best-practices-audit` for framework-neutral hygiene. Keep CIS Controls distinct from product-specific CIS Benchmarks.
 
 ## Baseline Interpretation
 

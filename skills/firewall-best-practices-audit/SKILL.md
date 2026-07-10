@@ -1,10 +1,11 @@
 ---
 name: firewall-best-practices-audit
-description: Use when auditing or reviewing a firewall or NGFW rulebase for security and operational best-practice hygiene, independent of any compliance framework. Covers overly permissive and any-any rules, shadowed/redundant/overlapping/orphaned rules, missing deny-all and logging, dangerous exposed services, plaintext management (telnet/http/SNMPv1-2c), weak VPN/IKE/IPsec crypto, device-plane hardening (SSH root-login, host-inbound exposure, missing zone screens, auth/password lockout policy, control-plane/RE filters, unreferenced/inert security services, empty policy sets, IPv6 posture), and operational cleanup (unused/duplicate objects, oversized groups, naming/description gaps, rule consolidation). Operates on the parsing-* intermediate schema; for raw config, run the matching parsing-cisco/fortinet/palo/srx skill first. Emits prioritized findings with severity, confidence, and vendor-neutral plus source-vendor remediation.
-version: 1.1.1
+description: Audit normalized Cisco, Fortinet, Palo Alto, and Juniper firewall rulebases for security hygiene. Use when finding any-any, shadowed, redundant, or orphaned rules, missing deny or logging, exposed management, weak VPN crypto, hardening gaps, or unused objects. Parse raw configs first.
+version: 1.1.2
 author:
   - fastrevmd-lab
   - Claude
+  - GPT
 license: MIT
 metadata:
   hermes:
@@ -22,23 +23,9 @@ This skill is deliberately framework-agnostic. It answers "is this rulebase hard
 
 The audit reports findings, not verdicts. It never claims a config is "secure" — at best it reports "no in-scope findings" with caveats about what could not be checked (for example, hit-count or last-used data that the static schema does not carry). The output is decision-grade: a short posture line, a severity tally, the list of checks that were skipped for missing data, and a prioritized list of top fixes.
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks to:
-
-- "audit/review this firewall rulebase" or "harden this firewall config"
-- "is this config hardened" / "what's wrong with this rulebase"
-- "find permissive / any-any / shadowed / redundant / unused rules or objects"
-- run a "firewall hygiene review" or "rulebase cleanup"
-- perform a cross-vendor rulebase audit (Cisco / FortiGate / Palo Alto / SRX) against one consistent set of best-practice checks
-- prioritize firewall fixes by risk
-
-Do NOT use this skill when:
-
-- The ask is to map controls to a compliance framework (PCI, HIPAA, CMMC, NIST 800-171, CIS, ISO 27001, SOC 2) — route to the matching `*-ngfw-compliance` skill instead.
-- You are handed raw vendor config for a vendor that has a parser — run the matching `parsing-*` skill first to produce the intermediate schema, then audit. Do not hand-audit raw text.
-- The ask is to convert/migrate the config to another vendor — route to firewall-config-conversion.
-- The ask is to compare two configs for drift or parity — route to firewall-config-diff.
+Operate on the normalized `parsing-*` schema; do not hand-audit raw vendor text when a parser exists. Route framework mappings to the matching compliance skill, migrations to `firewall-config-conversion`, and parity or drift comparisons to `firewall-config-diff`.
 
 ## Input Handling
 

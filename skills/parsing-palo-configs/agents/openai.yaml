@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parsing Palo Alto Configs"
+  short_description: "Parse PAN-OS and Panorama configurations"
+  default_prompt: "Use $parsing-palo-configs to parse this PAN-OS or Panorama configuration into the shared schema."

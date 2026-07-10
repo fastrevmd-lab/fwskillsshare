@@ -1,11 +1,11 @@
 ---
 name: srx-autovpn-full-tunnel
-description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX AutoVPN hub-and-spoke IPsec with full-tunnel backhaul, where spokes send all non-local traffic up the tunnel and the hub is the centralized internet egress. Covers the dynamic group-ike-id hub gateway, the Junos 24.4R1+ commit errors 'IKEv2 with authentication-method pre-shared-key is not allowed' (use certificates, or per-spoke PSK gateways) and 'Remote-ip 0.0.0.0/0 in traffic-selector is not supported' (use the 0.0.0.0/1 + 128.0.0.0/1 split), traffic selectors, Auto Route Insertion (ARI), the single shared st0.0, the spoke default route into st0, the anti-recursion host route, the vSRX management-default ECMP caveat, NAT-T through double NAT, hub source-NAT egress, VPN-to-untrust and VPN-to-VPN hairpin policies, and when static per-spoke tunnels (srx-ipsec-hub-spoke) or spoke-to-spoke shortcuts (srx-advpn) fit better.
-version: 1.1.1
+description: Design, configure, audit, and troubleshoot Juniper SRX AutoVPN full-tunnel hub backhaul. Use when handling group-ike-id gateways, traffic selectors, ARI, shared st0, anti-recursion routes, source NAT, VPN hairpinning, NAT-T, or Junos 24.4R1+ PSK and 0.0.0.0/0 commit errors. Use ADVPN for direct spoke shortcuts.
+version: 1.1.2
 author:
   - fastrevmd-lab
-  - Jason Anderson
   - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:
@@ -66,25 +66,9 @@ dynamic-gateway mechanics — is standard AutoVPN.
 > validated on four vSRX (Junos OS 23.2R2.21) plus a Cisco IOS-XE WAN transit
 > router. See `references/source-design-summary.md`.
 
-## When to Use
+## Scope and routing
 
-- Designing or migrating a **hub-and-spoke IPsec** overlay where the hub must be
-  the **single internet egress** for all spokes (centralized inspection/logging).
-- Many or churning spoke sites: AutoVPN adds spokes with **zero hub change**.
-- Spokes must reach **each other** through the hub (hairpin) as well as the
-  internet.
-- Auditing or troubleshooting an existing full-tunnel AutoVPN: tunnels up but no
-  traffic, asymmetric/black-holed internet, NAT not applying, or recursion.
-
-When **not** to use:
-- A handful of small, stable, explicitly-pinned sites where every tunnel should
-  be visible in config — use static per-spoke tunnels instead
-  (`srx-ipsec-hub-spoke`). See *Choose This vs. Static Hub-Spoke* below.
-- Spokes that need **local breakout** (split tunnel). Full tunnel concentrates
-  all spoke internet traffic on the hub's WAN, CPU, and NAT table.
-- Branch-to-branch traffic is heavy enough that hairpinning it through the hub
-  adds unacceptable latency or hub load — use `srx-advpn` (dynamic
-  spoke-to-spoke shortcut tunnels; requires certificate auth).
+Use this design when all spoke internet and inter-spoke traffic must traverse a centralized hub. Use `srx-ipsec-hub-spoke` for a small explicit estate, `srx-advpn` when direct spoke shortcuts are required, and another design when spokes need local breakout.
 
 ## Topology Model
 

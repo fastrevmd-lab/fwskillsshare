@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parsing SRX Configs"
+  short_description: "Parse Juniper SRX and Junos configurations"
+  default_prompt: "Use $parsing-srx-configs to parse this Juniper SRX configuration into the shared schema."

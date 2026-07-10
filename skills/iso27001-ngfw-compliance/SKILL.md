@@ -1,8 +1,11 @@
 ---
 name: iso27001-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining how a next-generation firewall or firewall estate can support an ISO/IEC 27001:2022 information security management system and Annex A controls. Covers ISMS-scoped network security, access control, secure configuration, logging and monitoring, supplier access, change management, incident management, backup/recovery, audit evidence, Statement of Applicability (SoA) support, and firewall description/tag markers. Triggers include Annex A control IDs (A.5.15, A.8.20-A.8.23), ISO 27002, certification and surveillance audits, and nonconformity/corrective-action evidence. Emphasizes that ISO 27001 certification applies to the ISMS scope, not to an NGFW product alone.
-version: 0.1.1
-author: Hermes Agent
+description: Map firewall controls, evidence, and gaps to ISO/IEC 27001:2022 and ISO 27002. Use when assessing ISMS scope, Annex A.8.20-A.8.23, secure configuration, logging, supplier access, change or incident evidence, the Statement of Applicability, audits, or corrective actions. Parse raw configs first.
+version: 0.1.2
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:
@@ -29,18 +32,9 @@ Firewall evidence is usually most relevant to Annex A control themes around acce
 
 Treat this as control-mapping and audit-preparation guidance, not legal advice and not a certification determination. For formal work, cite the organization’s SoA control IDs, audit scope, risk-treatment plan, and internal policy references. Avoid quoting ISO control text verbatim unless the user provides licensed text.
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks about:
-
-- ISO/IEC 27001:2022, ISO 27002:2022, ISMS, Annex A, SoA, internal audit, certification audit, surveillance audit, or risk-treatment evidence for firewall controls
-- mapping NGFW, firewall, VPN, WAF, IDS/IPS, SASE/ZTNA, cloud security groups, or microsegmentation controls to ISO 27001 evidence
-- enterprise firewall governance: policy standards, rule review, secure configuration, change management, logging, supplier access, incident response, backup, or network segregation
-- preparing audit-ready firewall evidence packages, findings, risk-treatment actions, corrective actions, or management-review inputs
-- adding concise ISO/ISMS control markers to firewall descriptions, tags, comments, or external evidence repositories
-- comparing Palo Alto, FortiGate, Juniper SRX, Cisco ASA/FTD, Check Point, cloud-native firewalls, WAFs, host firewalls, and ZTNA/SASE against ISO-oriented control objectives
-
-Do not use this skill as a substitute for parsing a raw firewall configuration. Load the matching parsing-cisco/fortinet/palo/srx skill first, then use this skill to interpret ISO 27001 implications. For framework-independent rulebase hygiene (any-any rules, shadowed/orphaned rules, weak crypto, cleanup), use the firewall-best-practices-audit skill; use this skill when findings must map to ISO 27001 controls and audit evidence.
+Parse raw configurations with the matching `parsing-*` skill first. Use this skill when findings must map to ISO 27001 controls, ISMS scope, or audit evidence; use `firewall-best-practices-audit` for framework-neutral hygiene.
 
 ## Baseline Interpretation
 

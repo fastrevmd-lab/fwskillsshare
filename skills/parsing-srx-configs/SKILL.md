@@ -1,8 +1,11 @@
 ---
 name: parsing-srx-configs
-description: 'Use when the user pastes, uploads, or references a Juniper SRX / Junos firewall configuration — parses and analyzes SRX configs in either "set" command format (show configuration | display set) or hierarchical curly-brace format (show configuration). Trigger on keywords: SRX, Junos, Juniper, "set security", "security zones", "address-book", "applications", "security policies", "from-zone", "to-zone", "nat rule-set", "chassis cluster", "logical-systems", "routing-instances". Also trigger when the user asks to convert, audit, summarize, or explain an SRX config.'
-version: 1.3.3
-author: Hermes Agent
+description: Parse Juniper SRX and Junos display-set or hierarchical configurations into the shared firewall schema. Use when input contains set security, zones, policies, address-book, from-zone, to-zone, NAT rule-set, chassis cluster, logical-systems, or routing-instances, including audit, conversion, diff, summary, and explanation tasks.
+version: 1.3.4
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: MIT
 metadata:
   hermes:
@@ -40,18 +43,9 @@ Use this skill to parse Juniper SRX / Junos firewall configurations into the sha
 
 For design interpretation after extraction, load the adjacent SRX operational skill that matches the topic: `srx-policy`, `srx-nat`, `srx-mnha`, `srx-mpls-in-flow`, or `srx-dynamic-ip-feed`.
 
-## When to Use
+## Scope and routing
 
-Use this skill when:
-
-- the user pastes or references SRX, Junos, Juniper, `show configuration`, or `display set` output
-- the task is to parse, audit, summarize, compare, or convert an SRX configuration
-- the config contains `set security`, `security zones`, `address-book`, `security policies`, `from-zone`, `to-zone`, `nat rule-set`, `logical-systems`, or `routing-instances`
-- you need vendor-neutral JSON before cross-vendor migration or deeper SRX-specific interpretation
-
-Do not use this skill as a substitute for device-specific validation. When the parse result will drive production changes, verify against current vendor documentation and live device output where available.
-
-Not this skill: for Cisco ASA/FTD configs use parsing-cisco-configs, FortiGate use parsing-fortinet-configs, PAN-OS/Panorama use parsing-palo-configs. Format tripwire — stop and hand off if the input shows column-0 commands with space-indented sub-commands and `nameif`/`access-list`/`object network` (Cisco ASA/FTD), `config`/`edit`/`set`/`next`/`end` blocks (FortiGate), or XML `<entry name=` / flat `set deviceconfig`/`set rulebase` (PAN-OS). Downstream consumers of this parse: firewall-best-practices-audit, firewall-config-conversion, firewall-config-diff.
+Use only for Juniper SRX or Junos hierarchy and display-set syntax. Hand off ASA/FTD `access-list`, `nameif`, or `object network` input to `parsing-cisco-configs`, FortiOS blocks to `parsing-fortinet-configs`, and PAN-OS XML or `set deviceconfig` to `parsing-palo-configs`. Verify production-bound results against current device documentation and output. Downstream consumers are the SRX playbooks and the audit, conversion, and diff skills.
 
 ## Input Format Detection
 

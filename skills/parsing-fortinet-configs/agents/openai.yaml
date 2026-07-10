@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parsing Fortinet Configs"
+  short_description: "Parse FortiGate and FortiOS configurations"
+  default_prompt: "Use $parsing-fortinet-configs to parse this FortiGate configuration into the shared schema."

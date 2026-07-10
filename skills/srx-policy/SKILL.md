@@ -1,8 +1,11 @@
 ---
 name: srx-policy
-description: "Use when designing, migrating, configuring, auditing, or troubleshooting Juniper SRX security policy on Junos 23.x+ non-Branch SRX platforms. Covers global versus zone-to-zone policy structure (security policies global, from-zone/to-zone), address/application objects, AppID/AppFW, NextGen Web Filtering versus Enhanced Web Filtering, SecIntel, ATP integration, logging, policy order, verification, troubleshooting, and cross-VLAN device discovery (mDNS/SSDP, casting, Chromecast/AirPlay/Fire TV) where a permit policy alone cannot fix TTL=1 link-local multicast. Trigger on: show security policies hit-count, show security match-policies, shadowed rules, default deny."
-version: 1.2.3
-author: Hermes Agent
+description: Design, migrate, configure, audit, and troubleshoot Juniper SRX security policy on Junos 23.x+ non-Branch platforms. Use when handling global or zone policy, address and application objects, AppID, AppFW, NGWF, EWF, SecIntel, ATP, logging, rule order, hit counts, default deny, or cross-VLAN mDNS and SSDP boundaries.
+version: 1.2.4
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:
@@ -86,21 +89,9 @@ Why global policy is the recommended migration target:
 
 Do not guess feature support. Before final design, verify platform, Junos release, licenses, and service package availability in current Juniper documentation / Pathfinder / Feature Explorer and on the device with `show version`, `show system license`, and relevant package/version commands.
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks about:
-
-- SRX security policy design, migration, audit, or troubleshooting on Junos 23.x+
-- greenfield SRX policy architecture or migration from Palo Alto, FortiGate, ASA/FTD, Check Point, or another vendor
-- whether to use `security policies global` or `security policies from-zone ... to-zone ...`
-- global address books, address objects, address sets, applications, or application sets for SRX policies
-- application-aware policy, AppID, `security application-firewall`, dynamic applications, or AppFW rule-sets
-- enhanced / next-generation web filtering, UTM policies, category/reputation actions, fallback behavior, or web-filtering counters
-- SecIntel feed concepts, ATP Cloud/Appliance integration, threat-intelligence enforcement, or SRX as an ATP enforcement point
-- policy logging, hit counts, rule order, default deny, shadowing, policy-rematch, or session disruption during policy commits
-- `show security policies`, `show security policies hit-count`, `show security application-firewall`, `show security utm web-filtering`, or policy-related flow troubleshooting
-
-Do not use this as the primary skill for parsing a full config. Load `parsing-srx-configs` first for extraction, then use this skill to interpret or redesign the policy model. Load `srx-nat` when NAT ordering, translated addresses, proxy ARP, hairpin, or NAT64 affect policy matching.
+Use this skill for SRX policy behavior after relevant configuration is identified. Use `parsing-srx-configs` for full-config extraction and `srx-nat` when translation changes the policy match.
 
 ## Recommended Architecture
 
@@ -335,27 +326,7 @@ For ATP Appliance integration, confirm the SRX-to-ATP integration workflow in th
 
 ## Multicast and Service Discovery (mDNS/SSDP) Across Zones
 
-The most common "why is traffic dropped across VLANs" question on home/IoT and campus SRX deployments is device discovery — Fire TV, Chromecast, AirPlay, Sonos, Plex — not unicast session policy. Here a `permit` policy is **necessary-but-not-sufficient**, and often not the real fix at all. Know the mechanics before promising cross-VLAN casting from a policy change.
-
-Key facts:
-
-- **Link-local discovery is not routable.** mDNS (`224.0.0.251:5353`) and SSDP (`239.255.255.250:1900`) are sent with IP **TTL=1**. A flow-mode SRX will not forward them across an L3 boundary regardless of policy — the packets never cross the zone boundary, so a permit rule for those groups gives a false sense of a fix.
-- **Routable multicast needs multicast routing, not just policy.** Flow-mode SRX does not forward multicast by default. Real multicast forwarding requires `protocols igmp` + `protocols pim` (and/or `forwarding-options`) plus the corresponding security-policy permits. This is rarely what home/IoT discovery actually needs.
-- **Cross-VLAN discovery needs an off-box reflector.** Use an mDNS/SSDP reflector (Avahi, or a controller-based reflector) with reach into both subnets to relay discovery between VLANs. Gotcha: if the **SRX** (not an L2 controller) owns inter-VLAN routing, a controller-based mDNS reflector that only bridges within the controller's L2 domain will not cross the SRX — the reflector must have an interface/reachability in each subnet the SRX routes between.
-
-The correct firewall role:
-
-1. Let the reflector handle **discovery** (mDNS/SSDP).
-2. On the SRX, permit the **post-discovery unicast** control/stream between the controller/source subnet and the device subnet, scoped to a media application set (Cast/AirPlay/DLNA control and streaming ports), not `application any`.
-3. Verify hit counts and mine the default-deny log for media ports to add:
-
-```text
-show security policies hit-count global
-show security match-policies from-zone <SRC> to-zone <DST> source-ip <client> destination-ip <device> protocol tcp destination-port <port>
-show log messages | match "RT_FLOW_SESSION_DENY|DEFAULT-DENY"
-```
-
-Do not promise cross-VLAN casting from a `permit` rule alone. The permit enables the unicast stream *after* discovery; without a reflector (or full multicast routing) the devices never discover each other in the first place. For extracting whether a box already runs multicast routing, see `parsing-srx-configs`.
+Read `references/service-discovery.md` when troubleshooting mDNS, SSDP, casting, or other discovery across routed VLANs. A permit policy alone cannot forward TTL-1 discovery traffic; the reference separates reflector or multicast-routing requirements from the post-discovery unicast policy.
 
 ## Migration Workflow from Another Vendor
 

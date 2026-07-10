@@ -1,8 +1,11 @@
 ---
 name: srx-dynamic-ip-feed
-description: Use when configuring, auditing, or troubleshooting Juniper SRX dynamic IP objects from HTTPS feed servers. Covers bundle archive (.tgz) feeds, feed-name to dynamic-address mapping, certificate validation, HTTP basic authentication, mutual TLS client certificates, session-scan behavior, routing-instance reachability, and verification with show security dynamic-address and ipfd logs. Includes IPFD_DA_FEED_HTTPS_STATUS and IPFD_DA_FEED_CERT_SUBJ_CHECK_FAIL log interpretation.
-version: 1.0.1
-author: Hermes Agent
+description: Configure, audit, and troubleshoot Juniper SRX dynamic IP objects from HTTPS feeds. Use when handling feed archives, dynamic-address mapping, certificate validation, basic auth, mTLS, session scanning, routing-instance reachability, show security dynamic-address, ipfd logs, or feed and TLS failures. Use srx-policy for SecIntel feeds.
+version: 1.0.2
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: CC-BY-NC-SA-4.0-source-derived-summary
 metadata:
   hermes:
@@ -33,22 +36,9 @@ The key SRX idea is:
 
 SRX checks feed freshness with HTTP `HEAD`, downloads changed archives with `GET`, and updates dynamic objects without a commit. The default update interval is 5 minutes; the minimum is 30 seconds. Use production TLS validation and authentication whenever possible.
 
-## When to Use
+## Scope and routing
 
-Use this skill when the user asks about:
-
-- SRX dynamic IP objects, dynamic-address, or feed-server configuration
-- automating SRX security policy address objects from files or external systems
-- blocklists, allowlists, threat feeds, cloud IP inventory, or dynamic destinations on SRX
-- `show security dynamic-address` or `show security dynamic-address summary`
-- `ipfd` logs, feed download failures, HTTP 401/403, TLS certificate validation failures
-- Junos configuration under `security dynamic-address feed-server`
-- SRX HTTPS feed server certificate validation, HTTP basic auth, or mutual TLS
-- feed-server reachability through a non-default routing instance
-
-Do not use this as the primary skill for general SRX parsing; load `parsing-srx-configs` for full config extraction. Use this skill for design, implementation, and troubleshooting of dynamic-address feeds.
-
-For Juniper-curated threat feeds via SecIntel/ATP rather than self-hosted feed servers, see `srx-policy` (SecIntel section) instead.
+Use this skill for self-hosted dynamic-address feeds. Use `srx-policy` for Juniper SecIntel or ATP feeds and `parsing-srx-configs` for full-config extraction.
 
 ## Prerequisites and Version Notes
 
@@ -431,28 +421,7 @@ When the archive changes, expect a `HEAD` followed by a `GET`.
 
 ## Update Test Procedure
 
-To prove updates propagate without commit:
-
-```bash
-cd /var/www/html
-echo 1.1.1.2 >> feed-1/whitelist-1
-tar czf feed-1.tgz feed-1/
-```
-
-Then watch:
-
-```bash
-tail -f -n0 /var/log/nginx/access.log
-```
-
-And on SRX:
-
-```text
-show log messages | match ipfd
-show security dynamic-address
-```
-
-The new IP should appear under the mapped dynamic address object after the next update interval.
+Read `references/feed-update-test.md` when validating that feed changes propagate without a configuration commit.
 
 ## Troubleshooting Matrix
 

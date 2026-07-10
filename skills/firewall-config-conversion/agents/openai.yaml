@@ -1,0 +1,4 @@
+interface:
+  display_name: "Firewall Config Conversion"
+  short_description: "Convert firewall configs across four vendors"
+  default_prompt: "Use $firewall-config-conversion to convert this parsed firewall configuration and produce a fidelity report."
