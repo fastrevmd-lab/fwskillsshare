@@ -1,10 +1,11 @@
 ---
 name: srx-advpn
-description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX Auto Discovery VPN (ADVPN) — hub-and-spoke IPsec that dynamically builds direct spoke-to-spoke shortcut tunnels so branch-to-branch traffic bypasses the hub. Covers suggester and partner roles, the shortcut lifecycle, the multipoint st0 overlay, OSPF p2mp with dynamic-neighbors over the overlay, the certificate-authentication requirement (IKEv2 PSK with dynamic ike-user-type is rejected on modern Junos), PKI enrollment, the chassis-cluster certificate-load gotcha, verification, and troubleshooting including the vSRX 'No public key found' IKE_AUTH failure (root-caused to the dynamic cert-gateway responder path — use per-spoke static-address cert gateways).
-version: 1.1.1
+description: Design, configure, audit, or troubleshoot Juniper SRX Auto Discovery VPN (ADVPN) for dynamic spoke-to-spoke IPsec shortcuts. Use for suggester or partner roles, multipoint st0, OSPF p2mp, certificate authentication, PKI, shortcut lifecycle, and No public key found IKE_AUTH failures.
+version: 1.1.2
 author:
   - fastrevmd-lab
   - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:

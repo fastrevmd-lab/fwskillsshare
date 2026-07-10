@@ -1,8 +1,11 @@
 ---
 name: hipaa-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining what it takes for a next-generation firewall or firewall estate to support HIPAA (often misspelled "HIPPA") Security Rule safeguards for electronic protected health information (ePHI, 45 CFR 164.312). Covers HIPAA scope, ePHI network segmentation, access control, audit controls, integrity, transmission security, risk analysis, risk management, security incident procedures, business associate considerations, firewall evidence, and audit-ready descriptions/tags. Triggers include BAA/business associate access and OCR audit preparation. Emphasizes that HIPAA compliance is assessed for the covered entity or business associate environment, not certified by an NGFW alone.
-version: 0.1.1
-author: Hermes Agent
+description: Assess how firewalls and NGFW estates support the HIPAA Security Rule for ePHI. Use for segmentation, access and audit controls, transmission security, risk management, BAA or vendor access, OCR audit evidence, and 45 CFR 164.312. Also trigger on the common misspelling HIPPA.
+version: 0.1.2
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:

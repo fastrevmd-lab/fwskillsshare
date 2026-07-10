@@ -1,0 +1,4 @@
+interface:
+  display_name: "Firewall Best-Practices Audit"
+  short_description: "Audit firewall rulebase security and hygiene"
+  default_prompt: "Use $firewall-best-practices-audit to audit this normalized firewall configuration and prioritize findings."

@@ -1,8 +1,11 @@
 ---
 name: srx-policy
-description: "Use when designing, migrating, configuring, auditing, or troubleshooting Juniper SRX security policy on Junos 23.x+ non-Branch SRX platforms. Covers global versus zone-to-zone policy structure (security policies global, from-zone/to-zone), address/application objects, AppID/AppFW, NextGen Web Filtering versus Enhanced Web Filtering, SecIntel, ATP integration, logging, policy order, verification, troubleshooting, and cross-VLAN device discovery (mDNS/SSDP, casting, Chromecast/AirPlay/Fire TV) where a permit policy alone cannot fix TTL=1 link-local multicast. Trigger on: show security policies hit-count, show security match-policies, shadowed rules, default deny."
-version: 1.2.3
-author: Hermes Agent
+description: Design, migrate, configure, audit, or troubleshoot Juniper SRX security policy on Junos 23.x+ non-Branch platforms. Use for global versus zone policy, address or application objects, AppID or AppFW, NGWF or EWF, SecIntel, ATP, logging, rule order, hit counts, default deny, or cross-VLAN mDNS or SSDP discovery boundaries.
+version: 1.2.4
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:

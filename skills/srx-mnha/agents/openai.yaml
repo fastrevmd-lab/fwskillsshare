@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRX MNHA"
+  short_description: "Design and troubleshoot Juniper SRX MNHA"
+  default_prompt: "Use $srx-mnha to design or troubleshoot this Juniper SRX MNHA deployment."

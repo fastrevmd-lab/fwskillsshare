@@ -1,8 +1,11 @@
 ---
 name: srx-nat
-description: "Use when designing, configuring, auditing, or troubleshooting Juniper SRX NAT. Covers source NAT, destination NAT, static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, address-persistent behavior, hairpin NAT, proxy ARP, rule ordering, session verification, pool exhaustion, and source/destination NAT troubleshooting. Trigger on: security nat source/destination/static, rule-set, static-nat inet, port forwarding, port block-allocation, port-overloading, show security nat source rule all, RT_NAT."
-version: 1.1.1
-author: Hermes Agent
+description: Design, configure, audit, or troubleshoot Juniper SRX NAT. Use for source, destination, static, NAT64 or DNS64, CGN or PBA, persistent or address-persistent NAT, hairpinning, proxy ARP, rule order, session verification, pool exhaustion, security nat configuration, show security nat output, or RT_NAT logs.
+version: 1.1.2
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:

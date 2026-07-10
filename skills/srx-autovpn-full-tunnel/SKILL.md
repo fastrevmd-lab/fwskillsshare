@@ -1,11 +1,11 @@
 ---
 name: srx-autovpn-full-tunnel
-description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX AutoVPN hub-and-spoke IPsec with full-tunnel backhaul, where spokes send all non-local traffic up the tunnel and the hub is the centralized internet egress. Covers the dynamic group-ike-id hub gateway, the Junos 24.4R1+ commit errors 'IKEv2 with authentication-method pre-shared-key is not allowed' (use certificates, or per-spoke PSK gateways) and 'Remote-ip 0.0.0.0/0 in traffic-selector is not supported' (use the 0.0.0.0/1 + 128.0.0.0/1 split), traffic selectors, Auto Route Insertion (ARI), the single shared st0.0, the spoke default route into st0, the anti-recursion host route, the vSRX management-default ECMP caveat, NAT-T through double NAT, hub source-NAT egress, VPN-to-untrust and VPN-to-VPN hairpin policies, and when static per-spoke tunnels (srx-ipsec-hub-spoke) or spoke-to-spoke shortcuts (srx-advpn) fit better.
-version: 1.1.1
+description: Design, configure, audit, or troubleshoot Juniper SRX AutoVPN full-tunnel hub-and-spoke backhaul. Use for dynamic group-ike-id gateways, traffic selectors and ARI, shared st0, anti-recursion routes, centralized source NAT, VPN hairpin policy, NAT-T, or Junos 24.4R1+ PSK and 0.0.0.0/0 commit errors.
+version: 1.1.2
 author:
   - fastrevmd-lab
-  - Jason Anderson
   - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:

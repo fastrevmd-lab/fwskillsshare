@@ -8,3 +8,7 @@ entities.json
 
 # Subagent-driven-development scratch
 .superpowers/
+
+# Python validation artifacts
+__pycache__/
+*.py[cod]

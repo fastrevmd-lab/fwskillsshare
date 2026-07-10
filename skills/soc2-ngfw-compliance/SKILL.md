@@ -1,8 +1,11 @@
 ---
 name: soc2-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining how a next-generation firewall or firewall estate can support SOC 2 Trust Services Criteria for service organizations, SaaS platforms, MSPs, and cloud providers. Covers security, availability, confidentiality, privacy-supporting network controls, logical access, system operations, change management, risk mitigation, logging/monitoring, vendor access, incident response, audit evidence, operating effectiveness samples, and firewall description/tag markers. Triggers include Type I and Type II examinations, AICPA common criteria IDs such as CC6.1, CC6.6, CC7.2, and CC8.1, and auditor evidence-sample requests. Emphasizes that SOC 2 reports cover system controls over a period, not certification of an NGFW product alone.
-version: 0.1.1
-author: Hermes Agent
+description: Assess firewall support for SOC 2 Trust Services Criteria. Use for Type I or Type II examinations, logical access, operations, change management, logging and monitoring, vendor access, incident response, operating-effectiveness samples, and criteria such as CC6.1, CC6.6, CC7.2, or CC8.1.
+version: 0.1.2
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:

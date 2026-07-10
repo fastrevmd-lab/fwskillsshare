@@ -1,8 +1,11 @@
 ---
 name: srx-mpls-in-flow
-description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX MPLS L3VPN in flow mode (secure PE / secure CPE). Covers Junos 24.2R1+ decoupled family mpls mode packet-based with inet/inet6 flow-mode, VRF-aware security policies with l3vpn vrf-group (source-l3vpn-vrf-group / destination-l3vpn-vrf-group), vrf-table-label, LDP/MP-BGP inet-vpn signaling, VRF-aware NAT/AppID, Junos 25.4R1 VRF-to-zone mapping, SRX4600/SRX4700 platform notes, PowerMode/RFP behavior, MTU, verification, and troubleshooting.
-version: 1.0.2
-author: Hermes Agent
+description: Design, configure, audit, or troubleshoot Juniper SRX MPLS L3VPN in flow mode. Use for Junos 24.2R1+ packet-based family mpls with inet or inet6 flow, secure PE or CPE, VRFs, LDP or MP-BGP, l3vpn vrf-group policy, 25.4R1 VRF-to-zone mapping, VRF-aware NAT or AppID, PowerMode or RFP, MTU, and label or policy troubleshooting.
+version: 1.0.3
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:

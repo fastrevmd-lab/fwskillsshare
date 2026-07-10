@@ -1,8 +1,11 @@
 ---
 name: parsing-cisco-configs
-description: 'Use when the user pastes, uploads, or references a Cisco ASA or FTD config — parses and analyzes Cisco ASA and FTD firewall configurations in the line-oriented format with indented sub-commands from "show running-config". Trigger on keywords: ASA, FTD, Cisco, "access-list", "access-group", "object network", "object-group", "object service", "nameif", "security-level", "nat (", "interface GigabitEthernet", "interface Management", "failover", "threat-detection". Also trigger when the user asks to convert, audit, summarize, or explain a Cisco ASA/FTD config.'
-version: 1.1.4
-author: Hermes Agent
+description: Parse Cisco ASA and FTD running configurations into the shared vendor-neutral firewall schema. Trigger on ASA, FTD, show running-config, access-list, access-group, object network or object-group, nameif, security-level, NAT, interfaces, failover, or requests to audit, convert, diff, summarize, or explain a Cisco firewall config.
+version: 1.1.5
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: MIT
 metadata:
   hermes:

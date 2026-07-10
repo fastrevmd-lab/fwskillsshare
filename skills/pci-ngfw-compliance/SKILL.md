@@ -1,8 +1,11 @@
 ---
 name: pci-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining what it takes for a next-generation firewall or firewall estate to support PCI DSS v4.0.1 compliance. Covers PCI scoping, CDE segmentation, network security controls, inbound and outbound restriction, rule review evidence, logging, IDS/IPS, WAF-adjacent controls, admin access, change control, and assessor-ready evidence. Triggers include Requirement 1 network security controls, QSA/ROC/SAQ evidence requests, six-month rule review, and "PCI 4.0" questions. Emphasizes that PCI DSS compliance is assessed for the entity/environment, not certified by an NGFW alone.
-version: 0.1.1
-author: Hermes Agent
+description: Assess firewall support for PCI DSS v4.0.1. Use for CDE scope and segmentation, Requirement 1 network security controls, inbound or outbound restriction, six-month rule review, logging, IDS/IPS, admin access, change control, and QSA, ROC, or SAQ evidence. Treat compliance as an environment assessment, not an NGFW certification.
+version: 0.1.2
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:

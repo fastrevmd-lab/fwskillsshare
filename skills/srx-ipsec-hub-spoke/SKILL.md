@@ -1,11 +1,11 @@
 ---
 name: srx-ipsec-hub-spoke
-description: Use when designing, configuring, auditing, or troubleshooting Juniper SRX static point-to-point route-based IPsec hub-and-spoke with full-tunnel backhaul, where each spoke has one explicit tunnel and the hub is the centralized internet egress and spoke-to-spoke hairpin. Covers per-spoke IKE gateways pinned by peer WAN IP, IKEv2 with PSK, route-based VPNs with default proxy-id (no traffic selectors, no ARI), one st0 unit per spoke, manual per-spoke static routes, the spoke default route into st0, the anti-recursion host route, the vSRX management-default ECMP caveat, hub source-NAT, VPN-to-untrust and VPN-to-VPN policies, when to switch to AutoVPN, and verification.
-version: 1.0.2
+description: Design, configure, audit, or troubleshoot Juniper SRX static route-based IPsec hub-and-spoke with full-tunnel backhaul. Use for explicit per-spoke IKE gateways, one st0 per spoke, static routes, anti-recursion, centralized source NAT, VPN-to-untrust policy, and spoke-to-spoke hub hairpinning.
+version: 1.0.3
 author:
   - fastrevmd-lab
-  - Jason Anderson
   - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:

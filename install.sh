@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# install.sh - Installer for fastrevmd-lab/fwskillsshare Claude Code / Hermes skills
+# install.sh - Installer for fastrevmd-lab/fwskillsshare Claude Code / Codex / Hermes skills
 #
 # Usage: ./install.sh [options]
 #   OR:  curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash
@@ -9,7 +9,8 @@
 #   --all                 Select all 21 skills
 #   --skill NAME          Select a specific skill by name (repeatable)
 #   --family NAME         Select a whole family: parsers | srx | tooling | compliance (repeatable)
-#   --target WHERE        claude | hermes | both   (default: interactive prompt; 'claude' when -y)
+#   --target WHERE        claude | codex | hermes | both | all
+#                         ('both' keeps the legacy Claude+Hermes meaning; default: prompt, or claude with -y)
 #   --dir PATH            Explicit install directory (overrides --target)
 #   --list                Print the skill inventory (grouped by family) and exit
 #   --uninstall           Remove the selected skills from the selected target(s) instead of installing
@@ -58,6 +59,7 @@ declare -a COMPLIANCE=(
 GITHUB_REPO="fastrevmd-lab/fwskillsshare"
 GITHUB_BRANCH="main"
 CLAUDE_SKILLS_DIR="${HOME}/.claude/skills"
+CODEX_SKILLS_DIR="${HOME}/.agents/skills"
 HERMES_SKILLS_DIR="${HOME}/.hermes/skills/devops"
 
 # ANSI colors (only when stdout is a TTY)
@@ -116,7 +118,8 @@ Options:
   --all                 Select all 21 skills
   --skill NAME          Select a specific skill by name (repeatable)
   --family NAME         Select a whole family: parsers | srx | tooling | compliance (repeatable)
-  --target WHERE        claude | hermes | both   (default: interactive prompt; 'claude' when -y)
+  --target WHERE        claude | codex | hermes | both | all
+                        ('both' means Claude+Hermes; default: interactive prompt, or claude with -y)
   --dir PATH            Explicit install directory (overrides --target)
   --list                Print the skill inventory (grouped by family) and exit
   --uninstall           Remove the selected skills from the selected target(s) instead of installing
@@ -126,7 +129,9 @@ Options:
 
 Examples:
   ./install.sh --all --target claude
+  ./install.sh --all --target codex
   ./install.sh --family srx --target both --force
+  ./install.sh --family parsers --target all
   ./install.sh --skill srx-nat --skill srx-policy
   curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash -s -- --all -y
 EOF
@@ -372,10 +377,12 @@ interactive_target_selection() {
     echo ""
     echo "Select installation target:"
     echo "  1) Claude Code (~/.claude/skills/)"
-    echo "  2) Hermes (~/.hermes/skills/devops/)"
-    echo "  3) Both"
+    echo "  2) Codex (~/.agents/skills/)"
+    echo "  3) Hermes (~/.hermes/skills/devops/)"
+    echo "  4) Claude Code + Hermes (legacy 'both')"
+    echo "  5) All three"
     echo ""
-    echo -n "Enter choice [1-3] (default: 1): "
+    echo -n "Enter choice [1-5] (default: 1): "
 
     local input
     if [[ -r /dev/tty ]]; then
@@ -389,10 +396,16 @@ interactive_target_selection() {
             INSTALL_TARGETS=("$CLAUDE_SKILLS_DIR")
             ;;
         2)
-            INSTALL_TARGETS=("$HERMES_SKILLS_DIR")
+            INSTALL_TARGETS=("$CODEX_SKILLS_DIR")
             ;;
         3)
+            INSTALL_TARGETS=("$HERMES_SKILLS_DIR")
+            ;;
+        4)
             INSTALL_TARGETS=("$CLAUDE_SKILLS_DIR" "$HERMES_SKILLS_DIR")
+            ;;
+        5)
+            INSTALL_TARGETS=("$CLAUDE_SKILLS_DIR" "$CODEX_SKILLS_DIR" "$HERMES_SKILLS_DIR")
             ;;
         *)
             echo -e "${C_YELLOW}Invalid choice, defaulting to Claude Code${C_RESET}"
@@ -417,7 +430,10 @@ install_skill() {
     # Check if destination exists
     if [[ -d "$skill_dest" ]]; then
         if [[ "$FORCE" == true ]]; then
-            rm -rf "$skill_dest"
+            if ! rm -rf "$skill_dest"; then
+                echo -e "  ${C_RED}✗${C_RESET} $skill_name (could not remove existing destination)"
+                return 1
+            fi
         elif [[ "$NON_INTERACTIVE" == true ]]; then
             echo -e "  ${C_YELLOW}•${C_RESET} $skill_name (skipped, already exists)"
             return 2
@@ -432,7 +448,10 @@ install_skill() {
             fi
 
             if [[ "$answer" =~ ^[Yy]$ ]]; then
-                rm -rf "$skill_dest"
+                if ! rm -rf "$skill_dest"; then
+                    echo -e "  ${C_RED}✗${C_RESET} $skill_name (could not remove existing destination)"
+                    return 1
+                fi
             else
                 echo -e "  ${C_YELLOW}•${C_RESET} $skill_name (skipped)"
                 return 2
@@ -441,8 +460,14 @@ install_skill() {
     fi
 
     # Copy skill
-    mkdir -p "$target_dir"
-    cp -r "$skill_source" "$skill_dest"
+    if ! mkdir -p "$target_dir"; then
+        echo -e "  ${C_RED}✗${C_RESET} $skill_name (could not create target directory)"
+        return 1
+    fi
+    if ! cp -r "$skill_source" "$skill_dest"; then
+        echo -e "  ${C_RED}✗${C_RESET} $skill_name (copy failed)"
+        return 1
+    fi
     echo -e "  ${C_GREEN}✓${C_RESET} $skill_name"
     return 0
 }
@@ -454,7 +479,10 @@ uninstall_skill() {
     local skill_dest="$target_dir/$skill_name"
 
     if [[ -d "$skill_dest" ]]; then
-        rm -rf "$skill_dest"
+        if ! rm -rf "$skill_dest"; then
+            echo -e "  ${C_RED}✗${C_RESET} $skill_name (remove failed)"
+            return 1
+        fi
         echo -e "  ${C_GREEN}✓${C_RESET} $skill_name (removed)"
         return 0
     else
@@ -492,12 +520,15 @@ while [[ $# -gt 0 ]]; do
             ;;
         --target)
             if [[ -z "${2:-}" ]]; then
-                echo -e "${C_RED}Error: --target requires claude, hermes, or both${C_RESET}" >&2
+                echo -e "${C_RED}Error: --target requires claude, codex, hermes, both, or all${C_RESET}" >&2
                 exit 1
             fi
             case "$2" in
                 claude)
                     INSTALL_TARGETS=("$CLAUDE_SKILLS_DIR")
+                    ;;
+                codex)
+                    INSTALL_TARGETS=("$CODEX_SKILLS_DIR")
                     ;;
                 hermes)
                     INSTALL_TARGETS=("$HERMES_SKILLS_DIR")
@@ -505,8 +536,11 @@ while [[ $# -gt 0 ]]; do
                 both)
                     INSTALL_TARGETS=("$CLAUDE_SKILLS_DIR" "$HERMES_SKILLS_DIR")
                     ;;
+                all)
+                    INSTALL_TARGETS=("$CLAUDE_SKILLS_DIR" "$CODEX_SKILLS_DIR" "$HERMES_SKILLS_DIR")
+                    ;;
                 *)
-                    echo -e "${C_RED}Error: --target must be claude, hermes, or both${C_RESET}" >&2
+                    echo -e "${C_RED}Error: --target must be claude, codex, hermes, both, or all${C_RESET}" >&2
                     exit 1
                     ;;
             esac
@@ -595,6 +629,7 @@ fi
 # Process each target
 declare -i installed=0
 declare -i skipped=0
+declare -i failed=0
 
 for target in "${INSTALL_TARGETS[@]}"; do
     echo -e "${C_CYAN}Target: $target${C_RESET}"
@@ -604,13 +639,23 @@ for target in "${INSTALL_TARGETS[@]}"; do
             if install_skill "$skill" "$SKILLS_SOURCE" "$target"; then
                 ((installed++)) || true
             else
-                ((skipped++)) || true
+                rc=$?
+                if [[ $rc -eq 2 ]]; then
+                    ((skipped++)) || true
+                else
+                    ((failed++)) || true
+                fi
             fi
         else
             if uninstall_skill "$skill" "$target"; then
                 ((installed++)) || true
             else
-                ((skipped++)) || true
+                rc=$?
+                if [[ $rc -eq 2 ]]; then
+                    ((skipped++)) || true
+                else
+                    ((failed++)) || true
+                fi
             fi
         fi
     done
@@ -623,9 +668,11 @@ echo -e "${C_BOLD}Summary:${C_RESET}"
 if [[ "$MODE" == "install" ]]; then
     echo -e "  ${C_GREEN}✓${C_RESET} $installed installed"
     echo -e "  ${C_YELLOW}•${C_RESET} $skipped skipped"
+    echo -e "  ${C_RED}✗${C_RESET} $failed failed"
 else
     echo -e "  ${C_GREEN}✓${C_RESET} $installed removed"
     echo -e "  ${C_YELLOW}•${C_RESET} $skipped not found"
+    echo -e "  ${C_RED}✗${C_RESET} $failed failed"
 fi
 echo ""
 echo -e "${C_BOLD}Target paths:${C_RESET}"
@@ -639,10 +686,18 @@ if [[ "$MODE" == "install" && $installed -gt 0 ]]; then
     if [[ " ${INSTALL_TARGETS[*]} " =~ " $CLAUDE_SKILLS_DIR " ]]; then
         echo "  • Restart Claude Code — skills auto-trigger on vendor keywords / pasted configs"
     fi
+    if [[ " ${INSTALL_TARGETS[*]} " =~ " $CODEX_SKILLS_DIR " ]]; then
+        echo "  • Codex detects skill changes automatically; restart Codex if they do not appear"
+    fi
     if [[ " ${INSTALL_TARGETS[*]} " =~ " $HERMES_SKILLS_DIR " ]]; then
         echo "  • Run 'hermes skills list' to verify installation"
     fi
 fi
 
 echo ""
+if ((failed > 0)); then
+    echo -e "${C_RED}${C_BOLD}Completed with errors.${C_RESET}"
+    exit 1
+fi
+
 echo -e "${C_GREEN}${C_BOLD}Done!${C_RESET}"

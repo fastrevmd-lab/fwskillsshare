@@ -1,4 +1,4 @@
-# Firewall Skills For Network & Secuirty Engineers
+# Firewall Skills For Network & Security Engineers
 
 ![skills](https://img.shields.io/badge/skills-21-1f6feb) ![reviewed](https://img.shields.io/badge/reviewed-21%2F21-2ea043) ![license](https://img.shields.io/badge/license-MIT-blue) ![vendors](https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-8957e5)
 
@@ -18,9 +18,9 @@ These skills exist to close that gap. They pin the agent to vendor syntax that's
 curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash
 ```
 
-2. Choose your skills (space/numbers to toggle, `a` for all) and where to install them — **Claude Code** (`~/.claude/skills/`), **Hermes**, or both.
+2. Choose your skills (space/numbers to toggle, `a` for all) and where to install them — **Claude Code** (`~/.claude/skills/`), **Codex** (`~/.agents/skills/`), **Hermes**, or all three.
 
-3. Restart Claude Code.
+3. Restart the selected agent only if it does not detect the new skills automatically.
 
 4. Done. Paste a config or name a vendor and the right skill loads itself.
 
@@ -80,7 +80,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**21 skills** across four families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, or compliance language in your message or a pasted config — and every one is also typeable as a slash command (`/srx-nat`) when you want to force it.
+**21 skills** across four families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, or compliance language in your message or a pasted config. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 ### Config parsers
 
@@ -141,6 +141,10 @@ A third round on 2026-07-04/05 applied an authoring-quality pass across all 21 s
 
 These are research/operational and assessment-support skills, not certified products: review their output against current vendor documentation, live device behavior, and (for compliance work) a qualified assessor before relying on it.
 
+Each skill also includes optional `agents/openai.yaml` UI metadata for Codex. Claude Code and Hermes continue to use the portable `SKILL.md` content and ignore that product-specific folder.
+
+Run `python3 scripts/check-skill-packages.py` to validate portable frontmatter, reference paths, the combined Codex discovery budget, and all Codex UI metadata. Run `python3 scripts/check-shared-schema.py` to verify the four parser schemas remain byte-identical.
+
 ## Installation
 
 ### Installer (recommended)
@@ -163,7 +167,8 @@ Flags:
 --all                 Install all 21 skills
 --skill NAME          Install a specific skill (repeatable)
 --family NAME         parsers | srx | tooling | compliance (repeatable)
---target WHERE        claude | hermes | both   (default: prompt; claude with -y)
+--target WHERE        claude | codex | hermes | both | all
+                      (`both` keeps the legacy Claude+Hermes meaning; default: prompt, or claude with -y)
 --dir PATH            Explicit install directory (overrides --target)
 --list                List the skill inventory and exit
 --uninstall           Remove the selected skills instead of installing
@@ -176,7 +181,9 @@ Examples:
 
 ```bash
 ./install.sh --all --target claude              # everything, into ~/.claude/skills
+./install.sh --all --target codex               # everything, into ~/.agents/skills
 ./install.sh --family parsers --family srx      # just the parsers + SRX playbooks
+./install.sh --family tooling --target all      # tooling skills into all three agents
 ./install.sh --skill parsing-srx-configs --skill srx-nat -y
 ./install.sh --list                             # see what's available
 ```
@@ -195,6 +202,13 @@ cp -r fwskillsshare/skills/* ~/.claude/skills/
 cp -r fwskillsshare/skills/srx-mnha ~/.claude/skills/
 ```
 
+For **Codex**, copy into the user skill tree. Codex normally detects changes automatically; restart it if a new skill does not appear:
+
+```bash
+mkdir -p ~/.agents/skills
+cp -r fwskillsshare/skills/* ~/.agents/skills/
+```
+
 For **Hermes**, copy into your local Hermes skills tree (usually `~/.hermes/skills/devops/`) and confirm with `hermes skills list`:
 
 ```bash
@@ -203,7 +217,7 @@ cp -r fwskillsshare/skills/* ~/.hermes/skills/devops/
 hermes skills list | grep -E 'parsing-|srx-|firewall-|-ngfw-compliance'
 ```
 
-Restart Claude Code after installing. Skills auto-trigger when they detect vendor-specific keywords, SRX operational topics, or PCI/HIPAA/CMMC/NIST 800-171/CIS/ISO 27001/SOC 2 compliance language in your messages or pasted configs.
+Skills auto-trigger when they detect vendor-specific keywords, SRX operational topics, or PCI/HIPAA/CMMC/NIST 800-171/CIS/ISO 27001/SOC 2 compliance language in your messages or pasted configs.
 
 ### Managing context
 
@@ -214,6 +228,14 @@ Skill *bodies* only load when a skill is invoked, but each skill's short descrip
 ```
 
 `"name-only"` keeps the skill listed and invocable but hides its description; `"user-invocable-only"` hides it from the model entirely (slash-command only); `"off"` hides it completely.
+
+For **Codex**, disable an installed skill without deleting it by adding its `SKILL.md` path to `~/.codex/config.toml`:
+
+```toml
+[[skills.config]]
+path = "/home/you/.agents/skills/soc2-ngfw-compliance/SKILL.md"
+enabled = false
+```
 
 ## Usage
 
@@ -575,14 +597,17 @@ Version 1.1.0 of these skills incorporates parsing improvements identified by an
 ## Uninstall
 
 ```bash
-# Remove everything the installer put down, from both targets
+# Remove everything the installer put down from Claude Code and Hermes
 ./install.sh --uninstall --all --target both
 
+# Remove everything from Claude Code, Codex, and Hermes
+./install.sh --uninstall --all --target all
+
 # Or remove a single skill
-./install.sh --uninstall --skill srx-mnha --target claude
+./install.sh --uninstall --skill srx-mnha --target codex
 ```
 
-Manual equivalent — the skills are just directories, so `rm -rf ~/.claude/skills/<skill-name>` (and `~/.hermes/skills/devops/<skill-name>` for Hermes) removes any of them.
+Manual equivalent — the skills are just directories, so remove the selected skill directory under `~/.claude/skills/`, `~/.agents/skills/`, or `~/.hermes/skills/devops/` for the corresponding agent.
 
 ## License and Provenance
 

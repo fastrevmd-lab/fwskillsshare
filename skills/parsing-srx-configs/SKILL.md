@@ -1,8 +1,11 @@
 ---
 name: parsing-srx-configs
-description: 'Use when the user pastes, uploads, or references a Juniper SRX / Junos firewall configuration — parses and analyzes SRX configs in either "set" command format (show configuration | display set) or hierarchical curly-brace format (show configuration). Trigger on keywords: SRX, Junos, Juniper, "set security", "security zones", "address-book", "applications", "security policies", "from-zone", "to-zone", "nat rule-set", "chassis cluster", "logical-systems", "routing-instances". Also trigger when the user asks to convert, audit, summarize, or explain an SRX config.'
-version: 1.3.3
-author: Hermes Agent
+description: Parse Juniper SRX or Junos display set and hierarchical configurations into the shared firewall schema. Trigger on SRX, Junos, set security, security zones or policies, address-book, from-zone or to-zone, NAT rule-set, chassis cluster, logical-systems, routing-instances, or requests to audit, convert, diff, summarize, or explain the config.
+version: 1.3.4
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: MIT
 metadata:
   hermes:

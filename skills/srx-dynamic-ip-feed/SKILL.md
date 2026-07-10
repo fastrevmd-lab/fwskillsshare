@@ -1,8 +1,11 @@
 ---
 name: srx-dynamic-ip-feed
-description: Use when configuring, auditing, or troubleshooting Juniper SRX dynamic IP objects from HTTPS feed servers. Covers bundle archive (.tgz) feeds, feed-name to dynamic-address mapping, certificate validation, HTTP basic authentication, mutual TLS client certificates, session-scan behavior, routing-instance reachability, and verification with show security dynamic-address and ipfd logs. Includes IPFD_DA_FEED_HTTPS_STATUS and IPFD_DA_FEED_CERT_SUBJ_CHECK_FAIL log interpretation.
-version: 1.0.1
-author: Hermes Agent
+description: Configure, audit, or troubleshoot Juniper SRX dynamic IP objects from HTTPS feed servers. Use for feed archives, dynamic-address mapping, certificate validation, basic auth or mTLS, session scan, routing-instance reachability, show security dynamic-address, ipfd logs, and feed download or TLS failures.
+version: 1.0.2
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: CC-BY-NC-SA-4.0-source-derived-summary
 metadata:
   hermes:

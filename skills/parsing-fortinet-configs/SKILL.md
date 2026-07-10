@@ -1,8 +1,11 @@
 ---
 name: parsing-fortinet-configs
-description: 'Use when the user pastes, uploads, or references a Fortinet FortiGate / FortiOS config to parse and analyze — the "config/edit/set/next/end" block format from "show full-configuration" or backup exports. Trigger on keywords: FortiGate, FortiOS, Fortinet, VDOM, "config firewall policy", "config firewall address", "config firewall service custom", "config system interface", "edit", "set srcintf", "set dstintf", "set srcaddr", "set dstaddr", "set action accept", "set utm-status enable", "set av-profile", "set webfilter-profile", "set ips-sensor". Also trigger when the user asks to convert, audit, summarize, or explain a FortiGate config.'
-version: 1.1.3
-author: Hermes Agent
+description: Parse Fortinet FortiGate or FortiOS show full-configuration and backup exports into the shared firewall schema. Trigger on config/edit/set/next/end blocks, VDOM, config firewall policy or address, srcintf, dstintf, UTM profiles, VIPs, or requests to audit, convert, diff, summarize, or explain a FortiGate config.
+version: 1.1.4
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: MIT
 metadata:
   hermes:

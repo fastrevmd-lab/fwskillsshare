@@ -1,10 +1,11 @@
 ---
 name: firewall-best-practices-audit
-description: Use when auditing or reviewing a firewall or NGFW rulebase for security and operational best-practice hygiene, independent of any compliance framework. Covers overly permissive and any-any rules, shadowed/redundant/overlapping/orphaned rules, missing deny-all and logging, dangerous exposed services, plaintext management (telnet/http/SNMPv1-2c), weak VPN/IKE/IPsec crypto, device-plane hardening (SSH root-login, host-inbound exposure, missing zone screens, auth/password lockout policy, control-plane/RE filters, unreferenced/inert security services, empty policy sets, IPv6 posture), and operational cleanup (unused/duplicate objects, oversized groups, naming/description gaps, rule consolidation). Operates on the parsing-* intermediate schema; for raw config, run the matching parsing-cisco/fortinet/palo/srx skill first. Emits prioritized findings with severity, confidence, and vendor-neutral plus source-vendor remediation.
-version: 1.1.1
+description: Audit firewall and NGFW rulebases for security and operational hygiene. Use for any-any, shadowed or redundant rules, missing deny or logging, exposed management, weak VPN crypto, device hardening, unused objects, or rule cleanup across Cisco, Fortinet, Palo Alto, and Juniper. For raw configs, invoke the matching parsing-* skill first.
+version: 1.1.2
 author:
   - fastrevmd-lab
   - Claude
+  - GPT
 license: MIT
 metadata:
   hermes:

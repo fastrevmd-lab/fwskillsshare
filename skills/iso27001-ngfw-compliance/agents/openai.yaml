@@ -1,0 +1,4 @@
+interface:
+  display_name: "ISO 27001 NGFW Compliance"
+  short_description: "Assess firewall controls for ISO 27001"
+  default_prompt: "Use $iso27001-ngfw-compliance to map this firewall evidence to ISO 27001 controls."

@@ -1,8 +1,11 @@
 ---
 name: cmmc-nist-800-171-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining what it takes for a next-generation firewall or firewall estate to support CMMC Level 2 and NIST SP 800-171 protection of Controlled Unclassified Information. Covers CUI enclave scoping, boundary protection, least-privilege network access, remote access, external connections, audit logging, incident response, media/system boundaries, security assessment evidence, POA&M-style gaps, and audit-ready firewall description/tag markers. Triggers include SSP boundary language, C3PAO assessment preparation, DFARS 252.204-7012, DIB contractor networks, and requirement IDs like 3.1.1 or 3.13.1. Emphasizes that CMMC/NIST 800-171 compliance is assessed for the contractor environment, not certified by an NGFW alone.
-version: 0.1.2
-author: Hermes Agent
+description: Assess firewall support for CMMC Level 2 and NIST SP 800-171 CUI protection. Use for CUI enclave boundaries, least privilege, remote or external access, logging, SSP evidence, POA&M gaps, C3PAO preparation, DFARS 252.204-7012, and requirement IDs such as 3.1.1 or 3.13.1.
+version: 0.1.3
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:

@@ -1,10 +1,11 @@
 ---
 name: firewall-config-conversion
-description: Use when converting or migrating a firewall / NGFW configuration from one vendor to another (Cisco ASA/FTD, FortiGate, Palo Alto PAN-OS, Juniper SRX) — translating objects, security policies, NAT, zones, interfaces, routing, system, HA, and VPN from a parsed config into a target vendor's native config. Operates on the parsing-* intermediate schema; for raw config, run the matching parsing-cisco/fortinet/palo/srx skill first. Emits the target's native CLI plus a per-section fidelity report (converted / converted-with-caveats / manual-not-converted) flagging everything that does not translate cleanly. Output is a migration draft requiring review, never production-ready; secrets are never emitted.
-version: 1.0.1
+description: Convert firewall configurations between Cisco ASA/FTD, FortiGate, PAN-OS, and Juniper SRX through the shared parsing-* schema. Use for migrations of objects, policy, NAT, zones, routing, HA, and VPN. Produce native target CLI plus a fidelity report; never present output as production-ready.
+version: 1.0.2
 author:
   - fastrevmd-lab
   - Claude
+  - GPT
 license: MIT
 metadata:
   hermes:

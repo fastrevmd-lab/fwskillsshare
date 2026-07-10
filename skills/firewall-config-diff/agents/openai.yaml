@@ -1,0 +1,4 @@
+interface:
+  display_name: "Firewall Config Diff"
+  short_description: "Compare firewall configs by semantic intent"
+  default_prompt: "Use $firewall-config-diff to compare these firewall configurations by semantic intent."

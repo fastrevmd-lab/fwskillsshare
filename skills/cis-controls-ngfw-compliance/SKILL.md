@@ -1,8 +1,11 @@
 ---
 name: cis-controls-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining how a next-generation firewall or firewall estate can support CIS Critical Security Controls v8/v8.1 safeguards. Covers CIS-aligned network inventory, secure firewall configuration, network infrastructure management, access control, logging, malware/threat prevention, data protection, vulnerability management, service-provider access, incident response, penetration testing, audit evidence, and firewall description/tag markers. Triggers include Implementation Groups (IG1/IG2/IG3) and Safeguard IDs such as 4.2 or 13.3. Distinct from CIS Benchmarks (per-product hardening guides), though firewall hardening questions may involve both. Emphasizes that CIS alignment is assessed for the implemented environment and security program, not certified by an NGFW alone.
-version: 0.1.1
-author: Hermes Agent
+description: Audit how firewalls and NGFW estates support CIS Controls v8/v8.1. Use for safeguard mapping, IG1/IG2/IG3, network inventory, secure configuration, access control, logging, threat prevention, audit evidence, and control IDs such as 4.2 or 13.3. Do not use for product-specific CIS Benchmarks.
+version: 0.1.2
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:

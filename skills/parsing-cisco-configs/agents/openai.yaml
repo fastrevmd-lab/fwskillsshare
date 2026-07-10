@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parsing Cisco Configs"
+  short_description: "Parse Cisco ASA and FTD firewall configurations"
+  default_prompt: "Use $parsing-cisco-configs to parse this Cisco ASA or FTD configuration into the shared schema."

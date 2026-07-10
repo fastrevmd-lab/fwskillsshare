@@ -1,8 +1,11 @@
 ---
 name: parsing-palo-configs
-description: 'Use when the user pastes, uploads, or references a Palo Alto PAN-OS or Panorama configuration export — parses and analyzes PAN-OS firewall configurations in XML format or flat set-command format ("show config" output). Trigger on keywords: PAN-OS, Palo Alto, Panorama, NGFW, "vsys", "security rulebase", "address-group", "application-default", "security-profile-group", "device-group", "set deviceconfig", "<entry name=", "<member>", "tag-based", "User-ID". Also trigger when the user asks to convert, audit, summarize, or explain a Palo Alto config.'
-version: 1.1.3
-author: Hermes Agent
+description: Parse Palo Alto PAN-OS and Panorama XML or set-format exports into the shared firewall schema. Trigger on PAN-OS, Panorama, vsys, device-group, security rulebase, address-group, application-default, security-profile-group, set deviceconfig, XML entry or member elements, or requests to audit, convert, diff, summarize, or explain the config.
+version: 1.1.4
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: MIT
 metadata:
   hermes:

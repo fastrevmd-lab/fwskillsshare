@@ -1,10 +1,11 @@
 ---
 name: firewall-config-diff
-description: "Use when comparing two firewall / NGFW configurations to find differences, drift, or parity — same-vendor (config drift, HA-pair consistency, pre/post-change) or cross-vendor (migration parity, round-trip conversion validation). Operates on the parsing-* intermediate schema; for raw config, run the matching parsing-cisco/fortinet/palo/srx skill first. Compares by meaning (order- and name-insensitive), not text: pairs objects/policies/NAT/zones/routing/etc. by semantic identity and reports added / removed / changed per section plus a parity verdict. Cross-vendor features with no equivalent are flagged not-comparable, never a false diff."
-version: 1.0.2
+description: Compare two firewall or NGFW configurations semantically for drift, HA parity, pre/post-change validation, or cross-vendor migration fidelity. Use the shared parsing-* schema, match objects and rules by meaning rather than text, and report added, removed, changed, and not-comparable items.
+version: 1.0.3
 author:
   - fastrevmd-lab
   - Claude
+  - GPT
 license: MIT
 metadata:
   hermes:

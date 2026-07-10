@@ -1,8 +1,11 @@
 ---
 name: iso27001-ngfw-compliance
-description: Use when researching, designing, auditing, or explaining how a next-generation firewall or firewall estate can support an ISO/IEC 27001:2022 information security management system and Annex A controls. Covers ISMS-scoped network security, access control, secure configuration, logging and monitoring, supplier access, change management, incident management, backup/recovery, audit evidence, Statement of Applicability (SoA) support, and firewall description/tag markers. Triggers include Annex A control IDs (A.5.15, A.8.20-A.8.23), ISO 27002, certification and surveillance audits, and nonconformity/corrective-action evidence. Emphasizes that ISO 27001 certification applies to the ISMS scope, not to an NGFW product alone.
-version: 0.1.1
-author: Hermes Agent
+description: Assess firewall support for ISO/IEC 27001:2022 and ISO 27002 controls. Use for ISMS scope, Annex A network controls such as A.8.20-A.8.23, access, secure configuration, logging, supplier access, change or incident evidence, Statement of Applicability, certification audits, and corrective actions.
+version: 0.1.2
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
 license: source-derived-summary-local-use
 metadata:
   hermes:

@@ -1,0 +1,4 @@
+interface:
+  display_name: "SOC 2 NGFW Compliance"
+  short_description: "Assess firewall evidence for SOC 2 audits"
+  default_prompt: "Use $soc2-ngfw-compliance to assess this firewall evidence for a SOC 2 examination."
