@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Mechub mark">
+  <!-- The letter M drawn as a network topology: five nodes, four links, hub at center. -->
+  <defs>
+    <linearGradient id="mesh" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4DD0C8"/>
+      <stop offset="1" stop-color="#0D9488"/>
+    </linearGradient>
+  </defs>
+  <path d="M18,96 L18,32 L60,74 L102,32 L102,96"
+        fill="none" stroke="url(#mesh)" stroke-width="7"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="18"  cy="96" r="7"  fill="#4DD0C8"/>
+  <circle cx="18"  cy="32" r="7"  fill="#4DD0C8"/>
+  <circle cx="102" cy="32" r="7"  fill="#4DD0C8"/>
+  <circle cx="102" cy="96" r="7"  fill="#4DD0C8"/>
+  <circle cx="60"  cy="74" r="11" fill="#0D9488"/>
+  <circle cx="60"  cy="74" r="5.5" fill="#B7F5F0"/>
+</svg>

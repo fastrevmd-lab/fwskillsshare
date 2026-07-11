@@ -1,6 +1,21 @@
-# Firewall Skills For Network & Security Engineers
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/mechub-mark.svg">
+    <img src="docs/assets/mechub-mark-light.svg" width="72" alt="mechub mark">
+  </picture>
+</p>
 
-![skills](https://img.shields.io/badge/skills-21-1f6feb) ![reviewed](https://img.shields.io/badge/reviewed-21%2F21-2ea043) ![license](https://img.shields.io/badge/license-MIT-blue) ![vendors](https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-8957e5)
+<h1 align="center">fwskillsshare</h1>
+
+<p align="center"><strong>Firewall skills for network &amp; security engineers</strong><br>
+<em>a mechub project — sovereign network-security automation</em></p>
+
+<p align="center">
+  <img alt="skills" src="https://img.shields.io/badge/skills-21-0D9488">
+  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-21%2F21-262B38">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
+  <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
+</p>
 
 Agent skills for the firewall work you actually do — parsing, auditing, converting, and running Juniper SRX — not vibe configuring.
 
@@ -616,3 +631,14 @@ Original skill/playbook text in this repository is released under the MIT Licens
 Some `references/` files contain source-derived notes or extracts from Juniper, Cisco, Fortinet, Palo Alto Networks, community posts, blogs, support portals, or other third-party material. Those excerpts are included for local operational context, attribution, and verification. Upstream source material remains subject to its original owners' terms. Before redistributing, bundling commercially, or publishing a derivative catalog, review the upstream licenses/terms and replace long excerpts with citations or concise notes where required.
 
 **Trademark / affiliation disclaimer.** This repository is an independent, community-driven project. It is not affiliated with, endorsed by, sponsored by, or supported by Hewlett Packard Enterprise, Cisco, Palo Alto Networks, Fortinet, or Juniper Networks. "HPE", "Juniper", "Cisco", "Fortinet", "Palo Alto Networks", and "Juniper SRX" are trademarks of their respective owners and are used here only to describe what this software interoperates with. Please direct support and licensing questions about those products to the respective vendors.
+
+---
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/mechub-mark.svg">
+    <img src="docs/assets/mechub-mark-light.svg" width="28" alt="">
+  </picture><br>
+  <sub><code>a mechub project</code> · deterministic decides · the model explains · a human approves<br>
+  <a href="https://github.com/fastrevmd-lab">github.com/fastrevmd-lab</a></sub>
+</p>
