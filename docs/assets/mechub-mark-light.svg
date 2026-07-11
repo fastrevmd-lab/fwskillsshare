@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Mechub mark">
+  <!-- Light-background variant: deep teal per the brand rule that the primary
+       (bright) mark never sits on backgrounds lighter than #171A22. -->
+  <path d="M18,96 L18,32 L60,74 L102,32 L102,96"
+        fill="none" stroke="#0D9488" stroke-width="7"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="18"  cy="96" r="7"  fill="#0D9488"/>
+  <circle cx="18"  cy="32" r="7"  fill="#0D9488"/>
+  <circle cx="102" cy="32" r="7"  fill="#0D9488"/>
+  <circle cx="102" cy="96" r="7"  fill="#0D9488"/>
+  <circle cx="60"  cy="74" r="11" fill="#005B5A"/>
+  <circle cx="60"  cy="74" r="5.5" fill="#B7F5F0"/>
+</svg>
