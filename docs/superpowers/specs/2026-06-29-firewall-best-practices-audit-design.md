@@ -19,7 +19,7 @@ any framework. The two are complementary and must not overlap.
 ## Skill type, metadata, provenance
 
 - Claude Code / Hermes **technique skill**: `SKILL.md` + `references/`.
-- Original content (not source-derived) → `license: MIT` (matching the `parsing-*`
+- Original content (not source-derived) → `license: MIT OR Apache-2.0` (matching the `parsing-*`
   skills).
 - `author: [fastrevmd-lab, Claude]`.
 - `name: firewall-best-practices-audit`.

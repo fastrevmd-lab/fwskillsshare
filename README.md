@@ -13,7 +13,7 @@
 <p align="center">
   <img alt="skills" src="https://img.shields.io/badge/skills-21-0D9488">
   <img alt="reviewed" src="https://img.shields.io/badge/reviewed-21%2F21-262B38">
-  <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT%2FApache--2.0-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
 </p>
 
@@ -626,11 +626,20 @@ Manual equivalent — the skills are just directories, so remove the selected sk
 
 ## License and Provenance
 
-Original skill/playbook text in this repository is released under the MIT License; see [LICENSE](LICENSE) and the third-party provenance note in [NOTICE](NOTICE).
+Original skill/playbook text in this repository is dual-licensed under either of:
+
+- [MIT License](LICENSE-MIT)
+- [Apache License, Version 2.0](LICENSE-APACHE)
+
+at your option. See the third-party provenance note in [NOTICE](NOTICE).
 
 Some `references/` files contain source-derived notes or extracts from Juniper, Cisco, Fortinet, Palo Alto Networks, community posts, blogs, support portals, or other third-party material. Those excerpts are included for local operational context, attribution, and verification. Upstream source material remains subject to its original owners' terms. Before redistributing, bundling commercially, or publishing a derivative catalog, review the upstream licenses/terms and replace long excerpts with citations or concise notes where required.
 
 **Trademark / affiliation disclaimer.** This repository is an independent, community-driven project. It is not affiliated with, endorsed by, sponsored by, or supported by Hewlett Packard Enterprise, Cisco, Palo Alto Networks, Fortinet, or Juniper Networks. "HPE", "Juniper", "Cisco", "Fortinet", "Palo Alto Networks", and "Juniper SRX" are trademarks of their respective owners and are used here only to describe what this software interoperates with. Please direct support and licensing questions about those products to the respective vendors.
+
+## Contributing
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
 ---
 
