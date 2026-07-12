@@ -1,0 +1,10 @@
+# Gitleaks configuration — extends the default ruleset with allowlists for
+# known false positives in this repo.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Juniper community blog source URLs carry a public CommunityKey query parameter (a forum section ID, not a credential)"
+regexTarget = "line"
+regexes = ['''CommunityKey=[0-9a-fA-F-]+''']
