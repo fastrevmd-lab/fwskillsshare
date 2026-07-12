@@ -626,7 +626,7 @@ Manual equivalent — the skills are just directories, so remove the selected sk
 
 ## License and Provenance
 
-Original skill/playbook text in this repository is released under the MIT License; see [LICENSE](LICENSE).
+Original skill/playbook text in this repository is released under the MIT License; see [LICENSE](LICENSE) and the third-party provenance note in [NOTICE](NOTICE).
 
 Some `references/` files contain source-derived notes or extracts from Juniper, Cisco, Fortinet, Palo Alto Networks, community posts, blogs, support portals, or other third-party material. Those excerpts are included for local operational context, attribution, and verification. Upstream source material remains subject to its original owners' terms. Before redistributing, bundling commercially, or publishing a derivative catalog, review the upstream licenses/terms and replace long excerpts with citations or concise notes where required.
 

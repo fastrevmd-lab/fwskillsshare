@@ -1,0 +1,15 @@
+Source-derived reference material
+---------------------------------
+
+This repository contains original skill/playbook text plus reference notes and
+source extracts derived from third-party vendor documentation, community posts,
+blogs, and support articles. The MIT license (see LICENSE) applies to original
+repository contributions only. Third-party source excerpts, URLs, product
+names, command syntax, and vendor documentation remain subject to their
+original owners' terms.
+
+The source-derived reference files are included for local operational context,
+attribution, and verification. Before redistributing, bundling commercially, or
+publishing a derivative catalog, review the upstream licenses/terms for any
+included reference extract and replace long excerpts with citations or concise
+notes where required.
