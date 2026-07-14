@@ -1,4 +1,0 @@
-interface:
-  display_name: "SRX MPLS in Flow"
-  short_description: "Design SRX MPLS L3VPN in stateful flow mode"
-  default_prompt: "Use $srx-mpls-in-flow to design or troubleshoot this SRX MPLS L3VPN flow-mode deployment."

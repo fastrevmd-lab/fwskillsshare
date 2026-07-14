@@ -1,4 +1,0 @@
-interface:
-  display_name: "CMMC and NIST 800-171 NGFW Compliance"
-  short_description: "Assess CUI firewall controls for CMMC and NIST"
-  default_prompt: "Use $cmmc-nist-800-171-ngfw-compliance to assess this firewall design for CUI protection evidence."

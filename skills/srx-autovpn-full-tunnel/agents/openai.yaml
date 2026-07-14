@@ -1,4 +1,0 @@
-interface:
-  display_name: "SRX AutoVPN Full Tunnel"
-  short_description: "Design SRX AutoVPN full-tunnel backhaul"
-  default_prompt: "Use $srx-autovpn-full-tunnel to design or troubleshoot this full-tunnel SRX AutoVPN deployment."

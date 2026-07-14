@@ -1,4 +1,0 @@
-interface:
-  display_name: "PCI DSS NGFW Compliance"
-  short_description: "Assess firewall controls for PCI DSS v4.0.1"
-  default_prompt: "Use $pci-ngfw-compliance to assess this firewall evidence against PCI DSS v4.0.1."

@@ -24,3 +24,6 @@ dist/
 build/
 *.agekey
 *.decrypted.*
+
+# Codex isolated worktrees
+.worktrees/

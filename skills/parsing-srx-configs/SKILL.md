@@ -22,11 +22,6 @@ metadata:
     - migration
     - audit
     related_skills:
-    - srx-policy
-    - srx-nat
-    - srx-mnha
-    - srx-mpls-in-flow
-    - srx-dynamic-ip-feed
     - parsing-cisco-configs
     - parsing-fortinet-configs
     - parsing-palo-configs
@@ -41,11 +36,9 @@ metadata:
 
 Use this skill to parse Juniper SRX / Junos firewall configurations into the shared vendor-neutral firewall intermediate schema. It supports both `show configuration | display set` lines and hierarchical curly-brace configuration, including zones, address books, applications, security policies, NAT, logical-systems, routing-instances, interfaces, routing protocols, VPN, chassis cluster, and system settings.
 
-For design interpretation after extraction, load the adjacent SRX operational skill that matches the topic: `srx-policy`, `srx-nat`, `srx-mnha`, `srx-mpls-in-flow`, or `srx-dynamic-ip-feed`.
-
 ## Scope and routing
 
-Use only for Juniper SRX or Junos hierarchy and display-set syntax. Hand off ASA/FTD `access-list`, `nameif`, or `object network` input to `parsing-cisco-configs`, FortiOS blocks to `parsing-fortinet-configs`, and PAN-OS XML or `set deviceconfig` to `parsing-palo-configs`. Verify production-bound results against current device documentation and output. Downstream consumers are the SRX playbooks and the audit, conversion, and diff skills.
+Use only for Juniper SRX or Junos hierarchy and display-set syntax. Hand off ASA/FTD `access-list`, `nameif`, or `object network` input to `parsing-cisco-configs`, FortiOS blocks to `parsing-fortinet-configs`, and PAN-OS XML or `set deviceconfig` to `parsing-palo-configs`. Verify production-bound results against current device documentation and output. Downstream consumers are the audit, conversion, and diff skills.
 
 ## Input Format Detection
 
@@ -409,7 +402,7 @@ Never emit secrets raw. IKE/VPN pre-shared keys, routing-protocol authentication
 1. Do not skip hierarchical-to-set normalization; inactive prefixes, bracket lists, and quoted strings affect extraction.
 2. Zone-local address books are valid in older designs; migrate or normalize to global only with a warning.
 3. Logical-systems and routing-instances are separate contexts; preserve them instead of merging names blindly.
-4. Policy matching can depend on NAT order and translated addresses; load `srx-nat` for interpretation.
+4. Policy matching depends on NAT order and translated addresses; preserve both faithfully for downstream interpretation.
 5. Management (`fxp*`), fabric (`fab*`), and HA control interfaces need special handling and should not be naively treated as ordinary security-zone interfaces. By contrast, `reth*` redundant-Ethernet interfaces ARE ordinary dataplane interfaces in a chassis cluster and must be parsed as zone interfaces — do not exclude them.
 
 ## Verification Checklist

@@ -1,4 +1,0 @@
-interface:
-  display_name: "HIPAA NGFW Compliance"
-  short_description: "Assess firewall safeguards for HIPAA ePHI"
-  default_prompt: "Use $hipaa-ngfw-compliance to assess this firewall evidence against HIPAA Security Rule safeguards."
