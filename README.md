@@ -53,7 +53,7 @@ I built these to fix the failure modes I kept hitting when I let Claude Code, Co
 
 **The Problem.** A Cisco ACL, a FortiGate policy block, a PAN-OS `<entry>`, and an SRX `set security` line all express the same idea four incompatible ways. Ask an agent to compare or convert them and it hand-waves the parts that don't line up.
 
-**The Fix** is a shared language. The four [`parsing-*`](./skills/) skills normalize every vendor into **one vendor-neutral intermediate JSON schema** — zones, objects, policies, NAT, routing, VPN, HA, the lot — with a 240+ entry canonical L7 application map and confidence scores. Once a config is in the schema, cross-vendor [audit](./skills/firewall-best-practices-audit/), [conversion](./skills/firewall-config-conversion/), and [diff](./skills/firewall-config-diff/) all operate by *meaning*, not text. Features with no equivalent are flagged, never silently dropped.
+**The Fix** is a shared language. The four [`parsing-*`](./skills/) skills normalize every vendor into **one vendor-neutral intermediate JSON schema** — zones, objects, policies, NAT, routing, VPN, HA, the lot — with a 240+ entry canonical L7 application map and confidence scores. Once a config is in the schema, cross-vendor [audit](./skills/firewall-best-practices-audit/SKILL.md), [conversion](./skills/firewall-config-conversion/SKILL.md), and [diff](./skills/firewall-config-diff/SKILL.md) all operate by *meaning*, not text. Features with no equivalent are flagged, never silently dropped.
 
 This is the piece that makes the rest composable. See the [Intermediate Schema](#intermediate-schema) below.
 
@@ -65,7 +65,7 @@ This is the piece that makes the rest composable. See the [Intermediate Schema](
 
 **The Problem.** Every rulebase drifts toward `any-any`, shadowed rules, orphaned objects, and plaintext management. Agents make firewall changes faster, which means they make the rot faster too, unless something keeps them honest.
 
-**The Fix** is [`firewall-best-practices-audit`](./skills/firewall-best-practices-audit/) — overly permissive and shadowed/redundant rules, missing deny-all and logging, exposed telnet/http/SNMPv1-2c, weak IKE/IPsec crypto, device-plane hardening, unused objects — and [`firewall-config-diff`](./skills/firewall-config-diff/) for drift and HA-pair parity. Prioritized findings with severity and confidence, vendor-neutral plus source-vendor remediation. Run them before you ship a change, not after the incident.
+**The Fix** is [`firewall-best-practices-audit`](./skills/firewall-best-practices-audit/SKILL.md) — overly permissive and shadowed/redundant rules, missing deny-all and logging, exposed telnet/http/SNMPv1-2c, weak IKE/IPsec crypto, device-plane hardening, unused objects — and [`firewall-config-diff`](./skills/firewall-config-diff/SKILL.md) for drift and HA-pair parity. Prioritized findings with severity and confidence, vendor-neutral plus source-vendor remediation. Run them before you ship a change, not after the incident.
 
 ### Summary
 
@@ -79,18 +79,18 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 Normalize a vendor config into the shared intermediate schema. Everything else composes on top.
 
-- **[parsing-cisco-configs](./skills/parsing-cisco-configs/)** — Cisco ASA & FTD (`show running-config`): access-lists, object/object-group, NAT, failover, port-to-app inference.
-- **[parsing-fortinet-configs](./skills/parsing-fortinet-configs/)** — FortiGate / FortiOS (`show full-configuration`): the config/edit/set block format, VDOMs, UTM profiles, compound IPsec proposals.
-- **[parsing-palo-configs](./skills/parsing-palo-configs/)** — Palo Alto PAN-OS & Panorama: XML *or* flat set-format, vsys, app-default decomposition, device-groups.
-- **[parsing-srx-configs](./skills/parsing-srx-configs/)** — Juniper SRX / Junos: `display set` or curly-brace, address-book migration to global, `junos-*` app mapping, routing-instances.
+- **[parsing-cisco-configs](./skills/parsing-cisco-configs/SKILL.md)** — Cisco ASA & FTD (`show running-config`): access-lists, object/object-group, NAT, failover, port-to-app inference.
+- **[parsing-fortinet-configs](./skills/parsing-fortinet-configs/SKILL.md)** — FortiGate / FortiOS (`show full-configuration`): the config/edit/set block format, VDOMs, UTM profiles, compound IPsec proposals.
+- **[parsing-palo-configs](./skills/parsing-palo-configs/SKILL.md)** — Palo Alto PAN-OS & Panorama: XML *or* flat set-format, vsys, app-default decomposition, device-groups.
+- **[parsing-srx-configs](./skills/parsing-srx-configs/SKILL.md)** — Juniper SRX / Junos: `display set` or curly-brace, address-book migration to global, `junos-*` app mapping, routing-instances.
 
 ### Cross-vendor tooling
 
 Vendor-neutral, driven off the parsed schema.
 
-- **[firewall-best-practices-audit](./skills/firewall-best-practices-audit/)** — Rulebase hygiene independent of any framework: any-any, shadowed/orphaned rules, missing deny/logging, exposed plaintext services, weak crypto, device-plane hardening.
-- **[firewall-config-conversion](./skills/firewall-config-conversion/)** — Migrate between Cisco/FortiGate/Palo/SRX with a per-section fidelity report (converted / caveats / manual). A reviewed draft, never production-ready.
-- **[firewall-config-diff](./skills/firewall-config-diff/)** — Compare two configs by meaning (order- and name-insensitive) — same-vendor drift & HA parity, or cross-vendor migration validation.
+- **[firewall-best-practices-audit](./skills/firewall-best-practices-audit/SKILL.md)** — Rulebase hygiene independent of any framework: any-any, shadowed/orphaned rules, missing deny/logging, exposed plaintext services, weak crypto, device-plane hardening.
+- **[firewall-config-conversion](./skills/firewall-config-conversion/SKILL.md)** — Migrate between Cisco/FortiGate/Palo/SRX with a per-section fidelity report (converted / caveats / manual). A reviewed draft, never production-ready.
+- **[firewall-config-diff](./skills/firewall-config-diff/SKILL.md)** — Compare two configs by meaning (order- and name-insensitive) — same-vendor drift & HA parity, or cross-vendor migration validation.
 
 ---
 
