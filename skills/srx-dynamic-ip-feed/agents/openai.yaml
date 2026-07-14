@@ -1,4 +1,0 @@
-interface:
-  display_name: "SRX Dynamic IP Feed"
-  short_description: "Operate SRX dynamic IP feed servers"
-  default_prompt: "Use $srx-dynamic-ip-feed to configure or troubleshoot this SRX dynamic-address feed."

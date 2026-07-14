@@ -1,4 +1,0 @@
-interface:
-  display_name: "SRX NAT"
-  short_description: "Design and troubleshoot Juniper SRX NAT"
-  default_prompt: "Use $srx-nat to design, review, or troubleshoot this Juniper SRX NAT configuration."

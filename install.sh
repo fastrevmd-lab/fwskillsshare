@@ -6,9 +6,9 @@
 #   OR:  curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash
 #
 # Options:
-#   --all                 Select all 21 skills
+#   --all                 Select all 7 skills
 #   --skill NAME          Select a specific skill by name (repeatable)
-#   --family NAME         Select a whole family: parsers | srx | tooling | compliance (repeatable)
+#   --family NAME         Select a whole family: parsers | tooling (repeatable)
 #   --target WHERE        claude | codex | hermes | both | all
 #                         ('both' keeps the legacy Claude+Hermes meaning; default: prompt, or claude with -y)
 #   --dir PATH            Explicit install directory (overrides --target)
@@ -29,30 +29,10 @@ declare -a PARSERS=(
     "parsing-srx-configs"
 )
 
-declare -a SRX=(
-    "srx-dynamic-ip-feed"
-    "srx-mpls-in-flow"
-    "srx-mnha"
-    "srx-nat"
-    "srx-policy"
-    "srx-autovpn-full-tunnel"
-    "srx-ipsec-hub-spoke"
-    "srx-advpn"
-)
-
 declare -a TOOLING=(
     "firewall-best-practices-audit"
     "firewall-config-conversion"
     "firewall-config-diff"
-)
-
-declare -a COMPLIANCE=(
-    "pci-ngfw-compliance"
-    "hipaa-ngfw-compliance"
-    "cmmc-nist-800-171-ngfw-compliance"
-    "cis-controls-ngfw-compliance"
-    "iso27001-ngfw-compliance"
-    "soc2-ngfw-compliance"
 )
 
 # Constants
@@ -115,9 +95,9 @@ print_help() {
 Usage: install.sh [options]
 
 Options:
-  --all                 Select all 21 skills
+  --all                 Select all 7 skills
   --skill NAME          Select a specific skill by name (repeatable)
-  --family NAME         Select a whole family: parsers | srx | tooling | compliance (repeatable)
+  --family NAME         Select a whole family: parsers | tooling (repeatable)
   --target WHERE        claude | codex | hermes | both | all
                         ('both' means Claude+Hermes; default: interactive prompt, or claude with -y)
   --dir PATH            Explicit install directory (overrides --target)
@@ -130,24 +110,18 @@ Options:
 Examples:
   ./install.sh --all --target claude
   ./install.sh --all --target codex
-  ./install.sh --family srx --target both --force
+  ./install.sh --family tooling --target both --force
   ./install.sh --family parsers --target all
-  ./install.sh --skill srx-nat --skill srx-policy
+  ./install.sh --skill parsing-srx-configs --skill firewall-config-diff
   curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash -s -- --all -y
 EOF
 }
 
 print_inventory() {
-    echo -e "${C_BOLD}Skill Inventory (21 total):${C_RESET}\n"
+    echo -e "${C_BOLD}Skill Inventory (7 total):${C_RESET}\n"
 
     echo -e "${C_BLUE}Parsers (${#PARSERS[@]}):${C_RESET}"
     for skill in "${PARSERS[@]}"; do
-        echo "  - $skill"
-    done
-    echo ""
-
-    echo -e "${C_BLUE}SRX (${#SRX[@]}):${C_RESET}"
-    for skill in "${SRX[@]}"; do
         echo "  - $skill"
     done
     echo ""
@@ -156,20 +130,12 @@ print_inventory() {
     for skill in "${TOOLING[@]}"; do
         echo "  - $skill"
     done
-    echo ""
-
-    echo -e "${C_BLUE}Compliance (${#COMPLIANCE[@]}):${C_RESET}"
-    for skill in "${COMPLIANCE[@]}"; do
-        echo "  - $skill"
-    done
 }
 
 get_all_skills() {
     local -a all_skills=()
     all_skills+=("${PARSERS[@]}")
-    all_skills+=("${SRX[@]}")
     all_skills+=("${TOOLING[@]}")
-    all_skills+=("${COMPLIANCE[@]}")
     echo "${all_skills[@]}"
 }
 
@@ -179,18 +145,12 @@ get_family_skills() {
         parsers)
             echo "${PARSERS[@]}"
             ;;
-        srx)
-            echo "${SRX[@]}"
-            ;;
         tooling)
             echo "${TOOLING[@]}"
             ;;
-        compliance)
-            echo "${COMPLIANCE[@]}"
-            ;;
         *)
             echo -e "${C_RED}Error: Unknown family '$family'${C_RESET}" >&2
-            echo "Valid families: parsers, srx, tooling, compliance" >&2
+            echo "Valid families: parsers, tooling" >&2
             exit 1
             ;;
     esac
@@ -278,24 +238,8 @@ interactive_skill_selection() {
     done
     echo ""
 
-    echo -e "${C_BLUE}SRX:${C_RESET}"
-    for skill in "${SRX[@]}"; do
-        printf "  %2d) %s\n" $idx "$skill"
-        all_skills+=("$skill")
-        ((idx++))
-    done
-    echo ""
-
     echo -e "${C_BLUE}Tooling:${C_RESET}"
     for skill in "${TOOLING[@]}"; do
-        printf "  %2d) %s\n" $idx "$skill"
-        all_skills+=("$skill")
-        ((idx++))
-    done
-    echo ""
-
-    echo -e "${C_BLUE}Compliance:${C_RESET}"
-    for skill in "${COMPLIANCE[@]}"; do
         printf "  %2d) %s\n" $idx "$skill"
         all_skills+=("$skill")
         ((idx++))

@@ -64,8 +64,8 @@ def main() -> int:
     description_characters = 0
     skill_files = sorted(SKILLS_DIR.glob("*/SKILL.md"))
 
-    if len(skill_files) != 21:
-        errors.append(f"expected 21 skills, found {len(skill_files)}")
+    if len(skill_files) != 7:
+        errors.append(f"expected 7 skills, found {len(skill_files)}")
 
     for skill_file in skill_files:
         skill_dir = skill_file.parent

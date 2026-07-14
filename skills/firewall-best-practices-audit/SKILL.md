@@ -10,7 +10,7 @@ license: MIT
 metadata:
   hermes:
     tags: [firewall, ngfw, audit, best-practices, hardening, rulebase-review, security-hygiene, shadowed-rules, least-privilege, logging, vpn-crypto, object-cleanup, vendor-neutral, ssh-hardening, host-inbound, screens, device-hardening, ipv6-posture]
-    related_skills: [parsing-cisco-configs, parsing-fortinet-configs, parsing-palo-configs, parsing-srx-configs, firewall-config-conversion, firewall-config-diff, pci-ngfw-compliance, hipaa-ngfw-compliance, cmmc-nist-800-171-ngfw-compliance, cis-controls-ngfw-compliance, iso27001-ngfw-compliance, soc2-ngfw-compliance]
+    related_skills: [parsing-cisco-configs, parsing-fortinet-configs, parsing-palo-configs, parsing-srx-configs, firewall-config-conversion, firewall-config-diff]
 ---
 
 # Firewall Best-Practices Audit
@@ -19,13 +19,13 @@ metadata:
 
 Use this skill to audit a firewall or NGFW rulebase for security and operational hygiene, vendor-neutrally, over the `parsing-*` intermediate JSON schema. The audit reads normalized `security_policies`, `nat_rules`, address/service objects and groups, `zones`, `vpn_tunnels`, `system`, and `admin_users`, then emits prioritized findings across the security and operational check families (full catalog: `references/check-catalog.md`). Each finding carries a severity, a confidence, the affected references, why it matters, and remediation.
 
-This skill is deliberately framework-agnostic. It answers "is this rulebase hardened by general best practice" — not "does this satisfy PCI/HIPAA/CMMC/CIS/ISO/SOC 2." That mapping is the job of the `*-ngfw-compliance` skills, which take a framework's control IDs and produce assessor-ready evidence. This skill stays in the lane of general hygiene: it never cites a control ID and never claims an environment is compliant. Use it before or alongside a compliance review, or on its own when someone just wants the rulebase cleaned up and tightened.
+This skill is deliberately framework-agnostic. It answers "is this rulebase hardened by general best practice" rather than mapping findings to a compliance framework. It never cites control IDs and never claims an environment is compliant.
 
 The audit reports findings, not verdicts. It never claims a config is "secure" — at best it reports "no in-scope findings" with caveats about what could not be checked (for example, hit-count or last-used data that the static schema does not carry). The output is decision-grade: a short posture line, a severity tally, the list of checks that were skipped for missing data, and a prioritized list of top fixes.
 
 ## Scope and routing
 
-Operate on the normalized `parsing-*` schema; do not hand-audit raw vendor text when a parser exists. Route framework mappings to the matching compliance skill, migrations to `firewall-config-conversion`, and parity or drift comparisons to `firewall-config-diff`.
+Operate on the normalized `parsing-*` schema; do not hand-audit raw vendor text when a parser exists. Treat framework-control mapping as out of scope, route migrations to `firewall-config-conversion`, and route parity or drift comparisons to `firewall-config-diff`.
 
 ## Input Handling
 
@@ -100,7 +100,7 @@ Top fixes (prioritized):
 ## Common Pitfalls
 
 - Claiming a config is "secure" or "compliant" — only report "no in-scope findings" with caveats about what could not be checked.
-- Mapping findings to PCI/HIPAA/etc. — that is the compliance skills' job; stay framework-agnostic and cite no control IDs.
+- Mapping findings to compliance frameworks — stay framework-agnostic and cite no control IDs.
 - Re-implementing parsing instead of delegating to the matching `parsing-*` skill.
 - Reporting heuristic findings (possible shadow) as definitive when rule order or object references are incomplete.
 - Auditing only the internet edge — include internal, management, VPN, and inter-zone rules.

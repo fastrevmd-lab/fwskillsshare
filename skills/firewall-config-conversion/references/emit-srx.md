@@ -6,7 +6,7 @@ schema this file shows the native Junos `set` syntax to render, the fidelity
 classification (`converted` / `converted-with-caveats` / `manual-not-converted`), and the
 inline `# CAVEAT:` to emit when the translation is lossy. Cross-vendor lossiness is sourced
 from `references/feature-mapping.md`; SRX syntax discipline follows
-`skills/srx-policy/SKILL.md` and `skills/parsing-srx-configs/references/config-format.md`.
+`skills/parsing-srx-configs/references/config-format.md`.
 
 > **CRITICAL SRX SYNTAX RULE — one leaf per `set` line.** Junos `set` commands set exactly
 > one leaf. Never combine sibling leaves on a line. `match source-address`,
@@ -22,7 +22,7 @@ from `references/feature-mapping.md`; SRX syntax discipline follows
 > `"<PSK-PLACEHOLDER>"` / `"<KEY-PLACEHOLDER>"` / `"<PASSWORD-PLACEHOLDER>"` plus a
 > `manual-not-converted` item.
 
-Greenfield/migration default (per `srx-policy`): prefer the **global address-book** and
+Greenfield/migration default: prefer the **global address-book** and
 **`security policies global`** with `match from-zone` / `match to-zone` inside each policy,
 rather than many `from-zone … to-zone …` contexts.
 

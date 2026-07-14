@@ -1,4 +1,0 @@
-interface:
-  display_name: "CIS Controls NGFW Compliance"
-  short_description: "Map firewall evidence to CIS Controls v8"
-  default_prompt: "Use $cis-controls-ngfw-compliance to assess this firewall evidence against CIS Controls v8."
