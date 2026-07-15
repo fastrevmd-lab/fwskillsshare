@@ -11,11 +11,13 @@
 <em>a mechub project — sovereign network-security automation</em></p>
 
 <p align="center">
-  <img alt="skills" src="https://img.shields.io/badge/skills-21-0D9488">
+  <img alt="skills" src="https://img.shields.io/badge/skills-21-262B38?labelColor=7C3AED">
   <img alt="reviewed" src="https://img.shields.io/badge/reviewed-21%2F21-262B38">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
 </p>
+
+Brand system: [mechub v1.1](https://command.mechub.org/branding).
 
 Agent skills for the firewall work you actually do — parsing, auditing, converting, and running Juniper SRX — not vibe configuring.
 
