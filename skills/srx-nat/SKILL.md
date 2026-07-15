@@ -416,4 +416,8 @@ Use traceoptions for short maintenance windows only. Remove or deactivate them a
 
 ## Source Notes
 
-This skill is a synthesized operational playbook from Juniper Community TechPosts, Juniper NAT documentation, and Juniper Support resolution guides. Full source extracts and condensed support portal notes are stored under `references/` (see `references/source-index.md`) for provenance.
+This is an original operational playbook informed by Juniper product documentation,
+Community labs, and Support workflows. The short source-note files under
+`references/` are independently written “Inspired by” notes with attribution; they
+are not upstream page copies and do not relicense the linked material. See
+`references/source-index.md`.

@@ -1,56 +1,24 @@
-# Resolution Guide - SRX - Troubleshoot Destination NAT
+# Inspired by: Troubleshoot Destination NAT
 
-Source: https://supportportal.juniper.net/s/article/Resolution-Guide-SRX-Troubleshoot-Destination-NAT
-Article ID: KB21839
-Created: 2011-09-13
-Last Updated: 2020-08-14
+Source: Juniper Support, KB21839
+URL: https://supportportal.juniper.net/s/article/Resolution-Guide-SRX-Troubleshoot-Destination-NAT
 Retrieved: 2026-05-15
 
----
+This is an independently written diagnostic checklist, not a copy of the support
+article.
 
-## Description
+## Diagnostic sequence
 
-This article assists with Destination NAT troubleshooting in a step-by-step approach.
+1. Record the received source, destination, protocol, port, ingress interface, and
+   routing instance.
+2. Identify the selected destination-NAT rule set and first matching rule; confirm
+   its counter changes for a controlled test.
+3. Resolve the translated destination, route lookup, egress zone, and security
+   policy in that order.
+4. Confirm the real server has a symmetric path through SRX, or add a deliberately
+   scoped source-NAT design where symmetry cannot otherwise be guaranteed.
+5. Inspect the extensive session, pool state, ARP/ND as relevant, and packet captures.
+6. Use narrowly filtered flow traceoptions only when counters and sessions do not
+   explain the drop; remove them after collection.
 
-Symptoms:
-
-- Users on the Internet cannot access web servers hosted behind the SRX because there is an issue with Destination NAT.
-- Destination NAT is not working.
-
-## Troubleshooting Steps
-
-1. Confirm the configuration:
-
-```text
-show security nat destination
-```
-
-If the configuration is wrong, correct it, generate traffic again, and retest.
-
-2. Determine whether Destination NAT uses the external interface IP address.
-
-- If yes, jump to rule-hit and flow troubleshooting.
-- If no, continue to proxy ARP checks when the destination NAT address is on the same subnet as the external interface.
-
-3. If the destination NAT IP address is in the same subnet as the external interface, verify proxy ARP:
-
-```text
-show security nat proxy-arp
-```
-
-If proxy ARP is missing, configure proxy ARP for the Destination NAT IP on the external interface and retest.
-
-4. Check whether the NAT rule is being hit by viewing translation hits:
-
-```text
-show security nat destination rule <rulename>
-show security nat destination rule all
-```
-
-If translation hits do not increase, verify that packets are reaching the SRX.
-
-5. Use firewall filters to confirm ingress traffic reaches the external interface. If ingress counters do not increase, troubleshoot upstream network or ISP forwarding toward the SRX.
-
-6. Configure flow traceoptions with packet filters for the client source IP and Destination NAT public IP. Use the trace to find where the packet is dropped.
-
-7. If the drop location cannot be determined, collect SRX NAT/flow logs and open a case with Juniper support.
+Commit success proves syntax, not packet-path correctness.
