@@ -15,6 +15,43 @@ SKILLS_DIR = ROOT / "skills"
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---(?:\n|$)", re.DOTALL)
 EXPECTED_AUTHORS = ["fastrevmd-lab", "Claude", "GPT"]
+RAW_REFERENCE_MAX_LINES = 200
+RAW_DUMP_MARKERS = (
+    "Skip main navigation",
+    "Powered by Higher Logic",
+    "View Only",
+    "Jump to Best Answer",
+    "New Best Answer",
+)
+OBSOLETE_LICENSE_MARKERS = (
+    "source-derived-summary-local-use",
+    "CC-BY-NC-SA-4.0-source-derived-summary",
+)
+EXPECTED_SKILL_NAMES = frozenset(
+    {
+        "cis-controls-ngfw-compliance",
+        "cmmc-nist-800-171-ngfw-compliance",
+        "firewall-best-practices-audit",
+        "firewall-config-conversion",
+        "firewall-config-diff",
+        "hipaa-ngfw-compliance",
+        "iso27001-ngfw-compliance",
+        "parsing-cisco-configs",
+        "parsing-fortinet-configs",
+        "parsing-palo-configs",
+        "parsing-srx-configs",
+        "pci-ngfw-compliance",
+        "soc2-ngfw-compliance",
+        "srx-advpn",
+        "srx-autovpn-full-tunnel",
+        "srx-dynamic-ip-feed",
+        "srx-ipsec-hub-spoke",
+        "srx-mnha",
+        "srx-mpls-in-flow",
+        "srx-nat",
+        "srx-policy",
+    }
+)
 
 
 def parse_scalar(value: str) -> str:
@@ -59,13 +96,36 @@ def list_field(frontmatter: str, key: str) -> list[str] | None:
     return [parse_scalar(line.removeprefix("  - ")) for line in match.group(1).splitlines()]
 
 
+def raw_reference_errors(path: Path, text: str) -> list[str]:
+    """Reject recovered web-page dumps while allowing concise attributed notes."""
+    if not (path.name.startswith("source-") or path.name == "source-extract.md"):
+        return []
+
+    errors: list[str] = []
+    line_count = text.count("\n") + 1
+    if line_count > RAW_REFERENCE_MAX_LINES:
+        errors.append(
+            f"{path}: {line_count} lines exceeds the {RAW_REFERENCE_MAX_LINES}-line "
+            "source-note limit"
+        )
+    for marker in RAW_DUMP_MARKERS:
+        if marker in text:
+            errors.append(f"{path}: contains raw page-dump marker {marker!r}")
+    return errors
+
+
 def main() -> int:
     errors: list[str] = []
     description_characters = 0
     skill_files = sorted(SKILLS_DIR.glob("*/SKILL.md"))
+    actual_skill_names = {skill_file.parent.name for skill_file in skill_files}
 
-    if len(skill_files) != 7:
-        errors.append(f"expected 7 skills, found {len(skill_files)}")
+    missing_skills = sorted(EXPECTED_SKILL_NAMES - actual_skill_names)
+    unexpected_skills = sorted(actual_skill_names - EXPECTED_SKILL_NAMES)
+    if missing_skills:
+        errors.append(f"missing expected skills: {', '.join(missing_skills)}")
+    if unexpected_skills:
+        errors.append(f"unexpected skills: {', '.join(unexpected_skills)}")
 
     for skill_file in skill_files:
         skill_dir = skill_file.parent
@@ -96,6 +156,8 @@ def main() -> int:
             errors.append(f"{skill_file}: description contains angle brackets")
         if not fields.get("version"):
             errors.append(f"{skill_file}: version is required for Hermes package metadata")
+        if fields.get("license") != "MIT":
+            errors.append(f"{skill_file}: license must be MIT")
         if authors != EXPECTED_AUTHORS:
             errors.append(
                 f"{skill_file}: author must be exactly {EXPECTED_AUTHORS!r}; found {authors!r}"
@@ -136,6 +198,13 @@ def main() -> int:
             "combined descriptions exceed Codex's 8,000-character fallback discovery budget "
             f"({description_characters})"
         )
+
+    for markdown_file in sorted(SKILLS_DIR.rglob("*.md")):
+        markdown_text = markdown_file.read_text(encoding="utf-8")
+        errors.extend(raw_reference_errors(markdown_file, markdown_text))
+        for marker in OBSOLETE_LICENSE_MARKERS:
+            if marker in markdown_text:
+                errors.append(f"{markdown_file}: contains obsolete license marker {marker!r}")
 
     for error in errors:
         print(f"ERROR: {error}", file=sys.stderr)

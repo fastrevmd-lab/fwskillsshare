@@ -23,6 +23,7 @@ integration:
 
 e2e:
     ./install.sh --help >/dev/null
+    python3 scripts/check-installer.py
 
 security:
     trivy fs --scanners vuln,misconfig,secret --exit-code 1 .
