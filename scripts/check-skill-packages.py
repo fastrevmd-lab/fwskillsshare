@@ -15,6 +15,18 @@ SKILLS_DIR = ROOT / "skills"
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---(?:\n|$)", re.DOTALL)
 EXPECTED_AUTHORS = ["fastrevmd-lab", "Claude", "GPT"]
+RAW_REFERENCE_MAX_LINES = 200
+RAW_DUMP_MARKERS = (
+    "Skip main navigation",
+    "Powered by Higher Logic",
+    "View Only",
+    "Jump to Best Answer",
+    "New Best Answer",
+)
+OBSOLETE_LICENSE_MARKERS = (
+    "source-derived-summary-local-use",
+    "CC-BY-NC-SA-4.0-source-derived-summary",
+)
 EXPECTED_SKILL_NAMES = frozenset(
     {
         "cis-controls-ngfw-compliance",
@@ -82,6 +94,24 @@ def list_field(frontmatter: str, key: str) -> list[str] | None:
     if not match:
         return None
     return [parse_scalar(line.removeprefix("  - ")) for line in match.group(1).splitlines()]
+
+
+def raw_reference_errors(path: Path, text: str) -> list[str]:
+    """Reject recovered web-page dumps while allowing concise attributed notes."""
+    if not (path.name.startswith("source-") or path.name == "source-extract.md"):
+        return []
+
+    errors: list[str] = []
+    line_count = text.count("\n") + 1
+    if line_count > RAW_REFERENCE_MAX_LINES:
+        errors.append(
+            f"{path}: {line_count} lines exceeds the {RAW_REFERENCE_MAX_LINES}-line "
+            "source-note limit"
+        )
+    for marker in RAW_DUMP_MARKERS:
+        if marker in text:
+            errors.append(f"{path}: contains raw page-dump marker {marker!r}")
+    return errors
 
 
 def main() -> int:
@@ -168,6 +198,13 @@ def main() -> int:
             "combined descriptions exceed Codex's 8,000-character fallback discovery budget "
             f"({description_characters})"
         )
+
+    for markdown_file in sorted(SKILLS_DIR.rglob("*.md")):
+        markdown_text = markdown_file.read_text(encoding="utf-8")
+        errors.extend(raw_reference_errors(markdown_file, markdown_text))
+        for marker in OBSOLETE_LICENSE_MARKERS:
+            if marker in markdown_text:
+                errors.append(f"{markdown_file}: contains obsolete license marker {marker!r}")
 
     for error in errors:
         print(f"ERROR: {error}", file=sys.stderr)
