@@ -486,4 +486,8 @@ commit confirmed 10
 
 ## Source Notes
 
-This skill synthesizes the user-supplied SRX 23.x policy reading list plus an additional official Juniper Global Policy Overview page because global policy preference is a core design requirement here. Full extracted sources and extraction caveats are stored under `references/`. For the later NGWF/EWF correction and web-filtering preference, see `references/ngwf-vs-ewf-research.md`.
+This is an original operational playbook informed by the attributed reading list and
+official Juniper policy documentation. The short source-note files under
+`references/` are independently written “Inspired by” notes, not upstream page
+copies, and do not relicense linked material. For the NGWF/EWF comparison, see
+`references/ngwf-vs-ewf-research.md`.
