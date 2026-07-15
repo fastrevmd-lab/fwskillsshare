@@ -11,19 +11,19 @@
 <em>a mechub project — sovereign network-security automation</em></p>
 
 <p align="center">
-  <img alt="skills" src="https://img.shields.io/badge/skills-7-0D9488">
-  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-7%2F7-262B38">
+  <img alt="skills" src="https://img.shields.io/badge/skills-21-0D9488">
+  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-21%2F21-262B38">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
 </p>
 
-Agent skills for the firewall work you actually do — four config parsers plus audit, conversion, and diff — not vibe configuring.
+Agent skills for the firewall work you actually do — parsing, auditing, converting, and running Juniper SRX — not vibe configuring.
 
-Firewall work is unforgiving. A confidently wrong `access-list` line or a Junos stanza that won't commit isn't cosmetic. Coding agents are astonishingly good at producing *plausible* firewall config and astonishingly bad at knowing when it's wrong.
+Firewall work is unforgiving. A confidently wrong `access-list` line, a Junos stanza that won't commit, a compliance claim you can't back up in an audit — these aren't cosmetic. Coding agents are astonishingly good at producing *plausible* firewall config and astonishingly bad at knowing when it's wrong.
 
-These skills exist to close that gap. They pin the agent to vendor syntax that's been reviewed and to one shared schema so four vendors speak the same language. They're small, self-contained, and composable — copy the two you need or all seven. Hack around with them. Make them your own.
+These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 21. Hack around with them. Make them your own.
 
-> **Unofficial / community project.** Not affiliated with, endorsed by, or supported by Cisco, Fortinet, Palo Alto Networks, Juniper Networks, or HPE. See [License](#license) for the full trademark disclaimer.
+> **Unofficial / community project.** Not affiliated with, endorsed by, or supported by Cisco, Fortinet, Palo Alto Networks, Juniper Networks, or HPE. See [License and Provenance](#license-and-provenance) for the full notice and the trademark disclaimer.
 
 ## Quickstart (30-second setup)
 
@@ -45,7 +45,19 @@ Prefer flags, or installing from a clone? See [Installation](#installation).
 
 I built these to fix the failure modes I kept hitting when I let Claude Code, Codex, and other agents touch firewalls.
 
-### #1: Every Vendor Speaks A Different Dialect
+### #1: The Agent Invents CLI That Won't Commit
+
+> "It Has To Work."
+>
+> Ross Callon, [RFC 1925 — The Twelve Networking Truths](https://www.rfc-editor.org/rfc/rfc1925), truth (1)
+
+**The Problem.** Ask an agent for an SRX ADVPN config or a Junos 24.4R1 IKE gateway and you'll get something that *reads* perfectly and then throws a commit error — or worse, commits and silently doesn't forward. The model has seen a decade of blog posts, including the wrong ones and the ones for the wrong release.
+
+**The Fix** is playbooks pinned to syntax that's been proven on real hardware. The SRX skills carry the gotchas that only show up in production: the Junos 24.4R1+ `IKEv2 with authentication-method pre-shared-key is not allowed` commit error, the `Remote-ip 0.0.0.0/0 in traffic-selector is not supported` split, the ADVPN `No public key found` IKE_AUTH failure root-caused to the dynamic cert-gateway responder path. Disputed syntax was settled by commit-checking on a live vSRX 24.4R1, not by vibes.
+
+Reach for [`srx-policy`](./skills/srx-policy/), [`srx-nat`](./skills/srx-nat/), [`srx-mnha`](./skills/srx-mnha/), [`srx-advpn`](./skills/srx-advpn/) and friends whenever you're designing or debugging real Junos.
+
+### #2: Every Vendor Speaks A Different Dialect
 
 > "All problems in computer science can be solved by another level of indirection."
 >
@@ -53,11 +65,21 @@ I built these to fix the failure modes I kept hitting when I let Claude Code, Co
 
 **The Problem.** A Cisco ACL, a FortiGate policy block, a PAN-OS `<entry>`, and an SRX `set security` line all express the same idea four incompatible ways. Ask an agent to compare or convert them and it hand-waves the parts that don't line up.
 
-**The Fix** is a shared language. The four [`parsing-*`](./skills/) skills normalize every vendor into **one vendor-neutral intermediate JSON schema** — zones, objects, policies, NAT, routing, VPN, HA, the lot — with a 240+ entry canonical L7 application map and confidence scores. Once a config is in the schema, cross-vendor [audit](./skills/firewall-best-practices-audit/SKILL.md), [conversion](./skills/firewall-config-conversion/SKILL.md), and [diff](./skills/firewall-config-diff/SKILL.md) all operate by *meaning*, not text. Features with no equivalent are flagged, never silently dropped.
+**The Fix** is a shared language. The four [`parsing-*`](./skills/) skills normalize every vendor into **one vendor-neutral intermediate JSON schema** — zones, objects, policies, NAT, routing, VPN, HA, the lot — with a 240+ entry canonical L7 application map and confidence scores. Once a config is in the schema, cross-vendor [audit](./skills/firewall-best-practices-audit/), [conversion](./skills/firewall-config-conversion/), and [diff](./skills/firewall-config-diff/) all operate by *meaning*, not text. Features with no equivalent are flagged, never silently dropped.
 
 This is the piece that makes the rest composable. See the [Intermediate Schema](#intermediate-schema) below.
 
-### #2: Rulebases Rot, And Agents Accelerate The Rot
+### #3: "Is It Compliant?" Gets A Confident, Unfounded Yes
+
+> "Trust, but verify."
+>
+> Russian proverb
+
+**The Problem.** Point an agent at a firewall and ask if it's "PCI compliant" and it will happily tell you yes. That answer is worthless to a QSA, and dangerous to you. A firewall *supports* evidence for a control; it is never itself "certified."
+
+**The Fix** is six compliance playbooks ([PCI](./skills/pci-ngfw-compliance/), [HIPAA](./skills/hipaa-ngfw-compliance/), [CMMC / NIST 800-171](./skills/cmmc-nist-800-171-ngfw-compliance/), [CIS](./skills/cis-controls-ngfw-compliance/), [ISO 27001](./skills/iso27001-ngfw-compliance/), [SOC 2](./skills/soc2-ngfw-compliance/)) that map firewall capabilities to specific control evidence, produce assessor-ready findings and gap lists, and are explicit at every turn that compliance is assessed for the *environment and program*, not conferred by the box. They tell you what evidence to collect and where the gaps are — the honest version of the answer.
+
+### #4: Rulebases Rot, And Agents Accelerate The Rot
 
 > "Complexity is the worst enemy of security."
 >
@@ -65,15 +87,15 @@ This is the piece that makes the rest composable. See the [Intermediate Schema](
 
 **The Problem.** Every rulebase drifts toward `any-any`, shadowed rules, orphaned objects, and plaintext management. Agents make firewall changes faster, which means they make the rot faster too, unless something keeps them honest.
 
-**The Fix** is [`firewall-best-practices-audit`](./skills/firewall-best-practices-audit/SKILL.md) — overly permissive and shadowed/redundant rules, missing deny-all and logging, exposed telnet/http/SNMPv1-2c, weak IKE/IPsec crypto, device-plane hardening, unused objects — and [`firewall-config-diff`](./skills/firewall-config-diff/SKILL.md) for drift and HA-pair parity. Prioritized findings with severity and confidence, vendor-neutral plus source-vendor remediation. Run them before you ship a change, not after the incident.
+**The Fix** is [`firewall-best-practices-audit`](./skills/firewall-best-practices-audit/) — overly permissive and shadowed/redundant rules, missing deny-all and logging, exposed telnet/http/SNMPv1-2c, weak IKE/IPsec crypto, device-plane hardening, unused objects — and [`firewall-config-diff`](./skills/firewall-config-diff/) for drift and HA-pair parity. Prioritized findings with severity and confidence, vendor-neutral plus source-vendor remediation. Run them before you ship a change, not after the incident.
 
 ### Summary
 
-Firewall fundamentals don't get easier in the AI age — the blast radius just gets bigger. These skills are my attempt to hand the agent the discipline: reviewed syntax, a shared schema, and a hygiene checklist. Use them, break them, and make them yours.
+Firewall fundamentals don't get easier in the AI age — the blast radius just gets bigger. These skills are my attempt to hand the agent the discipline: verified syntax, a shared schema, honest compliance mapping, and a hygiene checklist. Use them, break them, and make them yours.
 
 ## Reference
 
-**Seven skills** across two families: four config parsers plus audit, conversion, and diff. All of them are **model-invoked** — the agent reaches for them automatically when it sees supported vendor syntax or a matching analysis task. Invoke one explicitly as `/parsing-srx-configs` in Claude Code or Hermes, or `$parsing-srx-configs` in Codex.
+**21 skills** across four families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, or compliance language in your message or a pasted config. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 ### Config parsers
 
@@ -84,6 +106,19 @@ Normalize a vendor config into the shared intermediate schema. Everything else c
 - **[parsing-palo-configs](./skills/parsing-palo-configs/SKILL.md)** — Palo Alto PAN-OS & Panorama: XML *or* flat set-format, vsys, app-default decomposition, device-groups.
 - **[parsing-srx-configs](./skills/parsing-srx-configs/SKILL.md)** — Juniper SRX / Junos: `display set` or curly-brace, address-book migration to global, `junos-*` app mapping, routing-instances.
 
+### SRX operational playbooks
+
+Actionable Junos playbooks — commands, design guidance, verification, troubleshooting matrices, source attribution.
+
+- **[srx-policy](./skills/srx-policy/SKILL.md)** — Global vs zone-to-zone policy on 23.x+, AppID/AppFW, NGWF-first web filtering, SecIntel, ATP, hit-count troubleshooting.
+- **[srx-nat](./skills/srx-nat/SKILL.md)** — Source/destination/static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin, proxy-ARP, session verification.
+- **[srx-mnha](./skills/srx-mnha/SKILL.md)** — Multi-Node High Availability: routed/default-gateway/hybrid modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, DHCP caveats.
+- **[srx-advpn](./skills/srx-advpn/SKILL.md)** — Auto Discovery VPN dynamic spoke-to-spoke shortcuts, suggester/partner roles, multipoint st0, OSPF p2mp, the cert-auth requirement and the `No public key found` fix.
+- **[srx-autovpn-full-tunnel](./skills/srx-autovpn-full-tunnel/SKILL.md)** — AutoVPN hub-and-spoke full-tunnel backhaul: dynamic `group-ike-id`, traffic selectors + ARI, shared st0.0, anti-recursion route.
+- **[srx-ipsec-hub-spoke](./skills/srx-ipsec-hub-spoke/SKILL.md)** — Static point-to-point route-based IPsec hub-and-spoke, one explicit tunnel per spoke, hub source-NAT egress, spoke-to-spoke hairpin.
+- **[srx-mpls-in-flow](./skills/srx-mpls-in-flow/SKILL.md)** — MPLS L3VPN in flow mode (secure PE/CPE): decoupled `family mpls` packet-based with inet/inet6 flow-mode, VRF-aware policy/NAT/AppID.
+- **[srx-dynamic-ip-feed](./skills/srx-dynamic-ip-feed/SKILL.md)** — Dynamic IP objects from HTTPS feed servers: `.tgz` bundles, cert validation, basic-auth / mTLS, `ipfd` log interpretation.
+
 ### Cross-vendor tooling
 
 Vendor-neutral, driven off the parsed schema.
@@ -92,21 +127,34 @@ Vendor-neutral, driven off the parsed schema.
 - **[firewall-config-conversion](./skills/firewall-config-conversion/SKILL.md)** — Migrate between Cisco/FortiGate/Palo/SRX with a per-section fidelity report (converted / caveats / manual). A reviewed draft, never production-ready.
 - **[firewall-config-diff](./skills/firewall-config-diff/SKILL.md)** — Compare two configs by meaning (order- and name-insensitive) — same-vendor drift & HA parity, or cross-vendor migration validation.
 
+### NGFW compliance playbooks
+
+Map firewall capability to control evidence — assessor/auditor output templates, description/tag markers, honest scoping.
+
+- **[pci-ngfw-compliance](./skills/pci-ngfw-compliance/SKILL.md)** — PCI DSS v4.0.1: CDE segmentation, Requirement 1 network security controls, six-month rule review, QSA/ROC/SAQ evidence.
+- **[hipaa-ngfw-compliance](./skills/hipaa-ngfw-compliance/SKILL.md)** — HIPAA Security Rule (45 CFR 164.312): ePHI segmentation, access/audit controls, transmission security, BAA considerations.
+- **[cmmc-nist-800-171-ngfw-compliance](./skills/cmmc-nist-800-171-ngfw-compliance/SKILL.md)** — CMMC Level 2 / NIST SP 800-171: CUI enclave scoping, boundary protection, SSP boundary language, POA&M-style gaps.
+- **[cis-controls-ngfw-compliance](./skills/cis-controls-ngfw-compliance/SKILL.md)** — CIS Controls v8/v8.1: secure configuration, network infrastructure management, IG1/IG2/IG3 safeguards, audit evidence.
+- **[iso27001-ngfw-compliance](./skills/iso27001-ngfw-compliance/SKILL.md)** — ISO/IEC 27001:2022 ISMS & Annex A (A.8.20–A.8.23), Statement of Applicability support, supplier access, corrective actions.
+- **[soc2-ngfw-compliance](./skills/soc2-ngfw-compliance/SKILL.md)** — SOC 2 Trust Services Criteria (CC6/CC7/CC8), Type I/II examinations, operating-effectiveness samples.
+
 ---
 
 ## Quality and Review
 
-All **7 / 7 skills** have passed independent technical review for vendor command/syntax correctness, schema/field accuracy, secret hygiene, and application behavior. All findings were remediated and the four `parsing-*` skills share one byte-identical intermediate schema (verified by `scripts/check-shared-schema.py`).
+All **21 / 21 skills** have passed independent technical review — first on 2026-06-30, then re-reviewed on 2026-07-02 with a two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax correctness for Cisco ASA/FTD, FortiGate, PAN-OS, and Junos SRX; schema/field accuracy; standards/control-ID accuracy; secret hygiene) followed by per-skill application QA tests (fixture execution for the parsers, engineer-walkthrough scenarios for the playbooks, control-ID spot-checks for the compliance skills). Disputed Junos syntax claims were settled empirically by commit-checking on a live vSRX 24.4R1. All findings were remediated and the four `parsing-*` skills share one byte-identical intermediate schema (verified by `scripts/check-shared-schema.py`).
 
-An authoring-quality pass covered frontmatter, discovery keywords, secret redaction, cross-skill hand-offs, and progressive disclosure into `references/` files, then closed with clean-context retrieval tests against the restructured skills.
+A third round on 2026-07-04/05 applied an authoring-quality pass across all 21 skills (frontmatter, discovery keywords, secret redaction, cross-skill hand-offs, progressive disclosure into `references/` files), then closed it out with fresh clean-context retrieval tests against the restructured skills — every question had to be answerable from the SKILL.md pointers alone. The tests passed and surfaced a handful of fixes (including two operational-command syntax errors caught and corrected by live verification on vSRX 24.4R1), all remediated.
 
 | Family | Skills | Reviewed |
 |--------|-------:|:--------:|
 | Config parsers | 4 | 4 / 4 |
+| SRX operational playbooks | 8 | 8 / 8 |
+| NGFW compliance playbooks | 6 | 6 / 6 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
-| **Total** | **7** | **7 / 7** |
+| **Total** | **21** | **21 / 21** |
 
-These are parsing and analysis skills, not certified products: review their output against current vendor documentation and live device behavior before relying on it.
+These are research/operational and assessment-support skills, not certified products: review their output against current vendor documentation, live device behavior, and (for compliance work) a qualified assessor before relying on it.
 
 Each skill also includes optional `agents/openai.yaml` UI metadata for Codex. Claude Code and Hermes continue to use the portable `SKILL.md` content and ignore that product-specific folder.
 
@@ -131,9 +179,9 @@ cd fwskillsshare
 Flags:
 
 ```text
---all                 Install all 7 skills
+--all                 Install all 21 skills
 --skill NAME          Install a specific skill (repeatable)
---family NAME         parsers | tooling (repeatable)
+--family NAME         parsers | srx | tooling | compliance (repeatable)
 --target WHERE        claude | codex | hermes | both | all
                       (`both` keeps the legacy Claude+Hermes meaning; default: prompt, or claude with -y)
 --dir PATH            Explicit install directory (overrides --target)
@@ -149,9 +197,9 @@ Examples:
 ```bash
 ./install.sh --all --target claude              # everything, into ~/.claude/skills
 ./install.sh --all --target codex               # everything, into ~/.agents/skills
-./install.sh --family parsers                    # just the four config parsers
+./install.sh --family parsers --family srx      # just the parsers + SRX playbooks
 ./install.sh --family tooling --target all      # tooling skills into all three agents
-./install.sh --skill parsing-srx-configs --skill firewall-config-diff
+./install.sh --skill parsing-srx-configs --skill srx-nat -y
 ./install.sh --list                             # see what's available
 ```
 
@@ -166,7 +214,7 @@ git clone git@github.com:fastrevmd-lab/fwskillsshare.git
 cp -r fwskillsshare/skills/* ~/.claude/skills/
 
 # Or a single skill
-cp -r fwskillsshare/skills/parsing-srx-configs ~/.claude/skills/
+cp -r fwskillsshare/skills/srx-mnha ~/.claude/skills/
 ```
 
 For **Codex**, copy into the user skill tree. Codex normally detects changes automatically; restart it if a new skill does not appear:
@@ -181,17 +229,17 @@ For **Hermes**, copy into your local Hermes skills tree (usually `~/.hermes/skil
 ```bash
 mkdir -p ~/.hermes/skills/devops
 cp -r fwskillsshare/skills/* ~/.hermes/skills/devops/
-hermes skills list | grep -E 'parsing-|firewall-'
+hermes skills list | grep -E 'parsing-|srx-|firewall-|-ngfw-compliance'
 ```
 
-Skills auto-trigger when they detect supported vendor syntax or audit, conversion, and diff requests in your messages or pasted configs.
+Skills auto-trigger when they detect vendor-specific keywords, SRX operational topics, or PCI/HIPAA/CMMC/NIST 800-171/CIS/ISO 27001/SOC 2 compliance language in your messages or pasted configs.
 
 ### Managing context
 
-Skill *bodies* only load when a skill is invoked, but each skill's short description stays in context so the agent knows when to reach for it. You can drop a description from context while keeping the skill invocable via `skillOverrides` in `~/.claude/settings.json`:
+Skill *bodies* only load when a skill is invoked, but each skill's short description stays in context so the agent knows when to reach for it. If you rarely use certain skills (e.g. compliance frameworks you don't work with), you can drop just their descriptions from context while keeping them invocable, via `skillOverrides` in `~/.claude/settings.json`:
 
 ```json
-{ "skillOverrides": { "firewall-config-diff": "name-only" } }
+{ "skillOverrides": { "soc2-ngfw-compliance": "name-only" } }
 ```
 
 `"name-only"` keeps the skill listed and invocable but hides its description; `"user-invocable-only"` hides it from the model entirely (slash-command only); `"off"` hides it completely.
@@ -200,7 +248,7 @@ For **Codex**, disable an installed skill without deleting it by adding its `SKI
 
 ```toml
 [[skills.config]]
-path = "/home/you/.agents/skills/firewall-config-diff/SKILL.md"
+path = "/home/you/.agents/skills/soc2-ngfw-compliance/SKILL.md"
 enabled = false
 ```
 
@@ -213,6 +261,12 @@ enabled = false
 - **Convert** — Transform configs between vendors (e.g., SRX to PAN-OS)
 - **Compare** — Diff two configs by meaning, not text
 - **Summarize** — Get a high-level overview of zones, policy counts, and security profiles
+- **Operate SRX dynamic feeds** — Configure, validate, and troubleshoot SRX dynamic-address feed servers
+- **Design SRX MPLS in flow mode** — Keep inet/inet6 in stateful flow mode for policy, NAT, and AppID while `family mpls` is packet-based
+- **Design SRX MNHA** — Reason about MNHA modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, and DHCP caveats
+- **Operate SRX NAT** — Source/destination/static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin, proxy ARP
+- **Design SRX security policy** — Prefer `security policies global` for greenfield/migrations, then layer AppID/AppFW, NGWF-first web filtering, SecIntel, ATP
+- **Assess compliance evidence** — Map NGFW policies, NAT, zones, logging, IDS/IPS, and segmentation to PCI / HIPAA / CMMC-NIST 800-171 / CIS / ISO 27001 / SOC 2 evidence expectations
 
 ### Examples
 
@@ -231,6 +285,26 @@ enabled = false
 
 # Read from file
 "Read /path/to/running-config.txt and audit it"
+
+# SRX dynamic IP feed server
+"Help me configure an SRX dynamic-address feed-server with HTTPS certificate validation and show me the verification commands"
+
+# SRX MPLS in Flow
+"Review this SRX MPLS L3VPN config and verify that family mpls is packet-based while inet traffic remains flow-based with VRF-aware policies"
+
+# SRX MNHA design/troubleshooting
+"Review this SRX MNHA hybrid eBGP design and tell me what to verify before failover testing"
+
+# SRX NAT troubleshooting
+"Help me troubleshoot this SRX destination NAT rule: hits increment, but the policy denies the translated web server session"
+
+# SRX global policy migration
+"Convert this vendor rulebase into an SRX 23.x global security policy design with AppFW, NGWF-first web filtering, SecIntel, logging, and a final deny"
+
+# Compliance review (any of the six frameworks)
+"Review this firewall export for PCI DSS CDE segmentation evidence and recommend policy/NAT/zone description markers"
+"Review this NGFW design for HIPAA Security Rule ePHI access control, audit logging, and transmission security"
+"Review this firewall estate against CIS Controls v8 for secure configuration, logging, and vendor access"
 ```
 
 ## Tips
@@ -241,6 +315,12 @@ enabled = false
   - **FortiGate**: `show full-configuration`
   - **PAN-OS**: XML config export or `show config flat` (set-format)
   - **SRX**: `show configuration | display set` or `show configuration`
+  - **SRX dynamic feeds**: `show security dynamic-address summary`, `show security dynamic-address`, `show log messages | match ipfd`
+  - **SRX MPLS in Flow**: `show security flow status`, `show route table bgp.l3vpn.0`, `show route table <vrf>.inet.0`, `show ldp neighbor`, `show mpls interface`, `show security flow session extensive`, `show security policies hit-count`
+  - **SRX MNHA**: `show chassis high-availability information`, `show chassis high-availability services-redundancy-group <id>`, `show security flow session`, `show bgp summary`, `show bfd session`
+  - **SRX NAT**: `show security nat source/destination/static rule all`, `show security nat source pool all`, `show security nat proxy-arp`, `show security flow session ... extensive`
+  - **SRX security policy**: `show configuration security policies global | display set`, `show security policies hit-count global`, `show security application-firewall rule-set <name>`, `show security utm web-filtering status/statistics`
+  - **Compliance reviews**: collect the firewall policy/NAT/zone/VPN/object exports plus the framework-specific evidence (CDE/ePHI/CUI/ISMS-scope diagrams, rule-review records, logging/SIEM evidence, change tickets, segmentation/pen-test results) — each compliance skill lists exactly what it needs
 - For large configs, save to a file and point Claude at the file path
 - Each `parsing-*` skill includes `references/fixture-minimal-input.md` and `references/fixture-expected-output.json` as a smoke-test fixture for parser behavior and schema shape
 
@@ -288,6 +368,178 @@ python3 scripts/check-shared-schema.py
 ```
 
 See `skills/SHARED-SCHEMA.md` for the full policy.
+
+## Compliance Skills (detail)
+
+### pci-ngfw-compliance
+
+`pci-ngfw-compliance` is a PCI DSS v4.0.1 NGFW/firewall assessment playbook. It explains that an NGFW can support PCI DSS network security control evidence, but the device is not independently "PCI compliant."
+
+Use it for:
+
+- mapping firewall policy, NAT, zones, IDS/IPS, WAF/WAAP, logging, and segmentation controls to PCI DSS evidence expectations
+- reviewing CDE inbound/outbound restrictions, default deny, payment processor paths, and public-facing service exposure
+- preparing assessor-ready evidence requests, findings, and gap-analysis summaries
+- adding short PCI evidence markers to firewall descriptions/tags for policies, NAT, zones, objects, and profiles where supported
+
+### hipaa-ngfw-compliance
+
+`hipaa-ngfw-compliance` is a HIPAA Security Rule NGFW/firewall assessment playbook. It explains that an NGFW can support reasonable and appropriate safeguards for ePHI, but HIPAA compliance is assessed at the covered entity or business associate program/environment level.
+
+Use it for:
+
+- mapping firewall policy, NAT, VPN, zones, IDS/IPS, WAF/WAAP, logging, and segmentation controls to HIPAA Security Rule safeguards
+- reviewing ePHI access control, audit controls, person/entity authentication, transmission security, incident response, documentation, and business associate/vendor access evidence
+- preparing compliance-ready evidence requests, findings, and risk-treatment recommendations
+- adding short HIPAA evidence markers to firewall descriptions/tags where supported
+
+### cmmc-nist-800-171-ngfw-compliance
+
+`cmmc-nist-800-171-ngfw-compliance` is a CMMC Level 2 / NIST SP 800-171 NGFW/firewall assessment playbook. It explains that an NGFW can support CUI protection requirements, but CMMC/NIST 800-171 compliance is assessed at the contractor environment and CUI protection program level, not by certifying the firewall product alone.
+
+Use it for:
+
+- mapping firewall policy, NAT, VPN, zones, IDS/IPS, logging, segmentation, and remote-access controls to NIST 800-171 / CMMC evidence expectations
+- reviewing CUI enclave scope, CUI data flows, boundary protection, external connections, public-system separation, audit controls, and system security plan evidence
+- preparing assessor-ready evidence requests, findings, POA&M-style gaps, and remediation recommendations
+- adding short CMMC/CUI evidence markers to firewall descriptions/tags where supported
+
+### cis-controls-ngfw-compliance
+
+`cis-controls-ngfw-compliance` is a CIS Critical Security Controls v8/v8.1 NGFW/firewall assessment playbook. It explains that an NGFW can support CIS safeguards, but CIS alignment is assessed across the implemented environment and security program, not by certifying the firewall product alone.
+
+Use it for:
+
+- mapping firewall policy, NAT, VPN, zones, IDS/IPS, logging, secure configuration, vulnerability management, and network monitoring controls to CIS Controls evidence expectations
+- reviewing network infrastructure inventory, secure firewall baselines, administrative access, service-provider/vendor access, logging, malware/threat defenses, backup/recovery, incident response, and penetration/segmentation testing evidence
+- preparing practical CIS-aligned evidence requests, findings, prioritized remediation actions, and risk-based roadmap items
+- adding short CIS evidence markers to firewall descriptions/tags where supported
+
+### iso27001-ngfw-compliance
+
+`iso27001-ngfw-compliance` is an ISO/IEC 27001:2022 ISMS and Annex A firewall-control playbook. It explains that an NGFW can support selected controls, but certification applies to the scoped ISMS and its risk assessment, Statement of Applicability, policies, operation, audit, and continual-improvement evidence.
+
+Use it for:
+
+- mapping firewall policy, NAT, VPN, zones, logging, secure configuration, supplier access, change management, backups, and incident response to SoA/risk-treatment evidence
+- reviewing network security, access control, configuration management, logging/monitoring, supplier access, vulnerability management, and corrective-action records
+- preparing ISO audit evidence requests, firewall findings, corrective actions, and management-system caveats
+- adding short ISO/ISMS evidence markers to firewall descriptions/tags where supported
+
+### soc2-ngfw-compliance
+
+`soc2-ngfw-compliance` is a SOC 2 Trust Services Criteria firewall-control playbook for service organizations, SaaS platforms, MSPs, and cloud providers. It focuses on system boundaries, report period, control matrix mapping, design, and Type II operating-effectiveness evidence.
+
+Use it for:
+
+- mapping firewall policy, NAT, VPN, WAF, security groups, logging, access review, change management, vendor access, and incident-response evidence to SOC 2 controls
+- reviewing Trust Services Criteria support such as CC6 logical access, CC7 system operations, CC8 change management, CC9 risk mitigation, Availability, Confidentiality, and Privacy-supporting controls
+- preparing SOC 2 evidence requests, control descriptions, findings, sample expectations, and exception remediation
+- adding short SOC 2 evidence markers to firewall descriptions/tags where supported
+
+## SRX Operational Skills (detail)
+
+### srx-dynamic-ip-feed
+
+`srx-dynamic-ip-feed` is an original operational playbook for Juniper SRX dynamic IP objects backed by HTTPS feed servers, informed by an attributed Juniper Community TechPost. Its reference is an independently written “Inspired by” note, not a page extract.
+
+Use it for: configuring `security dynamic-address feed-server`; building `.tgz` bundle archive feeds and mapping `feed-name` paths; exposing feeds as policy objects; validating HTTPS server certificates with SRX PKI / SSL initiation profiles; HTTP basic-auth and mutual TLS client-certificate patterns; checking update behavior via access logs; troubleshooting `ipfd` download/auth/certificate/path errors; and `session-scan` / routing-instance reachability.
+
+Key verification commands:
+
+```text
+show security dynamic-address summary
+show security dynamic-address
+show log messages | match ipfd
+```
+
+### srx-mpls-in-flow
+
+`srx-mpls-in-flow` is an SRX MPLS L3VPN operational playbook synthesized from two Juniper Community TechPosts. It covers the Junos 24.2R1+ model where `family mpls` is packet-based while `family inet`/`inet6` remain flow-based, allowing stateful security services on MPLS VPN traffic.
+
+Use it for: SRX secure PE / secure CPE designs; decoupled family forwarding controls; VRFs with route distinguishers, route targets, and SRX-required `vrf-table-label`; OSPF/LDP/MP-BGP `family inet-vpn` transport; Junos 24.2-style VRF-aware policy (`source-l3vpn-vrf-group` / `destination-l3vpn-vrf-group`); Junos 25.4R1+ VRF-to-zone mapping; VRF-aware NAT/AppID; PowerMode/RFP decisions; and MTU/label/BGP/policy/NAT troubleshooting.
+
+Key verification commands:
+
+```text
+show security flow status
+show mpls interface
+show ldp neighbor
+show route table bgp.l3vpn.0
+show route table <vrf>.inet.0
+show security policies hit-count
+show security flow session extensive
+show security nat source rule all
+show security nat static rule all
+```
+
+### srx-nat
+
+`srx-nat` is an original operational playbook for Juniper SRX NAT, informed by Juniper Community NAT/CGN/NAT64 articles, Juniper NAT documentation, and support troubleshooting guides. The attributed references are independently written “Inspired by” notes.
+
+Use it for: source NAT with interface or pool translation; destination and static NAT for published servers and overlapping networks; rule processing order, rule-set specificity, and first-match behavior; proxy-ARP decisions; hairpin NAT / NAT reflection; NAT64 with DNS64 (`static-nat inet` + IPv4 source NAT); CGN/PBA design, paired address pooling, persistent NAT, and pool-exhaustion troubleshooting; `address-persistent` symptoms and TCP MSS caveats; and source/destination/static NAT troubleshooting with counters, sessions, and traceoptions.
+
+Key verification commands:
+
+```text
+show configuration security nat | display set
+show security nat source rule all
+show security nat destination rule all
+show security nat static rule all
+show security nat source pool all
+show security nat proxy-arp
+show security flow session source-prefix <source> extensive
+show security flow session destination-prefix <destination> extensive
+```
+
+### srx-policy
+
+`srx-policy` is an SRX security policy design, migration, and troubleshooting playbook for Junos 23.x+ non-Branch SRX platforms. It recommends `security policies global` for greenfield deployments and migrations from other vendors, using zone-to-zone policy mainly for legacy compatibility or tightly scoped exceptions. For URL filtering on supported Junos 23.4R1+ targets it recommends NextGen Web Filtering (NGWF / `ng-juniper`) as the preferred path, treating Enhanced Web Filtering (EWF / `juniper-enhanced`) as an existing-estate/compatibility path.
+
+Use it for: deciding between global and legacy `from-zone ... to-zone ...` contexts; converting vendor rulebases into ordered SRX global policies; global address-book and application/application-set design; AppID / Application Firewall rule-sets; NGWF-first web filtering, EWF compatibility, and EWF-to-NGWF migration cautions; SecIntel and ATP placement; policy logging, counts, final deny, and commit safety; and troubleshooting hit-counts, AppFW counters, web-filtering counters, and flow sessions.
+
+Key verification commands:
+
+```text
+show configuration security policies global | display set
+show security policies hit-count global
+show security flow session source-prefix <source> extensive
+show security application-firewall rule-set <rule-set-name>
+show security utm web-filtering status
+show security utm web-filtering statistics
+show log messages | match -i "secintel|atp|utm|web-filter|threat"
+```
+
+Web-filtering guidance is intentionally opinionated but conservative: prefer NGWF for Junos 23.4R1+ greenfield/migration when platform, release, license, and cloud connectivity support it; keep EWF for existing-estate continuity or documented constraints; don't call EWF formally deprecated unless current Juniper docs say so; plan EWF-to-NGWF migration during downtime, preserve policy names, and verify `show security utm web-filtering category migrate-to-ng-juniper status`.
+
+### srx-mnha
+
+`srx-mnha` is a conservative, original SRX Multi-Node High Availability research/playbook skill informed by five attributed Juniper Community TechPosts. Because those sources contained some conflicting or ambiguous details, the main skill includes only non-conflicting operational guidance and keeps concise “Inspired by” notes in `references/`.
+
+Use it for: comparing chassis cluster and MNHA models; routed/default-gateway/hybrid MNHA design; SRG0 and SRG1+ behavior; ICL design, security, reachability, and liveness checks; ICD/asymmetric-routing caveats; runtime object synchronization and Active/Warm session verification; config synchronization patterns; hybrid MNHA with eBGP, BFD, VIPs, and signal-route export policies; DHCP relay vs local DHCP behavior; and pre-cutover / troubleshooting checklists.
+
+Key verification commands:
+
+```text
+show chassis high-availability information
+show chassis high-availability services-redundancy-group <id>
+show security flow session | match "HA State|HA Wing State|Session ID|In:|Out:"
+show bgp summary
+show bfd session
+show dhcp server binding routing-instance <RI>
+```
+
+### srx-autovpn-full-tunnel
+
+`srx-autovpn-full-tunnel` is an SRX AutoVPN hub-and-spoke playbook for full-tunnel backhaul, where spokes send all non-local traffic up the tunnel and the hub provides centralized internet egress. It covers the dynamic `group-ike-id` gateway, traffic selectors + Auto Route Insertion (ARI), the single shared `st0.0`, hub source-NAT egress, spoke-to-spoke hairpin, and the anti-recursion route. It is original work inspired by and attributed to Jason Anderson's `srx-autovpn-backhaul-public` lab; the lab itself is not bundled or relicensed.
+
+### srx-ipsec-hub-spoke
+
+`srx-ipsec-hub-spoke` is an SRX static point-to-point route-based IPsec hub-and-spoke playbook with the same full-tunnel backhaul, but using one explicit IKE gateway, IPsec VPN, `st0` unit, and static route per spoke (no traffic selectors, no ARI) — routing alone scopes each tunnel. It covers per-spoke peering by WAN IP, hub source-NAT egress, spoke-to-spoke hairpin across `st0` units, the anti-recursion route, and when to switch to AutoVPN. It is original work inspired by and attributed to Jason Anderson's `srx-p2p-ipsec-public` lab; the lab itself is not bundled or relicensed.
+
+### srx-advpn
+
+`srx-advpn` is an SRX Auto Discovery VPN playbook — hub-and-spoke IPsec that dynamically builds direct spoke-to-spoke shortcut tunnels so branch-to-branch traffic bypasses the hub. It covers suggester/partner roles, the shortcut lifecycle, the multipoint `st0` overlay, OSPF p2mp with dynamic-neighbors, the certificate-authentication requirement (IKEv2 PSK with dynamic `ike-user-type` is rejected on modern Junos), PKI enrollment, the chassis-cluster certificate-load gotcha, and the vSRX `No public key found` IKE_AUTH failure root-caused to the dynamic cert-gateway responder path (use per-spoke static-address cert gateways). Includes field notes from a vSRX ADVPN lab under `references/`.
 
 ## Improvements from fatcat/converter
 
@@ -367,20 +619,28 @@ Version 1.1.0 of these skills incorporates parsing improvements identified by an
 ./install.sh --uninstall --all --target all
 
 # Or remove a single skill
-./install.sh --uninstall --skill firewall-config-diff --target codex
+./install.sh --uninstall --skill srx-mnha --target codex
 ```
 
 Manual equivalent — the skills are just directories, so remove the selected skill directory under `~/.claude/skills/`, `~/.agents/skills/`, or `~/.hermes/skills/devops/` for the corresponding agent.
 
-## License
+## License and Provenance
 
-Original content in this repository is licensed under the [MIT License](LICENSE).
+Original skill, playbook, script, and documentation text in this repository is
+licensed under the [MIT License](LICENSE).
+
+Some references are independently written “Inspired by” notes that identify Juniper,
+Cisco, Fortinet, Palo Alto Networks, community, blog, or support material which
+informed the work. They are concise original summaries, not bundled page copies or
+upstream configurations. Linked third-party material remains under its owners' terms
+and is not relicensed by this repository.
 
 **Trademark / affiliation disclaimer.** This repository is an independent, community-driven project. It is not affiliated with, endorsed by, sponsored by, or supported by Hewlett Packard Enterprise, Cisco, Palo Alto Networks, Fortinet, or Juniper Networks. "HPE", "Juniper", "Cisco", "Fortinet", "Palo Alto Networks", and "Juniper SRX" are trademarks of their respective owners and are used here only to describe what this software interoperates with. Please direct support and licensing questions about those products to the respective vendors.
 
 ## Contributing
 
-Unless explicitly stated otherwise, contributions submitted for inclusion in this project are licensed under the [MIT License](LICENSE).
+Unless you explicitly state otherwise, contributions intentionally submitted for
+inclusion in this repository are licensed under the MIT License.
 
 ---
 
