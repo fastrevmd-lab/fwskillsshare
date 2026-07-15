@@ -406,8 +406,8 @@ three-way ADVPN vs AutoVPN vs Static comparison.
 
 ## Source Notes
 
-Derived and summarized (not copied verbatim) from Jason Anderson's
-`srx-p2p-ipsec-public` lab and the Juniper Junos IPsec VPN documentation. The
-source repo carries no explicit license; this skill is a source-derived summary for
-local operational use with attribution. See `references/source-index.md` and
+This original playbook was inspired by Jason Anderson's attributed
+`srx-p2p-ipsec-public` lab and checked against Juniper Junos IPsec VPN
+documentation. The upstream lab has no explicit license and is not included or
+relicensed here. See `references/source-index.md` and the independently written
 `references/source-design-summary.md`.

@@ -28,15 +28,14 @@ Retrieved: 2026-06-29
   - Topic: IKE/IPsec proposals, policies, gateways, `st0` bind-interface, and
     operational `show`/`clear` commands.
 
-## Provenance and license
+## Inspiration and license boundary
 
 v1.1 additionally incorporates a community field report (fwskillsshare issues #5/#6,
 https://github.com/fastrevmd-lab/fwskillsshare/issues/5): 24.4R1/25.4R1 commit
 constraints (ike-user-type + IKEv2 + PSK; traffic-selector 0.0.0.0/0 with a static
 gateway address) and NAT-T findings (double-NAT, host-inbound ike).
 
-The lab repository `srx-autovpn-backhaul-public` is public but carries no explicit
-license file. This skill is a **source-derived summary** for local operational
-use, with attribution to the author (Jason Anderson). Configuration shown here is
-summarized/generalized from the lab, not reproduced verbatim. Before
-redistributing or publishing a derivative, confirm the upstream author's terms.
+The public lab carries no explicit license file. It inspired the topology and
+test questions, but the repository is not bundled or relicensed here. The skill
+and `source-design-summary.md` are independently written; consult the upstream
+repository under its own terms for the original lab.

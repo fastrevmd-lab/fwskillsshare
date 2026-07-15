@@ -486,7 +486,11 @@ above index them. Confirmed on live pairs:
 
 ## Source Notes
 
-This skill is a synthesized operational playbook based on five Juniper Community TechPosts by James Rathbun, Steven Jacques, and Laurent Paumelle. Full extracted source references are stored under `references/` for local provenance.
+This original operational playbook was informed by five attributed Juniper
+Community TechPosts by James Rathbun, Steven Jacques, and Laurent Paumelle.
+Concise `Inspired by` notes under `references/` preserve source links,
+release-specific cautions, and verification implications without reproducing
+the articles.
 
 Sections on chassis-cluster interface migration, SRG monitor-object syntax, and pitfalls 16-23 are field/QA additions beyond the five source articles; live-verified items are called out in Field-Confirmed Behaviors. The "Config model: flat vs grid" section, the routed-mode single-gateway caveat, and the vSRX-26.2 behaviors come from a 2026-07 deployment of two routed MNHA pairs on vSRX 26.2R1.7 (grid model, SRG1 deployment-type routing, eBGP + signal-route MED steering); the grid syntax is release-dependent, so verify against the target release.
 

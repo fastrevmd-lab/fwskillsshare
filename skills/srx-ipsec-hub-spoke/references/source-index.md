@@ -25,10 +25,9 @@ Retrieved: 2026-06-29
   - Topic: IKE/IPsec proposals, policies, gateways (`address`-based), `st0`
     bind-interface, and operational `show`/`clear` commands.
 
-## Provenance and license
+## Inspiration and license boundary
 
-The lab repository `srx-p2p-ipsec-public` is public but carries no explicit license
-file. This skill is a **source-derived summary** for local operational use, with
-attribution to the author (Jason Anderson). Configuration shown here is
-summarized/generalized from the lab, not reproduced verbatim. Before redistributing
-or publishing a derivative, confirm the upstream author's terms.
+The public lab carries no explicit license file. It inspired the topology and
+test questions, but the repository is not bundled or relicensed here. The skill
+and `source-design-summary.md` are independently written; consult the upstream
+repository under its own terms for the original lab.

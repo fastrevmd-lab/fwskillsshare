@@ -449,8 +449,8 @@ compare `srx-advpn` (see its three-way ADVPN vs AutoVPN vs Static table).
 
 ## Source Notes
 
-Derived and summarized (not copied verbatim) from Jason Anderson's
-`srx-autovpn-backhaul-public` lab and the Juniper Junos IPsec/AutoVPN
-documentation. The source repo carries no explicit license; this skill is a
-source-derived summary for local operational use with attribution. See
-`references/source-index.md` and `references/source-design-summary.md`.
+This original playbook was inspired by Jason Anderson's attributed
+`srx-autovpn-backhaul-public` lab and checked against Juniper Junos
+IPsec/AutoVPN documentation. The upstream lab has no explicit license and is
+not included or relicensed here. See `references/source-index.md` and the
+independently written `references/source-design-summary.md`.

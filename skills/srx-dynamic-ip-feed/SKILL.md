@@ -16,7 +16,7 @@ metadata:
       author: Karel Hendrych
       url: https://community.juniper.net/blogs/karel-hendrych/2025/11/30/srx-dynamic-ip-objects-aka-feed-server
       retrieved: "2026-05-14"
-      local_extract: references/source-extract.md
+      inspired_note: references/source-extract.md
 ---
 
 # SRX Dynamic IP Feed Servers
@@ -478,4 +478,6 @@ This skill is a condensed, operationalized SRX playbook based on Karel Hendrych'
 
 https://community.juniper.net/blogs/karel-hendrych/2025/11/30/srx-dynamic-ip-objects-aka-feed-server
 
-A faithful local extract of the source text is stored at `references/source-extract.md` for provenance and verification.
+An independently written `Inspired by` note is stored at
+`references/source-extract.md`; it preserves attribution and verification
+implications without reproducing the TechPost.
