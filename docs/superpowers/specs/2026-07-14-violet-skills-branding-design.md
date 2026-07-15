@@ -6,25 +6,27 @@
 
 ## Goal
 
-Identify agent skills as an LLM-facing element using the violet/plum treatment
-defined by the mechub brand system v1.1, and make the official brand guide easy
-to find from both the skill catalog and public website.
+Set the `skills` substring inside the `fwskillsshare` project title in the
+violet/plum treatment defined by the mechub brand system v1.1, and make the
+official brand guide easy to find from both the skill catalog and public
+website.
 
 ## Changes
 
 ### fwskillsshare
 
-- Change the README `skills` shield background from teal to brand plum
-  `#7C3AED`; white shield text remains readable because this is a graphic-scale
-  treatment.
+- Replace the plain-text README title with theme-aware SVG wordmarks that set
+  `skills` to plum-light `#C4B5FD` on dark backgrounds and plum `#7C3AED` on
+  light backgrounds. Keep `fw` and `share` in the normal title color.
+- Keep the standalone skill-count badge in its original teal treatment.
 - Add a concise link to <https://command.mechub.org/branding> in the README
   project-branding area.
 
 ### mechubsite
 
-- Give the `Skills` badge on the `fwskillsshare` card a dedicated AI badge
-  class using plum-light `#C4B5FD` for text on ink, a plum border, and a subtle
-  plum surface.
+- Wrap only the `skills` substring in the `fwskillsshare` card title with the
+  existing `.llm` class, matching the site's other AI-fragment wordmarks.
+- Keep the standalone `Skills` metadata badge in its ordinary badge treatment.
 - Add an official brand-guide link to the public footer.
 - Update the site README to identify brand system v1.1 and link its canonical
   guide.

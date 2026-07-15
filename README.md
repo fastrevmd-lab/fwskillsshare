@@ -5,13 +5,18 @@
   </picture>
 </p>
 
-<h1 align="center">fwskillsshare</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/fwskillsshare-wordmark.svg">
+    <img src="docs/assets/fwskillsshare-wordmark-light.svg" width="390" alt="fwskillsshare">
+  </picture>
+</h1>
 
 <p align="center"><strong>Firewall skills for network &amp; security engineers</strong><br>
 <em>a mechub project — sovereign network-security automation</em></p>
 
 <p align="center">
-  <img alt="skills" src="https://img.shields.io/badge/skills-21-262B38?labelColor=7C3AED">
+  <img alt="skills" src="https://img.shields.io/badge/skills-21-0D9488">
   <img alt="reviewed" src="https://img.shields.io/badge/reviewed-21%2F21-262B38">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">

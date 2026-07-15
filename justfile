@@ -12,6 +12,7 @@ fmt:
 
 lint:
     python3 scripts/check-skill-packages.py
+    python3 scripts/check-readme-branding.py
 
 test:
     python3 scripts/check-shared-schema.py

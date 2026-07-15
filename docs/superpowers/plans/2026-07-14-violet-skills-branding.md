@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Apply the official mechub violet treatment to the `Skills` label and link the canonical brand guide from the skill catalog and public website.
+**Goal:** Apply the official mechub violet treatment to the `skills` substring inside the `fwskillsshare` title and link the canonical brand guide from the skill catalog and public website.
 
-**Architecture:** Keep the change presentation-only. The GitHub README uses a static Shields badge color; the static website adds one reusable AI badge modifier and a footer link, with no JavaScript or layout changes.
+**Architecture:** Keep the change presentation-only. The GitHub README uses theme-aware SVG wordmarks; the static website reuses its existing `.llm` fragment class and adds a footer link, with no JavaScript or layout changes.
 
-**Tech Stack:** Markdown, static HTML, CSS, Shields.io
+**Tech Stack:** Markdown, SVG, static HTML, CSS
 
 ## Global Constraints
 
@@ -24,23 +24,25 @@
 
 **Interfaces:**
 - Consumes: mechub brand system v1.1 color tokens
-- Produces: violet `skills` badge segment and canonical brand-guide link
+- Produces: a theme-aware `fw[skills]share` title and canonical brand-guide link
 
 - [ ] **Step 1: Verify the current README treatment**
 
-Run: `rg -n "skills-21|command.mechub.org/branding" README.md`
+Run: `python3 scripts/check-readme-branding.py`
 
-Expected: the badge uses teal `0D9488`; no branding URL is present.
+Expected before implementation: FAIL because the title wordmark assets are absent.
 
 - [ ] **Step 2: Apply the minimal README change**
 
-Use this badge URL so the label surface is plum and the count remains ink:
+Use a `<picture>` inside the centered title to select these assets by theme:
 
 ```html
-<img alt="skills" src="https://img.shields.io/badge/skills-21-262B38?labelColor=7C3AED">
+<source media="(prefers-color-scheme: dark)" srcset="docs/assets/fwskillsshare-wordmark.svg">
+<img src="docs/assets/fwskillsshare-wordmark-light.svg" width="390" alt="fwskillsshare">
 ```
 
-Add this sentence directly after the badge block:
+Set the `skills` tspan to `#C4B5FD` in the dark asset and `#7C3AED` in
+the light asset. Restore the skill-count badge to teal, and retain this sentence:
 
 ```markdown
 Brand system: [mechub v1.1](https://command.mechub.org/branding).
@@ -55,46 +57,38 @@ Expected: package validator reports 21 skills; all commands exit 0.
 Run:
 
 ```bash
-git add README.md
-git commit -m "docs: apply violet skills branding"
+git add README.md docs/assets/fwskillsshare-wordmark.svg \
+  docs/assets/fwskillsshare-wordmark-light.svg scripts/check-readme-branding.py justfile
+git commit -m "fix: color skills in project title"
 ```
 
 ### Task 2: Update the mechub public site
 
 **Files:**
 - Modify: `/home/mharman/Projects/mechub-site/index.html:223`
-- Modify: `/home/mharman/Projects/mechub-site/assets/site.css:135`
+- Modify: `/home/mharman/Projects/mechub-site/test_links.py`
 - Modify: `/home/mharman/Projects/mechub-site/README.md:7`
 
 **Interfaces:**
 - Consumes: existing `--plum` and `--plum-light` CSS variables
-- Produces: `.badge.ai` visual modifier and canonical public brand-guide links
+- Produces: an `.llm`-marked title fragment and canonical public brand-guide links
 
 - [ ] **Step 1: Verify the current site treatment**
 
-Run: `rg -n "badge.*Skills|command.mechub.org/branding|brand system v1" index.html README.md assets/site.css`
+Run: `python3 test_links.py`
 
-Expected: `Skills` has only the base badge class; no public guide link exists; the README says v1.0.
+Expected before implementation: FAIL because the title is plain text.
 
 - [ ] **Step 2: Add the AI badge modifier**
 
-Add to `assets/site.css` after `.badge.teal`:
-
-```css
-.badge.ai {
-  color: var(--plum-light);
-  border-color: rgba(124,58,237,.5);
-  background: rgba(124,58,237,.09);
-}
-```
-
-Change the card label in `index.html` to:
+Change the card title in `index.html` to:
 
 ```html
-<span class="badge ai">Skills</span>
+fw<span class="llm">skills</span>share
 ```
 
-Add a `brand guide ↗` link to the public footer pointing at
+Restore the metadata badge to `<span class="badge">Skills</span>`. Retain the
+`brand guide ↗` link in the public footer pointing at
 `https://command.mechub.org/branding`, and add the same canonical guide URL to
 the repository README while changing “brand system v1.0” to “v1.1”.
 
@@ -107,8 +101,8 @@ Expected: no whitespace errors and link tests pass.
 Run:
 
 ```bash
-git add README.md index.html assets/site.css
-git commit -m "docs: apply violet skills branding"
+git add index.html assets/site.css test_links.py
+git commit -m "fix: color skills in project title"
 ```
 
 ### Task 3: Publish and confirm
