@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRX ADVPN"
+  short_description: "Design and troubleshoot SRX ADVPN shortcuts"
+  default_prompt: "Use $srx-advpn to design or troubleshoot this SRX ADVPN deployment."

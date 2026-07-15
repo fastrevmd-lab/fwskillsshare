@@ -15,6 +15,31 @@ SKILLS_DIR = ROOT / "skills"
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---(?:\n|$)", re.DOTALL)
 EXPECTED_AUTHORS = ["fastrevmd-lab", "Claude", "GPT"]
+EXPECTED_SKILL_NAMES = frozenset(
+    {
+        "cis-controls-ngfw-compliance",
+        "cmmc-nist-800-171-ngfw-compliance",
+        "firewall-best-practices-audit",
+        "firewall-config-conversion",
+        "firewall-config-diff",
+        "hipaa-ngfw-compliance",
+        "iso27001-ngfw-compliance",
+        "parsing-cisco-configs",
+        "parsing-fortinet-configs",
+        "parsing-palo-configs",
+        "parsing-srx-configs",
+        "pci-ngfw-compliance",
+        "soc2-ngfw-compliance",
+        "srx-advpn",
+        "srx-autovpn-full-tunnel",
+        "srx-dynamic-ip-feed",
+        "srx-ipsec-hub-spoke",
+        "srx-mnha",
+        "srx-mpls-in-flow",
+        "srx-nat",
+        "srx-policy",
+    }
+)
 
 
 def parse_scalar(value: str) -> str:
@@ -63,9 +88,14 @@ def main() -> int:
     errors: list[str] = []
     description_characters = 0
     skill_files = sorted(SKILLS_DIR.glob("*/SKILL.md"))
+    actual_skill_names = {skill_file.parent.name for skill_file in skill_files}
 
-    if len(skill_files) != 7:
-        errors.append(f"expected 7 skills, found {len(skill_files)}")
+    missing_skills = sorted(EXPECTED_SKILL_NAMES - actual_skill_names)
+    unexpected_skills = sorted(actual_skill_names - EXPECTED_SKILL_NAMES)
+    if missing_skills:
+        errors.append(f"missing expected skills: {', '.join(missing_skills)}")
+    if unexpected_skills:
+        errors.append(f"unexpected skills: {', '.join(unexpected_skills)}")
 
     for skill_file in skill_files:
         skill_dir = skill_file.parent
@@ -96,6 +126,8 @@ def main() -> int:
             errors.append(f"{skill_file}: description contains angle brackets")
         if not fields.get("version"):
             errors.append(f"{skill_file}: version is required for Hermes package metadata")
+        if fields.get("license") != "MIT":
+            errors.append(f"{skill_file}: license must be MIT")
         if authors != EXPECTED_AUTHORS:
             errors.append(
                 f"{skill_file}: author must be exactly {EXPECTED_AUTHORS!r}; found {authors!r}"

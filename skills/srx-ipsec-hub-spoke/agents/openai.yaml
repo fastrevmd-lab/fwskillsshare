@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRX IPsec Hub and Spoke"
+  short_description: "Design static SRX IPsec hub-and-spoke VPNs"
+  default_prompt: "Use $srx-ipsec-hub-spoke to design or troubleshoot this static SRX hub-and-spoke VPN."
