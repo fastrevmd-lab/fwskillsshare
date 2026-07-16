@@ -22,8 +22,6 @@
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
 </p>
 
-Brand system: [mechub v1.1](https://command.mechub.org/branding).
-
 Agent skills for the firewall work you actually do — parsing, auditing, converting, and running Juniper SRX — not vibe configuring.
 
 Firewall work is unforgiving. A confidently wrong `access-list` line, a Junos stanza that won't commit, a compliance claim you can't back up in an audit — these aren't cosmetic. Coding agents are astonishingly good at producing *plausible* firewall config and astonishingly bad at knowing when it's wrong.
