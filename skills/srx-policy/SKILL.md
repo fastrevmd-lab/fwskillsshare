@@ -352,6 +352,8 @@ show security policies hit-count from-zone <src-zone> to-zone <dst-zone>
 clear security policies hit-count
 ```
 
+The `from-zone` and `to-zone` hit-count filters are for zone-based policies only. Use the unfiltered command for global policies and identify the `junos-global` rows.
+
 Sessions and flow:
 
 ```text

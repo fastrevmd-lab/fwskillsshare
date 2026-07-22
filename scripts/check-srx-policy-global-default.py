@@ -79,6 +79,24 @@ def main() -> int:
         "README.md does not describe the enforced global-policy output default",
         errors,
     )
+    if re.search(
+        r"Design SRX security policy[^\n]+Prefer `security policies global`",
+        readme,
+        re.IGNORECASE,
+    ):
+        errors.append("README.md usage summary still weakly says to prefer global policy")
+    require(
+        r"Design SRX security policy[^\n]+Enforce `security policies global`[^\n]+explicit opt-out",
+        readme,
+        "README.md usage summary does not enforce global output absent explicit opt-out",
+        errors,
+    )
+    require(
+        r"show security policies hit-count from-zone.*?```\s+The .*?zone-based policies only",
+        skill,
+        "SKILL.md does not label zone-filtered hit counts as zone-policy-only",
+        errors,
+    )
 
     if not EXAMPLE.exists():
         errors.append(f"missing reference example: {EXAMPLE.relative_to(ROOT)}")

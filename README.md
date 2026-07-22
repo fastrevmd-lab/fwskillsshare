@@ -270,7 +270,7 @@ enabled = false
 - **Design SRX MPLS in flow mode** — Keep inet/inet6 in stateful flow mode for policy, NAT, and AppID while `family mpls` is packet-based
 - **Design SRX MNHA** — Reason about MNHA modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, and DHCP caveats
 - **Operate SRX NAT** — Source/destination/static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin, proxy ARP
-- **Design SRX security policy** — Prefer `security policies global` for greenfield/migrations, then layer AppID/AppFW, NGWF-first web filtering, SecIntel, ATP
+- **Design SRX security policy** — Enforce `security policies global` for generated greenfield, migration, and onboarding output absent an explicit opt-out; then layer AppID/AppFW, NGWF-first web filtering, SecIntel, ATP
 - **Assess compliance evidence** — Map NGFW policies, NAT, zones, logging, IDS/IPS, and segmentation to PCI / HIPAA / CMMC-NIST 800-171 / CIS / ISO 27001 / SOC 2 evidence expectations
 
 ### Examples
