@@ -16,39 +16,60 @@ their real top-level keys: `security_policies[]`, `address_objects` / `service_o
 
 ---
 
+## Policy population contract
+
+Before applying any entry that reads `security_policies`, partition the parser
+output by marker, never by rule name:
+
+- `explicit_rules` = rules whose `_implicit` value is not `true`;
+- `enabled_explicit_rules` = enabled members of `explicit_rules`;
+- `disabled_explicit_rules` = disabled members of `explicit_rules`; and
+- `implicit_rules` = rules marked `_implicit: true`.
+
+Active-risk, order, logging, exposure, shadow, redundancy, and overlap checks
+use `enabled_explicit_rules`. Cleanup/state checks use `explicit_rules` or
+`disabled_explicit_rules` as their entries specify. Reference and object-usage
+checks exclude `implicit_rules` and must state whether disabled explicit rules
+count as references. No check emits a finding against an implicit rule or
+compares it with an explicit rule. `implicit_rules` are consulted only to
+describe effective enforcement where a vendor default applies; they never
+provide explicit logging or satisfy an explicit-rule requirement.
+
+---
+
 ## Security Checks
 
-- SEC-ANY-ANY — permit rule with any source AND any destination AND any service — `security_policies[].{src_addresses, dst_addresses, services, applications, action}` — CRITICAL (HIGH if logged) — definitive
+- SEC-ANY-ANY — enabled explicit permit rule with any source AND any destination AND any service — `enabled_explicit_rules[].{src_addresses, dst_addresses, services, applications, action}` — CRITICAL (HIGH if logged) — definitive
 
-- SEC-ANY-SVC — permit rule with any/any-service but specific src+dst — `security_policies[].{services, applications, action}` — MEDIUM — definitive
+- SEC-ANY-SVC — enabled explicit permit rule with any/any-service but specific src+dst — `enabled_explicit_rules[].{services, applications, action}` — MEDIUM — definitive
 
-- SEC-BROAD-SRC — permit with overly broad source (0.0.0.0/0 or very large supernet) — `security_policies[].src_addresses, address_objects` — HIGH — definitive
+- SEC-BROAD-SRC — enabled explicit permit with overly broad source (0.0.0.0/0 or very large supernet) — `enabled_explicit_rules[].src_addresses, address_objects` — HIGH — definitive
 
-- SEC-BROAD-DST — permit with overly broad destination — `security_policies[].dst_addresses, address_objects` — MEDIUM — definitive
+- SEC-BROAD-DST — enabled explicit permit with overly broad destination — `enabled_explicit_rules[].dst_addresses, address_objects` — MEDIUM — definitive
 
 - SEC-LARGE-PORTRANGE — service spanning a very large port range — `service_objects` — LOW — definitive
 
-- SEC-SHADOW — rule fully shadowed by an earlier broader rule — `security_policies[]` ordered by `_rule_index`, resolved `address_objects`, `address_groups` — HIGH — heuristic (needs full order + resolution)
+- SEC-SHADOW — enabled explicit rule fully shadowed by an earlier broader enabled explicit rule — `enabled_explicit_rules` ordered by `_rule_index`, resolved `address_objects`, `address_groups` — HIGH — heuristic (needs full order + resolution)
 
-- SEC-REDUNDANT — duplicate rule (same match + action as another) — `security_policies[]` — LOW — definitive
+- SEC-REDUNDANT — duplicate enabled explicit rule (same match + action as another) — `enabled_explicit_rules` — LOW — definitive
 
-- SEC-OVERLAP — overlapping rules with differing actions (ordering risk) — `security_policies[]` ordered by `_rule_index` — MEDIUM — heuristic
+- SEC-OVERLAP — overlapping enabled explicit rules with differing actions (ordering risk) — `enabled_explicit_rules` ordered by `_rule_index` — MEDIUM — heuristic
 
-- SEC-ORPHAN-REF — rule references a missing/undefined object — `security_policies[]` vs `address_objects`, `service_objects`, `applications` — MEDIUM — definitive
+- SEC-ORPHAN-REF — explicit rule (enabled or disabled) references a missing/undefined object — `explicit_rules` vs `address_objects`, `service_objects`, `applications` — MEDIUM — definitive
 
-- SEC-DISABLED — disabled-but-present rule (cleanup) — `security_policies[].disabled` — INFO — definitive
+- SEC-DISABLED — disabled-but-present explicit rule (cleanup) — `disabled_explicit_rules` — INFO — definitive
 
-- SEC-NO-DENY-ALL — no explicit logged deny-all at the tail of the policy set; on SRX the implicit-deny already enforces block, but an explicit logged deny-all is recommended for visibility — `security_policies[]` tail (`_rule_index`), `metadata.source_vendor` — MEDIUM — heuristic
+- SEC-NO-DENY-ALL — no explicit logged deny-all at the tail of the relevant enabled explicit policy context/global fallback; an implicit vendor default can provide effective enforcement but never explicit log visibility — `enabled_explicit_rules` tail (`_rule_index`), `implicit_rules`, `metadata.source_vendor` — MEDIUM — heuristic
 
-- SEC-NO-LOG — permit rule without logging — `security_policies[].log_end`, `security_policies[].log_start` — LOW (MEDIUM if broad) — definitive
+- SEC-NO-LOG — enabled explicit permit rule without logging — `enabled_explicit_rules[].log_end`, `enabled_explicit_rules[].log_start` — LOW (MEDIUM if broad) — definitive
 
-- SEC-NO-DESC — rule missing description/owner — `security_policies[].description` — INFO — definitive
+- SEC-NO-DESC — explicit rule (enabled or disabled) missing description/owner — `explicit_rules[].description` — INFO — definitive
 
-- SEC-EXPOSED-MGMT — device management service reachable from untrusted/any — `security_policies[]`, `zones`, `service_objects` — HIGH — definitive
+- SEC-EXPOSED-MGMT — device management service reachable through an enabled explicit rule from untrusted/any — `enabled_explicit_rules`, `zones`, `service_objects` — HIGH — definitive
 
-- SEC-EXPOSED-RISKY — risky services (RDP/SMB/DB/telnet) reachable from untrusted/any — `security_policies[]`, `service_objects`, `zones` — HIGH — definitive
+- SEC-EXPOSED-RISKY — risky services (RDP/SMB/DB/telnet) reachable through an enabled explicit rule from untrusted/any — `enabled_explicit_rules`, `service_objects`, `zones` — HIGH — definitive
 
-- SEC-INBOUND-ANY — inbound any-from-internet permit — `security_policies[]`, `zones` — HIGH — definitive
+- SEC-INBOUND-ANY — enabled explicit inbound any-from-internet permit — `enabled_explicit_rules`, `zones` — HIGH — definitive
 
 - SEC-PLAINTEXT-MGMT — plaintext management enabled (telnet or http are definitively detectable from `system.mgmt_services` and `zones[].host_inbound`; SNMPv1/v2c version detection is data-dependent — the schema carries only a boolean `snmp` with no version field, so flag/skip SNMP-version checks per the skill's graceful-degradation rule) — `system.mgmt_services`, `zones[].host_inbound` — HIGH — definitive
 
@@ -62,11 +83,11 @@ their real top-level keys: `security_policies[]`, `address_objects` / `service_o
 
 - SEC-SSH-ROOT-LOGIN — SSH permits root login or uses weak ciphers / no rate-limit — `system.ssh` (`root_login`, `ciphers`, `rate_limit`) — HIGH — definitive
 
-- SEC-SERVICES-UNREFERENCED — a configured security service is attached to no policy (inert security stack) — `security_services` vs `security_policies[].security_profiles` — HIGH — heuristic (depends on profile capture)
+- SEC-SERVICES-UNREFERENCED — a configured security service is attached to no enabled explicit policy (inert security stack) — `security_services` vs `enabled_explicit_rules[].security_profiles` — HIGH — heuristic (depends on profile capture)
 
-- SEC-ZONES-NAT-NO-POLICY — zones/NAT exist but no security_policies reference them — `zones`, `nat_rules`, `security_policies` — HIGH — heuristic
+- SEC-ZONES-NAT-NO-POLICY — zones/NAT exist but no enabled explicit policy references them — `zones`, `nat_rules`, `enabled_explicit_rules` — HIGH — heuristic
 
-- SEC-EMPTY-POLICYSET — security_policies is empty: emit a coverage warning rather than staying silent; distinguish default-deny-by-design from partial config / logical-system / tenant — `security_policies`, `_logical_system`/`_tenant` markers — MEDIUM — definitive
+- SEC-EMPTY-POLICYSET — `explicit_rules` is empty after excluding `_implicit: true`: emit a coverage warning rather than staying silent; distinguish default-deny-by-design from partial config / logical-system / tenant — `explicit_rules`, `implicit_rules`, `_logical_system`/`_tenant` markers — MEDIUM — definitive
 
 - SEC-HOST-INBOUND-EXPOSURE — management/sensitive host-inbound services on an untrusted/data zone — `zones[].host_inbound.system_services` — MEDIUM — heuristic
 
@@ -74,14 +95,14 @@ their real top-level keys: `security_policies[]`, `address_objects` / `service_o
 
 - SEC-AUTH-HARDENING — missing/weak password policy or login lockout — `system.auth` (`password_policy`, `login_lockout`) — MEDIUM — definitive
 
-- SEC-IPV6-POSTURE — interfaces have inet6 addresses but no corresponding v6 controls/policies — `interfaces[].ipv6`, `security_policies` — LOW — heuristic
+- SEC-IPV6-POSTURE — interfaces have inet6 addresses but no corresponding enabled explicit v6 controls/policies — `interfaces[].ipv6`, `enabled_explicit_rules` — LOW — heuristic
 - SEC-NO-CONTROL-PLANE-PROTECTION — no stateless control-plane / RE-protection filter applied (SRX lo0 input filter; Cisco CoPP; Palo/FortiGate mgmt profile) on a device with an untrusted-facing interface — `system.control_plane_protection` (`re_filter_present`, `applied_to`), `zones`/`interfaces` — MEDIUM — heuristic
 
 ---
 
 ## Operational Checks
 
-- OPS-UNUSED-OBJ — address/service object defined but unreferenced — `address_objects`, `service_objects` vs `security_policies[]`, `nat_rules`, `address_groups`, `service_groups` — LOW — heuristic (needs complete ref capture)
+- OPS-UNUSED-OBJ — address/service object defined but unreferenced by any explicit rule (enabled or disabled), NAT rule, or group — `address_objects`, `service_objects` vs `explicit_rules`, `nat_rules`, `address_groups`, `service_groups` — LOW — heuristic (needs complete ref capture)
 
 - OPS-DUP-OBJ — duplicate objects (same value, different name) — `address_objects`, `service_objects` — LOW — definitive
 
@@ -91,13 +112,13 @@ their real top-level keys: `security_policies[]`, `address_objects` / `service_o
 
 - OPS-NO-DESC-OBJ — object/group missing description — `address_objects[].description`, `address_groups[].description`, `service_objects[].description` — INFO — definitive
 
-- OPS-NAMING — non-standard / inconsistent naming — `address_objects[].name`, `service_objects[].name`, `security_policies[].name` — INFO — heuristic
+- OPS-NAMING — non-standard / inconsistent naming — `address_objects[].name`, `service_objects[].name`, `explicit_rules[].name` — INFO — heuristic
 
-- OPS-CONSOLIDATE — rules consolidatable (same action, contiguous, differ only by one field) — `security_policies[]` — LOW — heuristic
+- OPS-CONSOLIDATE — enabled explicit rules consolidatable (same action, contiguous, differ only by one field) — `enabled_explicit_rules` — LOW — heuristic
 
 - OPS-REDUNDANT-OBJ — redundant objects (subset/superset duplicates) — `address_objects`, `service_objects` — LOW — heuristic
 
-- OPS-ZERO-HIT — zero-hit rule (only when usage/hit-count data is present) — `security_policies[].hit_count` (NOT part of the base intermediate schema — it requires external hit-count telemetry, so this check is data-dependent and is skipped unless that data is supplied) — LOW — definitive (skip if no data)
+- OPS-ZERO-HIT — zero-hit enabled explicit rule (only when usage/hit-count data is present) — `enabled_explicit_rules[].hit_count` (NOT part of the base intermediate schema — it requires external hit-count telemetry, so this check is data-dependent and is skipped unless that data is supplied) — LOW — definitive (skip if no data)
 
 - OPS-LOG-COMPLETENESS — no remote security-log stream/host target configured — top-level `syslog_config[]` (SRX `security log stream`/host may land in `residual_raw`; skip if neither is captured) — MEDIUM — definitive
 

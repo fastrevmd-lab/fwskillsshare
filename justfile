@@ -16,6 +16,7 @@ lint:
 
 test:
     python3 scripts/check-shared-schema.py
+    python3 scripts/check-audit-rule-contract.py
 
 guard: lint test
 

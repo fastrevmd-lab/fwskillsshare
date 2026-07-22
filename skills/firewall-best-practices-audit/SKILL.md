@@ -1,7 +1,7 @@
 ---
 name: firewall-best-practices-audit
 description: Audit normalized Cisco, Fortinet, Palo Alto, and Juniper firewall rulebases for security hygiene. Use when finding any-any, shadowed, redundant, or orphaned rules, missing deny or logging, exposed management, weak VPN crypto, hardening gaps, or unused objects. Parse raw configs first.
-version: 1.1.2
+version: 1.1.3
 author:
   - fastrevmd-lab
   - Claude
@@ -26,6 +26,31 @@ The audit reports findings, not verdicts. It never claims a config is "secure" �
 ## Scope and routing
 
 Operate on the normalized `parsing-*` schema; do not hand-audit raw vendor text when a parser exists. Treat framework-control mapping as out of scope, route migrations to `firewall-config-conversion`, and route parity or drift comparisons to `firewall-config-diff`.
+
+## Policy population contract
+
+Parser output can include a vendor-default policy marked `_implicit: true`.
+Partition `security_policies` once before running any rule-scoped check:
+
+- `explicit_rules` — every rule whose `_implicit` value is not `true`;
+- `enabled_explicit_rules` — `explicit_rules` whose `disabled` value is not
+  `true`;
+- `disabled_explicit_rules` — `explicit_rules` whose `disabled` value is
+  `true`; and
+- `implicit_rules` — rules marked `_implicit: true`.
+
+All active-risk, order, logging, exposure, shadow, redundancy, and overlap
+checks operate on `enabled_explicit_rules`. Cleanup/state checks may inspect
+`explicit_rules` or `disabled_explicit_rules`, but never `implicit_rules`.
+Reference and object-usage checks must likewise exclude `implicit_rules` and
+state whether disabled explicit rules count as references. Never emit a finding
+against an implicit rule or compare one with an explicit rule.
+
+`SEC-EMPTY-POLICYSET` fires when `explicit_rules` is empty, even if a parser
+appended an implicit default. `SEC-NO-DENY-ALL` inspects the tail of the relevant
+`enabled_explicit_rules` policy context (including the global fallback where
+applicable). An implicit default can explain effective enforcement, but it never
+satisfies the requirement for an explicit logged deny-all.
 
 ## Input Handling
 

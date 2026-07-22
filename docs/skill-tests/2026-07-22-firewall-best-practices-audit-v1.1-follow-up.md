@@ -2,7 +2,7 @@
 
 - **Validation date:** 2026-07-22
 - **Issue:** [#15 — re-run policy-light and policy-heavy SRX audits](https://github.com/fastrevmd-lab/fwskillsshare/issues/15)
-- **Skill under test:** `firewall-best-practices-audit` **v1.1.2**
+- **Skill under test:** `firewall-best-practices-audit` **v1.1.3**
 - **Parser instructions:** `parsing-srx-configs` **v1.3.4**
 - **Mode:** read, parse, and analyze only; no device-side operation was called
 - **Outcome:** offline policy-light replay and synthetic policy-heavy validation
@@ -79,8 +79,8 @@ parsing. For this test, **explicit policy count** means
 `security_policies` filtered to `_implicit != true`. This yields 0 explicit
 policies and allows `SEC-EMPTY-POLICYSET` to fire. A consumer that tests the raw
 array length instead would see the appended implicit rule and incorrectly
-suppress the finding; the check-catalog wording does not currently state this
-filter and should be clarified in a future behavior change.
+suppress the finding. The v1.1.3 policy-population contract now requires this
+partition and `scripts/check-audit-rule-contract.py` guards it.
 
 ### Findings
 
@@ -230,8 +230,10 @@ line is silently dropped under the current parser instructions.
 3. **Negative controls did not over-fire.** Screen, auth hardening, RE filter,
    remote logging, safe host-inbound, and terminal deny controls suppress their
    corresponding findings in both cases where the needed data is present.
-4. **An implicit-rule contract gap remains.** Audit implementations must exclude
-   `_implicit: true` when deciding whether the explicit policy set is empty.
+4. **The implicit-rule contract gap is guarded.** Audit implementations must
+   exclude `_implicit: true` from explicit-rule families. The v1.1.3 contract
+   and regression check pin empty-policy, enabled explicit tail,
+   shadow/redundancy/overlap, and disabled-cleanup behavior.
 5. **Control-plane quality remains residual.** The audit models only that an RE
    filter is applied, not whether its terms enforce least privilege. The
    synthetic `PROTECT-RE` terms permit SSH without a source restriction and
