@@ -16,6 +16,7 @@ lint:
 
 test:
     python3 scripts/check-shared-schema.py
+    python3 scripts/check-srx-policy-global-default.py
 
 guard: lint test
 
