@@ -2,7 +2,7 @@
 
 - **Validation date:** 2026-07-22
 - **Issue:** [#15 — re-run policy-light and policy-heavy SRX audits](https://github.com/fastrevmd-lab/fwskillsshare/issues/15)
-- **Skill under test:** `firewall-best-practices-audit` **v1.1.3**
+- **Skill under test:** `firewall-best-practices-audit` **v1.1.4**
 - **Parser instructions:** `parsing-srx-configs` **v1.3.4**
 - **Mode:** read, parse, and analyze only; no device-side operation was called
 - **Outcome:** offline policy-light replay and synthetic policy-heavy validation
@@ -14,7 +14,7 @@
 | Acceptance item | Result | Evidence and limitation |
 |---|---|---|
 | Same policy-light case emits explicit v1.1 coverage findings | **Offline pass** | The repository-preserved worked-example projection emits 6 findings, including `SEC-EMPTY-POLICYSET`; this was not a new live collection. |
-| Policy-heavy case exercises stateful rulebase checks | **Synthetic pass** | A secret-free 9-explicit-policy fixture emits 16 finding IDs across permissiveness, shadow/redundancy/overlap, exposure, logging, reference, cleanup, and object checks. |
+| Policy-heavy case exercises stateful rulebase checks | **Synthetic pass** | A secret-free 9-explicit-policy fixture emits 17 finding IDs across permissiveness, shadow/redundancy/overlap, exposure, deny-all applicability, logging, reference, cleanup, and object checks. |
 | Model, release, date, completeness, findings, false positives, unsupported cases, and residuals recorded | **Pass with stated gaps** | Exact current device model/release/config and the historical policy-light residual count cannot be recovered without a live pull or retained raw artifact. |
 | Collection remains read-only | **Pass** | No device connector was callable; all work used repository artifacts and a synthetic local fixture. |
 
@@ -30,6 +30,15 @@ the current `parsing-srx-configs` extraction contract and
 input is retained at
 [`fixtures/2026-07-22-policy-heavy-synthetic-srx.md`](fixtures/2026-07-22-policy-heavy-synthetic-srx.md)
 so the reasoning can be repeated.
+
+`scripts/check-audit-rule-contract.py` is an executable behavioral regression,
+not only a wording guard. Its behavioral assertions construct and compare
+vendor-specific comparison populations, verify SRX zone-pair versus global
+phase applicability and `_rule_index` order, exercise normalized `deny`/`drop`
+terminal actions and unreachable fallbacks, and require an enabled permit with
+zone/address overlap before treating a NAT flow as policy-covered. It also
+enumerates the policy-heavy finding rows and derives the severity tally, so the
+reported count cannot pass as an unsupported prose-only assertion.
 
 The Junos policy-order and syntax interpretation was cross-checked against
 Juniper's current primary documentation:
@@ -79,7 +88,7 @@ parsing. For this test, **explicit policy count** means
 `security_policies` filtered to `_implicit != true`. This yields 0 explicit
 policies and allows `SEC-EMPTY-POLICYSET` to fire. A consumer that tests the raw
 array length instead would see the appended implicit rule and incorrectly
-suppress the finding. The v1.1.3 policy-population contract now requires this
+suppress the finding. The v1.1.4 policy-population contract now requires this
 partition and `scripts/check-audit-rule-contract.py` guards it.
 
 ### Findings
@@ -175,6 +184,7 @@ cannot be assessed from the preserved projection.
 | SEC-OVERLAP | Medium | heuristic | `ALLOW-RDP-IN` and `DENY-RDP-IN` have the same match but opposite actions; first match wins. |
 | SEC-ORPHAN-REF | Medium | definitive | `ALLOW-MISSING` references undefined `MissingBackend`. |
 | SEC-NO-LOG | Medium | definitive | `ALLOW-DNS-NOLOG` and broad inbound `ALLOW-RDP-IN` permit without session logging; broad inbound context raises the grouped finding to Medium. |
+| SEC-NO-DENY-ALL | Medium | heuristic | The trust→untrust catch-all `ALLOW-ALL-EDGE` makes the later global `DENY-REST` unreachable for that zone-pair phase, so this applicable context has no reachable explicit logged terminal deny. |
 | SEC-REDUNDANT | Low | definitive | `ALLOW-WEB-COPY` duplicates `ALLOW-WEB` match and action. |
 | SEC-LARGE-PORTRANGE | Low | definitive | Unused `APP-WIDE` spans TCP/1024-65535. |
 | OPS-UNUSED-OBJ | Low | heuristic | `WebServerCopy`, `UnusedHost`, and `APP-WIDE` are unreferenced in the complete fixture. |
@@ -183,26 +193,37 @@ cannot be assessed from the preserved projection.
 | SEC-NO-DESC | Info | definitive | `ALLOW-DNS-NOLOG` and `OLD-FTP` have no policy description. |
 | OPS-NO-DESC-OBJ | Info | definitive | `LegacyFtp`, `UnusedHost`, and `APP-WIDE` have no description. |
 
-**Tally:** Critical 0, High 5, Medium 4, Low 4, Info 3 — **16 finding
+**Tally:** Critical 0, High 5, Medium 5, Low 4, Info 3 — **17 finding
 IDs**.
 
-All 16 are deliberately seeded, so **confirmed false positives are 0**. The
+The additional ID relative to the earlier 16-ID draft is
+`SEC-NO-DENY-ALL`, derived from the executed zone-pair/global applicability
+regression: `ALLOW-ALL-EDGE` matches every trust→untrust flow before SRX can
+consult global policy, so global `DENY-REST` cannot satisfy that context. This
+does not add `SEC-ZONES-NAT-NO-POLICY`; the enabled catch-all permit still
+carries the synthetic NAT flow.
+
+All 17 are grounded in the declared synthetic fixture, so **confirmed false
+positives are 0**. The
 catalog-mandated heuristic confidence remains appropriate for shadow/overlap and
-unused-object results even though the synthetic input is complete.
+unused-object results even though the synthetic input is complete. The
+deny-all result is also heuristic because the normalized schema does not carry
+a general vendor policy-phase provenance field.
 
 ### Negative controls, skipped checks, and residuals
 
 Correctly not fired:
 
-- `SEC-NO-DENY-ALL`: `DENY-REST` is an explicit logged terminal global deny.
 - `SEC-SSH-ROOT-LOGIN`: root login is denied and limits are present.
 - `SEC-AUTH-HARDENING`: password policy and lockout are present.
 - `SEC-NO-SCREEN`: `EDGE-SCREEN` is bound to untrust.
 - `SEC-NO-CONTROL-PLANE-PROTECTION`: `PROTECT-RE` is applied to lo0 input.
 - `OPS-LOG-COMPLETENESS`: a remote `system syslog host` target is present.
 - `SEC-HOST-INBOUND-EXPOSURE`: untrust host-inbound permits ping only.
-- `SEC-ZONES-NAT-NO-POLICY` / `SEC-EMPTY-POLICYSET`: all NAT zones are used by
-  explicit policies and the explicit set is nonempty.
+- `SEC-ZONES-NAT-NO-POLICY`: the enabled `ALLOW-ALL-EDGE` permit has matching
+  trust→untrust zones and `any` addresses, so it can carry the `TRUST-OUT` NAT
+  flow; the deny-only policies are not counted as coverage.
+- `SEC-EMPTY-POLICYSET`: the explicit set is nonempty.
 
 Skipped/no data: `SEC-WEAK-IKE`, `SEC-WEAK-IPSEC`, and `SEC-PSK-WEAK` (no VPN
 chain); `SEC-IPV6-POSTURE` (no IPv6); `OPS-ZERO-HIT` (no counters);
@@ -225,15 +246,19 @@ line is silently dropped under the current parser instructions.
    IDs by reading explicit-policy emptiness, zones/NAT, security-service
    attachment, SSH, control-plane/device-plane data, logging, and IPv6 posture.
 2. **Stateful catalog coverage is exercised.** The policy-heavy fixture produces
-   16 IDs across ordered policy and object families, not merely device-plane
+   17 IDs across ordered policy and object families, not merely device-plane
    absence checks.
 3. **Negative controls did not over-fire.** Screen, auth hardening, RE filter,
-   remote logging, safe host-inbound, and terminal deny controls suppress their
-   corresponding findings in both cases where the needed data is present.
+   remote logging, safe host-inbound, and NAT-flow permit controls suppress
+   their corresponding findings where the needed data is present. The deny-all
+   check correctly fires because the zone-pair catch-all prevents the global
+   fallback from being reached.
 4. **The implicit-rule contract gap is guarded.** Audit implementations must
-   exclude `_implicit: true` from explicit-rule families. The v1.1.3 contract
-   and regression check pin empty-policy, enabled explicit tail,
-   shadow/redundancy/overlap, and disabled-cleanup behavior.
+   exclude `_implicit: true` from explicit-rule families. The v1.1.4 contract
+   and regression check pin empty-policy partitioning, vendor evaluation
+   populations, enabled explicit tail/order, `deny`/`drop` aliases, NAT-capable
+   enabled permit coverage, shadow/redundancy/overlap, and disabled-cleanup
+   behavior.
 5. **Control-plane quality remains residual.** The audit models only that an RE
    filter is applied, not whether its terms enforce least privilege. The
    synthetic `PROTECT-RE` terms permit SSH without a source restriction and

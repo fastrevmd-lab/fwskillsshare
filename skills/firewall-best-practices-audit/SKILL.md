@@ -1,7 +1,7 @@
 ---
 name: firewall-best-practices-audit
 description: Audit normalized Cisco, Fortinet, Palo Alto, and Juniper firewall rulebases for security hygiene. Use when finding any-any, shadowed, redundant, or orphaned rules, missing deny or logging, exposed management, weak VPN crypto, hardening gaps, or unused objects. Parse raw configs first.
-version: 1.1.3
+version: 1.1.4
 author:
   - fastrevmd-lab
   - Claude
@@ -47,10 +47,49 @@ state whether disabled explicit rules count as references. Never emit a finding
 against an implicit rule or compare one with an explicit rule.
 
 `SEC-EMPTY-POLICYSET` fires when `explicit_rules` is empty, even if a parser
-appended an implicit default. `SEC-NO-DENY-ALL` inspects the tail of the relevant
-`enabled_explicit_rules` policy context (including the global fallback where
-applicable). An implicit default can explain effective enforcement, but it never
-satisfies the requirement for an explicit logged deny-all.
+appended an implicit default.
+
+### Evaluation context and phase
+
+Before `SEC-SHADOW`, `SEC-REDUNDANT`, `SEC-OVERLAP`, or `OPS-CONSOLIDATE`,
+partition `enabled_explicit_rules` into a vendor evaluation population and sort
+each population by numeric `_rule_index`. Never compare rules across these
+populations:
+
+- **SRX:** partition first by root, `_logical_system`, or `_tenant`; within that
+  container, keep each concrete source-zone/destination-zone pair separate and
+  keep `from-zone any to-zone any` global policy in a later, separate phase.
+- **PAN-OS:** partition by `_vsys` and use the parser's fully merged Panorama/
+  local order. Zones are match fields inside that population, not rulebase
+  containers.
+- **FortiGate:** partition by `_vdom`; zones remain match fields within the
+  ordered VDOM rulebase.
+- **Cisco ASA:** only use a concrete parser-derived inbound binding/source zone
+  as the available rulebase boundary. The shared schema has no ACL name or
+  direction field, so an absent or ambiguous binding is not safe to flatten.
+
+The shared schema has no general policy-phase or origin field. If the applicable
+container, binding, merged-order provenance, `_rule_index`, or object resolution
+is absent, duplicated, or ambiguous, skip/downgrade the dependent comparison
+instead of inventing an order, and put an **evidence-gap warning** in the
+skipped-check summary.
+
+`SEC-NO-DENY-ALL` evaluates each applicable context using `_rule_index`, not
+array order. A qualifying explicit terminal rule uses one of `deny` or `drop`
+(the normalized silent-drop values), match-all source, destination, and
+application/service criteria, no restricting schedule/user/negation, and start
+or end logging. `reset-both` is a reject action, not a deny alias. On SRX, a
+global logged deny can be a fallback only when the relevant zone-pair phase has
+no earlier catch-all rule that makes global policy unreachable. An implicit
+default can explain effective enforcement, but never supplies explicit log
+visibility.
+
+`SEC-ZONES-NAT-NO-POLICY` requires evidence that an enabled `allow` rule can
+carry at least part of the intended NAT flow in the same vendor container: its
+source/destination zones and resolved source/destination addresses must overlap
+the NAT rule. A deny-only rule, disabled permit, unrelated zone, or mere textual
+reference does not supply coverage. If address objects cannot be resolved,
+skip/downgrade the conclusion and record the evidence gap.
 
 ## Input Handling
 

@@ -35,6 +35,25 @@ compares it with an explicit rule. `implicit_rules` are consulted only to
 describe effective enforcement where a vendor default applies; they never
 provide explicit logging or satisfy an explicit-rule requirement.
 
+### Vendor evaluation population and phase
+
+For comparison checks, partition `enabled_explicit_rules` into a vendor
+evaluation population before sorting by numeric `_rule_index`:
+
+- SRX uses root/`_logical_system`/`_tenant`, then a separate population for each
+  concrete zone pair; global `any`→`any` policy is a distinct later phase.
+- PAN-OS uses `_vsys` and the parser's complete merged Panorama/local order;
+  source/destination zones are match fields, not separate rulebases.
+- FortiGate uses `_vdom`; zones remain match fields in the VDOM rulebase.
+- Cisco ASA may use a concrete parser-derived inbound binding/source zone. The
+  schema has no ACL name/direction field, so do not flatten ambiguous bindings.
+
+Never compare rules from different populations or flatten SRX zone-pair and
+global phases. If vendor context, binding, complete merged-order provenance,
+unique `_rule_index`, or required object resolution is unavailable, skip or
+downgrade the affected check and record an **evidence-gap warning**. The shared
+schema has no generic phase/origin field, so do not invent one.
+
 ---
 
 ## Security Checks
@@ -49,17 +68,17 @@ provide explicit logging or satisfy an explicit-rule requirement.
 
 - SEC-LARGE-PORTRANGE — service spanning a very large port range — `service_objects` — LOW — definitive
 
-- SEC-SHADOW — enabled explicit rule fully shadowed by an earlier broader enabled explicit rule — `enabled_explicit_rules` ordered by `_rule_index`, resolved `address_objects`, `address_groups` — HIGH — heuristic (needs full order + resolution)
+- SEC-SHADOW — enabled explicit rule fully shadowed by an earlier broader enabled explicit rule in the same vendor evaluation population — `enabled_explicit_rules` ordered by `_rule_index`, resolved `address_objects`, `address_groups` — HIGH — heuristic (needs full order + resolution)
 
-- SEC-REDUNDANT — duplicate enabled explicit rule (same match + action as another) — `enabled_explicit_rules` — LOW — definitive
+- SEC-REDUNDANT — duplicate enabled explicit rule (same match + action as another) in the same vendor evaluation population — `enabled_explicit_rules` — LOW — definitive only with complete population/context evidence; otherwise heuristic or skipped
 
-- SEC-OVERLAP — overlapping enabled explicit rules with differing actions (ordering risk) — `enabled_explicit_rules` ordered by `_rule_index` — MEDIUM — heuristic
+- SEC-OVERLAP — overlapping enabled explicit rules with differing actions (ordering risk) in the same vendor evaluation population — `enabled_explicit_rules` ordered by `_rule_index` — MEDIUM — heuristic
 
 - SEC-ORPHAN-REF — explicit rule (enabled or disabled) references a missing/undefined object — `explicit_rules` vs `address_objects`, `service_objects`, `applications` — MEDIUM — definitive
 
 - SEC-DISABLED — disabled-but-present explicit rule (cleanup) — `disabled_explicit_rules` — INFO — definitive
 
-- SEC-NO-DENY-ALL — no explicit logged deny-all at the tail of the relevant enabled explicit policy context/global fallback; an implicit vendor default can provide effective enforcement but never explicit log visibility — `enabled_explicit_rules` tail (`_rule_index`), `implicit_rules`, `metadata.source_vendor` — MEDIUM — heuristic
+- SEC-NO-DENY-ALL — no reachable explicit logged match-all action of `deny` or `drop` at the `_rule_index` tail of each applicable enabled explicit policy context or reachable SRX global fallback; `reset-both` is not a deny alias, and an implicit vendor default can provide effective enforcement but never explicit log visibility — `enabled_explicit_rules`, `implicit_rules`, `metadata.source_vendor` — MEDIUM — heuristic
 
 - SEC-NO-LOG — enabled explicit permit rule without logging — `enabled_explicit_rules[].log_end`, `enabled_explicit_rules[].log_start` — LOW (MEDIUM if broad) — definitive
 
@@ -85,7 +104,7 @@ provide explicit logging or satisfy an explicit-rule requirement.
 
 - SEC-SERVICES-UNREFERENCED — a configured security service is attached to no enabled explicit policy (inert security stack) — `security_services` vs `enabled_explicit_rules[].security_profiles` — HIGH — heuristic (depends on profile capture)
 
-- SEC-ZONES-NAT-NO-POLICY — zones/NAT exist but no enabled explicit policy references them — `zones`, `nat_rules`, `enabled_explicit_rules` — HIGH — heuristic
+- SEC-ZONES-NAT-NO-POLICY — a NAT flow has no enabled explicit `action: allow` capable of carrying it in the same vendor context, proven by source/destination zone overlap and resolved source/destination address overlap; deny-only, disabled, unrelated-zone, or textual-reference-only policy does not count — `zones`, `nat_rules`, `enabled_explicit_rules` — HIGH — heuristic (unresolved objects require an evidence-gap warning and skip/downgrade)
 
 - SEC-EMPTY-POLICYSET — `explicit_rules` is empty after excluding `_implicit: true`: emit a coverage warning rather than staying silent; distinguish default-deny-by-design from partial config / logical-system / tenant — `explicit_rules`, `implicit_rules`, `_logical_system`/`_tenant` markers — MEDIUM — definitive
 
@@ -114,7 +133,7 @@ provide explicit logging or satisfy an explicit-rule requirement.
 
 - OPS-NAMING — non-standard / inconsistent naming — `address_objects[].name`, `service_objects[].name`, `explicit_rules[].name` — INFO — heuristic
 
-- OPS-CONSOLIDATE — enabled explicit rules consolidatable (same action, contiguous, differ only by one field) — `enabled_explicit_rules` — LOW — heuristic
+- OPS-CONSOLIDATE — enabled explicit rules in the same vendor evaluation population are consolidatable (same action, contiguous by `_rule_index`, differ only by one field) — `enabled_explicit_rules` — LOW — heuristic
 
 - OPS-REDUNDANT-OBJ — redundant objects (subset/superset duplicates) — `address_objects`, `service_objects` — LOW — heuristic
 
