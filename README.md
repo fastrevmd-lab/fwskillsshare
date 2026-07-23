@@ -17,7 +17,7 @@
 
 <p align="center">
   <img alt="skills" src="https://img.shields.io/badge/skills-22-0D9488">
-  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-21%2F22-262B38">
+  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-22%2F22-262B38">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
 </p>
@@ -148,7 +148,17 @@ Map firewall capability to control evidence — assessor/auditor output template
 
 ## Quality and Review
 
-All **21 / 21 skills** have passed independent technical review — first on 2026-06-30, then re-reviewed on 2026-07-02 with a two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax correctness for Cisco ASA/FTD, FortiGate, PAN-OS, and Junos SRX; schema/field accuracy; standards/control-ID accuracy; secret hygiene) followed by per-skill application QA tests (fixture execution for the parsers, engineer-walkthrough scenarios for the playbooks, control-ID spot-checks for the compliance skills). Disputed Junos syntax claims were settled empirically by commit-checking on a live vSRX 24.4R1. All findings were remediated and the four `parsing-*` skills share one byte-identical intermediate schema (verified by `scripts/check-shared-schema.py`).
+All **22 / 22 skills** have passed independent technical review. The original 21
+were first reviewed on 2026-06-30, then re-reviewed on 2026-07-02 with a
+two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax
+correctness for Cisco ASA/FTD, FortiGate, PAN-OS, and Junos SRX;
+schema/field accuracy; standards/control-ID accuracy; secret hygiene) followed
+by per-skill application QA tests (fixture execution for the parsers,
+engineer-walkthrough scenarios for the playbooks, control-ID spot-checks for the
+compliance skills). Disputed Junos syntax claims were settled empirically by
+commit-checking on a live vSRX 24.4R1. All findings were remediated and the four
+`parsing-*` skills share one byte-identical intermediate schema (verified by
+`scripts/check-shared-schema.py`).
 
 A third round on 2026-07-04/05 applied an authoring-quality pass across all 21 skills (frontmatter, discovery keywords, secret redaction, cross-skill hand-offs, progressive disclosure into `references/` files), then closed it out with fresh clean-context retrieval tests against the restructured skills — every question had to be answerable from the SKILL.md pointers alone. The tests passed and surfaced a handful of fixes (including two operational-command syntax errors caught and corrected by live verification on vSRX 24.4R1), all remediated.
 
@@ -156,14 +166,16 @@ A third round on 2026-07-04/05 applied an authoring-quality pass across all 21 s
 |--------|-------:|:--------:|
 | Config parsers | 4 | 4 / 4 |
 | SRX operational playbooks | 8 | 8 / 8 |
-| NGFW compliance and STIG playbooks | 7 | 6 / 7 |
+| NGFW compliance and STIG playbooks | 7 | 7 / 7 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
-| **Total** | **22** | **21 / 22** |
+| **Total** | **22** | **22 / 22** |
 
-The later `srx-disa-stig-compliance` addition pins NIST checklist 657 / DISA
-Y25M01 by artifact and ordered rule-identity digests, and validates all 148
-NDM/ALG/IDPS/VPN rows plus conservative status/evidence routing. Its independent
-review status is tracked separately from the historical 21-skill review above.
+The later `srx-disa-stig-compliance` addition completed an independent review on
+2026-07-22. That review verified the NIST checklist 657 / DISA Y25M01 artifact,
+all 148 source-ordered NDM/ALG/IDPS/VPN rule identities and CAT severities,
+conservative status/evidence behavior, Junos schema paths and source conflicts,
+installer integration, and synthetic behavior/mutation fixtures. All findings
+were remediated and re-reviewed cleanly.
 
 These are research/operational and assessment-support skills, not certified products: review their output against current vendor documentation, live device behavior, and (for compliance work) a qualified assessor before relying on it.
 
