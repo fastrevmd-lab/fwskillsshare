@@ -115,7 +115,7 @@ Normalize a vendor config into the shared intermediate schema. Everything else c
 
 Actionable Junos playbooks — commands, design guidance, verification, troubleshooting matrices, source attribution.
 
-- **[srx-policy](./skills/srx-policy/SKILL.md)** — Global vs zone-to-zone policy on 23.x+, AppID/AppFW, NGWF-first web filtering, SecIntel, ATP, hit-count troubleshooting.
+- **[srx-policy](./skills/srx-policy/SKILL.md)** — Enforced global-policy output with explicit zone-pair opt-outs on 23.x+, AppID/AppFW, NGWF-first web filtering, SecIntel, ATP, hit-count troubleshooting.
 - **[srx-nat](./skills/srx-nat/SKILL.md)** — Source/destination/static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin, proxy-ARP, session verification.
 - **[srx-mnha](./skills/srx-mnha/SKILL.md)** — Multi-Node High Availability: routed/default-gateway/hybrid modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, DHCP caveats.
 - **[srx-advpn](./skills/srx-advpn/SKILL.md)** — Auto Discovery VPN dynamic spoke-to-spoke shortcuts, suggester/partner roles, multipoint st0, OSPF p2mp, the cert-auth requirement and the `No public key found` fix.
@@ -288,7 +288,7 @@ enabled = false
 - **Design SRX MPLS in flow mode** — Keep inet/inet6 in stateful flow mode for policy, NAT, and AppID while `family mpls` is packet-based
 - **Design SRX MNHA** — Reason about MNHA modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, and DHCP caveats
 - **Operate SRX NAT** — Source/destination/static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin, proxy ARP
-- **Design SRX security policy** — Prefer `security policies global` for greenfield/migrations, then layer AppID/AppFW, NGWF-first web filtering, SecIntel, ATP
+- **Design SRX security policy** — Enforce `security policies global` for generated greenfield, migration, and onboarding output absent an explicit opt-out; then layer AppID/AppFW, NGWF-first web filtering, SecIntel, ATP
 - **Assess compliance evidence** — Map NGFW policies, NAT, zones, logging, IDS/IPS, and segmentation to PCI / HIPAA / CMMC-NIST 800-171 / CIS / ISO 27001 / SOC 2 / SRX DISA STIG evidence expectations
 
 ### Examples
@@ -342,7 +342,7 @@ enabled = false
   - **SRX MPLS in Flow**: `show security flow status`, `show route table bgp.l3vpn.0`, `show route table <vrf>.inet.0`, `show ldp neighbor`, `show mpls interface`, `show security flow session extensive`, `show security policies hit-count`
   - **SRX MNHA**: `show chassis high-availability information`, `show chassis high-availability services-redundancy-group <id>`, `show security flow session`, `show bgp summary`, `show bfd session`
   - **SRX NAT**: `show security nat source/destination/static rule all`, `show security nat source pool all`, `show security nat proxy-arp`, `show security flow session ... extensive`
-  - **SRX security policy**: `show configuration security policies global | display set`, `show security policies hit-count global`, `show security application-firewall rule-set <name>`, `show security utm web-filtering status/statistics`
+  - **SRX security policy**: `show configuration security policies global | display set`, `show security policies hit-count`, `show security application-firewall rule-set <name>`, `show security utm web-filtering status/statistics`
   - **Compliance reviews**: collect the firewall policy/NAT/zone/VPN/object exports plus the framework-specific evidence (CDE/ePHI/CUI/ISMS-scope diagrams, rule-review records, logging/SIEM evidence, change tickets, segmentation/pen-test results) — each compliance skill lists exactly what it needs
 - For large configs, save to a file and point Claude at the file path
 - Each `parsing-*` skill includes `references/fixture-minimal-input.md` and `references/fixture-expected-output.json` as a smoke-test fixture for parser behavior and schema shape
@@ -531,7 +531,7 @@ show security flow session destination-prefix <destination> extensive
 
 ### srx-policy
 
-`srx-policy` is an SRX security policy design, migration, and troubleshooting playbook for Junos 23.x+ non-Branch SRX platforms. It recommends `security policies global` for greenfield deployments and migrations from other vendors, using zone-to-zone policy mainly for legacy compatibility or tightly scoped exceptions. For URL filtering on supported Junos 23.4R1+ targets it recommends NextGen Web Filtering (NGWF / `ng-juniper`) as the preferred path, treating Enhanced Web Filtering (EWF / `juniper-enhanced`) as an existing-estate/compatibility path.
+`srx-policy` is an SRX security policy design, migration, and troubleshooting playbook for Junos 23.x+ non-Branch SRX platforms. It enforces `security policies global` for generated greenfield, migration, and day-one onboarding policy, with zone-to-zone output limited to explicit existing-estate, isolated-exception, or customer-standard opt-outs. For URL filtering on supported Junos 23.4R1+ targets it recommends NextGen Web Filtering (NGWF / `ng-juniper`) as the preferred path, treating Enhanced Web Filtering (EWF / `juniper-enhanced`) as an existing-estate/compatibility path.
 
 Use it for: deciding between global and legacy `from-zone ... to-zone ...` contexts; converting vendor rulebases into ordered SRX global policies; global address-book and application/application-set design; AppID / Application Firewall rule-sets; NGWF-first web filtering, EWF compatibility, and EWF-to-NGWF migration cautions; SecIntel and ATP placement; policy logging, counts, final deny, and commit safety; and troubleshooting hit-counts, AppFW counters, web-filtering counters, and flow sessions.
 
@@ -539,7 +539,7 @@ Key verification commands:
 
 ```text
 show configuration security policies global | display set
-show security policies hit-count global
+show security policies hit-count
 show security flow session source-prefix <source> extensive
 show security application-firewall rule-set <rule-set-name>
 show security utm web-filtering status
