@@ -17,6 +17,8 @@ lint:
 test:
     python3 scripts/check-shared-schema.py
     python3 scripts/check-audit-rule-contract.py
+    python3 scripts/check-srx-stig-catalog.py
+    python3 scripts/check-srx-stig-behavior.py
 
 guard: lint test
 

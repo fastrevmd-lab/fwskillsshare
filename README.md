@@ -16,8 +16,8 @@
 <em>a mechub project — sovereign network-security automation</em></p>
 
 <p align="center">
-  <img alt="skills" src="https://img.shields.io/badge/skills-21-0D9488">
-  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-21%2F21-262B38">
+  <img alt="skills" src="https://img.shields.io/badge/skills-22-0D9488">
+  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-22%2F22-262B38">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
 </p>
@@ -26,7 +26,7 @@ Agent skills for the firewall work you actually do — parsing, auditing, conver
 
 Firewall work is unforgiving. A confidently wrong `access-list` line, a Junos stanza that won't commit, a compliance claim you can't back up in an audit — these aren't cosmetic. Coding agents are astonishingly good at producing *plausible* firewall config and astonishingly bad at knowing when it's wrong.
 
-These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 21. Hack around with them. Make them your own.
+These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 22. Hack around with them. Make them your own.
 
 > **Unofficial / community project.** Not affiliated with, endorsed by, or supported by Cisco, Fortinet, Palo Alto Networks, Juniper Networks, or HPE. See [License and Provenance](#license-and-provenance) for the full notice and the trademark disclaimer.
 
@@ -82,7 +82,7 @@ This is the piece that makes the rest composable. See the [Intermediate Schema](
 
 **The Problem.** Point an agent at a firewall and ask if it's "PCI compliant" and it will happily tell you yes. That answer is worthless to a QSA, and dangerous to you. A firewall *supports* evidence for a control; it is never itself "certified."
 
-**The Fix** is six compliance playbooks ([PCI](./skills/pci-ngfw-compliance/), [HIPAA](./skills/hipaa-ngfw-compliance/), [CMMC / NIST 800-171](./skills/cmmc-nist-800-171-ngfw-compliance/), [CIS](./skills/cis-controls-ngfw-compliance/), [ISO 27001](./skills/iso27001-ngfw-compliance/), [SOC 2](./skills/soc2-ngfw-compliance/)) that map firewall capabilities to specific control evidence, produce assessor-ready findings and gap lists, and are explicit at every turn that compliance is assessed for the *environment and program*, not conferred by the box. They tell you what evidence to collect and where the gaps are — the honest version of the answer.
+**The Fix** is seven compliance and STIG playbooks ([PCI](./skills/pci-ngfw-compliance/), [HIPAA](./skills/hipaa-ngfw-compliance/), [CMMC / NIST 800-171](./skills/cmmc-nist-800-171-ngfw-compliance/), [CIS](./skills/cis-controls-ngfw-compliance/), [ISO 27001](./skills/iso27001-ngfw-compliance/), [SOC 2](./skills/soc2-ngfw-compliance/), and [SRX DISA STIG](./skills/srx-disa-stig-compliance/)) that map firewall capabilities to specific control evidence, produce assessor-ready findings and gap lists, and are explicit at every turn that compliance is assessed for the *environment and program*, not conferred by the box. They tell you what evidence to collect and where the gaps are — the honest version of the answer.
 
 ### #4: Rulebases Rot, And Agents Accelerate The Rot
 
@@ -100,7 +100,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**21 skills** across four families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, or compliance language in your message or a pasted config. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
+**22 skills** across four families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, or compliance language in your message or a pasted config. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 ### Config parsers
 
@@ -142,12 +142,23 @@ Map firewall capability to control evidence — assessor/auditor output template
 - **[cis-controls-ngfw-compliance](./skills/cis-controls-ngfw-compliance/SKILL.md)** — CIS Controls v8/v8.1: secure configuration, network infrastructure management, IG1/IG2/IG3 safeguards, audit evidence.
 - **[iso27001-ngfw-compliance](./skills/iso27001-ngfw-compliance/SKILL.md)** — ISO/IEC 27001:2022 ISMS & Annex A (A.8.20–A.8.23), Statement of Applicability support, supplier access, corrective actions.
 - **[soc2-ngfw-compliance](./skills/soc2-ngfw-compliance/SKILL.md)** — SOC 2 Trust Services Criteria (CC6/CC7/CC8), Type I/II examinations, operating-effectiveness samples.
+- **[srx-disa-stig-compliance](./skills/srx-disa-stig-compliance/SKILL.md)** — Source-pinned DISA Y25M01 SRX NDM/ALG/IDPS/VPN rule assessment, CAT status, evidence gaps, and Junos compatibility review.
 
 ---
 
 ## Quality and Review
 
-All **21 / 21 skills** have passed independent technical review — first on 2026-06-30, then re-reviewed on 2026-07-02 with a two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax correctness for Cisco ASA/FTD, FortiGate, PAN-OS, and Junos SRX; schema/field accuracy; standards/control-ID accuracy; secret hygiene) followed by per-skill application QA tests (fixture execution for the parsers, engineer-walkthrough scenarios for the playbooks, control-ID spot-checks for the compliance skills). Disputed Junos syntax claims were settled empirically by commit-checking on a live vSRX 24.4R1. All findings were remediated and the four `parsing-*` skills share one byte-identical intermediate schema (verified by `scripts/check-shared-schema.py`).
+All **22 / 22 skills** have passed independent technical review. The original 21
+were first reviewed on 2026-06-30, then re-reviewed on 2026-07-02 with a
+two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax
+correctness for Cisco ASA/FTD, FortiGate, PAN-OS, and Junos SRX;
+schema/field accuracy; standards/control-ID accuracy; secret hygiene) followed
+by per-skill application QA tests (fixture execution for the parsers,
+engineer-walkthrough scenarios for the playbooks, control-ID spot-checks for the
+compliance skills). Disputed Junos syntax claims were settled empirically by
+commit-checking on a live vSRX 24.4R1. All findings were remediated and the four
+`parsing-*` skills share one byte-identical intermediate schema (verified by
+`scripts/check-shared-schema.py`).
 
 A third round on 2026-07-04/05 applied an authoring-quality pass across all 21 skills (frontmatter, discovery keywords, secret redaction, cross-skill hand-offs, progressive disclosure into `references/` files), then closed it out with fresh clean-context retrieval tests against the restructured skills — every question had to be answerable from the SKILL.md pointers alone. The tests passed and surfaced a handful of fixes (including two operational-command syntax errors caught and corrected by live verification on vSRX 24.4R1), all remediated.
 
@@ -155,9 +166,16 @@ A third round on 2026-07-04/05 applied an authoring-quality pass across all 21 s
 |--------|-------:|:--------:|
 | Config parsers | 4 | 4 / 4 |
 | SRX operational playbooks | 8 | 8 / 8 |
-| NGFW compliance playbooks | 6 | 6 / 6 |
+| NGFW compliance and STIG playbooks | 7 | 7 / 7 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
-| **Total** | **21** | **21 / 21** |
+| **Total** | **22** | **22 / 22** |
+
+The later `srx-disa-stig-compliance` addition completed an independent review on
+2026-07-22. That review verified the NIST checklist 657 / DISA Y25M01 artifact,
+all 148 source-ordered NDM/ALG/IDPS/VPN rule identities and CAT severities,
+conservative status/evidence behavior, Junos schema paths and source conflicts,
+installer integration, and synthetic behavior/mutation fixtures. All findings
+were remediated and re-reviewed cleanly.
 
 These are research/operational and assessment-support skills, not certified products: review their output against current vendor documentation, live device behavior, and (for compliance work) a qualified assessor before relying on it.
 
@@ -184,7 +202,7 @@ cd fwskillsshare
 Flags:
 
 ```text
---all                 Install all 21 skills
+--all                 Install all 22 skills
 --skill NAME          Install a specific skill (repeatable)
 --family NAME         parsers | srx | tooling | compliance (repeatable)
 --target WHERE        claude | codex | hermes | both | all
@@ -237,7 +255,7 @@ cp -r fwskillsshare/skills/* ~/.hermes/skills/devops/
 hermes skills list | grep -E 'parsing-|srx-|firewall-|-ngfw-compliance'
 ```
 
-Skills auto-trigger when they detect vendor-specific keywords, SRX operational topics, or PCI/HIPAA/CMMC/NIST 800-171/CIS/ISO 27001/SOC 2 compliance language in your messages or pasted configs.
+Skills auto-trigger when they detect vendor-specific keywords, SRX operational topics, or PCI/HIPAA/CMMC/NIST 800-171/CIS/ISO 27001/SOC 2/DISA STIG compliance language in your messages or pasted configs.
 
 ### Managing context
 
@@ -271,7 +289,7 @@ enabled = false
 - **Design SRX MNHA** — Reason about MNHA modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, and DHCP caveats
 - **Operate SRX NAT** — Source/destination/static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin, proxy ARP
 - **Design SRX security policy** — Prefer `security policies global` for greenfield/migrations, then layer AppID/AppFW, NGWF-first web filtering, SecIntel, ATP
-- **Assess compliance evidence** — Map NGFW policies, NAT, zones, logging, IDS/IPS, and segmentation to PCI / HIPAA / CMMC-NIST 800-171 / CIS / ISO 27001 / SOC 2 evidence expectations
+- **Assess compliance evidence** — Map NGFW policies, NAT, zones, logging, IDS/IPS, and segmentation to PCI / HIPAA / CMMC-NIST 800-171 / CIS / ISO 27001 / SOC 2 / SRX DISA STIG evidence expectations
 
 ### Examples
 
@@ -306,7 +324,7 @@ enabled = false
 # SRX global policy migration
 "Convert this vendor rulebase into an SRX 23.x global security policy design with AppFW, NGWF-first web filtering, SecIntel, logging, and a final deny"
 
-# Compliance review (any of the six frameworks)
+# Compliance review (any of the seven compliance/STIG playbooks)
 "Review this firewall export for PCI DSS CDE segmentation evidence and recommend policy/NAT/zone description markers"
 "Review this NGFW design for HIPAA Security Rule ePHI access control, audit logging, and transmission security"
 "Review this firewall estate against CIS Controls v8 for secure configuration, logging, and vendor access"
@@ -441,6 +459,20 @@ Use it for:
 - reviewing Trust Services Criteria support such as CC6 logical access, CC7 system operations, CC8 change management, CC9 risk mitigation, Availability, Confidentiality, and Privacy-supporting controls
 - preparing SOC 2 evidence requests, control descriptions, findings, sample expectations, and exception remediation
 - adding short SOC 2 evidence markers to firewall descriptions/tags where supported
+
+### srx-disa-stig-compliance
+
+`srx-disa-stig-compliance` is a source-pinned Juniper SRX assessment playbook for
+the DISA Y25M01 NDM, ALG, IDPS, and VPN benchmarks. It preserves all three rule
+identifiers and CAT severity while defaulting incomplete configuration,
+operational, or manual evidence to Not Reviewed.
+
+Use it for:
+
+- selecting the NDM+ALG baseline and conditional IDPS/VPN components from SRX roles
+- evaluating 148 rule-level entries without confusing missing evidence with a failed setting
+- preparing CAT/status summaries, evidence-gap queues, CKL-ready source data, and POA&M-style remediation candidates
+- separating formal STIG status from legacy or release-sensitive Junos guidance
 
 ## SRX Operational Skills (detail)
 
