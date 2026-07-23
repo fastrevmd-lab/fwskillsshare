@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRX DISA STIG Compliance"
+  short_description: "Assess SRX evidence against the DISA STIG"
+  default_prompt: "Use $srx-disa-stig-compliance to assess this Juniper SRX evidence against the pinned DISA STIG."

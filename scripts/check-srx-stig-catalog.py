@@ -163,7 +163,7 @@ def parse_profile(component: str, path: Path, errors: list[str]) -> list[list[st
 def require_terms(path: Path, terms: tuple[str, ...], errors: list[str]) -> str:
     text = read_required(path, errors)
     for term in terms:
-        if term not in text:
+        if term.casefold() not in text.casefold():
             errors.append(f"{path.relative_to(ROOT)}: missing required term {term!r}")
     return text
 
