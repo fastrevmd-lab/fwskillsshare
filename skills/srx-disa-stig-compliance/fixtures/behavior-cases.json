@@ -1,0 +1,157 @@
+{
+  "routing_cases": [
+    {
+      "name": "firewall-only",
+      "roles": {"idps": false, "vpn": false},
+      "expected_profiles": ["NDM", "ALG"],
+      "expected_gaps": []
+    },
+    {
+      "name": "firewall-plus-idps",
+      "roles": {"idps": true, "vpn": false},
+      "expected_profiles": ["NDM", "ALG", "IDPS"],
+      "expected_gaps": []
+    },
+    {
+      "name": "firewall-plus-vpn",
+      "roles": {"idps": false, "vpn": true},
+      "expected_profiles": ["NDM", "ALG", "VPN"],
+      "expected_gaps": []
+    },
+    {
+      "name": "firewall-plus-idps-and-vpn",
+      "roles": {"idps": true, "vpn": true},
+      "expected_profiles": ["NDM", "ALG", "IDPS", "VPN"],
+      "expected_gaps": []
+    },
+    {
+      "name": "unknown-conditional-roles",
+      "roles": {"idps": null, "vpn": null},
+      "expected_profiles": ["NDM", "ALG"],
+      "expected_gaps": ["IDPS scope unresolved", "VPN scope unresolved"]
+    }
+  ],
+  "status_cases": [
+    {
+      "name": "missing-evidence",
+      "applicable": true,
+      "n_a_allowed": false,
+      "evidence": "missing",
+      "implicit_only": false,
+      "expected": "Not Reviewed"
+    },
+    {
+      "name": "partial-evidence",
+      "applicable": true,
+      "n_a_allowed": false,
+      "evidence": "partial_failure",
+      "implicit_only": false,
+      "expected": "Not Reviewed"
+    },
+    {
+      "name": "proven-failure",
+      "applicable": true,
+      "n_a_allowed": false,
+      "evidence": "complete_failure",
+      "implicit_only": false,
+      "expected": "Open"
+    },
+    {
+      "name": "complete-satisfaction",
+      "applicable": true,
+      "n_a_allowed": false,
+      "evidence": "complete_satisfaction",
+      "implicit_only": false,
+      "expected": "Not a Finding"
+    },
+    {
+      "name": "proved-rule-specific-na",
+      "applicable": false,
+      "n_a_allowed": true,
+      "evidence": "complete_inapplicable",
+      "implicit_only": false,
+      "expected": "Not Applicable"
+    },
+    {
+      "name": "unknown-applicability",
+      "applicable": null,
+      "n_a_allowed": true,
+      "evidence": "missing",
+      "implicit_only": false,
+      "expected": "Not Reviewed"
+    },
+    {
+      "name": "implicit-default-does-not-prove-control",
+      "applicable": true,
+      "n_a_allowed": false,
+      "evidence": "complete_satisfaction",
+      "implicit_only": true,
+      "expected": "Not Reviewed"
+    },
+    {
+      "name": "unsupported-evidence",
+      "applicable": true,
+      "n_a_allowed": false,
+      "evidence": "unsupported",
+      "implicit_only": false,
+      "expected": "Not Reviewed"
+    }
+  ],
+  "source_cases": [
+    {
+      "name": "pinned-source",
+      "release": "Y25M01",
+      "sha256": "9ffd17664efa307503f620434fec16501857196b091ea946f59284572f87690f",
+      "expected": "valid"
+    },
+    {
+      "name": "release-drift",
+      "release": "Y25M02",
+      "sha256": "9ffd17664efa307503f620434fec16501857196b091ea946f59284572f87690f",
+      "expected": "source_validation_failed"
+    },
+    {
+      "name": "hash-drift",
+      "release": "Y25M01",
+      "sha256": "0ffd17664efa307503f620434fec16501857196b091ea946f59284572f87690f",
+      "expected": "source_validation_failed"
+    }
+  ],
+  "compatibility_cases": [
+    {
+      "name": "compatibility-does-not-overwrite-open",
+      "formal_status": "Open",
+      "compatibility": "verification_required",
+      "expected_status": "Open"
+    },
+    {
+      "name": "unsupported-does-not-create-na",
+      "formal_status": "Not Reviewed",
+      "compatibility": "unsupported",
+      "expected_status": "Not Reviewed"
+    }
+  ],
+  "mutation_cases": [
+    {
+      "name": "completeness-mutation",
+      "base": {"applicable": true, "n_a_allowed": false, "evidence": "partial_failure", "implicit_only": false},
+      "base_expected": "Not Reviewed",
+      "mutant": {"evidence": "complete_failure"},
+      "mutant_expected": "Open"
+    },
+    {
+      "name": "implicit-default-mutation",
+      "base": {"applicable": true, "n_a_allowed": false, "evidence": "complete_satisfaction", "implicit_only": false},
+      "base_expected": "Not a Finding",
+      "mutant": {"implicit_only": true},
+      "mutant_expected": "Not Reviewed"
+    },
+    {
+      "name": "na-proof-mutation",
+      "base": {"applicable": null, "n_a_allowed": true, "evidence": "missing", "implicit_only": false},
+      "base_expected": "Not Reviewed",
+      "mutant": {"applicable": false, "evidence": "complete_inapplicable"},
+      "mutant_expected": "Not Applicable"
+    }
+  ]
+}

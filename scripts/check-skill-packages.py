@@ -42,6 +42,7 @@ EXPECTED_SKILL_NAMES = frozenset(
         "parsing-srx-configs",
         "pci-ngfw-compliance",
         "soc2-ngfw-compliance",
+        "srx-disa-stig-compliance",
         "srx-advpn",
         "srx-autovpn-full-tunnel",
         "srx-dynamic-ip-feed",
