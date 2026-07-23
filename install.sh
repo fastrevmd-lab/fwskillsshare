@@ -6,7 +6,7 @@
 #   OR:  curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash
 #
 # Options:
-#   --all                 Select all 21 skills
+#   --all                 Select all 22 skills
 #   --skill NAME          Select a specific skill by name (repeatable)
 #   --family NAME         Select a whole family: parsers | srx | tooling | compliance (repeatable)
 #   --target WHERE        claude | codex | hermes | both | all
@@ -53,6 +53,7 @@ declare -a COMPLIANCE=(
     "cis-controls-ngfw-compliance"
     "iso27001-ngfw-compliance"
     "soc2-ngfw-compliance"
+    "srx-disa-stig-compliance"
 )
 
 # Constants
@@ -115,7 +116,7 @@ print_help() {
 Usage: install.sh [options]
 
 Options:
-  --all                 Select all 21 skills
+  --all                 Select all 22 skills
   --skill NAME          Select a specific skill by name (repeatable)
   --family NAME         Select a whole family: parsers | srx | tooling | compliance (repeatable)
   --target WHERE        claude | codex | hermes | both | all
@@ -138,7 +139,7 @@ EOF
 }
 
 print_inventory() {
-    echo -e "${C_BOLD}Skill Inventory (21 total):${C_RESET}\n"
+    echo -e "${C_BOLD}Skill Inventory (22 total):${C_RESET}\n"
 
     echo -e "${C_BLUE}Parsers (${#PARSERS[@]}):${C_RESET}"
     for skill in "${PARSERS[@]}"; do

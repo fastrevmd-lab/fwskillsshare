@@ -39,6 +39,7 @@ EXPECTED_FAMILIES = {
         "iso27001-ngfw-compliance",
         "pci-ngfw-compliance",
         "soc2-ngfw-compliance",
+        "srx-disa-stig-compliance",
     },
 }
 EXPECTED_ALL = set().union(*EXPECTED_FAMILIES.values())
@@ -83,7 +84,7 @@ def main() -> int:
     if unknown.returncode == 0 or "Unknown family" not in unknown.stderr:
         raise SystemExit("unknown installer family was not rejected")
 
-    print("OK: installer lists and installs 21 skills across 4 families")
+    print("OK: installer lists and installs 22 skills across 4 families")
     return 0
 
 
