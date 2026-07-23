@@ -15,7 +15,7 @@ Use this reference for mDNS, SSDP, casting, AirPlay, Sonos, Plex, and similar di
 3. Verify policy hits and inspect default-deny logs for missing media ports:
 
 ```text
-show security policies hit-count global
+show security policies hit-count
 show security match-policies from-zone <SRC> to-zone <DST> source-ip <client> destination-ip <device> protocol tcp destination-port <port>
 show log messages | match "RT_FLOW_SESSION_DENY|DEFAULT-DENY"
 ```
