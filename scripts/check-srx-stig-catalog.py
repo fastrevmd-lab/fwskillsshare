@@ -56,6 +56,7 @@ REQUIRED_REFERENCES = (
     "reporting.md",
 )
 KNOWN_CONFLICTS = {
+    "JUSX-IP-000027",
     "JUSX-DM-000136",
     "JUSX-DM-000146",
     "JUSX-VN-000002",
@@ -67,8 +68,80 @@ KNOWN_CONFLICTS = {
     "JUSX-VN-000027",
     "JUSX-VN-000028",
 }
+RULE_CONTRACTS = {
+    "JUSX-DM-000136": (
+        "complete evidence proves the required explicit setting is absent or weaker",
+    ),
+    "JUSX-IP-000027": (
+        "Keep Not Reviewed until the pinned check/title contradiction is resolved",
+    ),
+    "JUSX-VN-000002": ("vpn_tunnels[].ipsec.proposal.lifetime",),
+    "JUSX-VN-000003": ("vpn_tunnels[].ike.proposal.lifetime",),
+    "JUSX-VN-000014": (
+        "vpn_tunnels[].ipsec.mode",
+        "zones[].host_inbound.system_services",
+        "both predicates are completely proved",
+    ),
+}
 ALLOWED_COMPATIBILITY = {"verified", "verification_required", "unsupported"}
 ALLOWED_EVIDENCE = {"N", "R", "O", "M"}
+NORMALIZED_PATHS = {
+    "admin_users[]",
+    "dhcp_config[]",
+    "ha_config",
+    "ha_config.enabled",
+    "interfaces[]",
+    "metadata.source_version",
+    "screen_config[]",
+    "security_policies[]",
+    "security_policies[]._implicit",
+    "security_policies[].action",
+    "security_policies[].applications",
+    "security_policies[].dst_addresses",
+    "security_policies[].dst_zones",
+    "security_policies[].log_end",
+    "security_policies[].log_start",
+    "security_policies[].security_profiles",
+    "security_policies[].security_profiles.idp",
+    "security_policies[].services",
+    "security_policies[].source_users",
+    "security_policies[].src_addresses",
+    "security_policies[].src_zones",
+    "security_services",
+    "security_services.idp",
+    "security_services.utm",
+    "static_routes[]",
+    "syslog_config[]",
+    "system.auth.login_lockout",
+    "system.auth.password_policy.complexity",
+    "system.auth.password_policy.min_length",
+    "system.control_plane_protection",
+    "system.mgmt_services",
+    "system.ntp_servers[]",
+    "system.ssh.ciphers",
+    "system.ssh.connection_limit",
+    "system.ssh.protocol_version",
+    "system.ssh.rate_limit",
+    "system.ssh.root_login",
+    "vpn_tunnels[]",
+    "vpn_tunnels[].ike",
+    "vpn_tunnels[].ike.proposal",
+    "vpn_tunnels[].ike.proposal.dh_group",
+    "vpn_tunnels[].ike.proposal.encryption",
+    "vpn_tunnels[].ike.proposal.integrity",
+    "vpn_tunnels[].ike.proposal.lifetime",
+    "vpn_tunnels[].ike.version",
+    "vpn_tunnels[].ipsec.mode",
+    "vpn_tunnels[].ipsec.proposal",
+    "vpn_tunnels[].ipsec.proposal.dh_group",
+    "vpn_tunnels[].ipsec.proposal.encryption",
+    "vpn_tunnels[].ipsec.proposal.integrity",
+    "vpn_tunnels[].ipsec.proposal.lifetime",
+    "zones[]",
+    "zones[].host_inbound",
+    "zones[].host_inbound.system_services",
+    "zones[].screen",
+}
 
 
 def tuple_digest(rows: list[list[str]]) -> str:
@@ -139,6 +212,16 @@ def parse_profile(component: str, path: Path, errors: list[str]) -> list[list[st
         evidence = {item.strip() for item in row[6].split(",") if item.strip()}
         if not evidence or not evidence <= ALLOWED_EVIDENCE:
             errors.append(f"{label}: invalid evidence codes {row[6]!r}")
+        normalized_paths = set(re.findall(r"`([^`]+)`", row[7]))
+        if "N" in evidence and row[7] == "none":
+            errors.append(f"{label}: N evidence requires an exact normalized path")
+        if "N" not in evidence and row[7] != "none":
+            errors.append(f"{label}: normalized evidence requires the N evidence code")
+        if row[7] != "none" and not normalized_paths:
+            errors.append(f"{label}: normalized evidence must cite backticked schema paths")
+        unknown_paths = normalized_paths - NORMALIZED_PATHS
+        if unknown_paths:
+            errors.append(f"{label}: unknown normalized paths {sorted(unknown_paths)}")
         if row[10] not in ALLOWED_COMPATIBILITY:
             errors.append(f"{label}: invalid compatibility {row[10]!r}")
         if row[11] != f"{component}/{row[0]}":
@@ -225,6 +308,8 @@ def validate_core(errors: list[str]) -> None:
             "| firewall + VPN | NDM,ALG,VPN | none |",
             "| firewall + IDPS + VPN | NDM,ALG,IDPS,VPN | none |",
             "| role evidence unknown | NDM,ALG | IDPS/VPN scope unresolved |",
+            "confirmed, active IDP policy attachment",
+            "Selection proves only component applicability",
             "router",
             "switch",
         ),
@@ -251,6 +336,8 @@ def validate_core(errors: list[str]) -> None:
     require_terms(
         REFERENCES / "reporting.md",
         (
+            "Source validation: FAILED",
+            "no rule evaluation performed",
             "benchmark",
             "checksum",
             "evidence inventory",
@@ -258,6 +345,7 @@ def validate_core(errors: list[str]) -> None:
             "Not Reviewed",
             "does not by itself establish",
             "POA&M-style",
+            "Component/V-ID",
         ),
         errors,
     )
@@ -313,6 +401,15 @@ def main() -> int:
             row = row_by_jusx.get(conflict)
             if row is not None and row[10] != "verification_required":
                 errors.append(f"{conflict}: known conflict must be verification_required")
+        for rule_id, required_fragments in RULE_CONTRACTS.items():
+            row = row_by_jusx.get(rule_id)
+            if row is None:
+                errors.append(f"{rule_id}: missing required semantic contract row")
+                continue
+            row_text = " | ".join(row)
+            for fragment in required_fragments:
+                if fragment not in row_text:
+                    errors.append(f"{rule_id}: missing semantic contract {fragment!r}")
 
     for error in errors:
         print(f"ERROR: {error}", file=sys.stderr)

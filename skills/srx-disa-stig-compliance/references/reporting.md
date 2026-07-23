@@ -1,5 +1,19 @@
 # SRX STIG Reporting Contract
 
+## Source-validation failure
+
+If the release, checksum, component members, counts, or ordered identity digests
+do not match the source pin, stop before profile selection and issue only this
+failure record. Do not assign statuses, produce rule/CAT totals, or label the
+input as an assessment against either release.
+
+```text
+Source validation: FAILED
+Expected: DISA Y25M01 / <pinned checksum>
+Observed: <release/checksum/member metadata actually supplied>
+Action: no rule evaluation performed; obtain and reconcile an authoritative artifact
+```
+
 ## Assessment header
 
 ```text
@@ -58,6 +72,18 @@ Assessor/AO decision: <if supplied; separate from formal status>
 - Provide POA&M-style remediation candidates with owner/due date only when
   supplied; do not invent governance data.
 - State whether current Juniper syntax/platform support was verified.
+
+## Remediation provenance and routing
+
+Use each catalog row's `Component/V-ID` source pointer to locate the exact check
+and fix content in the checksum-verified XCCDF. Catalog summaries are assessment
+indexes, not verbatim fix text or deployment-ready commands. Route candidate
+design by control area: `srx-policy` for enforcement policy, `srx-nat` for NAT,
+`srx-ipsec-hub-spoke` or the applicable VPN skill for route-based IPsec, and the
+relevant operational skill for other supported SRX functions. Controls involving
+organizational values, external systems, roles, process, or assessor judgment
+remain manual remediation work. Every command candidate still requires exact
+model/release validation, reviewed diff, rollback, and post-change checks.
 
 ## Required nonclaim
 

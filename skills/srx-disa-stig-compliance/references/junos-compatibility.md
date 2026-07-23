@@ -13,6 +13,7 @@ checked.
 
 | Rule | Conflict | Handling |
 |---|---|---|
+| JUSX-IP-000027 | The title requires real-time monitoring of externally sourced files, but the check marks the presence of its matching custom dynamic attack group as a finding. | Keep Not Reviewed until assessor interpretation; do not silently choose either predicate. |
 | JUSX-VN-000002 | The rule treats an absent IPsec lifetime as a finding while its check and current default discussion identify 3600 seconds, within the stated limit. | Preserve formal result; verify effective and explicit lifetime on target. |
 | JUSX-VN-000003 | Title/fix, check language, idle-time wording, and default duration use inconsistent thresholds. | Do not auto-evaluate or remediate; obtain assessor interpretation. |
 | JUSX-VN-000005 | An IPsec proposal requirement directs the reviewer to inspect IKE proposals. | Verify both hierarchies; report the source mismatch. |

@@ -115,7 +115,8 @@ STIG requirement.
 Use only these statuses:
 
 - **Not Reviewed** — default for missing, partial, ambiguous, stale, unsupported,
-  or out-of-coverage evidence.
+  or unobservable evidence required by a selected rule. This does not authorize
+  results for an unselected component.
 - **Open** — complete applicable evidence proves the rule is not satisfied.
 - **Not a Finding** — complete applicable evidence proves every required
   predicate is satisfied.
@@ -141,7 +142,9 @@ record those separately.
 8. **Separate compatibility.** Read `references/junos-compatibility.md`; formal
    STIG status and current Junos support are different axes.
 9. **Prepare remediation only.** Hand configuration design to the relevant SRX
-   skill after target release/platform verification.
+   skill after target release/platform verification. Use the catalog's
+   component/V-ID source pointer to locate exact check/fix prose in the pinned
+   XCCDF; the catalog summary is not a substitute for that source.
 10. **Report and self-check.** Use `references/reporting.md` and the checklist
     below.
 

@@ -27,6 +27,13 @@ state, and owner confirmation; an omitted input is not proof of nonuse.
 4. Record unused-role evidence; omit that component rather than marking every
    rule Not Applicable.
 
+A confirmed, active IDP policy attachment on a scoped enforcement policy proves
+that the SRX supplies the IDPS function and therefore selects IDPS. A policy
+object or normalized policy name whose attachment, active context, or scope is
+not established does not. Selection proves only component applicability: it does
+not prove licenses, detector health, signature currency, enforcement, logging,
+or any individual IDPS rule.
+
 ## Other roles
 
 An SRX may also act as a router, switch, remote-access gateway, or another
