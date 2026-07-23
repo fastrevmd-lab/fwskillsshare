@@ -279,13 +279,22 @@ def main() -> int:
         return 1
 
     validate_core(errors)
-    all_rows: list[list[str]] = []
+    rows_by_component: dict[str, list[list[str]]] = {}
     for component, expected in PROFILE_EXPECTED.items():
-        all_rows.extend(
-            parse_profile(component, REFERENCES / "profiles" / expected["file"], errors)
+        rows_by_component[component] = parse_profile(
+            component, REFERENCES / "profiles" / expected["file"], errors
         )
 
-    if all_rows:
+    catalogs_complete = all(
+        len(rows_by_component[component]) == expected["rules"]
+        for component, expected in PROFILE_EXPECTED.items()
+    )
+    if catalogs_complete:
+        all_rows = [
+            row
+            for component in PROFILE_EXPECTED
+            for row in rows_by_component[component]
+        ]
         if len(all_rows) != 148:
             errors.append(f"expected 148 total catalog rows, found {len(all_rows)}")
         cats = Counter(row[3] for row in all_rows)
