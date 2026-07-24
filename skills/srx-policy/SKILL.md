@@ -89,9 +89,10 @@ Why global policy is the recommended migration target:
 
 Do not guess feature support. Before final design, verify platform, Junos release, licenses, and service package availability in current Juniper documentation / Pathfinder / Feature Explorer and on the device with `show version`, `show system license`, and relevant package/version commands.
 
-## Scope and routing
+## Runtime intake
 
 Use this skill for SRX policy behavior after relevant configuration is identified. Use `parsing-srx-configs` for full-config extraction and `srx-nat` when translation changes the policy match.
+Before acting, inspect the request, artifacts, and approved read-only evidence. If unresolved facts materially change safety, scope, correctness, confidence, or output, read `references/runtime-intake.md`. Use Claude `AskUserQuestion` or Codex `request_user_input` only for unresolved facts; do not repeat answered questions, and ask at most three single-select questions per round. If neither tool is available, use concise plain text with a free-text `Other` path. Never request secrets or unredacted customer data. Answers are context, not live-change approval; obtain separate explicit approval before configuration, commit, upgrade, reboot, delete, or failover.
 
 ## Recommended Architecture
 
