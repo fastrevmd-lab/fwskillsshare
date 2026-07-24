@@ -27,6 +27,23 @@ The output is always two parts: a per-section report listing what was added, rem
 
 Compare two normalized parser outputs. Use a text-diff tool for literal line changes, `firewall-config-conversion` to emit target syntax, and `firewall-best-practices-audit` to assess one rulebase.
 
+## Runtime intake
+
+Before starting the workflow, inspect the request, supplied artifacts, and
+available approved read-only evidence. If unresolved facts could materially
+change safety, scope, correctness, confidence, or the requested output, read
+`references/runtime-intake.md`.
+
+Invoke Claude `AskUserQuestion` or Codex `request_user_input` only for those
+unresolved facts. Do not repeat answered questions or present the full catalog
+automatically. Ask at most three single-select questions per round, then
+re-evaluate. If no native interaction tool is available, ask the same questions
+in concise plain text and preserve a free-text `Other` path.
+
+Never request secrets or unredacted customer data. Treat intake answers as task
+context, not approval for a live change; obtain separate explicit approval
+before configuration, commit, upgrade, reboot, delete, or failover actions.
+
 ## Input Handling
 
 There are two inputs, **A** and **B**. Route each side independently on what you were given:
