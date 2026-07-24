@@ -45,6 +45,23 @@ Do not treat this as "global packet mode MPLS." The value is that only MPLS labe
 
 Use this skill only for MPLS or VRF flow-mode behavior. Use `parsing-srx-configs` for full-config extraction, `srx-policy` for non-VRF policy design, and `srx-nat` for NAT outside MPLS contexts.
 
+## Runtime intake
+
+Before starting the workflow, inspect the request, supplied artifacts, and
+available approved read-only evidence. If unresolved facts could materially
+change safety, scope, correctness, confidence, or the requested output, read
+`references/runtime-intake.md`.
+
+Invoke Claude `AskUserQuestion` or Codex `request_user_input` only for those
+unresolved facts. Do not repeat answered questions or present the full catalog
+automatically. Ask at most three single-select questions per round, then
+re-evaluate. If no native interaction tool is available, ask the same questions
+in concise plain text and preserve a free-text `Other` path.
+
+Never request secrets or unredacted customer data. Treat intake answers as task
+context, not approval for a live change; obtain separate explicit approval
+before configuration, commit, upgrade, reboot, delete, or failover actions.
+
 ## Version and Platform Notes
 
 Always verify the current Junos release notes, Feature Explorer, and platform documentation before committing a production design. Based on the source articles:
