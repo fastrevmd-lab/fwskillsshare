@@ -248,7 +248,7 @@ For **Hermes**, copy into your local Hermes skills tree (usually `~/.hermes/skil
 ```bash
 mkdir -p ~/.hermes/skills/devops
 cp -r fwskillsshare/skills/* ~/.hermes/skills/devops/
-hermes skills list | grep -E 'parsing-|srx-|firewall-|-ngfw-compliance'
+hermes skills list | grep -E 'parsing-|srx-|firewall-|-ngfw-compliance|sd-onprem-'
 ```
 
 Skills auto-trigger when they detect vendor-specific keywords, SRX operational topics, Security Director On-Prem or Proxmox deployment requests, or PCI/HIPAA/CMMC/NIST 800-171/CIS/ISO 27001/SOC 2 compliance language in your messages or pasted configs.

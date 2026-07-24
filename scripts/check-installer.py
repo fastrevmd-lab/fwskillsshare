@@ -96,9 +96,20 @@ def main() -> int:
         if not (destination / name / "SKILL.md").is_file():
             raise SystemExit(f"explicit skill: missing installed SKILL.md for {name}")
 
-    unknown = run("--family", "not-a-family", "--dir", "/tmp/unused", "--yes", check=False)
-    if unknown.returncode == 0 or "Unknown family" not in unknown.stderr:
-        raise SystemExit("unknown installer family was not rejected")
+    with tempfile.TemporaryDirectory(prefix="fwskills-unknown-family-") as temp:
+        destination = Path(temp)
+        unknown = run(
+            "--family",
+            "not-a-family",
+            "--dir",
+            str(destination),
+            "--yes",
+            check=False,
+        )
+        if unknown.returncode == 0 or "Unknown family" not in unknown.stderr:
+            raise SystemExit("unknown installer family was not rejected")
+        if any(destination.iterdir()):
+            raise SystemExit("unknown installer family wrote to its destination")
 
     print("OK: installer lists and installs 22 skills across 5 families")
     return 0
