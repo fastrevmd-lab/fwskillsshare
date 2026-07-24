@@ -66,6 +66,23 @@ dynamic-gateway mechanics — is standard AutoVPN.
 > validated on four vSRX (Junos OS 23.2R2.21) plus a Cisco IOS-XE WAN transit
 > router. See `references/source-design-summary.md`.
 
+## Runtime intake
+
+Before starting the workflow, inspect the request, supplied artifacts, and
+available approved read-only evidence. If unresolved facts could materially
+change safety, scope, correctness, confidence, or the requested output, read
+`references/runtime-intake.md`.
+
+Invoke Claude `AskUserQuestion` or Codex `request_user_input` only for those
+unresolved facts. Do not repeat answered questions or present the full catalog
+automatically. Ask at most three single-select questions per round, then
+re-evaluate. If no native interaction tool is available, ask the same questions
+in concise plain text and preserve a free-text `Other` path.
+
+Never request secrets or unredacted customer data. Treat intake answers as task
+context, not approval for a live change; obtain separate explicit approval
+before configuration, commit, upgrade, reboot, delete, or failover actions.
+
 ## Scope and routing
 
 Use this design when all spoke internet and inter-spoke traffic must traverse a centralized hub. Use `srx-ipsec-hub-spoke` for a small explicit estate, `srx-advpn` when direct spoke shortcuts are required, and another design when spokes need local breakout.
