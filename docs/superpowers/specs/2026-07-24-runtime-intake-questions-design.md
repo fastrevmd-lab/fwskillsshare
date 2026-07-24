@@ -1,0 +1,242 @@
+# Runtime Intake Questions Design
+
+**Date:** 2026-07-24
+
+**Status:** Approved for planning
+
+## Goal
+
+Give every packaged skill a conditional, portable runtime-intake workflow that
+uses Claude `AskUserQuestion`, Codex `request_user_input`, or a plain-text
+fallback to resolve material ambiguity before analysis or planning.
+
+## Scope
+
+Apply the behavior to all 22 `skills/*/SKILL.md` packages:
+
+- `cis-controls-ngfw-compliance`
+- `cmmc-nist-800-171-ngfw-compliance`
+- `firewall-best-practices-audit`
+- `firewall-config-conversion`
+- `firewall-config-diff`
+- `hipaa-ngfw-compliance`
+- `iso27001-ngfw-compliance`
+- `parsing-cisco-configs`
+- `parsing-fortinet-configs`
+- `parsing-palo-configs`
+- `parsing-srx-configs`
+- `pci-ngfw-compliance`
+- `sd-onprem-proxmox-deploy`
+- `soc2-ngfw-compliance`
+- `srx-advpn`
+- `srx-autovpn-full-tunnel`
+- `srx-dynamic-ip-feed`
+- `srx-ipsec-hub-spoke`
+- `srx-mnha`
+- `srx-mpls-in-flow`
+- `srx-nat`
+- `srx-policy`
+
+Each package receives:
+
+1. A concise `## Runtime intake` section in `SKILL.md`.
+2. A package-local `references/runtime-intake.md` containing the complete
+   skill-specific question catalog.
+
+The work also repairs three pre-existing package-validation defects in
+`sd-onprem-proxmox-deploy`: add the skill to the expected package inventory,
+add the missing `GPT` author, and add Codex UI metadata.
+
+## Architecture
+
+Keep each skill independently installable. Do not introduce a repository-wide
+runtime reference that would be missing when an individual skill is installed.
+
+The `SKILL.md` section defines the decision behavior and links to the local
+reference. It remains short enough for skills already near the repository's
+500-line progressive-disclosure ceiling. Detailed question catalogs live in
+references, where they are loaded only when unresolved material ambiguity
+exists.
+
+The runtime-intake reference uses a neutral question contract rather than a
+literal native-tool payload. Claude adapts the contract by dropping `id` and
+adding `multiSelect: false`. Codex retains `id` and omits `multiSelect`.
+
+## Invocation Decision
+
+Before asking a question, the skill must inspect:
+
+1. The user's request.
+2. Supplied configurations and artifacts.
+3. Available approved read-only evidence.
+4. Answers already provided in the current conversation.
+
+Invoke the interaction tool only when at least one unresolved fact materially
+affects:
+
+- assessment or conversion scope;
+- technical correctness or platform support;
+- safety, authorization, or secret handling;
+- confidence in a conclusion; or
+- the requested deliverable.
+
+Do not invoke the tool when the answer is already present, can be established
+from safe read-only evidence, or would not change the result. Do not present the
+entire catalog automatically on every run.
+
+Prioritize unresolved questions in this order:
+
+1. Safety and authorization.
+2. Scope and system boundary.
+3. Platform, release, topology, or framework basis.
+4. Evidence completeness and confidence.
+5. Output format and emphasis.
+
+Ask no more than three questions per call. Re-evaluate after every response and
+ask another round only if the response exposes a new material ambiguity.
+
+## Portable Question Contract
+
+Every catalog entry contains:
+
+- `id`: stable, unique, lowercase snake-case identifier;
+- `ask_when`: observable condition that makes the question relevant;
+- `header`: user-facing label of at most 12 characters;
+- `question`: one direct question;
+- `options`: two or three mutually exclusive choices.
+
+Every option contains:
+
+- `label`: short choice label;
+- `description`: one sentence explaining the effect of the choice.
+
+The first option is the recommended safe default and its label ends with
+`(Recommended)`. The native free-text `Other` path remains available for exact
+values and choices not represented in the catalog.
+
+Each `references/runtime-intake.md` contains:
+
+1. `# Runtime Intake`
+2. `## When to ask`
+3. `## Tool adaptation`
+4. `## Question catalog`
+5. One parseable JSON `questions` object implementing the neutral contract.
+
+JSON is used inside the Markdown reference so repository validation can check
+the catalog with the Python standard library and both agents can translate it
+deterministically.
+
+## Runtime Data Flow
+
+1. Load the skill and begin its normal workflow.
+2. Inspect request and evidence before loading the runtime-intake reference.
+3. If no material ambiguity remains, continue without asking questions.
+4. If ambiguity remains, load `references/runtime-intake.md`.
+5. Filter entries whose `ask_when` conditions are true.
+6. Remove entries already answered or rendered irrelevant by evidence.
+7. Select up to three highest-priority entries.
+8. Adapt them to the available native interaction tool.
+9. If no native tool is available, ask the same questions in concise plain
+   text.
+10. Re-evaluate the catalog after the response.
+11. Continue, make an explicit assumption, or stop on a documented blocker.
+
+## Safety and Error Handling
+
+- Never request passwords, PSKs, private keys, tokens, device credentials,
+  unredacted customer configurations, or other secrets.
+- Ask how secrets will be supplied outside the conversation, or use
+  placeholders for planning output.
+- Treat intake answers as task context, not approval for configuration,
+  commit, upgrade, reboot, deletion, or failover.
+- Obtain separate explicit approval immediately before any live or destructive
+  action.
+- When a native question tool is unavailable, use plain text without changing
+  the question's meaning.
+- Treat free text as the `Other` value, not as a malformed predefined choice.
+- If the user skips a noncritical question, use the safest documented
+  assumption and disclose it.
+- If an unanswered question could make the result unsafe or materially
+  incorrect, stop and state the exact blocker.
+- If options are not mutually exclusive, repair the catalog instead of relying
+  on multi-select, because the portable contract is single-select.
+
+## Validation Strategy
+
+Add `scripts/check-runtime-intake.py` and invoke it from repository validation.
+The script accepts an optional skill name for sequential RED/GREEN testing and
+validates all skills when no name is supplied.
+
+For each skill, validate:
+
+- `SKILL.md` contains a `## Runtime intake` section;
+- the section names Claude `AskUserQuestion` and Codex
+  `request_user_input`;
+- the section defines conditional invocation, no-repeat behavior, a
+  three-question batch limit, plain-text fallback, secret safety, and separate
+  live-change approval;
+- `SKILL.md` links to `references/runtime-intake.md`;
+- the reference contains the required headings and one parseable JSON catalog;
+- every question has a unique `id`, nonempty `ask_when`, valid `header`,
+  nonempty `question`, and two or three options;
+- every option has a nonempty short `label` and one-sentence `description`;
+- the first label ends with `(Recommended)`;
+- all other package and line-limit checks continue to pass.
+
+Follow a sequential test-first cycle:
+
+1. Add the validator before editing skills.
+2. Run it against one unchanged skill and observe the expected missing-feature
+   failure.
+3. For each skill, run the focused validator before editing and confirm the
+   expected failure.
+4. Add the minimal runtime section and catalog.
+5. Re-run focused validation and require success before moving to the next
+   skill.
+6. Run all repository checks after all 22 skills pass individually.
+
+Fresh-agent forward testing is not part of this change because the current
+session is not authorized to delegate to subagents. Deterministic structural
+validation is the release gate; lack of independent behavioral evaluation is
+reported as remaining risk.
+
+## Repository Checks
+
+Run the required checks from the project instructions:
+
+- `just fmt`
+- `just lint`
+- `just test`
+- `just guard`
+- `just security`
+- `just release-check`
+
+The current workstation does not have `just` installed. If it remains
+unavailable, run each underlying command from `justfile` directly and report
+the missing runner as an environment limitation. `just integration` remains
+non-device and may be reported separately; no real-device validation is
+authorized.
+
+## Success Criteria
+
+- All 22 skills implement conditional runtime intake.
+- Every skill remains independently portable.
+- No `SKILL.md` exceeds the 500-line limit.
+- Claude and Codex can derive valid native question calls from the same
+  catalog.
+- Questions already answered are not repeated.
+- No secret is requested and no intake answer is treated as live-change
+  authorization.
+- Focused validation passes for every skill.
+- Repository validation passes except for explicitly reported unavailable
+  workstation tooling.
+
+## Non-Goals
+
+- Do not execute configuration changes on firewalls, Proxmox, or deployed
+  services.
+- Do not add a multi-select question contract.
+- Do not change shared normalized firewall schemas.
+- Do not rewrite unrelated skill workflows or vendor guidance.
+- Do not claim runtime behavioral coverage from deterministic validation
+  alone.
