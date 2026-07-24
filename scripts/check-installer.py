@@ -40,6 +40,9 @@ EXPECTED_FAMILIES = {
         "pci-ngfw-compliance",
         "soc2-ngfw-compliance",
     },
+    "deployment": {
+        "sd-onprem-proxmox-deploy",
+    },
 }
 EXPECTED_ALL = set().union(*EXPECTED_FAMILIES.values())
 
@@ -59,6 +62,10 @@ def installed_names(directory: Path) -> set[str]:
 
 
 def main() -> int:
+    packaged = {path.parent.name for path in (ROOT / "skills").glob("*/SKILL.md")}
+    if packaged != EXPECTED_ALL:
+        raise SystemExit(f"package inventory mismatch: {sorted(packaged ^ EXPECTED_ALL)}")
+
     inventory = run("--list").stdout
     listed = {
         line.removeprefix("  - ")
@@ -79,11 +86,21 @@ def main() -> int:
                 if not (destination / name / "SKILL.md").is_file():
                     raise SystemExit(f"{family}: missing installed SKILL.md for {name}")
 
+    with tempfile.TemporaryDirectory(prefix="fwskills-proxmox-skill-") as temp:
+        destination = Path(temp)
+        name = "sd-onprem-proxmox-deploy"
+        run("--skill", name, "--dir", str(destination), "--yes", "--force")
+        actual = installed_names(destination)
+        if actual != {name}:
+            raise SystemExit(f"explicit skill install mismatch: {sorted(actual ^ {name})}")
+        if not (destination / name / "SKILL.md").is_file():
+            raise SystemExit(f"explicit skill: missing installed SKILL.md for {name}")
+
     unknown = run("--family", "not-a-family", "--dir", "/tmp/unused", "--yes", check=False)
     if unknown.returncode == 0 or "Unknown family" not in unknown.stderr:
         raise SystemExit("unknown installer family was not rejected")
 
-    print("OK: installer lists and installs 21 skills across 4 families")
+    print("OK: installer lists and installs 22 skills across 5 families")
     return 0
 
 

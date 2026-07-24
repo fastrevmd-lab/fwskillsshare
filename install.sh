@@ -6,9 +6,9 @@
 #   OR:  curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash
 #
 # Options:
-#   --all                 Select all 21 skills
+#   --all                 Select all 22 skills
 #   --skill NAME          Select a specific skill by name (repeatable)
-#   --family NAME         Select a whole family: parsers | srx | tooling | compliance (repeatable)
+#   --family NAME         Select a whole family: parsers | srx | tooling | compliance | deployment (repeatable)
 #   --target WHERE        claude | codex | hermes | both | all
 #                         ('both' keeps the legacy Claude+Hermes meaning; default: prompt, or claude with -y)
 #   --dir PATH            Explicit install directory (overrides --target)
@@ -54,6 +54,18 @@ declare -a COMPLIANCE=(
     "iso27001-ngfw-compliance"
     "soc2-ngfw-compliance"
 )
+
+declare -a DEPLOYMENT=(
+    "sd-onprem-proxmox-deploy"
+)
+
+TOTAL_SKILLS=$((
+    ${#PARSERS[@]} +
+    ${#SRX[@]} +
+    ${#TOOLING[@]} +
+    ${#COMPLIANCE[@]} +
+    ${#DEPLOYMENT[@]}
+))
 
 # Constants
 GITHUB_REPO="fastrevmd-lab/fwskillsshare"
@@ -115,9 +127,9 @@ print_help() {
 Usage: install.sh [options]
 
 Options:
-  --all                 Select all 21 skills
+  --all                 Select all 22 skills
   --skill NAME          Select a specific skill by name (repeatable)
-  --family NAME         Select a whole family: parsers | srx | tooling | compliance (repeatable)
+  --family NAME         Select a whole family: parsers | srx | tooling | compliance | deployment (repeatable)
   --target WHERE        claude | codex | hermes | both | all
                         ('both' means Claude+Hermes; default: interactive prompt, or claude with -y)
   --dir PATH            Explicit install directory (overrides --target)
@@ -132,13 +144,14 @@ Examples:
   ./install.sh --all --target codex
   ./install.sh --family srx --target both --force
   ./install.sh --family parsers --target all
+  ./install.sh --family deployment --target codex
   ./install.sh --skill srx-nat --skill srx-policy
   curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash -s -- --all -y
 EOF
 }
 
 print_inventory() {
-    echo -e "${C_BOLD}Skill Inventory (21 total):${C_RESET}\n"
+    echo -e "${C_BOLD}Skill Inventory (${TOTAL_SKILLS} total):${C_RESET}\n"
 
     echo -e "${C_BLUE}Parsers (${#PARSERS[@]}):${C_RESET}"
     for skill in "${PARSERS[@]}"; do
@@ -162,6 +175,12 @@ print_inventory() {
     for skill in "${COMPLIANCE[@]}"; do
         echo "  - $skill"
     done
+    echo ""
+
+    echo -e "${C_BLUE}Deployment (${#DEPLOYMENT[@]}):${C_RESET}"
+    for skill in "${DEPLOYMENT[@]}"; do
+        echo "  - $skill"
+    done
 }
 
 get_all_skills() {
@@ -170,6 +189,7 @@ get_all_skills() {
     all_skills+=("${SRX[@]}")
     all_skills+=("${TOOLING[@]}")
     all_skills+=("${COMPLIANCE[@]}")
+    all_skills+=("${DEPLOYMENT[@]}")
     echo "${all_skills[@]}"
 }
 
@@ -188,9 +208,12 @@ get_family_skills() {
         compliance)
             echo "${COMPLIANCE[@]}"
             ;;
+        deployment)
+            echo "${DEPLOYMENT[@]}"
+            ;;
         *)
             echo -e "${C_RED}Error: Unknown family '$family'${C_RESET}" >&2
-            echo "Valid families: parsers, srx, tooling, compliance" >&2
+            echo "Valid families: parsers, srx, tooling, compliance, deployment" >&2
             exit 1
             ;;
     esac
@@ -296,6 +319,14 @@ interactive_skill_selection() {
 
     echo -e "${C_BLUE}Compliance:${C_RESET}"
     for skill in "${COMPLIANCE[@]}"; do
+        printf "  %2d) %s\n" $idx "$skill"
+        all_skills+=("$skill")
+        ((idx++))
+    done
+    echo ""
+
+    echo -e "${C_BLUE}Deployment:${C_RESET}"
+    for skill in "${DEPLOYMENT[@]}"; do
         printf "  %2d) %s\n" $idx "$skill"
         all_skills+=("$skill")
         ((idx++))
