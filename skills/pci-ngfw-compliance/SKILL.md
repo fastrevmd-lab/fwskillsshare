@@ -32,6 +32,23 @@ For PCI DSS v4.0.1, the most directly relevant NGFW areas are Requirement 1 (Ins
 
 Treat this as research and assessment guidance, not legal advice and not a QSA decision. When producing final compliance language, cite PCI DSS v4.0.1 requirement IDs and defer final interpretation to the entity’s QSA/ISA, acquirer, or payment brand.
 
+## Runtime intake
+
+Before starting the workflow, inspect the request, supplied artifacts, and
+available approved read-only evidence. If unresolved facts could materially
+change safety, scope, correctness, confidence, or the requested output, read
+`references/runtime-intake.md`.
+
+Invoke Claude `AskUserQuestion` or Codex `request_user_input` only for those
+unresolved facts. Do not repeat answered questions or present the full catalog
+automatically. Ask at most three single-select questions per round, then
+re-evaluate. If no native interaction tool is available, ask the same questions
+in concise plain text and preserve a free-text `Other` path.
+
+Never request secrets or unredacted customer data. Treat intake answers as task
+context, not approval for a live change; obtain separate explicit approval
+before configuration, commit, upgrade, reboot, delete, or failover actions.
+
 ## Scope and routing
 
 Parse raw configurations with the matching `parsing-*` skill first. Use this skill when findings must map to PCI DSS requirements or assessor evidence; use `firewall-best-practices-audit` for framework-neutral hygiene.
