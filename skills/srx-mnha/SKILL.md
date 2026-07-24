@@ -42,9 +42,10 @@ Multi-Node High Availability (MNHA) is Juniper SRX high availability built aroun
 
 Use MNHA as an L3-first HA design. Routing policy, BFD, link monitoring, service redundancy groups, and optional VIP behavior determine which node handles traffic. Avoid treating MNHA as a drop-in chassis-cluster clone; it solves different problems and has different failure modes.
 
-## Scope and routing
+## Runtime intake
 
 Use this skill only for MNHA-specific design and behavior. Use `parsing-srx-configs` for full-config extraction, `srx-nat` for general NAT, and `srx-policy` for general policy design.
+Before acting, inspect the request, artifacts, and approved read-only evidence. If unresolved facts materially change safety, scope, correctness, confidence, or output, read `references/runtime-intake.md`. Use Claude `AskUserQuestion` or Codex `request_user_input` only for unresolved facts; do not repeat answered questions, and ask at most three single-select questions per round. If neither tool is available, use concise plain text with a free-text `Other` path. Never request secrets or unredacted customer data. Answers are context, not live-change approval; obtain separate explicit approval before configuration, commit, upgrade, reboot, delete, or failover.
 
 ## Chassis Cluster vs MNHA
 
