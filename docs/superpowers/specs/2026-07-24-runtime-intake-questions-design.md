@@ -191,6 +191,7 @@ For each skill, validate:
 - the reference contains the required headings and one parseable JSON catalog;
 - the reference contains the exact Claude projection, Codex projection, and
   plain-text fallback with free-text `Other` language;
+- raw JSON objects contain no duplicate member names;
 - the neutral catalog, question objects, and option objects contain exactly
   their documented keys and no tool-specific or unknown keys;
 - every question has a unique `id`, nonblank stripped `ask_when`, nonblank
@@ -198,6 +199,8 @@ For each skill, validate:
   or three options;
 - every option has a nonblank stripped short `label` and exactly one nonblank
   stripped sentence in `description`;
+- sentence-boundary checks ignore periods inside initialisms such as `U.S.`
+  without accepting multiple real sentences;
 - the first label ends with `(Recommended)`;
 - standard-library negative contract tests exercise rejected keys, whitespace,
   sentence boundaries, and stale adaptation language;

@@ -64,6 +64,13 @@ def render_reference(
     adaptation: str = TOOL_ADAPTATION,
 ) -> str:
     payload = VALID_CATALOG if catalog is None else catalog
+    return render_raw_reference(json.dumps(payload, indent=2), adaptation)
+
+
+def render_raw_reference(
+    raw_catalog: str,
+    adaptation: str = TOOL_ADAPTATION,
+) -> str:
     return f"""\
 # Runtime Intake
 
@@ -78,7 +85,7 @@ Ask only unresolved material questions.
 ## Question catalog
 
 ```json
-{json.dumps(payload, indent=2)}
+{raw_catalog}
 ```
 """
 
@@ -95,6 +102,28 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         self.assertEqual(
             VALIDATOR.validate_catalog(
                 Path("runtime-intake.md"), render_reference()
+            ),
+            [],
+        )
+
+    def test_accepts_initialism_in_question(self) -> None:
+        catalog = copy.deepcopy(VALID_CATALOG)
+        catalog["questions"][0]["question"] = "Which U.S. standard applies?"
+        self.assertEqual(
+            VALIDATOR.validate_catalog(
+                Path("runtime-intake.md"), render_reference(catalog)
+            ),
+            [],
+        )
+
+    def test_accepts_initialism_in_description(self) -> None:
+        catalog = copy.deepcopy(VALID_CATALOG)
+        catalog["questions"][0]["options"][0]["description"] = (
+            "Use U.S. regulatory requirements."
+        )
+        self.assertEqual(
+            VALIDATOR.validate_catalog(
+                Path("runtime-intake.md"), render_reference(catalog)
             ),
             [],
         )
@@ -118,6 +147,39 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         catalog["questions"][0]["options"][0]["value"] = "full"
         self.assert_has_error(
             render_reference(catalog), "option keys must be exactly"
+        )
+
+    def test_rejects_duplicate_top_level_question_members(self) -> None:
+        raw_catalog = json.dumps(VALID_CATALOG).replace(
+            '{"questions":',
+            '{"questions": [], "questions":',
+            1,
+        )
+        self.assert_has_error(
+            render_raw_reference(raw_catalog),
+            "duplicate JSON object key 'questions'",
+        )
+
+    def test_rejects_duplicate_question_members(self) -> None:
+        raw_catalog = json.dumps(VALID_CATALOG).replace(
+            '"id": "audit_scope"',
+            '"id": "discarded", "id": "audit_scope"',
+            1,
+        )
+        self.assert_has_error(
+            render_raw_reference(raw_catalog),
+            "duplicate JSON object key 'id'",
+        )
+
+    def test_rejects_duplicate_option_members(self) -> None:
+        raw_catalog = json.dumps(VALID_CATALOG).replace(
+            '"label": "Full device (Recommended)"',
+            '"label": "Discarded", "label": "Full device (Recommended)"',
+            1,
+        )
+        self.assert_has_error(
+            render_raw_reference(raw_catalog),
+            "duplicate JSON object key 'label'",
         )
 
     def test_rejects_surrounding_whitespace_in_text_fields(self) -> None:
@@ -180,13 +242,21 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                 catalog["questions"][0]["options"][0][field] = " "
                 self.assert_has_error(render_reference(catalog), expected)
 
-    def test_rejects_more_than_one_question(self) -> None:
+    def test_rejects_more_than_one_question_mark(self) -> None:
+        catalog = copy.deepcopy(VALID_CATALOG)
+        catalog["questions"][0]["question"] = "Which standard??"
+        self.assert_has_error(
+            render_reference(catalog), "must contain exactly one question mark"
+        )
+
+    def test_rejects_multiple_question_sentence_boundaries(self) -> None:
         catalog = copy.deepcopy(VALID_CATALOG)
         catalog["questions"][0]["question"] = (
-            "What should be inspected? Should logs be included?"
+            "Review scope. Which standard applies?"
         )
         self.assert_has_error(
-            render_reference(catalog), "must contain exactly one question sentence"
+            render_reference(catalog),
+            "must contain exactly one sentence boundary",
         )
 
     def test_rejects_multi_sentence_descriptions(self) -> None:

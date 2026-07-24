@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = ROOT / "skills"
 CATALOG_RE = re.compile(r"```json\n(?P<payload>.*?)\n```", re.DOTALL)
 SENTENCE_BOUNDARY_RE = re.compile(r"[.!?](?=\s|$)")
+INITIALISM_END_RE = re.compile(r"(?:\b[A-Za-z]\.){2,}$")
 CATALOG_KEYS = frozenset({"questions"})
 QUESTION_KEYS = frozenset({"id", "ask_when", "header", "question", "options"})
 OPTION_KEYS = frozenset({"label", "description"})
@@ -44,12 +45,38 @@ REQUIRED_REFERENCE_HEADINGS = (
 )
 
 
+class DuplicateJSONKeyError(ValueError):
+    """Raised when a JSON object repeats a member name."""
+
+    def __init__(self, key: str) -> None:
+        super().__init__(key)
+        self.key = key
+
+
+def object_with_unique_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise DuplicateJSONKeyError(key)
+        result[key] = value
+    return result
+
+
 def is_nonempty_stripped(value: object) -> bool:
     return isinstance(value, str) and bool(value) and value == value.strip()
 
 
 def sentence_boundary_count(value: str) -> int:
-    return len(SENTENCE_BOUNDARY_RE.findall(value))
+    count = 0
+    for match in SENTENCE_BOUNDARY_RE.finditer(value):
+        is_internal_initialism = (
+            match.group() == "."
+            and INITIALISM_END_RE.search(value[: match.end()])
+            and value[match.end() :].strip()
+        )
+        if not is_internal_initialism:
+            count += 1
+    return count
 
 
 def selected_skill_files(skill_name: str | None) -> list[Path]:
@@ -78,7 +105,13 @@ def validate_catalog(path: Path, text: str) -> list[str]:
         return errors
 
     try:
-        payload = json.loads(matches[0].group("payload"))
+        payload = json.loads(
+            matches[0].group("payload"),
+            object_pairs_hook=object_with_unique_keys,
+        )
+    except DuplicateJSONKeyError as exc:
+        errors.append(f"{path}: duplicate JSON object key {exc.key!r}")
+        return errors
     except json.JSONDecodeError as exc:
         errors.append(f"{path}: invalid JSON catalog: {exc}")
         return errors
@@ -129,12 +162,12 @@ def validate_catalog(path: Path, text: str) -> list[str]:
         prompt = question.get("question")
         if not is_nonempty_stripped(prompt):
             errors.append(f"{prefix} `question` must be non-empty and stripped")
-        elif (
-            not prompt.endswith("?")
-            or prompt.count("?") != 1
-            or sentence_boundary_count(prompt) != 1
-        ):
+        elif not prompt.endswith("?"):
             errors.append(f"{prefix} must contain exactly one question sentence")
+        elif prompt.count("?") != 1:
+            errors.append(f"{prefix} must contain exactly one question mark")
+        elif sentence_boundary_count(prompt) != 1:
+            errors.append(f"{prefix} must contain exactly one sentence boundary")
 
         options = question.get("options")
         if not isinstance(options, list) or not 2 <= len(options) <= 3:

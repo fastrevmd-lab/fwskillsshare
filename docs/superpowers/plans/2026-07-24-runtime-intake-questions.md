@@ -701,11 +701,12 @@ git commit -m "test: integrate runtime intake validation"
 ### Task 26: Enforce the native projection contract
 
 Harden `scripts/check-runtime-intake.py` with standard-library negative tests
-in `scripts/test-runtime-intake-validator.py`. Reject unknown keys at every
-neutral JSON level; native-only question keys such as `multiSelect`; blank or
-unstripped `ask_when`, `header`, `question`, `label`, and `description`; more
-than one question sentence or question mark; and more than one sentence-ending
-boundary in a description.
+in `scripts/test-runtime-intake-validator.py`. Reject duplicate JSON object
+members; unknown keys at every neutral JSON level; native-only question keys
+such as `multiSelect`; blank or unstripped `ask_when`, `header`, `question`,
+`label`, and `description`; more than one question sentence or question mark;
+and more than one sentence-ending boundary in a description. Ignore periods
+inside initialisms such as `U.S.` when counting sentence boundaries.
 
 Require every reference to state the exact native projections:
 
