@@ -41,6 +41,7 @@ EXPECTED_SKILL_NAMES = frozenset(
         "parsing-palo-configs",
         "parsing-srx-configs",
         "pci-ngfw-compliance",
+        "sd-onprem-proxmox-deploy",
         "soc2-ngfw-compliance",
         "srx-advpn",
         "srx-autovpn-full-tunnel",

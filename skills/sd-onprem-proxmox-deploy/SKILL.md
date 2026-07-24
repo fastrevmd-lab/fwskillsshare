@@ -5,6 +5,7 @@ version: 0.2.0
 author:
   - fastrevmd-lab
   - Claude
+  - GPT
 license: MIT
 metadata:
   status: draft
