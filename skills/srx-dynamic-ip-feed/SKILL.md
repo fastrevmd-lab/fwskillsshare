@@ -40,6 +40,23 @@ SRX checks feed freshness with HTTP `HEAD`, downloads changed archives with `GET
 
 Use this skill for self-hosted dynamic-address feeds. Use `srx-policy` for Juniper SecIntel or ATP feeds and `parsing-srx-configs` for full-config extraction.
 
+## Runtime intake
+
+Before starting the workflow, inspect the request, supplied artifacts, and
+available approved read-only evidence. If unresolved facts could materially
+change safety, scope, correctness, confidence, or the requested output, read
+`references/runtime-intake.md`.
+
+Invoke Claude `AskUserQuestion` or Codex `request_user_input` only for those
+unresolved facts. Do not repeat answered questions or present the full catalog
+automatically. Ask at most three single-select questions per round, then
+re-evaluate. If no native interaction tool is available, ask the same questions
+in concise plain text and preserve a free-text `Other` path.
+
+Never request secrets or unredacted customer data. Treat intake answers as task
+context, not approval for a live change; obtain separate explicit approval
+before configuration, commit, upgrade, reboot, delete, or failover actions.
+
 ## Prerequisites and Version Notes
 
 - SRX/vSRX running Junos with `security dynamic-address` feed support.
@@ -471,7 +488,6 @@ Read `references/feed-update-test.md` when validating that feed changes propagat
 - [ ] `show log messages | match ipfd` shows succeeded or succeeded<file not changed>.
 - [ ] Server logs show expected GET/HEAD behavior.
 - [ ] Update test confirms changed archive contents appear without commit.
-
 ## Source
 
 This skill is a condensed, operationalized SRX playbook based on Karel Hendrych's Juniper Community TechPost, “SRX Dynamic IP Objects aka Feed-server,” published 2025-11-30:
