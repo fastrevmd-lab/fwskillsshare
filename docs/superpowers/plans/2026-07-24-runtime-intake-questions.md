@@ -11,7 +11,8 @@
 ## Global Constraints
 
 - Work only in `.worktrees/runtime-intake-questions` on branch `runtime-intake-questions`.
-- Execute inline in the primary session; the user did not request delegation or parallel work.
+- Execute with fresh sequential implementer and reviewer subagents; the user
+  explicitly authorized subagent-driven execution after approving the plan.
 - Update all 22 packages listed in the approved design.
 - Keep each package independently installable; every runtime reference lives below its own skill directory.
 - Do not modify any copied `intermediate-schema.md`.
