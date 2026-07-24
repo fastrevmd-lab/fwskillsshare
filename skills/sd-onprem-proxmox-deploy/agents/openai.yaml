@@ -1,0 +1,4 @@
+interface:
+  display_name: "SD On-Prem Proxmox Deploy"
+  short_description: "Deploy SD On-Prem safely on Proxmox VE"
+  default_prompt: "Use $sd-onprem-proxmox-deploy to validate the network design and deploy Security Director On-Prem on Proxmox VE."

@@ -1,10 +1,11 @@
 ---
 name: sd-onprem-proxmox-deploy
-description: Deploy Juniper Security Director On-Prem as a Proxmox VE guest from the vendor KVM artifacts. Use when installing SD On-Prem on Proxmox (no libvirt) by extracting the shipped qcow2 disks + seed ISO with the software .bin `--no-run` and importing them into a qm-native VM, planning the 4 same-subnet IPs (management + UI/device/log VIPs), choosing the sizing flavor, seeding first-boot config, ensuring a REACHABLE NTP server, and onboarding SRX/Junos devices. Not for Junos Space Security Director or Security Director Cloud (SaaS).
-version: 0.2.0
+description: Deploy and validate Juniper Security Director On-Prem 25/26 as a Proxmox VE KVM guest. Use when planning, installing, rebuilding, validating network connectivity or first-boot seed data, and onboarding SRX/Junos devices. Not for Junos Space Security Director or Security Director Cloud.
+version: 0.3.0
 author:
   - fastrevmd-lab
   - Claude
+  - GPT
 license: MIT
 metadata:
   status: draft
@@ -20,6 +21,16 @@ metadata:
       author: Juniper Networks
       url: https://www.juniper.net/documentation/us/en/software/sd-on-prem25.2.2/sd-on-prem-install-upgrade/install-guide/topics/task/install-kvm-tool.html
       retrieved: "2026-07-21"
+    - title: "Deploy Juniper Security Director Using VMware vSphere | SD On-Prem 25.4.1"
+      author: Juniper Networks
+      url: https://www.juniper.net/documentation/us/en/software/sd-on-prem25.4.1/sd-on-prem-install-upgrade/install-guide/topics/task/install.html
+      note: "Documents the cliadmin SSH user and predeployment VM-network reachability requirements."
+      retrieved: "2026-07-24"
+    - title: "set ipaddress change | SD On-Prem 25.4.1"
+      author: Juniper Networks
+      url: https://www.juniper.net/documentation/us/en/software/sd-on-prem25.4.1/sd-on-prem-user-guide/user-guide/topics/reference/set-ipaddress.html
+      note: "The documented restricted-CLI operation changes only the management IP address."
+      retrieved: "2026-07-24"
   verified_on:
     - release: "26.2.1-5348"
       host: "Proxmox VE 9.2 (dell-r6515-2)"
@@ -28,7 +39,7 @@ metadata:
 
 # Deploying Security Director On-Prem on Proxmox VE
 
-> **STATUS: draft (v0.2.0).** Procedure below was executed end-to-end on
+> **STATUS: draft (v0.3.0).** Procedure below was executed end-to-end on
 > **SD On-Prem 26.2.1-5348** on Proxmox VE 9.2. Values in `<angle brackets>` are
 > site-specific. Finalize/promote via `writing-skills` after a second clean run.
 
@@ -72,25 +83,56 @@ vendor `.bin` in **extract-only mode (`--no-run`)** to generate the qcow2s + ISO
 - **A REACHABLE NTP server** — SD requires NTP at first boot (cert/bootstrap). If the
   site blocks outbound UDP/123 (common), an internet NTP like NIST will hang the
   install; use an **internal** NTP the SD subnet can reach.
+- A complete inventory of every managed firewall's management target, management
+  service, reverse-channel source addresses, zones, transit hops, and return paths.
 - **SD internal CIDR** default `10.42.0.0/21` (≥/21); must not overlap any lab net.
 - `--no-run` host deps: `qemu-img`, `genisoimage`/`mkisofs`, `column`,
   `cracklib-check` (Debian: `cracklib-runtime`), `sha256sum`.
 
-## Pre-flight (read-only)
+## Mandatory predeployment connectivity STOP gate
+
+> **STOP GATE — do not extract artifacts, create/import disks, or create/start an
+> SD VM until every check below passes.** A test sourced by the Proxmox host is
+> invalid when the host and proposed SD guest use different addresses, gateways,
+> routes, policies, or NAT.
 
 1. Confirm all 4 IPs are free (`arping`), outside any DHCP pool.
-2. **Verify the SD subnet can reach the chosen NTP + DNS — by PROTOCOL, not ping.**
-   - NTP: if even the hypervisor host's `chronyc sources` shows Reach 0 to public
-     NTP, the site blocks outbound 123 — find an internal NTP (often the site DNS
-     servers also serve NTP).
-   - DNS: send an actual DNS query to each candidate (`dig @<ip> example.com` or a
-     UDP/53 probe). **A server that answers ping/NTP may NOT answer DNS.** SD
-     validates EVERY configured DNS server at first boot and loops forever on a
-     dead one (`DNS address is not connectable: <ip>`), never reaching the bundle
-     pull. Prefer a single verified-working resolver over an unverified pair.
-   - If egress is via a NAT firewall, confirm its source-NAT + permit policy cover
-     the subnet, then test that replies actually return.
-3. Host headroom: cores, RAM, and thin block storage (e.g. `local-lvm`) for the disks.
+2. **Per-firewall connectivity matrix.** Fill one row per firewall and traffic
+   direction. Do not leave an implicit "same as above" path:
+
+   | Firewall/path | Exact source | Target + port | Source gateway | Hops | From/to zones + policy | NAT | Return route | Bidirectional proof |
+   |---|---|---|---|---|---|---|---|---|
+   | `<fw>-discovery` | `<SD-mgmt-IP>` | `<fw-mgmt-IP>:22` | `<SD-gateway>` | `<routers/FWs>` | `<zones/rule>` | `<none/SNAT>` | `<to translated/original source>` | `<session In/Out>` |
+   | `<fw>-device` | `<device-source>` | `<device-VIP>:7804` | `<device-gateway>` | `<routers/FWs>` | `<zones/rule>` | `<none/SNAT>` | `<to translated/original source>` | `<listener + session>` |
+   | `<fw>-logs` | `<revenue-source>` | `<log-VIP>:6514` | `<device-gateway>` | `<routers/FWs>` | `<zones/rule>` | `<none/SNAT>` | `<to translated/original source>` | `<listener + session>` |
+
+3. Attach a disposable probe VM or network namespace to the **same Proxmox
+   bridge** and configure the exact proposed SD management source IP/prefix and
+   default gateway. From that source:
+   - confirm the default route and first hop;
+   - complete TCP/22 (or the selected management service) to **every** firewall;
+   - query every DNS server with `dig @<server> <name>`;
+   - obtain a valid NTP response with `chronyd -Q`, `ntpdate -q`, or `sntp`.
+4. Bind temporary listeners to the proposed device and log VIPs. Test
+   TCP/7804 from each device-management source and TCP/6514 from each selected
+   revenue/log source. The source must match the matrix; testing from a
+   convenient host or `fxp0` does not prove the reverse path.
+5. While each probe is active, inspect every stateful transit firewall. Require
+   request and reply packets (`In` and `Out` both non-zero), expected zones and
+   policy, expected translation, and a return route to the translated or
+   original source. Route/config inspection alone is not proof.
+6. Record the results and obtain approval for any required firewall or routing
+   changes. Re-run failed probes after the approved change. Advance only when
+   the matrix has no failed or untested row.
+7. Confirm host CPU, RAM, and thin block storage headroom for the selected flavor.
+
+**Regression guard (remote lab, 2026-07-24):** hypervisor-only DNS/NTP checks
+passed while the seed used gateway `10.88.15.254`. The installed SD source
+`10.88.15.19/21` then sent managed-device traffic to the wrong first hop and
+could not reach the firewalls. The required gateway was the policy/routing
+firewall `10.88.15.18`; the reverse paths terminate at device VIP
+`10.88.15.21:7804` and log VIP `10.88.15.22:6514`. Exact-source testing would
+have failed before deployment.
 
 ## Procedure
 
@@ -128,8 +170,8 @@ Output: `<staging>/<version>/` with `Security-Director-OnPrem-disk-0/1/2.qcow2`,
 > **Bundle delivery.** SCP bakes a password into `kvm-env.ini`; prefer **HTTP no-auth**
 > served from the host at boot time (the URL is only format-checked at extract time):
 > `python3 -m http.server <port> --bind <host-mgmt-ip> --directory <staging-dir>`.
-> Confirm `NTPServer=` in the generated `kvm-env.ini` is your **reachable** server
-> before booting — if it's wrong, re-run `--no-run` (the ISO is built from it).
+> Confirm the management IP/prefix, gateway, bridge, DNS, NTP, and all VIPs in
+> `kvm-env.ini` match the passed STOP-gate evidence before booting.
 
 Driving it non-interactively: pipe the answers in order via stdin, but only after
 verifying every value's format (a looping validator desyncs the pipe). All values
@@ -165,7 +207,8 @@ network config and the VM pulls + decrypts the `.tgz`, then installs its contain
 stack (RKE/k8s + SD) — **long (tens of minutes)**. Progress signals:
 - mgmt IP answers ping within ~1–2 min (network seeded),
 - the bundle server logs a `GET` from the mgmt IP (pull started),
-- SD CLI (`ssh admin@<mgmt-ip>`) then UI VIP (`https://<ui-vip>`) come up last.
+- SD CLI (`ssh cliadmin@<mgmt-ip>` on 26.2.1) then UI VIP
+  (`https://<ui-vip>`) come up last.
 Snapshot the VM before onboarding.
 
 ### 4. Onboard Junos/SRX devices
@@ -198,6 +241,11 @@ Snapshot the VM before onboarding.
 - **NTP must be reachable** — an internet NTP behind a site that blocks outbound 123
   hangs first boot; use an internal NTP. SD egresses via its default gateway, so a
   plain reachable internal server needs no extra routes.
+- **The default gateway is a first-boot seed decision.** The 26.2.1 restricted
+  CLI has an IP-address change workflow but no supported standalone gateway
+  change. If the seeded gateway is wrong, preserve the failed guest for rollback
+  evidence and rebuild from corrected seed data with fresh disks. Do not assume
+  that swapping the ISO on initialized disks will replace the gateway.
 - **Every DNS server must actually answer DNS.** A non-resolving entry (ping/NTP-only
   host) loops first boot on `DNS address is not connectable` — the appliance boots,
   applies config, but never pulls the bundle (0 requests to the bundle server).
@@ -236,5 +284,9 @@ Snapshot the VM before onboarding.
 
 ## Rollback
 
-`qm stop <vmid> && qm destroy <vmid>` removes it cleanly (verify the VMID; never
-destroy a `protected` guest). Stop the HTTP bundle server. No libvirt state remains.
+For a wrong seeded gateway, protect/stop the failed guest and build a fresh VM
+from corrected seed data and fresh disks; do not destroy the rollback copy until
+the replacement passes the same connectivity matrix. `qm stop <vmid> && qm
+destroy <vmid>` removes an explicitly approved disposable VM (verify the VMID;
+never destroy a protected guest). Stop the HTTP bundle server. No libvirt state
+remains.
