@@ -69,10 +69,16 @@ def is_nonempty_stripped(value: object) -> bool:
 def sentence_boundary_count(value: str) -> int:
     count = 0
     for match in SENTENCE_BOUNDARY_RE.finditer(value):
+        following = value[match.end() :].lstrip()
+        # An initialism visibly continues the same sentence only before a
+        # lowercase or numeric token. Uppercase is conservatively a boundary.
+        initialism_continues_sentence = bool(following) and (
+            following[0].islower() or following[0].isdigit()
+        )
         is_internal_initialism = (
             match.group() == "."
             and INITIALISM_END_RE.search(value[: match.end()])
-            and value[match.end() :].strip()
+            and initialism_continues_sentence
         )
         if not is_internal_initialism:
             count += 1

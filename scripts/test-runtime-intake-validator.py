@@ -128,6 +128,26 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             [],
         )
 
+    def test_rejects_question_sentence_ending_in_initialism(self) -> None:
+        catalog = copy.deepcopy(VALID_CATALOG)
+        catalog["questions"][0]["question"] = (
+            "Operations occur in the U.S. Which standard applies?"
+        )
+        self.assert_has_error(
+            render_reference(catalog),
+            "must contain exactly one sentence boundary",
+        )
+
+    def test_rejects_description_sentence_ending_in_initialism(self) -> None:
+        catalog = copy.deepcopy(VALID_CATALOG)
+        catalog["questions"][0]["options"][0]["description"] = (
+            "Use systems in the U.S. Apply regulatory requirements."
+        )
+        self.assert_has_error(
+            render_reference(catalog),
+            "must contain exactly one sentence",
+        )
+
     def test_rejects_extra_top_level_keys(self) -> None:
         catalog = copy.deepcopy(VALID_CATALOG)
         catalog["version"] = 1

@@ -199,8 +199,9 @@ For each skill, validate:
   or three options;
 - every option has a nonblank stripped short `label` and exactly one nonblank
   stripped sentence in `description`;
-- sentence-boundary checks ignore periods inside initialisms such as `U.S.`
-  without accepting multiple real sentences;
+- sentence-boundary checks ignore an initialism-ending period only when the
+  next non-space token begins with a lowercase letter or digit; an uppercase
+  token is conservatively treated as a new sentence;
 - the first label ends with `(Recommended)`;
 - standard-library negative contract tests exercise rejected keys, whitespace,
   sentence boundaries, and stale adaptation language;
