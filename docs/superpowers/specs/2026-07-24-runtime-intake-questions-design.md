@@ -59,8 +59,12 @@ references, where they are loaded only when unresolved material ambiguity
 exists.
 
 The runtime-intake reference uses a neutral question contract rather than a
-literal native-tool payload. Claude adapts the contract by dropping `id` and
-adding `multiSelect: false`. Codex retains `id` and omits `multiSelect`.
+literal native-tool payload. For Claude, project each selected neutral entry to
+only `question`, `header`, and `options`, then add `multiSelect: false`; never
+send `id` or `ask_when`. For Codex, project each selected neutral entry to only
+`id`, `header`, `question`, and `options`; never send `ask_when` or
+`multiSelect`. Without a native tool, ask the same questions in concise plain
+text with a free-text `Other` path.
 
 ## Invocation Decision
 
@@ -97,18 +101,26 @@ ask another round only if the response exposes a new material ambiguity.
 
 ## Portable Question Contract
 
+The neutral JSON object has exactly one top-level key, `questions`. Question
+objects have exactly `id`, `ask_when`, `header`, `question`, and `options`;
+option objects have exactly `label` and `description`. Native-only keys,
+including `multiSelect`, are unsupported in the neutral catalog.
+
 Every catalog entry contains:
 
 - `id`: stable, unique, lowercase snake-case identifier;
-- `ask_when`: observable condition that makes the question relevant;
-- `header`: user-facing label of at most 12 characters;
-- `question`: one direct question;
+- `ask_when`: nonblank, stripped observable condition that makes the question
+  relevant;
+- `header`: nonblank, stripped user-facing label of at most 12 characters;
+- `question`: one nonblank, stripped direct question sentence with exactly one
+  question mark;
 - `options`: two or three mutually exclusive choices.
 
 Every option contains:
 
-- `label`: short choice label;
-- `description`: one sentence explaining the effect of the choice.
+- `label`: nonblank, stripped short choice label;
+- `description`: one nonblank, stripped sentence explaining the effect of the
+  choice.
 
 The first option is the recommended safe default and its label ends with
 `(Recommended)`. The native free-text `Other` path remains available for exact
@@ -135,9 +147,9 @@ deterministically.
 5. Filter entries whose `ask_when` conditions are true.
 6. Remove entries already answered or rendered irrelevant by evidence.
 7. Select up to three highest-priority entries.
-8. Adapt them to the available native interaction tool.
+8. Project them to the exact Claude or Codex native key set defined above.
 9. If no native tool is available, ask the same questions in concise plain
-   text.
+   text with a free-text `Other` path.
 10. Re-evaluate the catalog after the response.
 11. Continue, make an explicit assumption, or stop on a documented blocker.
 
@@ -177,10 +189,18 @@ For each skill, validate:
   live-change approval;
 - `SKILL.md` links to `references/runtime-intake.md`;
 - the reference contains the required headings and one parseable JSON catalog;
-- every question has a unique `id`, nonempty `ask_when`, valid `header`,
-  nonempty `question`, and two or three options;
-- every option has a nonempty short `label` and one-sentence `description`;
+- the reference contains the exact Claude projection, Codex projection, and
+  plain-text fallback with free-text `Other` language;
+- the neutral catalog, question objects, and option objects contain exactly
+  their documented keys and no tool-specific or unknown keys;
+- every question has a unique `id`, nonblank stripped `ask_when`, nonblank
+  stripped `header`, exactly one nonblank stripped question sentence, and two
+  or three options;
+- every option has a nonblank stripped short `label` and exactly one nonblank
+  stripped sentence in `description`;
 - the first label ends with `(Recommended)`;
+- standard-library negative contract tests exercise rejected keys, whitespace,
+  sentence boundaries, and stale adaptation language;
 - all other package and line-limit checks continue to pass.
 
 Follow a sequential test-first cycle:

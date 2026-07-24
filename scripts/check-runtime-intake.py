@@ -12,6 +12,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = ROOT / "skills"
 CATALOG_RE = re.compile(r"```json\n(?P<payload>.*?)\n```", re.DOTALL)
+SENTENCE_BOUNDARY_RE = re.compile(r"[.!?](?=\s|$)")
+CATALOG_KEYS = frozenset({"questions"})
+QUESTION_KEYS = frozenset({"id", "ask_when", "header", "question", "options"})
+OPTION_KEYS = frozenset({"label", "description"})
+CLAUDE_ADAPTATION = """\
+- Claude: select at most three neutral entries, project each to only `question`,
+  `header`, and `options`, then add `multiSelect: false`; do not send `id` or
+  `ask_when`."""
+CODEX_ADAPTATION = """\
+- Codex: select at most three neutral entries and project each to only `id`,
+  `header`, `question`, and `options`; do not send `ask_when` or `multiSelect`."""
+FALLBACK_ADAPTATION = """\
+- Fallback: ask the same questions in concise plain text with a free-text
+  `Other` path."""
 REQUIRED_SKILL_TEXT = (
     "## Runtime intake",
     "references/runtime-intake.md",
@@ -30,6 +44,14 @@ REQUIRED_REFERENCE_HEADINGS = (
 )
 
 
+def is_nonempty_stripped(value: object) -> bool:
+    return isinstance(value, str) and bool(value) and value == value.strip()
+
+
+def sentence_boundary_count(value: str) -> int:
+    return len(SENTENCE_BOUNDARY_RE.findall(value))
+
+
 def selected_skill_files(skill_name: str | None) -> list[Path]:
     if skill_name:
         return [SKILLS_DIR / skill_name / "SKILL.md"]
@@ -41,6 +63,14 @@ def validate_catalog(path: Path, text: str) -> list[str]:
     for heading in REQUIRED_REFERENCE_HEADINGS:
         if heading not in text:
             errors.append(f"{path}: missing {heading!r}")
+    required_adaptation = (
+        ("Claude projection", CLAUDE_ADAPTATION),
+        ("Codex projection", CODEX_ADAPTATION),
+        ("fallback and free-text Other", FALLBACK_ADAPTATION),
+    )
+    for name, required_text in required_adaptation:
+        if required_text not in text:
+            errors.append(f"{path}: missing exact {name} language")
 
     matches = list(CATALOG_RE.finditer(text))
     if len(matches) != 1:
@@ -56,6 +86,8 @@ def validate_catalog(path: Path, text: str) -> list[str]:
     if not isinstance(payload, dict):
         errors.append(f"{path}: catalog must be a JSON object")
         return errors
+    if set(payload) != CATALOG_KEYS:
+        errors.append(f"{path}: catalog keys must be exactly {{questions}}")
 
     questions = payload.get("questions")
     if not isinstance(questions, list) or not questions:
@@ -68,6 +100,11 @@ def validate_catalog(path: Path, text: str) -> list[str]:
         if not isinstance(question, dict):
             errors.append(f"{prefix} must be an object")
             continue
+        if set(question) != QUESTION_KEYS:
+            errors.append(
+                f"{prefix} question keys must be exactly "
+                "{id, ask_when, header, question, options}"
+            )
 
         question_id = question.get("id")
         if not isinstance(question_id, str) or not re.fullmatch(
@@ -80,16 +117,24 @@ def validate_catalog(path: Path, text: str) -> list[str]:
             seen_ids.add(question_id)
 
         ask_when = question.get("ask_when")
-        if not isinstance(ask_when, str) or not ask_when.strip():
-            errors.append(f"{prefix} has empty ask_when")
+        if not is_nonempty_stripped(ask_when):
+            errors.append(f"{prefix} `ask_when` must be non-empty and stripped")
 
         header = question.get("header")
-        if not isinstance(header, str) or not 1 <= len(header) <= 12:
+        if not is_nonempty_stripped(header):
+            errors.append(f"{prefix} `header` must be non-empty and stripped")
+        elif not 1 <= len(header) <= 12:
             errors.append(f"{prefix} header must contain 1-12 characters")
 
         prompt = question.get("question")
-        if not isinstance(prompt, str) or not prompt.strip().endswith("?"):
-            errors.append(f"{prefix} question must be non-empty and end with '?'")
+        if not is_nonempty_stripped(prompt):
+            errors.append(f"{prefix} `question` must be non-empty and stripped")
+        elif (
+            not prompt.endswith("?")
+            or prompt.count("?") != 1
+            or sentence_boundary_count(prompt) != 1
+        ):
+            errors.append(f"{prefix} must contain exactly one question sentence")
 
         options = question.get("options")
         if not isinstance(options, list) or not 2 <= len(options) <= 3:
@@ -102,10 +147,17 @@ def validate_catalog(path: Path, text: str) -> list[str]:
             if not isinstance(option, dict):
                 errors.append(f"{option_prefix} must be an object")
                 continue
+            if set(option) != OPTION_KEYS:
+                errors.append(
+                    f"{option_prefix} option keys must be exactly "
+                    "{label, description}"
+                )
             label = option.get("label")
             description = option.get("description")
-            if not isinstance(label, str) or not label.strip():
-                errors.append(f"{option_prefix} has empty label")
+            if not is_nonempty_stripped(label):
+                errors.append(
+                    f"{option_prefix} `label` must be non-empty and stripped"
+                )
             elif label in labels:
                 errors.append(f"{option_prefix} duplicates label {label!r}")
             else:
@@ -113,11 +165,17 @@ def validate_catalog(path: Path, text: str) -> list[str]:
                 words = label.removesuffix(" (Recommended)").split()
                 if not 1 <= len(words) <= 5:
                     errors.append(f"{option_prefix} label must contain 1-5 words")
-            if (
-                not isinstance(description, str)
-                or not description.strip().endswith((".", "!", "?"))
+            if not is_nonempty_stripped(description):
+                errors.append(
+                    f"{option_prefix} `description` must be non-empty and stripped"
+                )
+            elif (
+                not description.endswith((".", "!", "?"))
+                or sentence_boundary_count(description) != 1
             ):
-                errors.append(f"{option_prefix} description must be one sentence")
+                errors.append(
+                    f"{option_prefix} description must contain exactly one sentence"
+                )
 
         first_label = options[0].get("label") if isinstance(options[0], dict) else ""
         if not isinstance(first_label, str) or not first_label.endswith("(Recommended)"):

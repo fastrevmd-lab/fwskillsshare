@@ -9,12 +9,14 @@ platform or framework basis, evidence quality, then output preference.
 
 ## Tool adaptation
 
-- Claude: send at most three entries to `AskUserQuestion`; omit `id` and set
-  `multiSelect: false`.
-- Codex: send at most three entries to `request_user_input`; retain `id` and
-  omit `multiSelect`.
-- Fallback: ask the same questions in plain text.
-- Preserve free-text `Other`. Never request secrets.
+- Claude: select at most three neutral entries, project each to only `question`,
+  `header`, and `options`, then add `multiSelect: false`; do not send `id` or
+  `ask_when`.
+- Codex: select at most three neutral entries and project each to only `id`,
+  `header`, `question`, and `options`; do not send `ask_when` or `multiSelect`.
+- Fallback: ask the same questions in concise plain text with a free-text
+  `Other` path.
+- Never request secrets.
 
 ## Question catalog
 

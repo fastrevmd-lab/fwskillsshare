@@ -85,12 +85,14 @@ platform or framework basis, evidence quality, then output preference.
 
 ## Tool adaptation
 
-- Claude: send at most three entries to `AskUserQuestion`; omit `id` and set
-  `multiSelect: false`.
-- Codex: send at most three entries to `request_user_input`; retain `id` and
-  omit `multiSelect`.
-- Fallback: ask the same questions in plain text.
-- Preserve free-text `Other`. Never request secrets.
+- Claude: select at most three neutral entries, project each to only `question`,
+  `header`, and `options`, then add `multiSelect: false`; do not send `id` or
+  `ask_when`.
+- Codex: select at most three neutral entries and project each to only `id`,
+  `header`, `question`, and `options`; do not send `ask_when` or `multiSelect`.
+- Fallback: ask the same questions in concise plain text with a free-text
+  `Other` path.
+- Never request secrets.
 
 ## Question catalog
 
@@ -117,6 +119,12 @@ platform or framework basis, evidence quality, then output preference.
 }
 ```
 ````
+
+The embedded neutral JSON has exactly the top-level key `questions`. Each
+question has exactly `id`, `ask_when`, `header`, `question`, and `options`;
+each option has exactly `label` and `description`. All text values are nonblank
+and stripped. Each prompt is exactly one question sentence with one question
+mark, and each description is exactly one sentence.
 
 ---
 
@@ -631,6 +639,7 @@ Update `lint` in `justfile` to run:
 ```make
 lint:
     python3 scripts/check-skill-packages.py
+    python3 scripts/test-runtime-intake-validator.py
     python3 scripts/check-runtime-intake.py
     python3 scripts/check-readme-branding.py
 ```
@@ -688,6 +697,27 @@ metadata, and the 22 runtime-intake package changes are present.
 git add justfile
 git commit -m "test: integrate runtime intake validation"
 ```
+
+### Task 26: Enforce the native projection contract
+
+Harden `scripts/check-runtime-intake.py` with standard-library negative tests
+in `scripts/test-runtime-intake-validator.py`. Reject unknown keys at every
+neutral JSON level; native-only question keys such as `multiSelect`; blank or
+unstripped `ask_when`, `header`, `question`, `label`, and `description`; more
+than one question sentence or question mark; and more than one sentence-ending
+boundary in a description.
+
+Require every reference to state the exact native projections:
+
+- Claude sends only `question`, `header`, `options`, and
+  `multiSelect: false`; it sends neither `id` nor `ask_when`.
+- Codex sends only `id`, `header`, `question`, and `options`; it sends neither
+  `ask_when` nor `multiSelect`.
+- The fallback asks the same questions in concise plain text and retains a
+  free-text `Other` path.
+
+Run the negative-contract test script from `just lint` before validating all
+22 real catalogs.
 
 ## Appendix A: Exact question catalogs
 
