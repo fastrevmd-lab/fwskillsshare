@@ -259,6 +259,10 @@ def validate_catalog(path: Path, text: str) -> list[str]:
         errors.append(f"{path}: invalid JSON catalog: {exc}")
         return errors
 
+    if not isinstance(payload, dict):
+        errors.append(f"{path}: catalog must be a JSON object")
+        return errors
+
     questions = payload.get("questions")
     if not isinstance(questions, list) or not questions:
         errors.append(f"{path}: questions must be a non-empty list")
