@@ -40,6 +40,23 @@ Treat FMC-managed FTD exports and API data as adjacent but not identical inputs:
 
 Use only for Cisco ASA or FTD syntax. Hand off FortiOS `config/edit/next/end` blocks to `parsing-fortinet-configs`, PAN-OS XML or `set deviceconfig` to `parsing-palo-configs`, and Junos hierarchy or `set security` to `parsing-srx-configs`. Verify production-bound results against current device documentation and output. Downstream consumers are the audit, conversion, and diff skills.
 
+## Runtime intake
+
+Before starting the workflow, inspect the request, supplied artifacts, and
+available approved read-only evidence. If unresolved facts could materially
+change safety, scope, correctness, confidence, or the requested output, read
+`references/runtime-intake.md`.
+
+Invoke Claude `AskUserQuestion` or Codex `request_user_input` only for those
+unresolved facts. Do not repeat answered questions or present the full catalog
+automatically. Ask at most three single-select questions per round, then
+re-evaluate. If no native interaction tool is available, ask the same questions
+in concise plain text and preserve a free-text `Other` path.
+
+Never request secrets or unredacted customer data. Treat intake answers as task
+context, not approval for a live change; obtain separate explicit approval
+before configuration, commit, upgrade, reboot, delete, or failover actions.
+
 ## Input Format
 
 Cisco ASA configs are line-oriented with indented sub-commands:
