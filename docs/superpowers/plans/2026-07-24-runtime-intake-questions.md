@@ -228,6 +228,10 @@ SKILLS_DIR = ROOT / "skills"
 CATALOG_RE = re.compile(r"```json\n(?P<payload>.*?)\n```", re.DOTALL)
 RUNTIME_HEADING_RE = re.compile(r"^## Runtime intake[ \t]*$", re.MULTILINE)
 SECTION_HEADING_RE = re.compile(r"^## [^\n]+$", re.MULTILINE)
+FENCE_LINE_RE = re.compile(
+    r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
+    r"(?P<ending>\r\n|\n|\r)?\Z"
+)
 INVOCATION_CLAUSE = (
     "For each unresolved material fact whose catalog condition is true, invoke "
     "Claude `AskUserQuestion` or Codex `request_user_input` before continuing "
@@ -325,13 +329,82 @@ def approved_runtime_template(path: Path) -> str:
     )
 
 
+def mask_non_newline_characters(text: str) -> str:
+    return "".join(char if char in "\r\n" else " " for char in text)
+
+
+def mask_html_comments(line: str, in_comment: bool) -> tuple[str, bool]:
+    """Mask HTML comments on one physical line without changing offsets."""
+    masked_parts: list[str] = []
+    cursor = 0
+    while cursor < len(line):
+        if in_comment:
+            comment_end = line.find("-->", cursor)
+            if comment_end == -1:
+                masked_parts.append(mask_non_newline_characters(line[cursor:]))
+                return "".join(masked_parts), True
+            end = comment_end + len("-->")
+            masked_parts.append(mask_non_newline_characters(line[cursor:end]))
+            cursor = end
+            in_comment = False
+            continue
+
+        comment_start = line.find("<!--", cursor)
+        if comment_start == -1:
+            masked_parts.append(line[cursor:])
+            break
+        masked_parts.append(line[cursor:comment_start])
+        cursor = comment_start
+        in_comment = True
+
+    return "".join(masked_parts), in_comment
+
+
+def mask_inactive_markdown(text: str) -> str:
+    """Blank HTML comments and fenced code while preserving offsets/newlines."""
+    masked_lines: list[str] = []
+    in_comment = False
+    fence_character: str | None = None
+    fence_length = 0
+
+    for line in text.splitlines(keepends=True):
+        fence_match = FENCE_LINE_RE.fullmatch(line)
+        if fence_character is not None:
+            masked_lines.append(mask_non_newline_characters(line))
+            if (
+                fence_match is not None
+                and fence_match.group("fence")[0] == fence_character
+                and len(fence_match.group("fence")) >= fence_length
+                and not fence_match.group("rest").strip(" \t")
+            ):
+                fence_character = None
+                fence_length = 0
+            continue
+
+        if not in_comment and fence_match is not None:
+            fence = fence_match.group("fence")
+            info = fence_match.group("rest")
+            valid_opener = fence[0] == "~" or "`" not in info
+            if valid_opener:
+                fence_character = fence[0]
+                fence_length = len(fence)
+                masked_lines.append(mask_non_newline_characters(line))
+                continue
+
+        masked_line, in_comment = mask_html_comments(line, in_comment)
+        masked_lines.append(masked_line)
+
+    return "".join(masked_lines)
+
+
 def extract_runtime_section(path: Path, text: str) -> tuple[str | None, list[str]]:
-    matches = list(RUNTIME_HEADING_RE.finditer(text))
+    active_markdown = mask_inactive_markdown(text)
+    matches = list(RUNTIME_HEADING_RE.finditer(active_markdown))
     if len(matches) != 1:
         return None, [f"{path}: expected exactly one '## Runtime intake' section"]
 
     start = matches[0].end()
-    next_heading = SECTION_HEADING_RE.search(text, start)
+    next_heading = SECTION_HEADING_RE.search(active_markdown, start)
     end = next_heading.start() if next_heading else len(text)
     return text[start:end], []
 
@@ -851,15 +924,21 @@ most three single-select catalog questions. After every response, another round
 is required whenever any unresolved material catalog condition remains true;
 the workflow continues only when none remain. A plain-text fallback preserves
 each selected question's 2-3 labeled choices and free-text `Other` path and
-must not substitute a generic checklist. The structural validator extracts the
-single runtime section, normalizes whitespace, selects the approved standard or
-skill-specific compact template by skill path, and requires equality across the
-complete section. Validator-API mutation probes reject discretionary invocation,
-open-ended native questions, a one-summary fallback, contract clauses outside
-the runtime section, contracts hidden in HTML comments or code fences,
-contradictory trailing prose, missing approved text, and duplicate runtime
-sections. A positive probe permits whitespace-only variation, and the real-file
-test applies the same validator to all 22 skills.
+must not substitute a generic checklist. The structural validator first masks
+HTML comments and standard backtick or tilde fenced-code regions while
+preserving length, newline positions, and offsets. It discovers the single
+runtime heading and following section heading only in that active-Markdown
+view, slices the original section by the preserved offsets, normalizes
+whitespace, selects the approved standard or skill-specific compact template by
+skill path, and requires equality across the complete section. Validator-API
+mutation probes reject discretionary invocation, open-ended native questions, a
+one-summary fallback, contract clauses outside the runtime section, a complete
+runtime region hidden in a multiline comment or either fence form, inactive
+decoy headings, inactive wrappers inside an active section, contradictory
+trailing prose, missing approved text, and duplicate active runtime sections.
+A masker probe locks CRLF length/newline/offset preservation, a positive probe
+permits whitespace-only variation, and the real-file test applies the same
+validator to all 22 skills.
 
 The optional skill argument limits equality, digest, safe-default, and
 option-tuple assertions to the selected package, while every focused run still

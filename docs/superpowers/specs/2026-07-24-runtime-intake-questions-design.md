@@ -223,9 +223,14 @@ For each skill, validate:
 - `SKILL.md` contains a `## Runtime intake` section;
 - the section names Claude `AskUserQuestion` and Codex
   `request_user_input`;
-- a section-scoped validator normalizes whitespace across the complete section
-  and requires equality to the approved standard template or the
-  skill-selected `srx-mnha`/`srx-policy` compact template;
+- before section extraction, the validator masks HTML comments and standard
+  backtick or tilde fenced-code regions without changing length, newline
+  positions, or offsets; runtime and following section headings are discovered
+  only in that active-Markdown mask, then the original section is sliced by the
+  preserved offsets;
+- the section-scoped validator normalizes whitespace across that complete
+  original section and requires equality to the approved standard template or
+  the skill-selected `srx-mnha`/`srx-policy` compact template;
 - the exact template mandates catalog questions before continuing or issuing
   an open-ended request, limits each round to three single-select catalog
   questions, requires another round while any unresolved material catalog
@@ -233,9 +238,11 @@ For each skill, validate:
   and no-full-catalog behavior, preserves each selected question's 2-3 labeled
   choices and free-text `Other` in plain-text fallback, and forbids
   generic-checklist substitution;
-- complete-section equality rejects a contract hidden in an HTML comment or
-  code fence, extra or contradictory prose, missing approved text, and
-  duplicate runtime sections while permitting whitespace-only variation;
+- active-heading discovery rejects a complete runtime section, including its
+  heading and following section heading, when hidden in an HTML comment or code
+  fence; complete-section equality also rejects inactive wrappers inside an
+  active section, extra or contradictory prose, missing approved text, and
+  duplicate active runtime sections while permitting whitespace-only variation;
 - the exact section retains secret safety and separate live-change approval
   and links to `references/runtime-intake.md`;
 - the reference contains the required headings and one parseable JSON catalog;

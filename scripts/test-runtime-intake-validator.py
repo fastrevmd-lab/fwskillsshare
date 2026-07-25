@@ -99,6 +99,17 @@ Continue with the requested task.
 STANDARD_PROBE_PATH = Path("skills/probe/SKILL.md")
 
 
+def wrap_complete_runtime_region(opener: str, closer: str) -> str:
+    start = VALID_SKILL.index("## Runtime intake")
+    next_heading = VALID_SKILL.index("## Workflow", start)
+    end = VALID_SKILL.index("\n", next_heading)
+    return (
+        f"{VALID_SKILL[:start]}{opener}\n"
+        f"{VALID_SKILL[start:end]}\n"
+        f"{closer}{VALID_SKILL[end:]}"
+    )
+
+
 def render_reference(
     catalog: dict[str, object] | None = None,
     adaptation: str = TOOL_ADAPTATION,
@@ -145,6 +156,15 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             f"expected {STANDARD_PROBE_PATH} to be rejected",
         )
 
+    def assert_no_active_runtime_section(self, skill_text: str) -> None:
+        self.assertEqual(
+            VALIDATOR.validate_skill(STANDARD_PROBE_PATH, skill_text),
+            [
+                f"{STANDARD_PROBE_PATH}: expected exactly one "
+                "'## Runtime intake' section"
+            ],
+        )
+
     def test_accepts_exact_neutral_contract(self) -> None:
         self.assertEqual(
             VALIDATOR.validate_catalog(
@@ -161,6 +181,64 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             with self.subTest(skill=skill_file.parent.name):
                 text = skill_file.read_text(encoding="utf-8")
                 self.assertEqual(VALIDATOR.validate_skill(skill_file, text), [])
+
+    def test_accepts_active_standard_runtime_section(self) -> None:
+        self.assertEqual(
+            VALIDATOR.validate_skill(STANDARD_PROBE_PATH, VALID_SKILL),
+            [],
+        )
+
+    def test_mask_preserves_length_newlines_and_active_offsets(self) -> None:
+        source = (
+            "# Active\r\n"
+            "prefix <!--\r\n"
+            "## Commented\r\n"
+            "--> suffix\r\n"
+            "```markdown\r\n"
+            "## Backtick fence\r\n"
+            "```\r\n"
+            "  ~~~~text\r\n"
+            "## Tilde fence\r\n"
+            " ~~~~~\r\n"
+            "## Tail\r\n"
+        )
+        masker = getattr(VALIDATOR, "mask_inactive_markdown", None)
+        if masker is None:
+            self.fail("validator must expose mask_inactive_markdown")
+
+        masked = masker(source)
+
+        self.assertEqual(len(masked), len(source))
+        self.assertEqual(
+            [index for index, char in enumerate(masked) if char in "\r\n"],
+            [index for index, char in enumerate(source) if char in "\r\n"],
+        )
+        for active_text in ("# Active", "prefix ", " suffix", "## Tail"):
+            offset = source.index(active_text)
+            self.assertEqual(masked[offset : offset + len(active_text)], active_text)
+        for inactive_text in (
+            "## Commented",
+            "## Backtick fence",
+            "## Tilde fence",
+        ):
+            self.assertNotIn(inactive_text, masked)
+
+    def test_ignores_inactive_decoy_headings_before_active_section(self) -> None:
+        mutant = (
+            "<!--\n"
+            "## Runtime intake\n"
+            "## Commented next section\n"
+            "-->\n"
+            "```markdown\n"
+            "## Runtime intake\n"
+            "## Fenced next section\n"
+            "```\n"
+            f"{VALID_SKILL}"
+        )
+        self.assertEqual(
+            VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+            [],
+        )
 
     def test_rejects_discretionary_native_invocation(self) -> None:
         mutant = VALID_SKILL.replace(
@@ -193,6 +271,18 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         )
         mutant += f"\n## Notes\n\n{contract}\n"
         self.assert_skill_rejected(mutant)
+
+    def test_rejects_complete_runtime_region_inside_html_comment(self) -> None:
+        mutant = wrap_complete_runtime_region("<!--", "-->")
+        self.assert_no_active_runtime_section(mutant)
+
+    def test_rejects_complete_runtime_region_inside_code_fence(self) -> None:
+        mutant = wrap_complete_runtime_region("```markdown", "```")
+        self.assert_no_active_runtime_section(mutant)
+
+    def test_rejects_complete_runtime_region_inside_tilde_fence(self) -> None:
+        mutant = wrap_complete_runtime_region("  ~~~~markdown", " ~~~~~")
+        self.assert_no_active_runtime_section(mutant)
 
     def test_rejects_runtime_contract_inside_html_comment(self) -> None:
         contract = "\n".join(
