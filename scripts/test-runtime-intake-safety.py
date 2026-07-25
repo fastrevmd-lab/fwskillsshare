@@ -768,7 +768,7 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 "raw HTML block syntax is not allowed",
             ),
             (
-                "- outer\n"
+                "- outer\n\n"
                 "  10. inner\n"
                 "      ### A.1 `cis-controls-ngfw-compliance`\n",
                 "duplicate Appendix A skill section",

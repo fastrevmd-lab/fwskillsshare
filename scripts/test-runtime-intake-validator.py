@@ -404,7 +404,7 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             "10. item\n    ## Runtime intake ###\n",
             "123456789. item\n           ## Runtime intake\n",
             "-    item\n     ## Runtime intake\n",
-            "- outer\n  10. inner\n      ## Runtime intake\n",
+            "- outer\n\n  10. inner\n      ## Runtime intake\n",
         )
         for continuation in skill_cases:
             with self.subTest(kind="skill", continuation=continuation):
@@ -415,7 +415,7 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
 
         reference_cases = (
             "10. item\n    ## When to ask\n",
-            "- outer\n  123456789) inner\n             ## When to ask\n",
+            "- outer\n\n  123456789) inner\n             ## When to ask\n",
         )
         for continuation in reference_cases:
             with self.subTest(kind="reference", continuation=continuation):
@@ -427,7 +427,7 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         raw_html_cases = (
             "10. item\n    <div>\n",
             "-    item\n     <runtime-wrapper>\n",
-            "- outer\n  10. inner\n      <![CDATA[\n",
+            "- outer\n\n  10. inner\n      <![CDATA[\n",
         )
         for continuation in raw_html_cases:
             with self.subTest(kind="html", continuation=continuation):
