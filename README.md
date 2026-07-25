@@ -22,7 +22,7 @@
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
 </p>
 
-Agent skills for the firewall work you actually do — parsing, auditing, converting, and running Juniper SRX — not vibe configuring.
+Agent skills for the firewall work you actually do — parsing, auditing, converting, running Juniper SRX, and deploying Security Director On-Prem — not vibe configuring.
 
 Firewall work is unforgiving. A confidently wrong `access-list` line, a Junos stanza that won't commit, a compliance claim you can't back up in an audit — these aren't cosmetic. Coding agents are astonishingly good at producing *plausible* firewall config and astonishingly bad at knowing when it's wrong.
 
@@ -100,7 +100,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**23 skills** across four families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, or compliance language in your message or a pasted config. The newest `sd-onprem-proxmox-deploy` package is a draft; the other 22 packages retain the completed review record below. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
+**23 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem deployment request, or compliance language in your message or a pasted config. The newest `sd-onprem-proxmox-deploy` package is a draft; the other 22 packages retain the completed review record below. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 ### Config parsers
 
@@ -115,7 +115,6 @@ Normalize a vendor config into the shared intermediate schema. Everything else c
 
 Actionable Junos playbooks — commands, design guidance, verification, troubleshooting matrices, source attribution.
 
-- **[sd-onprem-proxmox-deploy](./skills/sd-onprem-proxmox-deploy/SKILL.md)** — **New draft:** deploy Security Director On-Prem 25/26 on Proxmox from KVM artifacts, with mandatory source-identical routing, bundle, device-channel, and TLS log-path proof before VM creation.
 - **[srx-policy](./skills/srx-policy/SKILL.md)** — Enforced global-policy output with explicit zone-pair opt-outs on 23.x+, AppID/AppFW, NGWF-first web filtering, SecIntel, ATP, hit-count troubleshooting.
 - **[srx-nat](./skills/srx-nat/SKILL.md)** — Source/destination/static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin, proxy-ARP, session verification.
 - **[srx-mnha](./skills/srx-mnha/SKILL.md)** — Multi-Node High Availability: routed/default-gateway/hybrid modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, DHCP caveats.
@@ -145,6 +144,12 @@ Map firewall capability to control evidence — assessor/auditor output template
 - **[soc2-ngfw-compliance](./skills/soc2-ngfw-compliance/SKILL.md)** — SOC 2 Trust Services Criteria (CC6/CC7/CC8), Type I/II examinations, operating-effectiveness samples.
 - **[srx-disa-stig-compliance](./skills/srx-disa-stig-compliance/SKILL.md)** — Source-pinned DISA Y25M01 SRX NDM/ALG/IDPS/VPN rule assessment, CAT status, evidence gaps, and Junos compatibility review.
 
+### Security management deployment
+
+Install with `--family deployment`.
+
+- **[sd-onprem-proxmox-deploy](./skills/sd-onprem-proxmox-deploy/SKILL.md)** — **New draft:** plan, deploy, validate, and troubleshoot Juniper Security Director On-Prem 25/26 as a Proxmox VE guest from the vendor KVM artifacts, including sizing, four-IP planning, first-boot seed configuration, NTP/DNS reachability, SRX onboarding, and mandatory source-identical routing, bundle, device-channel, and TLS log-path proof before VM creation.
+
 ---
 
 ## Quality and Review
@@ -166,9 +171,10 @@ A third round on 2026-07-04/05 applied an authoring-quality pass across those or
 | Family | Skills | Reviewed |
 |--------|-------:|:--------:|
 | Config parsers | 4 | 4 / 4 |
-| SRX operational playbooks | 9 | 8 / 9 |
+| SRX operational playbooks | 8 | 8 / 8 |
 | NGFW compliance and STIG playbooks | 7 | 7 / 7 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
+| Security management deployment | 1 | 0 / 1 |
 | **Total** | **23** | **22 / 23** |
 
 The later `srx-disa-stig-compliance` addition completed an independent review on
@@ -178,8 +184,10 @@ conservative status/evidence behavior, Junos schema paths and source conflicts,
 installer integration, and synthetic behavior/mutation fixtures. All findings
 were remediated and re-reviewed cleanly.
 
-`sd-onprem-proxmox-deploy` was added later and remains explicitly labeled draft
-pending the same full review depth.
+`sd-onprem-proxmox-deploy` was added later and was not part of the 2026-06-30,
+2026-07-02, or 2026-07-04/05 review rounds. It has since passed the repository's
+portable-package and runtime-intake validation, but remains explicitly labeled
+draft pending the same full review depth.
 
 These are research/operational and assessment-support skills, not certified products: review their output against current vendor documentation, live device behavior, and (for compliance work) a qualified assessor before relying on it.
 
@@ -208,7 +216,7 @@ Flags:
 ```text
 --all                 Install all 23 skills
 --skill NAME          Install a specific skill (repeatable)
---family NAME         parsers | srx | tooling | compliance (repeatable)
+--family NAME         parsers | srx | tooling | compliance | deployment (repeatable)
 --target WHERE        claude | codex | hermes | both | all
                       (`both` keeps the legacy Claude+Hermes meaning; default: prompt, or claude with -y)
 --dir PATH            Explicit install directory (overrides --target)
@@ -226,6 +234,8 @@ Examples:
 ./install.sh --all --target codex               # everything, into ~/.agents/skills
 ./install.sh --family parsers --family srx      # just the parsers + SRX playbooks
 ./install.sh --family tooling --target all      # tooling skills into all three agents
+./install.sh --family deployment --target codex # Security Director On-Prem deployment skill
+./install.sh --skill sd-onprem-proxmox-deploy --target claude -y
 ./install.sh --skill parsing-srx-configs --skill srx-nat -y
 ./install.sh --list                             # see what's available
 ```
@@ -242,6 +252,9 @@ cp -r fwskillsshare/skills/* ~/.claude/skills/
 
 # Or a single skill
 cp -r fwskillsshare/skills/srx-mnha ~/.claude/skills/
+
+# Security Director On-Prem deployment skill
+cp -r fwskillsshare/skills/sd-onprem-proxmox-deploy ~/.claude/skills/
 ```
 
 For **Codex**, copy into the user skill tree. Codex normally detects changes automatically; restart it if a new skill does not appear:
@@ -256,10 +269,10 @@ For **Hermes**, copy into your local Hermes skills tree (usually `~/.hermes/skil
 ```bash
 mkdir -p ~/.hermes/skills/devops
 cp -r fwskillsshare/skills/* ~/.hermes/skills/devops/
-hermes skills list | grep -E 'parsing-|srx-|firewall-|-ngfw-compliance'
+hermes skills list | grep -E 'parsing-|srx-|firewall-|-ngfw-compliance|sd-onprem-'
 ```
 
-Skills auto-trigger when they detect vendor-specific keywords, SRX operational topics, or PCI/HIPAA/CMMC/NIST 800-171/CIS/ISO 27001/SOC 2/DISA STIG compliance language in your messages or pasted configs.
+Skills auto-trigger when they detect vendor-specific keywords, SRX operational topics, Security Director On-Prem or Proxmox deployment requests, or PCI/HIPAA/CMMC/NIST 800-171/CIS/ISO 27001/SOC 2/DISA STIG compliance language in your messages or pasted configs.
 
 ### Managing context
 
@@ -293,6 +306,7 @@ enabled = false
 - **Design SRX MNHA** — Reason about MNHA modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, and DHCP caveats
 - **Operate SRX NAT** — Source/destination/static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin, proxy ARP
 - **Design SRX security policy** — Enforce `security policies global` for generated greenfield, migration, and onboarding output absent an explicit opt-out; then layer AppID/AppFW, NGWF-first web filtering, SecIntel, ATP
+- **Deploy Security Director On-Prem** — Plan the Proxmox VE guest, vendor artifact extraction, four same-subnet IPs, first-boot settings, and SRX onboarding
 - **Assess compliance evidence** — Map NGFW policies, NAT, zones, logging, IDS/IPS, and segmentation to PCI / HIPAA / CMMC-NIST 800-171 / CIS / ISO 27001 / SOC 2 / SRX DISA STIG evidence expectations
 
 ### Examples
@@ -327,6 +341,9 @@ enabled = false
 
 # SRX global policy migration
 "Convert this vendor rulebase into an SRX 23.x global security policy design with AppFW, NGWF-first web filtering, SecIntel, logging, and a final deny"
+
+# Security Director On-Prem on Proxmox
+"Plan a fresh Security Director On-Prem deployment on Proxmox VE, including artifact extraction, VM sizing, the four required IPs, and first-boot NTP/DNS checks"
 
 # Compliance review (any of the seven compliance/STIG playbooks)
 "Review this firewall export for PCI DSS CDE segmentation evidence and recommend policy/NAT/zone description markers"

@@ -40,6 +40,10 @@ SRX checks feed freshness with HTTP `HEAD`, downloads changed archives with `GET
 
 Use this skill for self-hosted dynamic-address feeds. Use `srx-policy` for Juniper SecIntel or ATP feeds and `parsing-srx-configs` for full-config extraction.
 
+## Runtime intake
+
+Use this skill only for feed-server dynamic address objects. Use `parsing-srx-configs` for full-config extraction and `srx-policy` when the policy match itself is in question. Before acting, inspect the request, artifacts, and approved read-only evidence. If unresolved facts materially change safety, scope, correctness, confidence, or output, read `references/runtime-intake.md`. For each unresolved material fact whose catalog condition is true, invoke Claude `AskUserQuestion` or Codex `request_user_input` before continuing or issuing an open-ended request. Ask at most three single-select catalog questions per round. After each response, ask another round whenever any unresolved material catalog condition remains true; continue only when none remain. Do not repeat answered questions or show the full catalog. Without a native tool, present each selected catalog question with its 2-3 labeled choices and a free-text `Other` path in concise plain text; do not substitute a generic checklist. Never request secrets or unredacted customer data. Answers are context, not live-change approval; obtain separate explicit approval before configuration, commit, upgrade, reboot, delete, or failover.
+
 ## Prerequisites and Version Notes
 
 - SRX/vSRX running Junos with `security dynamic-address` feed support.

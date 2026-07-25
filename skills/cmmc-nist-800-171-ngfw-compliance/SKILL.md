@@ -36,6 +36,21 @@ An NGFW can be a major supporting control. It can enforce CUI enclave segmentati
 
 Treat this as research and assessment guidance, not legal advice and not a C3PAO, assessor, DoD, or contracting-officer determination. When producing formal compliance language, cite NIST SP 800-171 requirement IDs and CMMC practice language where applicable, label assumptions, and defer final interpretation to the organization’s CMMC lead, compliance team, legal counsel, prime/customer, or authorized assessor.
 
+## Runtime intake
+
+Before starting the workflow, inspect the request, supplied artifacts, and
+available approved read-only evidence. If unresolved facts could materially
+change safety, scope, correctness, confidence, or the requested output, read
+`references/runtime-intake.md`.
+
+For each unresolved material fact whose catalog condition is true, invoke Claude `AskUserQuestion` or Codex `request_user_input` before continuing or issuing an open-ended request.
+Ask at most three single-select catalog questions per round. After each response, ask another round whenever any unresolved material catalog condition remains true; continue only when none remain. Do not repeat answered questions or show the full catalog.
+Without a native tool, present each selected catalog question with its 2-3 labeled choices and a free-text `Other` path in concise plain text; do not substitute a generic checklist.
+
+Never request secrets or unredacted customer data. Treat intake answers as task
+context, not approval for a live change; obtain separate explicit approval
+before configuration, commit, upgrade, reboot, delete, or failover actions.
+
 ## Scope and routing
 
 Parse raw configurations with the matching `parsing-*` skill first. Use this skill when findings must map to CMMC or NIST SP 800-171 requirements and CUI evidence; use `firewall-best-practices-audit` for framework-neutral hygiene.

@@ -27,6 +27,21 @@ The audit reports findings, not verdicts. It never claims a config is "secure" â
 
 Operate on the normalized `parsing-*` schema; do not hand-audit raw vendor text when a parser exists. Treat framework-control mapping as out of scope, route migrations to `firewall-config-conversion`, and route parity or drift comparisons to `firewall-config-diff`.
 
+## Runtime intake
+
+Before starting the workflow, inspect the request, supplied artifacts, and
+available approved read-only evidence. If unresolved facts could materially
+change safety, scope, correctness, confidence, or the requested output, read
+`references/runtime-intake.md`.
+
+For each unresolved material fact whose catalog condition is true, invoke Claude `AskUserQuestion` or Codex `request_user_input` before continuing or issuing an open-ended request.
+Ask at most three single-select catalog questions per round. After each response, ask another round whenever any unresolved material catalog condition remains true; continue only when none remain. Do not repeat answered questions or show the full catalog.
+Without a native tool, present each selected catalog question with its 2-3 labeled choices and a free-text `Other` path in concise plain text; do not substitute a generic checklist.
+
+Never request secrets or unredacted customer data. Treat intake answers as task
+context, not approval for a live change; obtain separate explicit approval
+before configuration, commit, upgrade, reboot, delete, or failover actions.
+
 ## Policy population contract
 
 Parser output can include a vendor-default policy marked `_implicit: true`.
