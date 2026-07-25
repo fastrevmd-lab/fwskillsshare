@@ -400,6 +400,14 @@ DESIRED_SEMANTICS = {
             "Use supplied named-context boundary",
         ),
     ),
+    ("firewall-config-conversion", "convert_source"): (
+        "How should an ambiguous source platform be handled?",
+        (
+            "Confirm platform first (Recommended)",
+            "Use supplied exact platform",
+            "Analyze as unknown source",
+        ),
+    ),
 }
 TASK_30_SEMANTIC_KEYS = frozenset(
     {
@@ -473,6 +481,19 @@ TASK_32_EXPECTED_ASK_WHEN = {
     ("firewall-best-practices-audit", "audit_boundary"):
         "Audit boundary breadth is unclear.",
 }
+FINAL_REVIEW_SEMANTIC_KEYS = frozenset(
+    {
+        ("firewall-config-conversion", "convert_source"),
+    }
+)
+FINAL_REVIEW_EXPECTED_ASK_WHEN = {
+    ("firewall-config-conversion", "convert_source"):
+        "The source platform cannot be determined confidently.",
+}
+EXPECTED_FINAL_QUESTION_COUNT = 155
+EXPECTED_FINAL_SAFE_LABEL_COUNT = 100
+EXPECTED_FINAL_EXACT_TUPLE_COUNT = 56
+EXPECTED_FINAL_SEMANTIC_ID_COUNT = 48
 
 
 class RuntimeIntakeSafetyTests(unittest.TestCase):
@@ -544,6 +565,7 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
             TASK_30_SEMANTIC_KEYS
             | TASK_31_SEMANTIC_KEYS
             | TASK_32_SEMANTIC_KEYS
+            | FINAL_REVIEW_SEMANTIC_KEYS
         )
         for key in protected_keys:
             with self.subTest(skill=key[0], question_id=key[1]):
@@ -562,6 +584,31 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
             with self.subTest(skill=key[0], question_id=key[1]):
                 question = self.package_question(*key)
                 self.assertEqual(question["ask_when"], expected_ask_when)
+
+    def test_final_review_ask_when_conditions_are_exact(self) -> None:
+        for key, expected_ask_when in FINAL_REVIEW_EXPECTED_ASK_WHEN.items():
+            with self.subTest(skill=key[0], question_id=key[1]):
+                question = self.package_question(*key)
+                self.assertEqual(question["ask_when"], expected_ask_when)
+
+    def test_final_review_inventory_counts_are_exact(self) -> None:
+        catalogs = SAFETY.parse_plan_catalogs()
+        self.assertEqual(
+            sum(len(questions) for questions in catalogs.values()),
+            EXPECTED_FINAL_QUESTION_COUNT,
+        )
+        self.assertEqual(
+            len(SAFETY.SAFE_FIRST_LABELS),
+            EXPECTED_FINAL_SAFE_LABEL_COUNT,
+        )
+        self.assertEqual(
+            len(SAFETY.EXACT_OPTION_LABELS),
+            EXPECTED_FINAL_EXACT_TUPLE_COUNT,
+        )
+        self.assertEqual(
+            len(DESIRED_SEMANTICS),
+            EXPECTED_FINAL_SEMANTIC_ID_COUNT,
+        )
 
     def test_duplicate_appendix_skill_section_is_rejected(self) -> None:
         self.use_temp_catalogs()
