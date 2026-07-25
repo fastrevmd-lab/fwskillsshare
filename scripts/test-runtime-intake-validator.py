@@ -58,15 +58,44 @@ VALID_CATALOG = {
     ]
 }
 
-REQUIRED_RUNTIME_CONTRACT = (
-    "before continuing or issuing an open-ended request",
-    "2-3 labeled choices",
-    "do not substitute a generic checklist",
-    "at most three",
-    "do not repeat answered questions",
-    "full catalog",
-    "free-text `Other` path",
+INVOCATION_CLAUSE = (
+    "For each unresolved material fact whose catalog condition is true, invoke "
+    "Claude `AskUserQuestion` or Codex `request_user_input` before continuing "
+    "or issuing an open-ended request."
 )
+ROUNDS_CLAUSE = (
+    "Ask at most three single-select catalog questions per round. After each "
+    "response, ask another round whenever any unresolved material catalog "
+    "condition remains true; continue only when none remain. Do not repeat "
+    "answered questions or show the full catalog."
+)
+FALLBACK_CLAUSE = (
+    "Without a native tool, present each selected catalog question with its 2-3 "
+    "labeled choices and a free-text `Other` path in concise plain text; do not "
+    "substitute a generic checklist."
+)
+VALID_SKILL = f"""\
+# Runtime Intake Probe
+
+## Runtime intake
+
+Before starting the workflow, inspect the request, supplied artifacts, and
+available approved read-only evidence. If unresolved facts could materially
+change safety, scope, correctness, confidence, or the requested output, read
+`references/runtime-intake.md`.
+
+{INVOCATION_CLAUSE}
+{ROUNDS_CLAUSE}
+{FALLBACK_CLAUSE}
+
+Never request secrets or unredacted customer data. Treat intake answers as task
+context, not approval for a live change; obtain separate explicit approval
+before configuration, commit, upgrade, reboot, delete, or failover actions.
+
+## Workflow
+
+Continue with the requested task.
+"""
 
 
 def render_reference(
@@ -108,6 +137,13 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             f"expected error containing {fragment!r}, got {errors!r}",
         )
 
+    def assert_skill_rejected(self, skill_text: str) -> None:
+        path = Path("probe/SKILL.md")
+        self.assertEqual(
+            VALIDATOR.validate_skill(path, skill_text),
+            [f"{path}: runtime intake missing exact connected catalog contract"],
+        )
+
     def test_accepts_exact_neutral_contract(self) -> None:
         self.assertEqual(
             VALIDATOR.validate_catalog(
@@ -116,17 +152,46 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             [],
         )
 
-    def test_all_skill_runtime_sections_require_catalog_shaped_fallback(self) -> None:
+    def test_all_skill_runtime_sections_satisfy_connected_contract(self) -> None:
         skill_files = VALIDATOR.selected_skill_files(None)
         self.assertEqual(len(skill_files), 22)
 
         for skill_file in skill_files:
             with self.subTest(skill=skill_file.parent.name):
                 text = skill_file.read_text(encoding="utf-8")
-                runtime_section = text.split("## Runtime intake\n", 1)[1]
-                runtime_section = runtime_section.split("\n## ", 1)[0]
-                for required in REQUIRED_RUNTIME_CONTRACT:
-                    self.assertIn(required, runtime_section)
+                self.assertEqual(VALIDATOR.validate_skill(skill_file, text), [])
+
+    def test_rejects_discretionary_native_invocation(self) -> None:
+        mutant = VALID_SKILL.replace(
+            "condition is true, invoke Claude",
+            "condition is true, may invoke Claude",
+        )
+        self.assert_skill_rejected(mutant)
+
+    def test_rejects_open_ended_native_catalog_questions(self) -> None:
+        mutant = VALID_SKILL.replace(
+            "single-select catalog questions",
+            "open-ended catalog questions",
+        )
+        self.assert_skill_rejected(mutant)
+
+    def test_rejects_fallback_summary_instead_of_each_selected_question(self) -> None:
+        mutant = VALID_SKILL.replace(
+            "present each selected catalog question",
+            "present one summary prompt",
+        )
+        self.assert_skill_rejected(mutant)
+
+    def test_rejects_contract_clauses_outside_runtime_section(self) -> None:
+        contract = "\n".join(
+            (INVOCATION_CLAUSE, ROUNDS_CLAUSE, FALLBACK_CLAUSE)
+        )
+        mutant = VALID_SKILL.replace(
+            contract,
+            "Ask unresolved questions before continuing.",
+        )
+        mutant += f"\n## Notes\n\n{contract}\n"
+        self.assert_skill_rejected(mutant)
 
     def test_accepts_initialism_in_question(self) -> None:
         catalog = copy.deepcopy(VALID_CATALOG)

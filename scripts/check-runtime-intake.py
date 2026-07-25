@@ -12,6 +12,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = ROOT / "skills"
 CATALOG_RE = re.compile(r"```json\n(?P<payload>.*?)\n```", re.DOTALL)
+RUNTIME_HEADING_RE = re.compile(r"^## Runtime intake[ \t]*$", re.MULTILINE)
+SECTION_HEADING_RE = re.compile(r"^## [^\n]+$", re.MULTILINE)
 SENTENCE_BOUNDARY_RE = re.compile(r"[.!?](?=\s|$)")
 INITIALISM_END_RE = re.compile(r"(?:\b[A-Za-z]\.){2,}$")
 CATALOG_KEYS = frozenset({"questions"})
@@ -27,16 +29,27 @@ CODEX_ADAPTATION = """\
 FALLBACK_ADAPTATION = """\
 - Fallback: ask the same questions in concise plain text with a free-text
   `Other` path."""
-REQUIRED_SKILL_TEXT = (
-    "## Runtime intake",
+INVOCATION_CLAUSE = (
+    "For each unresolved material fact whose catalog condition is true, invoke "
+    "Claude `AskUserQuestion` or Codex `request_user_input` before continuing "
+    "or issuing an open-ended request."
+)
+ROUNDS_CLAUSE = (
+    "Ask at most three single-select catalog questions per round. After each "
+    "response, ask another round whenever any unresolved material catalog "
+    "condition remains true; continue only when none remain. Do not repeat "
+    "answered questions or show the full catalog."
+)
+FALLBACK_CLAUSE = (
+    "Without a native tool, present each selected catalog question with its 2-3 "
+    "labeled choices and a free-text `Other` path in concise plain text; do not "
+    "substitute a generic checklist."
+)
+CONNECTED_RUNTIME_CONTRACT = " ".join(
+    (INVOCATION_CLAUSE, ROUNDS_CLAUSE, FALLBACK_CLAUSE)
+)
+REQUIRED_RUNTIME_TEXT = (
     "references/runtime-intake.md",
-    "AskUserQuestion",
-    "request_user_input",
-    "before continuing or issuing an open-ended request",
-    "at most three",
-    "2-3 labeled choices",
-    "plain text",
-    "do not substitute a generic checklist",
     "Never request secrets",
     "separate explicit approval",
 )
@@ -92,6 +105,38 @@ def selected_skill_files(skill_name: str | None) -> list[Path]:
     if skill_name:
         return [SKILLS_DIR / skill_name / "SKILL.md"]
     return sorted(SKILLS_DIR.glob("*/SKILL.md"))
+
+
+def normalize_whitespace(text: str) -> str:
+    return " ".join(text.split())
+
+
+def extract_runtime_section(path: Path, text: str) -> tuple[str | None, list[str]]:
+    matches = list(RUNTIME_HEADING_RE.finditer(text))
+    if len(matches) != 1:
+        return None, [f"{path}: expected exactly one '## Runtime intake' section"]
+
+    start = matches[0].end()
+    next_heading = SECTION_HEADING_RE.search(text, start)
+    end = next_heading.start() if next_heading else len(text)
+    return text[start:end], []
+
+
+def validate_skill(path: Path, text: str) -> list[str]:
+    runtime_section, errors = extract_runtime_section(path, text)
+    if runtime_section is None:
+        return errors
+
+    for required in REQUIRED_RUNTIME_TEXT:
+        if required not in runtime_section:
+            errors.append(f"{path}: runtime intake missing {required!r}")
+
+    normalized_section = normalize_whitespace(runtime_section)
+    if CONNECTED_RUNTIME_CONTRACT not in normalized_section:
+        errors.append(
+            f"{path}: runtime intake missing exact connected catalog contract"
+        )
+    return errors
 
 
 def validate_catalog(path: Path, text: str) -> list[str]:
@@ -238,9 +283,7 @@ def main() -> int:
             errors.append(f"{skill_file}: missing skill")
             continue
         skill_text = skill_file.read_text(encoding="utf-8")
-        for required in REQUIRED_SKILL_TEXT:
-            if required not in skill_text:
-                errors.append(f"{skill_file}: missing {required!r}")
+        errors.extend(validate_skill(skill_file, skill_text))
 
         reference = skill_file.parent / "references" / "runtime-intake.md"
         if not reference.exists():

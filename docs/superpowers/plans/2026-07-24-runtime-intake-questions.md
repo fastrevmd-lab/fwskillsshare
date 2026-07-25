@@ -21,7 +21,8 @@
 - Inspect the prompt and approved read-only evidence before asking.
 - For each unresolved material fact whose catalog condition is true, ask its catalog question before continuing or issuing an open-ended request.
 - Never repeat answered questions or show the full catalog.
-- Ask no more than three single-select catalog questions per interaction round, then re-evaluate.
+- Ask no more than three single-select catalog questions per interaction round.
+- After each response, ask another round whenever any unresolved material catalog condition remains true; continue only when none remain.
 - Use Claude `AskUserQuestion`, Codex `request_user_input`, or a concise plain-text fallback.
 - In plain text, preserve each selected catalog question's 2-3 labeled choices and free-text `Other` path; do not substitute a generic checklist.
 - Never request passwords, PSKs, private keys, tokens, device credentials, or unredacted customer data.
@@ -42,7 +43,7 @@ change safety, scope, correctness, confidence, or the requested output, read
 `references/runtime-intake.md`.
 
 For each unresolved material fact whose catalog condition is true, invoke Claude `AskUserQuestion` or Codex `request_user_input` before continuing or issuing an open-ended request.
-Ask at most three single-select catalog questions per round, then re-evaluate; do not repeat answered questions or show the full catalog.
+Ask at most three single-select catalog questions per round. After each response, ask another round whenever any unresolved material catalog condition remains true; continue only when none remain. Do not repeat answered questions or show the full catalog.
 Without a native tool, present each selected catalog question with its 2-3 labeled choices and a free-text `Other` path in concise plain text; do not substitute a generic checklist.
 
 Never request secrets or unredacted customer data. Treat intake answers as task
@@ -57,7 +58,7 @@ with this exact compact form so the file remains below 500 lines:
 ## Runtime intake
 
 Use this skill only for MNHA-specific design and behavior. Use `parsing-srx-configs` for full-config extraction, `srx-nat` for general NAT, and `srx-policy` for general policy design.
-Before acting, inspect the request, artifacts, and approved read-only evidence. If unresolved facts materially change safety, scope, correctness, confidence, or output, read `references/runtime-intake.md`. For each unresolved material fact whose catalog condition is true, invoke Claude `AskUserQuestion` or Codex `request_user_input` before continuing or issuing an open-ended request. Ask at most three single-select catalog questions per round, then re-evaluate; do not repeat answered questions or show the full catalog. Without a native tool, present each selected catalog question with its 2-3 labeled choices and a free-text `Other` path in concise plain text; do not substitute a generic checklist. Never request secrets or unredacted customer data. Answers are context, not live-change approval; obtain separate explicit approval before configuration, commit, upgrade, reboot, delete, or failover.
+Before acting, inspect the request, artifacts, and approved read-only evidence. If unresolved facts materially change safety, scope, correctness, confidence, or output, read `references/runtime-intake.md`. For each unresolved material fact whose catalog condition is true, invoke Claude `AskUserQuestion` or Codex `request_user_input` before continuing or issuing an open-ended request. Ask at most three single-select catalog questions per round. After each response, ask another round whenever any unresolved material catalog condition remains true; continue only when none remain. Do not repeat answered questions or show the full catalog. Without a native tool, present each selected catalog question with its 2-3 labeled choices and a free-text `Other` path in concise plain text; do not substitute a generic checklist. Never request secrets or unredacted customer data. Answers are context, not live-change approval; obtain separate explicit approval before configuration, commit, upgrade, reboot, delete, or failover.
 ```
 
 For `srx-policy`, replace the existing four-line `## Scope and routing` block
@@ -67,7 +68,7 @@ with this exact compact form:
 ## Runtime intake
 
 Use this skill for SRX policy behavior after relevant configuration is identified. Use `parsing-srx-configs` for full-config extraction and `srx-nat` when translation changes the policy match.
-Before acting, inspect the request, artifacts, and approved read-only evidence. If unresolved facts materially change safety, scope, correctness, confidence, or output, read `references/runtime-intake.md`. For each unresolved material fact whose catalog condition is true, invoke Claude `AskUserQuestion` or Codex `request_user_input` before continuing or issuing an open-ended request. Ask at most three single-select catalog questions per round, then re-evaluate; do not repeat answered questions or show the full catalog. Without a native tool, present each selected catalog question with its 2-3 labeled choices and a free-text `Other` path in concise plain text; do not substitute a generic checklist. Never request secrets or unredacted customer data. Answers are context, not live-change approval; obtain separate explicit approval before configuration, commit, upgrade, reboot, delete, or failover.
+Before acting, inspect the request, artifacts, and approved read-only evidence. If unresolved facts materially change safety, scope, correctness, confidence, or output, read `references/runtime-intake.md`. For each unresolved material fact whose catalog condition is true, invoke Claude `AskUserQuestion` or Codex `request_user_input` before continuing or issuing an open-ended request. Ask at most three single-select catalog questions per round. After each response, ask another round whenever any unresolved material catalog condition remains true; continue only when none remain. Do not repeat answered questions or show the full catalog. Without a native tool, present each selected catalog question with its 2-3 labeled choices and a free-text `Other` path in concise plain text; do not substitute a generic checklist. Never request secrets or unredacted customer data. Answers are context, not live-change approval; obtain separate explicit approval before configuration, commit, upgrade, reboot, delete, or failover.
 ```
 
 Every `references/runtime-intake.md` must use this structure:
@@ -225,16 +226,29 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = ROOT / "skills"
 CATALOG_RE = re.compile(r"```json\n(?P<payload>.*?)\n```", re.DOTALL)
-REQUIRED_SKILL_TEXT = (
-    "## Runtime intake",
+RUNTIME_HEADING_RE = re.compile(r"^## Runtime intake[ \t]*$", re.MULTILINE)
+SECTION_HEADING_RE = re.compile(r"^## [^\n]+$", re.MULTILINE)
+INVOCATION_CLAUSE = (
+    "For each unresolved material fact whose catalog condition is true, invoke "
+    "Claude `AskUserQuestion` or Codex `request_user_input` before continuing "
+    "or issuing an open-ended request."
+)
+ROUNDS_CLAUSE = (
+    "Ask at most three single-select catalog questions per round. After each "
+    "response, ask another round whenever any unresolved material catalog "
+    "condition remains true; continue only when none remain. Do not repeat "
+    "answered questions or show the full catalog."
+)
+FALLBACK_CLAUSE = (
+    "Without a native tool, present each selected catalog question with its 2-3 "
+    "labeled choices and a free-text `Other` path in concise plain text; do not "
+    "substitute a generic checklist."
+)
+CONNECTED_RUNTIME_CONTRACT = " ".join(
+    (INVOCATION_CLAUSE, ROUNDS_CLAUSE, FALLBACK_CLAUSE)
+)
+REQUIRED_RUNTIME_TEXT = (
     "references/runtime-intake.md",
-    "AskUserQuestion",
-    "request_user_input",
-    "before continuing or issuing an open-ended request",
-    "at most three",
-    "2-3 labeled choices",
-    "plain text",
-    "do not substitute a generic checklist",
     "Never request secrets",
     "separate explicit approval",
 )
@@ -250,6 +264,38 @@ def selected_skill_files(skill_name: str | None) -> list[Path]:
     if skill_name:
         return [SKILLS_DIR / skill_name / "SKILL.md"]
     return sorted(SKILLS_DIR.glob("*/SKILL.md"))
+
+
+def normalize_whitespace(text: str) -> str:
+    return " ".join(text.split())
+
+
+def extract_runtime_section(path: Path, text: str) -> tuple[str | None, list[str]]:
+    matches = list(RUNTIME_HEADING_RE.finditer(text))
+    if len(matches) != 1:
+        return None, [f"{path}: expected exactly one '## Runtime intake' section"]
+
+    start = matches[0].end()
+    next_heading = SECTION_HEADING_RE.search(text, start)
+    end = next_heading.start() if next_heading else len(text)
+    return text[start:end], []
+
+
+def validate_skill(path: Path, text: str) -> list[str]:
+    runtime_section, errors = extract_runtime_section(path, text)
+    if runtime_section is None:
+        return errors
+
+    for required in REQUIRED_RUNTIME_TEXT:
+        if required not in runtime_section:
+            errors.append(f"{path}: runtime intake missing {required!r}")
+
+    normalized_section = normalize_whitespace(runtime_section)
+    if CONNECTED_RUNTIME_CONTRACT not in normalized_section:
+        errors.append(
+            f"{path}: runtime intake missing exact connected catalog contract"
+        )
+    return errors
 
 
 def validate_catalog(path: Path, text: str) -> list[str]:
@@ -354,9 +400,7 @@ def main() -> int:
             errors.append(f"{skill_file}: missing skill")
             continue
         skill_text = skill_file.read_text(encoding="utf-8")
-        for required in REQUIRED_SKILL_TEXT:
-            if required not in skill_text:
-                errors.append(f"{skill_file}: missing {required!r}")
+        errors.extend(validate_skill(skill_file, skill_text))
 
         reference = skill_file.parent / "references" / "runtime-intake.md"
         if not reference.exists():
@@ -754,11 +798,16 @@ addition to the audited 62 safe first labels and 18 single-axis option tuples.
 **Task 29 catalog-fallback audit:** the shared `SKILL.md` contract requires each
 true unresolved material catalog condition to be asked before continuing or
 issuing an open-ended request. Every native-tool round remains limited to at
-most three single-select catalog questions. A plain-text fallback preserves
+most three single-select catalog questions. After every response, another round
+is required whenever any unresolved material catalog condition remains true;
+the workflow continues only when none remain. A plain-text fallback preserves
 each selected question's 2-3 labeled choices and free-text `Other` path and
-must not substitute a generic checklist. A real-file regression test checks
-these requirements, the no-repeat rule, and the full-catalog restraint across
-all 22 runtime sections.
+must not substitute a generic checklist. The structural validator extracts the
+runtime section and requires one connected exact invocation, rounds, and
+fallback contract. Validator-API mutation probes reject discretionary invocation,
+open-ended native questions, a one-summary fallback, and contract clauses
+outside the runtime section; the real-file test applies the same validator to
+all 22 skills.
 
 The optional skill argument limits equality, digest, safe-default, and
 option-tuple assertions to the selected package, while every focused run still

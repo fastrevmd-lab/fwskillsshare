@@ -99,9 +99,10 @@ Prioritize unresolved questions in this order:
 4. Evidence completeness and confidence.
 5. Output format and emphasis.
 
-Ask no more than three single-select catalog questions per call. Re-evaluate
-after every response and ask another round only if the response exposes a new
-material ambiguity. Do not repeat answered questions or show the full catalog.
+Ask no more than three single-select catalog questions per call. After every
+response, ask another round whenever any unresolved material catalog condition
+remains true; continue only when none remain. Do not repeat answered questions
+or show the full catalog.
 
 ## Portable Question Contract
 
@@ -222,11 +223,15 @@ For each skill, validate:
 - `SKILL.md` contains a `## Runtime intake` section;
 - the section names Claude `AskUserQuestion` and Codex
   `request_user_input`;
-- the section requires catalog questions before continuing or issuing an
-  open-ended request, defines no-repeat and no-full-catalog behavior, limits
-  each round to three single-select questions, preserves 2-3 labeled choices
-  and free-text `Other` in plain-text fallback, forbids generic-checklist
-  substitution, and retains secret safety and separate live-change approval;
+- a section-scoped validator requires one connected exact clause sequence that
+  mandates catalog questions before continuing or issuing an open-ended
+  request, limits each round to three single-select catalog questions, requires
+  another round while any unresolved material catalog condition remains true,
+  continues only when none remain, defines no-repeat and no-full-catalog
+  behavior, preserves each selected question's 2-3 labeled choices and
+  free-text `Other` in plain-text fallback, and forbids generic-checklist
+  substitution;
+- the section retains secret safety and separate live-change approval;
 - `SKILL.md` links to `references/runtime-intake.md`;
 - the reference contains the required headings and one parseable JSON catalog;
 - the reference contains the exact Claude projection, Codex projection, and
