@@ -65,6 +65,7 @@ EXPECTED_SKILLS = (
     "soc2-ngfw-compliance",
     "srx-advpn",
     "srx-autovpn-full-tunnel",
+    "srx-disa-stig-compliance",
     "srx-dynamic-ip-feed",
     "srx-ipsec-hub-spoke",
     "srx-mnha",
@@ -114,6 +115,8 @@ EXPECTED_CATALOG_SHA256 = {
         "a5e9c9dc1be96a5b7700ba280d6bdcf199b6cbc6e6a106f4d7613b2b95b310e3",
     "srx-autovpn-full-tunnel":
         "8347ee64559f60ffb2ff5f041815faed1398eccc7680c1392c221f1df828e7ba",
+    "srx-disa-stig-compliance":
+        "15b527bbd63e473383eaa061903158ee254a8dbc4531f8f5e06a2a595608ac9f",
     "srx-dynamic-ip-feed":
         "ea5a19c8933eadfc94dd1c9daf9880082ed32f04012bc006ef158ad518791d13",
     "srx-ipsec-hub-spoke":
@@ -275,6 +278,14 @@ SAFE_FIRST_LABELS = {
     ("srx-autovpn-full-tunnel", "autovpn_route"):
         "Inspect routes first (Recommended)",
     ("srx-autovpn-full-tunnel", "autovpn_evidence"):
+        "Inventory evidence (Recommended)",
+    ("srx-disa-stig-compliance", "stig_source"):
+        "Confirm release first (Recommended)",
+    ("srx-disa-stig-compliance", "stig_profile"):
+        "Inventory roles first (Recommended)",
+    ("srx-disa-stig-compliance", "stig_scope"):
+        "Map scope first (Recommended)",
+    ("srx-disa-stig-compliance", "stig_evidence"):
         "Inventory evidence (Recommended)",
     ("srx-dynamic-ip-feed", "dif_release"):
         "Discover first (Recommended)",
@@ -473,6 +484,16 @@ EXACT_OPTION_LABELS = {
         "Inventory evidence (Recommended)",
         "Use supplied artifacts",
         "Approved live collection",
+    ),
+    ("srx-disa-stig-compliance", "stig_source"): (
+        "Confirm release first (Recommended)",
+        "Use supplied Y25M01",
+        "Use supplied other release",
+    ),
+    ("srx-disa-stig-compliance", "stig_scope"): (
+        "Map scope first (Recommended)",
+        "Use supplied device scope",
+        "Use supplied named context",
     ),
     ("srx-dynamic-ip-feed", "dif_source"): (
         "Inspect source first (Recommended)",

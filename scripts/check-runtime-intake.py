@@ -190,6 +190,11 @@ STANDARD_RUNTIME_TEMPLATE = " ".join(
     )
 )
 COMPACT_SCOPE_TEXT = {
+    "srx-dynamic-ip-feed": (
+        "Use this skill only for feed-server dynamic address objects. Use "
+        "`parsing-srx-configs` for full-config extraction and `srx-policy` when "
+        "the policy match itself is in question."
+    ),
     "srx-mnha": (
         "Use this skill only for MNHA-specific design and behavior. Use "
         "`parsing-srx-configs` for full-config extraction, `srx-nat` for general "

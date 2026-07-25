@@ -39,6 +39,7 @@ EXPECTED_FAMILIES = {
         "iso27001-ngfw-compliance",
         "pci-ngfw-compliance",
         "soc2-ngfw-compliance",
+        "srx-disa-stig-compliance",
     },
     "deployment": {
         "sd-onprem-proxmox-deploy",
@@ -89,9 +90,15 @@ def assert_installed_artifacts(
 
 
 def main() -> int:
-    packaged = {path.parent.name for path in (ROOT / "skills").glob("*/SKILL.md")}
-    if packaged != EXPECTED_ALL:
-        raise SystemExit(f"package inventory mismatch: {sorted(packaged ^ EXPECTED_ALL)}")
+    package_names = {
+        path.parent.name
+        for path in (ROOT / "skills").glob("*/SKILL.md")
+    }
+    if EXPECTED_ALL != package_names:
+        raise SystemExit(
+            "package/installer expected inventory mismatch: "
+            f"{sorted(EXPECTED_ALL ^ package_names)}"
+        )
 
     inventory = run("--list").stdout
     listed = {
@@ -101,6 +108,10 @@ def main() -> int:
     }
     if listed != EXPECTED_ALL:
         raise SystemExit(f"inventory mismatch: {sorted(listed ^ EXPECTED_ALL)}")
+    if listed != package_names:
+        raise SystemExit(
+            f"installer/package inventory mismatch: {sorted(listed ^ package_names)}"
+        )
 
     for family, expected in EXPECTED_FAMILIES.items():
         with tempfile.TemporaryDirectory(prefix=f"fwskills-{family}-") as temp:
@@ -149,8 +160,9 @@ def main() -> int:
             raise SystemExit("unknown installer family wrote to its destination")
 
     print(
-        "OK: installer lists and installs 22 skills with byte-identical "
-        "required artifacts across 5 families and explicit selections"
+        "OK: installer/package inventories match; installer lists and installs "
+        "23 skills with byte-identical required artifacts across 5 families "
+        "and explicit selections"
     )
     return 0
 

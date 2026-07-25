@@ -974,12 +974,20 @@ Each task follows this complete cycle:
 `autovpn_traffic`, `autovpn_auth`, `autovpn_lans`, `autovpn_nat`,
 `autovpn_route`, `autovpn_evidence`).
 
+### Task 18b: `srx-disa-stig-compliance`
+
+**Files:** Modify `skills/srx-disa-stig-compliance/SKILL.md`; create
+`skills/srx-disa-stig-compliance/references/runtime-intake.md`.
+
+**Catalog:** Appendix A.17 (`stig_goal`, `stig_source`, `stig_profile`,
+`stig_scope`, `stig_evidence`, `stig_output`).
+
 ### Task 19: `srx-dynamic-ip-feed`
 
 **Files:** Modify `skills/srx-dynamic-ip-feed/SKILL.md`; create
 `skills/srx-dynamic-ip-feed/references/runtime-intake.md`.
 
-**Catalog:** Appendix A.17 (`dif_task`, `dif_release`, `dif_source`, `dif_tls`,
+**Catalog:** Appendix A.18 (`dif_task`, `dif_release`, `dif_source`, `dif_tls`,
 `dif_auth`, `dif_route`, `dif_effect`, `dif_session`, `dif_poll`).
 
 ### Task 20: `srx-ipsec-hub-spoke`
@@ -987,7 +995,7 @@ Each task follows this complete cycle:
 **Files:** Modify `skills/srx-ipsec-hub-spoke/SKILL.md`; create
 `skills/srx-ipsec-hub-spoke/references/runtime-intake.md`.
 
-**Catalog:** Appendix A.18 (`hsvpn_task`, `hsvpn_release`, `hsvpn_topo`,
+**Catalog:** Appendix A.19 (`hsvpn_task`, `hsvpn_release`, `hsvpn_topo`,
 `hsvpn_traffic`, `hsvpn_auth`, `hsvpn_route`, `hsvpn_evidence`).
 
 ### Task 21: `srx-mnha`
@@ -995,7 +1003,7 @@ Each task follows this complete cycle:
 **Files:** Modify `skills/srx-mnha/SKILL.md`; create
 `skills/srx-mnha/references/runtime-intake.md`.
 
-**Catalog:** Appendix A.19 (`mnha_task`, `mnha_release`, `mnha_mode`,
+**Catalog:** Appendix A.20 (`mnha_task`, `mnha_release`, `mnha_mode`,
 `mnha_migrate`, `mnha_topo`, `mnha_service`, `mnha_route`, `mnha_objective`,
 `mnha_test`).
 
@@ -1007,7 +1015,7 @@ existing MNHA scope sentence verbatim.
 **Files:** Modify `skills/srx-mpls-in-flow/SKILL.md`; create
 `skills/srx-mpls-in-flow/references/runtime-intake.md`.
 
-**Catalog:** Appendix A.20 (`mpls_task`, `mpls_release`, `mpls_role`,
+**Catalog:** Appendix A.21 (`mpls_task`, `mpls_release`, `mpls_role`,
 `mpls_family`, `mpls_signal`, `mpls_vrf`, `mpls_policy`, `mpls_service`).
 
 ### Task 23: `srx-nat`
@@ -1015,7 +1023,7 @@ existing MNHA scope sentence verbatim.
 **Files:** Modify `skills/srx-nat/SKILL.md`; create
 `skills/srx-nat/references/runtime-intake.md`.
 
-**Catalog:** Appendix A.21 (`nat_task`, `nat_release`, `nat_family`,
+**Catalog:** Appendix A.22 (`nat_task`, `nat_release`, `nat_family`,
 `nat_tuple`, `nat_context`, `nat_reach`, `nat_return`, `nat_evidence`).
 
 ### Task 24: `srx-policy`
@@ -1023,7 +1031,7 @@ existing MNHA scope sentence verbatim.
 **Files:** Modify `skills/srx-policy/SKILL.md`; create
 `skills/srx-policy/references/runtime-intake.md`.
 
-**Catalog:** Appendix A.22 (`policy_task`, `policy_release`, `policy_model`,
+**Catalog:** Appendix A.23 (`policy_task`, `policy_release`, `policy_model`,
 `policy_flow`, `policy_nat`, `policy_service`, `policy_ip`, `policy_session`).
 
 Use the compact replacement form from Global Constraints and preserve the
@@ -1150,9 +1158,9 @@ description with a period.
 **Task 28 final-review audit:** `scripts/check-runtime-intake-safety.py` parses
 all Appendix A rows and all package JSON catalogs. It rejects duplicate
 Appendix sections, noncanonical lexical numbering such as `A.01`, incorrect
-A.1 through A.22 number/name pairings, duplicate package JSON members, and
+A.1 through A.23 number/name pairings, duplicate package JSON members, and
 noncanonical same-line tabs or doubled spaces in Appendix question fields. It
-requires exact per-skill question-object equality and locks all 22 complete
+requires exact per-skill question-object equality and locks all 23 complete
 catalog contents and question order with canonical SHA-256 digests, in
 addition to the safe-first and single-axis option manifests.
 
@@ -2077,7 +2085,49 @@ installable skill.
   conclusions; `Approved live collection` — Collect targeted read-only device
   evidence with approval.
 
-### A.17 `srx-dynamic-ip-feed`
+### A.17 `srx-disa-stig-compliance`
+
+- `stig_goal`; header `Goal`; ask when the requested assessment outcome is
+  absent; question `What outcome should this SRX STIG assessment produce?`;
+  options: `Rule-level assessment (Recommended)` — Assign conservative per-rule
+  status with evidence and open findings; `CKL preparation` — Organize results
+  and comments for STIG Viewer checklist entry; `Remediation plan` — Emphasize
+  fix actions and Junos compatibility for open rules.
+- `stig_source`; header `Benchmark`; ask when the governing benchmark release or
+  checksum is absent; question `How should an unspecified governing STIG release
+  be resolved?`; options: `Confirm release first (Recommended)` — Confirm the
+  benchmark release and checksum before assigning any rule status; `Use supplied
+  Y25M01` — Assess against the supplied pinned DISA Y25M01 package; `Use supplied
+  other release` — Record the other release supplied through Other as an
+  unsupported source.
+- `stig_profile`; header `Profiles`; ask when the applicable SRX component
+  profiles are unclear; question `How should uncertain SRX component profiles be
+  resolved?`; options: `Inventory roles first (Recommended)` — Inventory device
+  roles and evidence before selecting component catalogs; `Use supplied role set`
+  — Select catalogs from the supplied complete device role set; `Device
+  management and ALG only` — Limit catalogs to the supplied firewall NDM and ALG
+  components.
+- `stig_scope`; header `Scope`; ask when device, cluster, or logical-system scope
+  is unclear; question `How should an uncertain assessment scope be resolved?`;
+  options: `Map scope first (Recommended)` — Map devices, cluster nodes, logical
+  systems, and tenants before assessing; `Use supplied device scope` — Assess the
+  supplied complete device and cluster scope; `Use supplied named context` —
+  Limit assessment to the supplied logical system, tenant, or routing instance.
+- `stig_evidence`; header `Evidence`; ask when evidence completeness or currency
+  is unclear; question `How should uncertain evidence completeness be handled?`;
+  options: `Inventory evidence (Recommended)` — Identify configuration,
+  operational output, diagrams, and process records before grading; `Assess
+  supplied artifacts` — Assess only supplied evidence and mark uncovered rules
+  Not Reviewed; `Build evidence request` — List required artifacts and collection
+  steps without assigning status.
+- `stig_output`; header `Output`; ask when deliverable emphasis is absent;
+  question `What deliverable should be emphasized?`; options: `Rule matrix
+  (Recommended)` — Return per-rule identity, severity, status, and evidence;
+  `Checklist comments` — Emphasize assessor-ready finding details and comment
+  text; `Executive summary` — Emphasize severity distribution, coverage, and top
+  actions.
+
+### A.18 `srx-dynamic-ip-feed`
 
 - `dif_task`; header `Task`; ask when requested activity is absent; question
   `What should this dynamic-feed run accomplish?`; options: `Design or review
@@ -2138,7 +2188,7 @@ installable skill.
   conservative supported standard interval; `Use supplied custom interval` —
   Use the supplied custom interval after validating load and reliability.
 
-### A.18 `srx-ipsec-hub-spoke`
+### A.19 `srx-ipsec-hub-spoke`
 
 - `hsvpn_task`; header `Task`; ask when requested activity is absent; question
   `What should this hub-and-spoke run accomplish?`; options: `Design or review
@@ -2183,7 +2233,7 @@ installable skill.
   conclusions; `Approved live collection` — Collect targeted read-only device
   evidence with approval.
 
-### A.19 `srx-mnha`
+### A.20 `srx-mnha`
 
 - `mnha_task`; header `Task`; ask when requested activity is absent; question
   `What should this MNHA run accomplish?`; options: `Design or review
@@ -2239,7 +2289,7 @@ installable skill.
   failures` — Test specified cases; `One failure` — Reproduce the reported case
   safely.
 
-### A.20 `srx-mpls-in-flow`
+### A.21 `srx-mpls-in-flow`
 
 - `mpls_task`; header `Task`; ask when requested activity is absent; question
   `What should this MPLS-in-flow run accomplish?`; options: `Design or review
@@ -2289,7 +2339,7 @@ installable skill.
   supplied application, NAT, and inspection list after license and capacity
   validation.
 
-### A.21 `srx-nat`
+### A.22 `srx-nat`
 
 - `nat_task`; header `Task`; ask when requested activity is absent; question
   `What should this NAT run accomplish?`; options: `Design or review
@@ -2344,7 +2394,7 @@ installable skill.
   runtime conclusions; `Approved live collection` — Collect targeted read-only
   device evidence with approval.
 
-### A.22 `srx-policy`
+### A.23 `srx-policy`
 
 - `policy_task`; header `Task`; ask when requested activity is absent; question
   `What should this policy run accomplish?`; options: `Design or review
