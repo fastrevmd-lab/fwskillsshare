@@ -28,6 +28,7 @@ integration:
 
 e2e:
     ./install.sh --help >/dev/null
+    python3 scripts/test-installer.py
     python3 scripts/check-installer.py
 
 security:

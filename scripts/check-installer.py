@@ -75,9 +75,16 @@ def assert_installed_artifacts(
         if source_ui.is_file():
             required_paths.append(Path("agents/openai.yaml"))
         for relative_path in required_paths:
-            if not (destination / name / relative_path).is_file():
+            installed_path = destination / name / relative_path
+            if not installed_path.is_file():
                 raise SystemExit(
                     f"{context}: missing installed {relative_path} for {name}"
+                )
+            source_path = ROOT / "skills" / name / relative_path
+            if installed_path.read_bytes() != source_path.read_bytes():
+                raise SystemExit(
+                    f"{context}: content mismatch for installed "
+                    f"{relative_path} for {name}"
                 )
 
 
@@ -142,8 +149,8 @@ def main() -> int:
             raise SystemExit("unknown installer family wrote to its destination")
 
     print(
-        "OK: installer lists and installs 22 skills with required artifacts "
-        "across 5 families and explicit selections"
+        "OK: installer lists and installs 22 skills with byte-identical "
+        "required artifacts across 5 families and explicit selections"
     )
     return 0
 
