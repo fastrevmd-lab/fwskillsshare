@@ -27,33 +27,33 @@ platform or framework basis, evidence quality, then output preference.
       "id": "sd_stage",
       "ask_when": "The deployment stage is absent.",
       "header": "Stage",
-      "question": "What stage is the deployment in?",
+      "question": "What deployment workflow should be used?",
       "options": [
-        {"label": "Plan or dry-run (Recommended)", "description": "Validate prerequisites and produce a plan."},
-        {"label": "Fresh deployment", "description": "Prepare candidate commands."},
-        {"label": "Troubleshooting", "description": "Diagnose an existing deployment."}
+        {"label": "Plan/dry-run (Recommended)", "description": "Validate prerequisites and produce a non-executing plan."},
+        {"label": "Prepare fresh deployment", "description": "Prepare candidate commands for a new appliance."},
+        {"label": "Troubleshoot existing", "description": "Diagnose an existing deployment."}
       ]
     },
     {
       "id": "sd_release",
       "ask_when": "The exact SD On-Prem release is absent.",
       "header": "Release",
-      "question": "Which Security Director On-Prem release is being deployed?",
+      "question": "How should missing Security Director release details be handled?",
       "options": [
-        {"label": "Verified release (Recommended)", "description": "Use the exact release and guide."},
-        {"label": "Different release", "description": "Supply the release through Other."},
-        {"label": "Unknown release", "description": "Identify media and documentation first."}
+        {"label": "Discover first (Recommended)", "description": "Identify the exact release and matching guide before deployment planning."},
+        {"label": "Exact details supplied", "description": "Use the exact supplied release and matching guide."},
+        {"label": "Stop pending details", "description": "Do not produce release-dependent deployment steps."}
       ]
     },
     {
       "id": "sd_media",
       "ask_when": "Media presence or integrity is unclear.",
       "header": "Artifacts",
-      "question": "Are the required release artifacts available and verified?",
+      "question": "How should uncertain release media integrity be handled?",
       "options": [
-        {"label": "Both verified (Recommended)", "description": "Disk image and bundle checksums are valid."},
-        {"label": "One missing", "description": "Identify the missing artifact."},
-        {"label": "Unverified", "description": "Stop and verify integrity."}
+        {"label": "Verify media first (Recommended)", "description": "Check image and bundle presence, versions, and checksums before deployment."},
+        {"label": "Use supplied verified media", "description": "Proceed with supplied artifacts and checksum evidence."},
+        {"label": "Stop pending media", "description": "Block deployment until required artifacts are supplied."}
       ]
     },
     {
@@ -71,33 +71,33 @@ platform or framework basis, evidence quality, then output preference.
       "id": "sd_proxmox",
       "ask_when": "VM placement values are incomplete.",
       "header": "Proxmox",
-      "question": "Are the Proxmox placement values known?",
+      "question": "How should incomplete Proxmox placement values be handled?",
       "options": [
-        {"label": "Values ready (Recommended)", "description": "VMID, node, storage, bridge, and resources are known."},
-        {"label": "Need selection", "description": "Inspect capacity read-only."},
-        {"label": "Existing VM", "description": "Validate an existing VM."}
+        {"label": "Inspect/select values (Recommended)", "description": "Inspect capacity read-only and select missing VM placement values."},
+        {"label": "Use supplied new-VM values", "description": "Use supplied VMID, node, storage, bridge, and resources."},
+        {"label": "Validate existing VM", "description": "Inspect a supplied existing VM against deployment requirements."}
       ]
     },
     {
       "id": "sd_network",
       "ask_when": "IP, route, or internal CIDR values are incomplete.",
       "header": "Network",
-      "question": "Is the complete IP and routing plan available?",
+      "question": "How should incomplete IP and routing values be handled?",
       "options": [
-        {"label": "Plan ready (Recommended)", "description": "Required addresses, gateway, and internal CIDR are defined."},
-        {"label": "Partial plan", "description": "Identify missing values."},
-        {"label": "Need design", "description": "Produce a connectivity worksheet."}
+        {"label": "Map network first (Recommended)", "description": "Identify required addresses, gateway, routes, and internal CIDR before deployment."},
+        {"label": "Use supplied network plan", "description": "Apply the complete supplied addressing and routing plan."},
+        {"label": "Stop pending values", "description": "Block deployment and list missing network values."}
       ]
     },
     {
       "id": "sd_services",
       "ask_when": "Supporting service reachability is unverified.",
       "header": "DNS and NTP",
-      "question": "Have supporting services been validated?",
+      "question": "How should unverified supporting-service reachability be handled?",
       "options": [
-        {"label": "Both verified (Recommended)", "description": "DNS and NTP tests pass."},
-        {"label": "Need tests", "description": "Provide safe validation commands."},
-        {"label": "Not ready", "description": "Treat service readiness as a blocker."}
+        {"label": "Verify services first (Recommended)", "description": "Run safe DNS and NTP reachability checks before deployment."},
+        {"label": "Use supplied test results", "description": "Rely on supplied current DNS and NTP validation evidence."},
+        {"label": "Stop pending readiness", "description": "Treat unverified service reachability as a blocker."}
       ]
     },
     {

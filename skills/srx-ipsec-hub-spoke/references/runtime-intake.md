@@ -47,19 +47,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "hsvpn_release",
       "ask_when": "The model or release is absent and affects syntax.",
       "header": "Platform",
-      "question": "Are all SRX models and Junos releases known?",
+      "question": "How should missing SRX model or Junos release details be handled?",
       "options": [
         {
-          "label": "Exact details (Recommended)",
+          "label": "Discover first (Recommended)",
+          "description": "Identify exact models and releases before syntax conclusions."
+        },
+        {
+          "label": "Exact details supplied",
           "description": "Apply platform-specific syntax."
         },
         {
-          "label": "Infer outputs",
-          "description": "Infer cautiously from evidence."
-        },
-        {
-          "label": "Unknown",
-          "description": "Produce discovery checks."
+          "label": "Infer conservatively",
+          "description": "Limit output to evidence-supported design and disclose uncertainty."
         }
       ]
     },
@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "hsvpn_topo",
       "ask_when": "Peer, prefix, NAT, HA, or st0 data is incomplete.",
       "header": "Topology",
-      "question": "Is the complete hub-and-spoke topology available?",
+      "question": "How should incomplete hub-and-spoke topology be handled?",
       "options": [
         {
-          "label": "Complete map (Recommended)",
-          "description": "Use supplied peers, LANs, WANs, NAT, HA, and st0 allocation."
+          "label": "Map topology first (Recommended)",
+          "description": "Identify peers, LANs, WANs, NAT, HA, and st0 allocation before design."
         },
         {
-          "label": "Partial map",
-          "description": "Mark unresolved selectors and routes."
+          "label": "Use supplied complete map",
+          "description": "Design from a supplied complete topology."
         },
         {
-          "label": "Need design",
-          "description": "Create a topology worksheet."
+          "label": "Design from requirements",
+          "description": "Build a new topology from supplied site and traffic requirements."
         }
       ]
     },
@@ -127,19 +127,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "hsvpn_route",
       "ask_when": "Management reachability and tunnel defaults may conflict.",
       "header": "Routing",
-      "question": "Is management reachability protected from tunnel defaults?",
+      "question": "How should uncertain management-route protection be handled?",
       "options": [
         {
-          "label": "Separate route path (Recommended)",
-          "description": "Keep management and peer paths independent."
+          "label": "Inspect routes first (Recommended)",
+          "description": "Trace management, peer, and tunnel-default paths before route changes."
         },
         {
-          "label": "Competing defaults",
-          "description": "Analyze recursion."
+          "label": "Use supplied separate path",
+          "description": "Preserve a supplied independent management path."
         },
         {
-          "label": "Unknown state",
-          "description": "Collect route evidence."
+          "label": "Analyze competing defaults",
+          "description": "Evaluate supplied competing defaults for recursion."
         }
       ]
     },
@@ -147,19 +147,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "hsvpn_evidence",
       "ask_when": "Troubleshooting evidence is incomplete.",
       "header": "Evidence",
-      "question": "What troubleshooting evidence is available?",
+      "question": "How should incomplete troubleshooting evidence be handled?",
       "options": [
         {
-          "label": "Config and SAs (Recommended)",
-          "description": "Use configuration, SAs, routes, sessions, and logs."
+          "label": "Inventory evidence (Recommended)",
+          "description": "Identify available configuration, SAs, routes, sessions, and logs before diagnosis."
         },
         {
-          "label": "Configuration only",
-          "description": "Limit runtime conclusions."
+          "label": "Use supplied artifacts",
+          "description": "Diagnose only from supplied artifacts and limit runtime conclusions."
         },
         {
-          "label": "Error output",
-          "description": "Begin with failures and request targeted evidence."
+          "label": "Approved live collection",
+          "description": "Collect targeted read-only device evidence with approval."
         }
       ]
     }

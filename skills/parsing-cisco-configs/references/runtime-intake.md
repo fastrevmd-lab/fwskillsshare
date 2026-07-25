@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "cisco_coverage",
       "ask_when": "Export completeness is unclear.",
       "header": "Coverage",
-      "question": "How complete is the supplied configuration?",
+      "question": "How should uncertain Cisco export completeness be handled?",
       "options": [
         {
-          "label": "Full export (Recommended)",
-          "description": "Treat it as a complete running configuration."
+          "label": "Verify first (Recommended)",
+          "description": "Check expected sections and truncation before making completeness claims."
         },
         {
-          "label": "Partial excerpt",
-          "description": "Mark absent sections unknown."
+          "label": "Full artifact supplied",
+          "description": "Treat the supplied running configuration as complete."
         },
         {
-          "label": "Unsure",
-          "description": "Detect likely omissions."
+          "label": "Partial artifact supplied",
+          "description": "Mark omitted sections unknown."
         }
       ]
     },

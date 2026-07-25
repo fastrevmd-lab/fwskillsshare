@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "cmmc_boundary",
       "ask_when": "The CUI boundary maturity is unknown.",
       "header": "CUI Scope",
-      "question": "How mature is the CUI boundary definition?",
+      "question": "How should an uncertain CUI boundary be handled?",
       "options": [
         {
-          "label": "Defined boundary (Recommended)",
-          "description": "Use the supplied CUI enclave boundary."
+          "label": "Map boundary first (Recommended)",
+          "description": "Identify CUI assets, flows, and protection dependencies before assessing."
         },
         {
-          "label": "Draft boundary",
-          "description": "Validate and flag assumptions."
+          "label": "Assess supplied boundary",
+          "description": "Use a supplied final boundary and disclose unverified assumptions."
         },
         {
-          "label": "Unknown boundary",
-          "description": "Begin with discovery and avoid completeness claims."
+          "label": "Validate supplied draft",
+          "description": "Test a supplied draft and mark unresolved scope."
         }
       ]
     },
@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "cmmc_evidence",
       "ask_when": "Evidence completeness is unclear.",
       "header": "Evidence",
-      "question": "What evidence is available?",
+      "question": "How should uncertain evidence completeness be handled?",
       "options": [
         {
-          "label": "Config plus records (Recommended)",
-          "description": "Use configurations, logs, approvals, reviews, and procedures."
+          "label": "Inventory evidence (Recommended)",
+          "description": "Identify configurations, logs, approvals, reviews, and procedures before grading."
         },
         {
-          "label": "Configuration only",
-          "description": "Assess technical state and mark practice gaps."
+          "label": "Assess supplied artifacts",
+          "description": "Assess only supplied evidence and disclose practice gaps."
         },
         {
-          "label": "Request list",
-          "description": "Produce an evidence request without grading."
+          "label": "Build evidence request",
+          "description": "List required evidence without grading implementation."
         }
       ]
     },

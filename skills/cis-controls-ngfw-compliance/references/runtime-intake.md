@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "cis_evidence",
       "ask_when": "Evidence completeness is unclear.",
       "header": "Evidence",
-      "question": "What evidence is available?",
+      "question": "How should uncertain evidence completeness be handled?",
       "options": [
         {
-          "label": "Config plus records (Recommended)",
-          "description": "Use configuration, logs, reviews, tickets, and operating records."
+          "label": "Inventory evidence (Recommended)",
+          "description": "Identify configurations, logs, reviews, tickets, and operating records before grading."
         },
         {
-          "label": "Configuration only",
-          "description": "Grade technical configuration and mark operating gaps."
+          "label": "Assess supplied artifacts",
+          "description": "Assess only supplied evidence and disclose coverage gaps."
         },
         {
-          "label": "Design only",
-          "description": "Review design without claiming implementation."
+          "label": "Build evidence request",
+          "description": "List required evidence without grading implementation."
         }
       ]
     },

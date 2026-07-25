@@ -87,19 +87,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "srxp_coverage",
       "ask_when": "Export completeness is unclear.",
       "header": "Coverage",
-      "question": "How complete is the supplied configuration?",
+      "question": "How should uncertain Junos export completeness be handled?",
       "options": [
         {
-          "label": "Full config (Recommended)",
-          "description": "Treat it as complete."
+          "label": "Verify first (Recommended)",
+          "description": "Check expected groups, inheritance, and sections before making completeness claims."
         },
         {
-          "label": "Partial excerpt",
-          "description": "Mark missing groups and policy unknown."
+          "label": "Full artifact supplied",
+          "description": "Treat the supplied Junos configuration as complete."
         },
         {
-          "label": "Unsure",
-          "description": "Detect unresolved inheritance."
+          "label": "Partial artifact supplied",
+          "description": "Mark missing groups, inheritance, and policy unknown."
         }
       ]
     },

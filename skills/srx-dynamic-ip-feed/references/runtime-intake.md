@@ -47,19 +47,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "dif_release",
       "ask_when": "Model or release is absent and affects capability.",
       "header": "Platform",
-      "question": "Are the SRX model and Junos release known?",
+      "question": "How should missing SRX model or Junos release details be handled?",
       "options": [
         {
-          "label": "Exact details (Recommended)",
+          "label": "Discover first (Recommended)",
+          "description": "Identify the exact model and release before capability conclusions."
+        },
+        {
+          "label": "Exact details supplied",
           "description": "Apply release-specific capabilities."
         },
         {
-          "label": "Infer outputs",
-          "description": "Infer cautiously from evidence."
-        },
-        {
-          "label": "Unknown",
-          "description": "Produce prerequisite checks."
+          "label": "Infer conservatively",
+          "description": "Limit output to evidence-supported design and disclose uncertainty."
         }
       ]
     },
@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "dif_source",
       "ask_when": "Feed artifacts or publishing design is incomplete.",
       "header": "Feed Source",
-      "question": "What feed artifacts are available?",
+      "question": "How should an incomplete feed source be handled?",
       "options": [
         {
-          "label": "URL and archive (Recommended)",
-          "description": "Use documented URLs and archive layout."
+          "label": "Inspect source first (Recommended)",
+          "description": "Determine whether an existing endpoint, archive, or publishing workflow can be used."
         },
         {
-          "label": "Existing failing feed",
-          "description": "Diagnose the supplied implementation."
+          "label": "Use supplied endpoint",
+          "description": "Integrate the supplied endpoint and archive layout."
         },
         {
-          "label": "Need feed design",
-          "description": "Define structure and publishing first."
+          "label": "Design new endpoint",
+          "description": "Define a new supported HTTPS feed and publishing workflow."
         }
       ]
     },
@@ -105,21 +105,21 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "dif_auth",
-      "ask_when": "Application authentication is required but unspecified.",
+      "ask_when": "Feed authentication method is absent or unclear.",
       "header": "Feed Auth",
-      "question": "What application authentication is required?",
+      "question": "How should uncertain feed authentication be handled?",
       "options": [
         {
-          "label": "No extra auth (Recommended)",
-          "description": "Rely on authenticated TLS and network controls."
+          "label": "Verify endpoint first (Recommended)",
+          "description": "Inspect endpoint requirements and certificate behavior before selecting authentication."
         },
         {
           "label": "Mutual TLS",
-          "description": "Use client certificates via approved secret delivery."
+          "description": "Use client certificates through approved secret delivery."
         },
         {
-          "label": "Basic auth",
-          "description": "Protect credentials outside chat."
+          "label": "Basic or none",
+          "description": "Apply a supplied basic-auth or no-extra-auth requirement while keeping credentials outside chat."
         }
       ]
     },
@@ -127,19 +127,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "dif_route",
       "ask_when": "Feed-server routing context is absent.",
       "header": "Routing",
-      "question": "Which routing context reaches the feed server?",
+      "question": "How should an unknown feed-server route be handled?",
       "options": [
         {
-          "label": "Default instance (Recommended)",
-          "description": "Use default routing after reachability validation."
+          "label": "Trace route first (Recommended)",
+          "description": "Collect route, DNS, source, and connection evidence before selecting context."
         },
         {
-          "label": "Named instance",
-          "description": "Use the specified instance and source."
+          "label": "Use supplied default instance",
+          "description": "Use the supplied default-instance path after reachability validation."
         },
         {
-          "label": "Unknown",
-          "description": "Collect route, DNS, and connection evidence."
+          "label": "Use supplied named instance",
+          "description": "Use the supplied routing instance and source address."
         }
       ]
     },

@@ -47,19 +47,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "forti_coverage",
       "ask_when": "Export completeness is unclear.",
       "header": "Coverage",
-      "question": "How complete is the FortiGate export?",
+      "question": "How should uncertain FortiGate export completeness be handled?",
       "options": [
         {
-          "label": "Full backup (Recommended)",
-          "description": "Treat it as a full configuration."
+          "label": "Verify first (Recommended)",
+          "description": "Check expected tables, defaults, and truncation before making completeness claims."
         },
         {
-          "label": "Partial excerpt",
+          "label": "Full artifact supplied",
+          "description": "Treat the supplied FortiGate backup as complete."
+        },
+        {
+          "label": "Partial artifact supplied",
           "description": "Mark omitted tables and defaults unknown."
-        },
-        {
-          "label": "Unsure",
-          "description": "Detect likely omissions."
         }
       ]
     },

@@ -14,6 +14,7 @@ lint:
     python3 scripts/check-skill-packages.py
     python3 scripts/test-runtime-intake-validator.py
     python3 scripts/check-runtime-intake.py
+    python3 scripts/check-runtime-intake-safety.py
     python3 scripts/check-readme-branding.py
 
 test:

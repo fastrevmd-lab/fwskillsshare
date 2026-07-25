@@ -47,19 +47,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "iso_scope",
       "ask_when": "The ISMS boundary is unclear.",
       "header": "ISMS Scope",
-      "question": "Is the ISMS scope defined?",
+      "question": "How should an uncertain ISMS boundary be handled?",
       "options": [
         {
-          "label": "Defined scope (Recommended)",
-          "description": "Use supplied organizational and system boundaries."
+          "label": "Map ISMS scope (Recommended)",
+          "description": "Identify organizational and system boundaries before assessing."
         },
         {
-          "label": "Draft scope",
-          "description": "Validate assumptions."
+          "label": "Assess supplied boundary",
+          "description": "Use a supplied final boundary and disclose unverified assumptions."
         },
         {
-          "label": "Unknown scope",
-          "description": "Begin discovery and avoid conformity claims."
+          "label": "Validate supplied draft",
+          "description": "Test a supplied draft and mark unresolved scope."
         }
       ]
     },
@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "iso_soa",
       "ask_when": "Statement of Applicability evidence is absent.",
       "header": "SoA",
-      "question": "What Statement of Applicability evidence is available?",
+      "question": "How should absent Statement of Applicability evidence be handled?",
       "options": [
         {
-          "label": "Current SoA (Recommended)",
-          "description": "Use organizational applicability decisions."
+          "label": "Inventory SoA first (Recommended)",
+          "description": "Determine whether current, draft, or supporting applicability records exist."
         },
         {
-          "label": "Partial SoA",
-          "description": "Flag missing applicability evidence."
+          "label": "Use supplied SoA",
+          "description": "Apply the supplied organizational decisions and disclose evidence gaps."
         },
         {
-          "label": "No SoA",
-          "description": "Use generic mapping without organizational claims."
+          "label": "Use generic mapping",
+          "description": "Map Annex A without organizational applicability claims."
         }
       ]
     },
@@ -87,19 +87,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "iso_basis",
       "ask_when": "Control applicability basis is unclear.",
       "header": "Basis",
-      "question": "Which control basis should drive conclusions?",
+      "question": "How should an uncertain control-applicability basis be handled?",
       "options": [
         {
-          "label": "Org risk plan (Recommended)",
-          "description": "Follow the SoA and risk treatment plan."
+          "label": "Confirm basis first (Recommended)",
+          "description": "Establish the governing SoA, risk treatment plan, or overlay before conclusions."
         },
         {
-          "label": "Annex A only",
-          "description": "Map against ISO 27001 Annex A."
+          "label": "Use supplied SoA basis",
+          "description": "Follow the supplied organizational applicability decisions."
         },
         {
-          "label": "Custom overlay",
-          "description": "Include supplied ISO 27002 or customer mappings."
+          "label": "Use Annex A baseline",
+          "description": "Map Annex A without organizational applicability claims."
         }
       ]
     },
@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "iso_period",
       "ask_when": "Operating evidence period is unclear.",
       "header": "Evidence",
-      "question": "What operating evidence is available?",
+      "question": "How should an uncertain operating-evidence period be handled?",
       "options": [
         {
-          "label": "Dated samples (Recommended)",
-          "description": "Use records covering the assessment period."
+          "label": "Confirm period first (Recommended)",
+          "description": "Establish the assessment period and available dated samples before effectiveness claims."
         },
         {
-          "label": "Current state only",
-          "description": "Avoid effectiveness claims."
+          "label": "Assess current state",
+          "description": "Limit conclusions to present technical state."
         },
         {
-          "label": "Design only",
-          "description": "Assess intended control design."
+          "label": "Assess control design",
+          "description": "Evaluate intended design without operating effectiveness claims."
         }
       ]
     },

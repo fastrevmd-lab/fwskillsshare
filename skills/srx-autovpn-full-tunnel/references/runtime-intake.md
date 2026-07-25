@@ -47,19 +47,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "autovpn_release",
       "ask_when": "Model or release is absent and affects support.",
       "header": "Platform",
-      "question": "Are the SRX models and Junos releases known?",
+      "question": "How should missing SRX model or Junos release details be handled?",
       "options": [
         {
-          "label": "Exact details (Recommended)",
+          "label": "Discover first (Recommended)",
+          "description": "Identify exact models and releases before support conclusions."
+        },
+        {
+          "label": "Exact details supplied",
           "description": "Apply release-specific behavior."
         },
         {
-          "label": "Infer outputs",
-          "description": "Infer cautiously from supplied evidence."
-        },
-        {
-          "label": "Unknown",
-          "description": "Produce discovery checks first."
+          "label": "Infer conservatively",
+          "description": "Limit output to evidence-supported design and disclose uncertainty."
         }
       ]
     },
@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "autovpn_lans",
       "ask_when": "Spoke prefix allocation is incomplete.",
       "header": "LAN Prefixes",
-      "question": "How are spoke LAN prefixes allocated?",
+      "question": "How should incomplete spoke LAN allocation be handled?",
       "options": [
         {
-          "label": "Summarizable (Recommended)",
-          "description": "Use non-overlapping scalable ranges."
+          "label": "Map LANs first (Recommended)",
+          "description": "Identify every spoke prefix and overlap before route design."
         },
         {
-          "label": "Discontiguous",
-          "description": "Generate explicit handling and capacity caveats."
+          "label": "Use supplied scalable ranges",
+          "description": "Use supplied non-overlapping summarizable prefixes."
         },
         {
-          "label": "Overlapping",
-          "description": "Stop and resolve overlap."
+          "label": "Use supplied explicit prefixes",
+          "description": "Handle supplied discontiguous prefixes without summarization."
         }
       ]
     },
@@ -127,19 +127,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "autovpn_nat",
       "ask_when": "NAT between spokes and hub is unclear.",
       "header": "Underlay",
-      "question": "What NAT exists between spokes and the hub?",
+      "question": "How should uncertain underlay NAT be handled?",
       "options": [
         {
-          "label": "Known NAT path (Recommended)",
-          "description": "Apply NAT-T to a documented path."
+          "label": "Trace NAT first (Recommended)",
+          "description": "Test peer reachability and translation behavior before tunnel design."
         },
         {
-          "label": "No NAT",
-          "description": "Use directly reachable peers."
+          "label": "Use supplied NAT path",
+          "description": "Apply NAT-T to the supplied documented translation path."
         },
         {
-          "label": "Unknown or double",
-          "description": "Require NAT behavior tests."
+          "label": "Use supplied no-NAT path",
+          "description": "Use supplied directly reachable peer paths."
         }
       ]
     },
@@ -147,19 +147,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "autovpn_route",
       "ask_when": "Management and default-route separation is unclear.",
       "header": "Routing",
-      "question": "How is hub management and default routing separated?",
+      "question": "How should uncertain management-route separation be handled?",
       "options": [
         {
-          "label": "Separate management (Recommended)",
-          "description": "Keep management independent of tunnel defaults."
+          "label": "Inspect routes first (Recommended)",
+          "description": "Trace management, peer, and default paths before route changes."
         },
         {
-          "label": "Competing defaults",
-          "description": "Analyze recursion."
+          "label": "Use supplied separate path",
+          "description": "Preserve a supplied independent management path."
         },
         {
-          "label": "Unknown state",
-          "description": "Collect routing evidence."
+          "label": "Analyze competing defaults",
+          "description": "Evaluate supplied competing defaults for recursion."
         }
       ]
     },
@@ -167,19 +167,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "autovpn_evidence",
       "ask_when": "Troubleshooting evidence is incomplete.",
       "header": "Evidence",
-      "question": "What troubleshooting evidence is available?",
+      "question": "How should incomplete troubleshooting evidence be handled?",
       "options": [
         {
-          "label": "Config and SAs (Recommended)",
-          "description": "Use configuration, SAs, routes, sessions, and logs."
+          "label": "Inventory evidence (Recommended)",
+          "description": "Identify available configuration, SAs, routes, sessions, and logs before diagnosis."
         },
         {
-          "label": "Configuration only",
-          "description": "Limit findings to static design."
+          "label": "Use supplied artifacts",
+          "description": "Diagnose only from supplied artifacts and limit runtime conclusions."
         },
         {
-          "label": "Error output",
-          "description": "Begin with failures and collect targeted evidence."
+          "label": "Approved live collection",
+          "description": "Collect targeted read-only device evidence with approval."
         }
       ]
     }

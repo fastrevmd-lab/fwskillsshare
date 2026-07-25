@@ -47,19 +47,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "advpn_release",
       "ask_when": "Model or release is absent and affects support.",
       "header": "Platform",
-      "question": "Are the SRX models and Junos releases known?",
+      "question": "How should missing SRX model or Junos release details be handled?",
       "options": [
         {
-          "label": "Exact details (Recommended)",
+          "label": "Discover first (Recommended)",
+          "description": "Identify exact models and releases before support conclusions."
+        },
+        {
+          "label": "Exact details supplied",
           "description": "Apply model- and release-specific limits."
         },
         {
-          "label": "Infer outputs",
-          "description": "Infer cautiously from supplied evidence."
-        },
-        {
-          "label": "Unknown",
-          "description": "Produce discovery checks first."
+          "label": "Infer conservatively",
+          "description": "Limit output to evidence-supported design and disclose uncertainty."
         }
       ]
     },
@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "advpn_topo",
       "ask_when": "Site, addressing, NAT, or HA topology is incomplete.",
       "header": "Topology",
-      "question": "Is the hub, spoke, addressing, and NAT topology complete?",
+      "question": "How should incomplete ADVPN topology be handled?",
       "options": [
         {
-          "label": "Complete map (Recommended)",
-          "description": "Use supplied sites, addresses, LANs, NAT, and HA roles."
+          "label": "Map topology first (Recommended)",
+          "description": "Identify sites, addresses, LANs, NAT, and HA roles before design."
         },
         {
-          "label": "Partial map",
-          "description": "Mark unresolved elements."
+          "label": "Use supplied complete map",
+          "description": "Design from a supplied complete topology."
         },
         {
-          "label": "Need design",
-          "description": "Build a topology worksheet."
+          "label": "Design from requirements",
+          "description": "Build a new topology from supplied site and traffic requirements."
         }
       ]
     },
@@ -87,19 +87,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "advpn_auth",
       "ask_when": "Peer authentication is absent.",
       "header": "Auth",
-      "question": "What authentication design is available?",
+      "question": "How should unspecified peer authentication be handled?",
       "options": [
         {
-          "label": "PKI available (Recommended)",
-          "description": "Use certificate authentication."
+          "label": "Inventory authentication (Recommended)",
+          "description": "Identify existing PKI, enrollment, and peer identity constraints before design."
         },
         {
-          "label": "PKI planned",
-          "description": "Include enrollment prerequisites."
+          "label": "Use supplied PKI",
+          "description": "Use the supplied certificate authority and enrollment design."
         },
         {
-          "label": "PSK only",
-          "description": "Report ADVPN limitations."
+          "label": "Assess supplied PSK",
+          "description": "Analyze the supplied PSK design and report ADVPN limitations."
         }
       ]
     },
@@ -167,19 +167,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "advpn_evidence",
       "ask_when": "Troubleshooting evidence is incomplete.",
       "header": "Evidence",
-      "question": "What troubleshooting evidence is available?",
+      "question": "How should incomplete troubleshooting evidence be handled?",
       "options": [
         {
-          "label": "Config and SAs (Recommended)",
-          "description": "Use redacted configuration, SAs, routes, and flow evidence."
+          "label": "Inventory evidence (Recommended)",
+          "description": "Identify available configuration, SAs, routes, and flow evidence before diagnosis."
         },
         {
-          "label": "Configuration only",
-          "description": "Limit runtime conclusions."
+          "label": "Use supplied artifacts",
+          "description": "Diagnose only from supplied artifacts and limit runtime conclusions."
         },
         {
-          "label": "Error output",
-          "description": "Begin with errors and request targeted evidence."
+          "label": "Approved live collection",
+          "description": "Collect targeted read-only device evidence with approval."
         }
       ]
     }

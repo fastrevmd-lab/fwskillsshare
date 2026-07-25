@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "soc2_period",
       "ask_when": "Evidence period is absent.",
       "header": "Period",
-      "question": "What evidence period should be used?",
+      "question": "How should an unspecified SOC 2 evidence period be handled?",
       "options": [
         {
-          "label": "Defined period (Recommended)",
-          "description": "Use dated evidence for the stated period."
+          "label": "Confirm period first (Recommended)",
+          "description": "Establish dates and available samples before operating-period conclusions."
         },
         {
-          "label": "Point in time",
-          "description": "Avoid operating-period conclusions."
+          "label": "Assess point in time",
+          "description": "Limit conclusions to current control design and state."
         },
         {
-          "label": "Not established",
-          "description": "Identify retention and sampling needs."
+          "label": "Build evidence plan",
+          "description": "Identify retention and sampling needs without grading operation."
         }
       ]
     },
@@ -87,19 +87,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "soc2_system",
       "ask_when": "System description or control matrix availability is unclear.",
       "header": "System Docs",
-      "question": "What system-description and control-matrix evidence is available?",
+      "question": "How should incomplete system-boundary evidence be handled?",
       "options": [
         {
-          "label": "Both available (Recommended)",
-          "description": "Use both current documents."
+          "label": "Map system first (Recommended)",
+          "description": "Identify services, infrastructure, people, data, and control ownership before grading."
         },
         {
-          "label": "Partial documents",
-          "description": "Flag missing ownership."
+          "label": "Use supplied documents",
+          "description": "Assess the supplied system description and control matrix while disclosing gaps."
         },
         {
-          "label": "None available",
-          "description": "Produce discovery questions."
+          "label": "Build discovery request",
+          "description": "List missing boundary and ownership evidence without grading."
         }
       ]
     },
@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "soc2_vendor",
       "ask_when": "Subservice organization treatment is unclear.",
       "header": "Providers",
-      "question": "How are subservice organizations treated?",
+      "question": "How should uncertain subservice-organization treatment be handled?",
       "options": [
         {
-          "label": "Carve-out method (Recommended)",
-          "description": "Identify complementary controls."
+          "label": "Inventory vendors first (Recommended)",
+          "description": "Identify subservice organizations and governance decisions before assessment."
         },
         {
-          "label": "Inclusive method",
-          "description": "Include provider evidence."
+          "label": "Use supplied carve-out",
+          "description": "Apply a supplied carve-out method and identify complementary controls."
         },
         {
-          "label": "Unknown method",
-          "description": "Flag the governance decision."
+          "label": "Use supplied inclusive",
+          "description": "Apply a supplied inclusive method and include provider evidence."
         }
       ]
     },

@@ -47,19 +47,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "nat_release",
       "ask_when": "The model or release is absent and affects feature support.",
       "header": "Platform",
-      "question": "Are the SRX model and Junos release known?",
+      "question": "How should missing SRX model or Junos release details be handled?",
       "options": [
         {
-          "label": "Exact details (Recommended)",
+          "label": "Discover first (Recommended)",
+          "description": "Identify the exact model and release before feature conclusions."
+        },
+        {
+          "label": "Exact details supplied",
           "description": "Apply supported features and syntax."
         },
         {
-          "label": "Infer outputs",
-          "description": "Infer cautiously from evidence."
-        },
-        {
-          "label": "Unknown",
-          "description": "Avoid release-dependent claims."
+          "label": "Infer conservatively",
+          "description": "Limit output to evidence-supported behavior and disclose uncertainty."
         }
       ]
     },
@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "nat_family",
       "ask_when": "The translation family is absent.",
       "header": "NAT Type",
-      "question": "Which NAT behavior is required?",
+      "question": "How should an unspecified translation family be handled?",
       "options": [
         {
-          "label": "Source NAT (Recommended)",
-          "description": "Design outbound or inter-zone source translation."
+          "label": "Identify family first (Recommended)",
+          "description": "Establish the address-family translation before selecting NAT behavior."
         },
         {
-          "label": "Destination or static",
-          "description": "Design inbound or bidirectional mapping."
+          "label": "NAT44",
+          "description": "Design supplied IPv4-to-IPv4 translation requirements."
         },
         {
-          "label": "Advanced NAT",
-          "description": "Cover NAT64, CGN, persistent NAT, or hairpinning."
+          "label": "NAT64",
+          "description": "Design supplied IPv6-to-IPv4 translation requirements."
         }
       ]
     },
@@ -87,19 +87,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "nat_tuple",
       "ask_when": "The pre- or post-translation tuple is incomplete.",
       "header": "Traffic",
-      "question": "Is the pre- and post-translation traffic tuple complete?",
+      "question": "How should an incomplete translation tuple be handled?",
       "options": [
         {
-          "label": "Complete tuple (Recommended)",
-          "description": "Use source, destination, service, zones, and translated values."
+          "label": "Trace tuple first (Recommended)",
+          "description": "Identify source, destination, service, zones, and translated values before design."
         },
         {
-          "label": "Partial tuple",
-          "description": "Mark unresolved fields."
+          "label": "Use supplied complete tuple",
+          "description": "Apply the supplied pre- and post-translation values."
         },
         {
-          "label": "Need discovery",
-          "description": "Build a flow worksheet."
+          "label": "Build tuple worksheet",
+          "description": "Produce a worksheet for missing tuple fields."
         }
       ]
     },
@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "nat_context",
       "ask_when": "Zone, interface, or routing-instance classification is unclear.",
       "header": "Context",
-      "question": "How is traffic classified?",
+      "question": "How should uncertain traffic classification be handled?",
       "options": [
         {
-          "label": "Zones and interfaces (Recommended)",
-          "description": "Use explicit ingress and egress."
+          "label": "Inspect context first (Recommended)",
+          "description": "Trace ingress, egress, zones, interfaces, and routing instances before rule selection."
         },
         {
-          "label": "Routing instances",
-          "description": "Include tenant-aware translation."
+          "label": "Use supplied zone context",
+          "description": "Apply supplied zone and interface classification."
         },
         {
-          "label": "Both contexts",
-          "description": "Model all classification inputs."
+          "label": "Use supplied routing context",
+          "description": "Apply supplied routing-instance classification."
         }
       ]
     },
@@ -127,19 +127,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "nat_reach",
       "ask_when": "Translated-address reachability is unclear.",
       "header": "Reachability",
-      "question": "How will translated addresses be reachable?",
+      "question": "How should uncertain translated-address reachability be handled?",
       "options": [
         {
-          "label": "Routed prefix (Recommended)",
-          "description": "Use explicit routing."
+          "label": "Trace reachability first (Recommended)",
+          "description": "Validate routing and adjacency before choosing advertisement behavior."
         },
         {
-          "label": "Proxy ARP or NDP",
-          "description": "Include neighbor-proxy behavior."
+          "label": "Use supplied routed prefix",
+          "description": "Use supplied explicit routing for translated addresses."
         },
         {
-          "label": "Unknown",
-          "description": "Validate routing and adjacency."
+          "label": "Use supplied neighbor proxy",
+          "description": "Apply supplied proxy ARP or NDP behavior."
         }
       ]
     },
@@ -147,19 +147,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "nat_return",
       "ask_when": "Traffic symmetry is unclear.",
       "header": "Return Path",
-      "question": "Does return traffic traverse the same SRX?",
+      "question": "How should uncertain NAT return symmetry be handled?",
       "options": [
         {
-          "label": "Symmetric return (Recommended)",
-          "description": "Preserve stateful return through the translator."
+          "label": "Unknown—trace first (Recommended)",
+          "description": "Collect routing, session, and flow evidence before assuming symmetry."
         },
         {
-          "label": "Asymmetric return",
-          "description": "Redesign or validate session risk."
+          "label": "Use supplied symmetric path",
+          "description": "Preserve the supplied stateful return through the translator."
         },
         {
-          "label": "Unknown path",
-          "description": "Collect routing and flow evidence."
+          "label": "Assess supplied asymmetric path",
+          "description": "Analyze the supplied asymmetric path and session risk."
         }
       ]
     },
@@ -167,19 +167,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "nat_evidence",
       "ask_when": "Troubleshooting evidence is incomplete.",
       "header": "Evidence",
-      "question": "What troubleshooting evidence is available?",
+      "question": "How should incomplete troubleshooting evidence be handled?",
       "options": [
         {
-          "label": "Config and sessions (Recommended)",
-          "description": "Use NAT config, routes, counters, sessions, and logs."
+          "label": "Inventory evidence (Recommended)",
+          "description": "Identify available NAT configuration, routes, counters, sessions, and logs before diagnosis."
         },
         {
-          "label": "Configuration only",
-          "description": "Limit conclusions to static logic."
+          "label": "Use supplied artifacts",
+          "description": "Diagnose only from supplied artifacts and limit runtime conclusions."
         },
         {
-          "label": "Error or trace",
-          "description": "Begin with observed failure evidence."
+          "label": "Approved live collection",
+          "description": "Collect targeted read-only device evidence with approval."
         }
       ]
     }

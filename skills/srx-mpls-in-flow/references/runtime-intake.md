@@ -47,19 +47,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mpls_release",
       "ask_when": "The model or release is absent.",
       "header": "Platform",
-      "question": "Are the SRX model and Junos release known?",
+      "question": "How should missing SRX model or Junos release details be handled?",
       "options": [
         {
-          "label": "Exact supported (Recommended)",
-          "description": "Verify minimum supported release."
+          "label": "Discover first (Recommended)",
+          "description": "Identify the exact model and release before MPLS flow-mode support conclusions."
         },
         {
-          "label": "Infer outputs",
-          "description": "Infer cautiously from evidence."
+          "label": "Exact details supplied",
+          "description": "Verify the supplied platform against minimum support."
         },
         {
-          "label": "Unknown",
-          "description": "Treat support as a blocker."
+          "label": "Stop pending details",
+          "description": "Treat unknown platform support as a blocker."
         }
       ]
     },
@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mpls_role",
       "ask_when": "PE, CPE, or transit role is unclear.",
       "header": "Device Role",
-      "question": "What role does the SRX perform?",
+      "question": "How should an uncertain SRX MPLS role be handled?",
       "options": [
         {
-          "label": "Secure PE or CPE (Recommended)",
-          "description": "Apply security at the VPN edge."
+          "label": "Confirm role first (Recommended)",
+          "description": "Establish PE, CPE, transit, or mixed responsibilities before design."
         },
         {
-          "label": "Transit P role",
-          "description": "Re-evaluate requested security function."
+          "label": "Use supplied edge role",
+          "description": "Apply security for a supplied PE or CPE role."
         },
         {
-          "label": "Existing mixed role",
-          "description": "Document current responsibilities."
+          "label": "Assess supplied transit role",
+          "description": "Re-evaluate the requested security function for a supplied transit role."
         }
       ]
     },
@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mpls_signal",
       "ask_when": "Label signaling is absent.",
       "header": "Signaling",
-      "question": "Which label and transport protocols are used?",
+      "question": "How should unspecified label signaling be handled?",
       "options": [
         {
-          "label": "Existing protocols (Recommended)",
-          "description": "Preserve documented LDP, RSVP, or BGP label design."
+          "label": "Inspect signaling first (Recommended)",
+          "description": "Identify transport and label protocols before MPLS design."
         },
         {
-          "label": "LDP design",
-          "description": "Build an LDP transport."
+          "label": "Preserve supplied signaling",
+          "description": "Preserve the supplied LDP, RSVP, or BGP label design."
         },
         {
-          "label": "Need selection",
-          "description": "Compare supported options."
+          "label": "Design new LDP transport",
+          "description": "Build a new supported LDP transport from supplied requirements."
         }
       ]
     },
@@ -127,19 +127,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mpls_vrf",
       "ask_when": "The VRF or route-target inventory is incomplete.",
       "header": "VRF Scope",
-      "question": "Is the VRF and route-target inventory complete?",
+      "question": "How should an incomplete VRF inventory be handled?",
       "options": [
         {
-          "label": "Complete inventory (Recommended)",
-          "description": "Use supplied VRFs, RDs, RTs, interfaces, and prefixes."
+          "label": "Inventory VRFs first (Recommended)",
+          "description": "Identify VRFs, RDs, RTs, interfaces, and prefixes before policy design."
         },
         {
-          "label": "Partial inventory",
-          "description": "Mark import/export unresolved."
+          "label": "Use supplied complete matrix",
+          "description": "Apply a supplied complete VRF and route-target inventory."
         },
         {
-          "label": "Need design",
-          "description": "Create a service matrix."
+          "label": "Design new service matrix",
+          "description": "Build a new matrix from supplied service requirements."
         }
       ]
     },
@@ -167,19 +167,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mpls_service",
       "ask_when": "Inspection services are absent.",
       "header": "Services",
-      "question": "Which security services must apply to MPLS traffic?",
+      "question": "Which security-service bundle should apply to MPLS traffic?",
       "options": [
         {
-          "label": "Base policy (Recommended)",
-          "description": "Start with stateful policy and logging."
+          "label": "Base policy only (Recommended)",
+          "description": "Apply stateful policy and logging without added services."
         },
         {
-          "label": "NAT or App-ID",
-          "description": "Include explicitly required controls."
+          "label": "Base plus app/NAT",
+          "description": "Add supplied application or NAT requirements."
         },
         {
-          "label": "Full inspection",
-          "description": "Include IPS or advanced services with capacity validation."
+          "label": "Full inspection stack",
+          "description": "Include supplied IPS or advanced services with capacity validation."
         }
       ]
     }

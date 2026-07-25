@@ -49,33 +49,33 @@ platform or framework basis, evidence quality, then output preference.
       "id": "pci_scope",
       "ask_when": "The CDE boundary is unclear.",
       "header": "CDE Scope",
-      "question": "How mature is the CDE boundary?",
+      "question": "How should an uncertain CDE boundary be handled?",
       "options": [
-        {"label": "Defined CDE (Recommended)", "description": "Use identified account-data and connected systems."},
-        {"label": "Draft CDE", "description": "Validate proposed scope."},
-        {"label": "Unknown CDE", "description": "Begin with data-flow discovery."}
+        {"label": "Map CDE scope (Recommended)", "description": "Identify account-data systems, connected systems, and flows before assessing."},
+        {"label": "Assess supplied boundary", "description": "Use a supplied final boundary and disclose unverified assumptions."},
+        {"label": "Validate supplied draft", "description": "Test a supplied preliminary boundary and mark unresolved scope."}
       ]
     },
     {
       "id": "pci_segment",
       "ask_when": "Segmentation reliance is unclear.",
       "header": "Segmentation",
-      "question": "Is network segmentation relied upon for scope reduction?",
+      "question": "How should uncertain segmentation reliance be handled?",
       "options": [
-        {"label": "Scope reduction (Recommended)", "description": "Test segmentation design and evidence."},
-        {"label": "Not relied upon", "description": "Treat connected networks as in scope."},
-        {"label": "Unknown", "description": "Identify evidence needed to decide."}
+        {"label": "Verify segmentation (Recommended)", "description": "Test segmentation design and evidence before reducing scope."},
+        {"label": "No scope reduction", "description": "Treat connected networks as in scope without relying on segmentation."},
+        {"label": "Use verified segmentation", "description": "Apply a supplied validated segmentation boundary."}
       ]
     },
     {
       "id": "pci_evidence",
       "ask_when": "Evidence completeness is unclear.",
       "header": "Evidence",
-      "question": "What evidence is available?",
+      "question": "How should uncertain evidence completeness be handled?",
       "options": [
-        {"label": "Config plus records (Recommended)", "description": "Include configuration, reviews, logs, scans, and records."},
-        {"label": "Configuration only", "description": "Mark procedural gaps."},
-        {"label": "Evidence request", "description": "Produce required artifacts and sampling."}
+        {"label": "Inventory evidence (Recommended)", "description": "Identify configuration, reviews, logs, scans, and records before grading."},
+        {"label": "Assess supplied artifacts", "description": "Assess only supplied evidence and disclose procedural gaps."},
+        {"label": "Build evidence request", "description": "List required artifacts and samples without grading implementation."}
       ]
     },
     {

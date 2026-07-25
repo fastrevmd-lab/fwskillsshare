@@ -27,19 +27,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "hipaa_role",
       "ask_when": "HIPAA organizational role is absent.",
       "header": "Org Role",
-      "question": "What HIPAA role applies to the assessed organization?",
+      "question": "How should an unspecified HIPAA responsibility be handled?",
       "options": [
         {
-          "label": "Covered entity (Recommended)",
-          "description": "Assess from the covered-entity perspective."
+          "label": "Confirm responsibility (Recommended)",
+          "description": "Establish the organization's HIPAA responsibility before assigning safeguards."
         },
         {
-          "label": "Business associate",
-          "description": "Include business-associate responsibilities."
+          "label": "Assess covered entity",
+          "description": "Use a supplied covered-entity responsibility."
         },
         {
-          "label": "Both or unsure",
-          "description": "Evaluate both roles and flag ownership."
+          "label": "Assess business associate",
+          "description": "Use a supplied business-associate responsibility."
         }
       ]
     },
@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "hipaa_scope",
       "ask_when": "The ePHI boundary is unclear.",
       "header": "ePHI Scope",
-      "question": "How well defined is the ePHI environment?",
+      "question": "How should an uncertain ePHI boundary be handled?",
       "options": [
         {
-          "label": "Defined scope (Recommended)",
-          "description": "Use identified systems, flows, users, and parties."
+          "label": "Map ePHI scope (Recommended)",
+          "description": "Identify systems, flows, users, and parties before assessing."
         },
         {
-          "label": "Draft scope",
-          "description": "Validate a preliminary boundary."
+          "label": "Assess supplied boundary",
+          "description": "Use a supplied final boundary and disclose unverified assumptions."
         },
         {
-          "label": "Unknown scope",
-          "description": "Begin discovery and avoid completeness claims."
+          "label": "Validate supplied draft",
+          "description": "Test a supplied preliminary boundary and mark unresolved scope."
         }
       ]
     },
@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "hipaa_evidence",
       "ask_when": "Evidence period is unclear.",
       "header": "Evidence",
-      "question": "What evidence period is available?",
+      "question": "How should an uncertain evidence period be handled?",
       "options": [
         {
-          "label": "Config plus records (Recommended)",
-          "description": "Use current configuration and dated evidence."
+          "label": "Inventory evidence (Recommended)",
+          "description": "Identify dated records and current configuration before making period claims."
         },
         {
-          "label": "Current state only",
-          "description": "Avoid period-of-operation claims."
+          "label": "Assess current state",
+          "description": "Limit conclusions to present technical state."
         },
         {
-          "label": "Evidence request",
-          "description": "Produce a targeted collection list."
+          "label": "Build evidence request",
+          "description": "List required dated evidence without grading effectiveness."
         }
       ]
     },

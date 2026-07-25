@@ -726,8 +726,24 @@ Run the negative-contract test script from `just lint` before validating all
 
 Serialize each row as one neutral-contract question. In the `Options` column,
 text before `—` is the label and text after it is the description. The first
-option is always the recommended option. End every serialized description with
-a period.
+option is always the recommended safe default. When the triggering fact is
+unresolved, the recommended option must not assert that the missing fact is
+known, complete, available, valid, or verified. Rewrite a factual prompt as an
+action or workflow decision when necessary so the safe discovery or
+verification option directly answers it.
+
+Each two- or three-option set is a mutually exclusive single-select choice
+along one material axis. Do not mix evidence availability with collection
+method, current state with requested workflow, or address family with special
+traffic. Use the free-text `Other` path for exact values. End every serialized
+description with a period.
+
+**Task 28 final-review audit:** `scripts/check-runtime-intake-safety.py` parses
+all Appendix A rows and all package JSON catalogs, requires exact per-skill
+question-object content and order, and locks the audited safe first labels and
+single-axis option tuples. Update each Appendix row and its package JSON object
+together, then require both focused validators to pass before moving to the
+next independently installable skill.
 
 ### A.1 `cis-controls-ngfw-compliance`
 
@@ -753,11 +769,11 @@ a period.
   — Limit the assessment to a specified system or segment; `Evidence only` —
   Assess only controls directly supported by supplied evidence.
 - `cis_evidence`; header `Evidence`; ask when evidence completeness is unclear;
-  question `What evidence is available?`; options: `Config plus records
-  (Recommended)` — Use configuration, logs, reviews, tickets, and operating
-  records; `Configuration only` — Grade technical configuration and mark
-  operating gaps; `Design only` — Review design without claiming
-  implementation.
+  question `How should uncertain evidence completeness be handled?`; options:
+  `Inventory evidence (Recommended)` — Identify configurations, logs, reviews,
+  tickets, and operating records before grading; `Assess supplied artifacts` —
+  Assess only supplied evidence and disclose coverage gaps; `Build evidence
+  request` — List required evidence without grading implementation.
 - `cis_output`; header `Output`; ask when deliverable emphasis is absent;
   question `What deliverable should be emphasized?`; options: `Matrix and plan
   (Recommended)` — Produce the safeguard matrix, gaps, and remediation plan;
@@ -777,20 +793,23 @@ a period.
   Produce SSP and POA&M evidence; `C3PAO support` — Organize defensible external
   assessment evidence.
 - `cmmc_boundary`; header `CUI Scope`; ask when the CUI boundary maturity is
-  unknown; question `How mature is the CUI boundary definition?`; options:
-  `Defined boundary (Recommended)` — Use the supplied CUI enclave boundary;
-  `Draft boundary` — Validate and flag assumptions; `Unknown boundary` — Begin
-  with discovery and avoid completeness claims.
+  unknown; question `How should an uncertain CUI boundary be handled?`;
+  options: `Map boundary first (Recommended)` — Identify CUI assets, flows, and
+  protection dependencies before assessing; `Assess supplied boundary` — Use a
+  supplied final boundary and disclose unverified assumptions; `Validate
+  supplied draft` — Test a supplied draft and mark unresolved scope.
 - `cmmc_assets`; header `Assets`; ask when asset classes in scope are unclear;
   question `Which assets should be assessed?`; options: `CUI and SPA
   (Recommended)` — Include CUI assets and security protection assets; `Named
   controls` — Limit review to specified requirements or devices; `Full
   environment` — Include adjacent systems that affect CUI protection.
 - `cmmc_evidence`; header `Evidence`; ask when evidence completeness is unclear;
-  question `What evidence is available?`; options: `Config plus records
-  (Recommended)` — Use configurations, logs, approvals, reviews, and
-  procedures; `Configuration only` — Assess technical state and mark practice
-  gaps; `Request list` — Produce an evidence request without grading.
+  question `How should uncertain evidence completeness be handled?`; options:
+  `Inventory evidence (Recommended)` — Identify configurations, logs,
+  approvals, reviews, and procedures before grading; `Assess supplied
+  artifacts` — Assess only supplied evidence and disclose practice gaps;
+  `Build evidence request` — List required evidence without grading
+  implementation.
 - `cmmc_output`; header `Output`; ask when the deliverable is absent; question
   `Which deliverable is most useful?`; options: `Assessment matrix
   (Recommended)` — Provide mappings, evidence, gaps, and remediation; `SSP
@@ -810,11 +829,12 @@ a period.
   logging; `Rulebase only` — Limit analysis to security-policy hygiene; `Named
   boundary` — Limit analysis to specified contexts.
 - `audit_evidence`; header `Evidence`; ask when operational evidence
-  availability is unclear; question `What evidence can support the audit?`;
-  options: `Config and telemetry (Recommended)` — Combine configuration with
-  hit counts, logs, and state; `Configuration only` — Perform static analysis
-  and label telemetry dependencies; `Live read-only` — Collect approved
-  read-only device evidence.
+  availability is unclear; question `How should uncertain operational evidence
+  be handled?`; options: `Inventory evidence (Recommended)` — Identify
+  available configuration and telemetry coverage before analysis; `Use
+  supplied artifacts` — Analyze only supplied artifacts and label runtime
+  dependencies; `Approved live collection` — Collect targeted read-only device
+  evidence with approval.
 - `audit_context`; header `Context`; ask when business criticality and trust
   context are absent; question `How should business and trust context be
   established?`; options: `Provide key context (Recommended)` — Use identified
@@ -843,20 +863,23 @@ a period.
   target through Other; `Family only` — Generate conservative family-level
   output; `Undecided` — Produce feasibility analysis only.
 - `convert_release`; header `Release`; ask when target model or release affects
-  syntax or support and is absent; question `Is the target model and software
-  release known?`; options: `Exact target known (Recommended)` — Apply
-  release-specific capabilities; `Family known` — Use conservative family
-  syntax; `Unknown target` — Avoid implementation-ready syntax.
+  syntax or support and is absent; question `How should missing target model or
+  release details be handled?`; options: `Discover first (Recommended)` —
+  Identify the exact target model and release before conversion; `Exact details
+  supplied` — Apply capabilities for the supplied target; `Infer
+  conservatively` — Limit output to family-safe syntax and disclose
+  uncertainty.
 - `convert_scope`; header `Scope`; ask when conversion components are absent;
   question `What should be converted?`; options: `Full migration
   (Recommended)` — Convert all supported components; `Policy and NAT` — Limit
   work to objects, policy, and NAT; `Named sections` — Convert components named
   through Other.
 - `convert_base`; header `Baseline`; ask when existing target state is unknown;
-  question `Will the output be applied to an existing target configuration?`;
-  options: `Clean target (Recommended)` — Generate against a new target; `Merge
-  target` — Account for supplied existing state; `Unknown state` — Produce a
-  conflict checklist.
+  question `How should uncertain target baseline state be handled?`; options:
+  `Inspect target first (Recommended)` — Determine whether target state exists
+  before generating configuration; `Use supplied clean target` — Generate for a
+  supplied empty target baseline; `Use supplied merge target` — Account for a
+  supplied existing target configuration.
 - `convert_loss`; header `Fidelity`; ask when unsupported behavior needs a
   disposition; question `How should unsupported source behavior be handled?`;
   options: `Caveat and map (Recommended)` — Use the closest safe behavior and
@@ -876,9 +899,11 @@ a period.
   unintended peer differences; `Migration parity` — Compare intent across
   vendors.
 - `diff_direction`; header `Direction`; ask when input roles are ambiguous;
-  question `How should the two inputs be labeled?`; options: `A base, B new
-  (Recommended)` — Classify changes directionally; `Unordered peers` — Treat
-  inputs equally; `Custom roles` — Use roles supplied through Other.
+  question `How should ambiguous input roles be resolved?`; options: `Establish
+  baseline first (Recommended)` — Determine the authoritative baseline and
+  comparison direction before classifying changes; `Use supplied A-to-B` —
+  Treat supplied A as baseline and B as new; `Compare as peers` — Treat inputs
+  as unordered and report symmetric differences.
 - `diff_scope`; header `Scope`; ask when compared components are absent;
   question `Which configuration areas should be compared?`; options: `All
   sections (Recommended)` — Compare every supported component; `Policy and NAT`
@@ -903,30 +928,33 @@ a period.
 ### A.6 `hipaa-ngfw-compliance`
 
 - `hipaa_role`; header `Org Role`; ask when HIPAA organizational role is
-  absent; question `What HIPAA role applies to the assessed organization?`;
-  options: `Covered entity (Recommended)` — Assess from the covered-entity
-  perspective; `Business associate` — Include business-associate
-  responsibilities; `Both or unsure` — Evaluate both roles and flag ownership.
+  absent; question `How should an unspecified HIPAA responsibility be
+  handled?`; options: `Confirm responsibility (Recommended)` — Establish the
+  organization's HIPAA responsibility before assigning safeguards; `Assess
+  covered entity` — Use a supplied covered-entity responsibility; `Assess
+  business associate` — Use a supplied business-associate responsibility.
 - `hipaa_goal`; header `Goal`; ask when review purpose is absent; question `What
   is the purpose of this HIPAA review?`; options: `Risk assessment
   (Recommended)` — Identify ePHI risks and remediation; `Audit evidence` —
   Organize audit artifacts; `Design review` — Review architecture without
   operational claims.
 - `hipaa_scope`; header `ePHI Scope`; ask when the ePHI boundary is unclear;
-  question `How well defined is the ePHI environment?`; options: `Defined scope
-  (Recommended)` — Use identified systems, flows, users, and parties; `Draft
-  scope` — Validate a preliminary boundary; `Unknown scope` — Begin discovery
-  and avoid completeness claims.
+  question `How should an uncertain ePHI boundary be handled?`; options: `Map
+  ePHI scope (Recommended)` — Identify systems, flows, users, and parties before
+  assessing; `Assess supplied boundary` — Use a supplied final boundary and
+  disclose unverified assumptions; `Validate supplied draft` — Test a supplied
+  preliminary boundary and mark unresolved scope.
 - `hipaa_vendor`; header `Vendors`; ask when third-party ePHI paths are unclear;
   question `How should third-party ePHI paths be handled?`; options: `Include
   all paths (Recommended)` — Assess vendors, remote access, cloud, and
   transmission; `Named vendors` — Limit review to identified parties;
   `Technical only` — Exclude contract conclusions and note BAA needs.
 - `hipaa_evidence`; header `Evidence`; ask when evidence period is unclear;
-  question `What evidence period is available?`; options: `Config plus records
-  (Recommended)` — Use current configuration and dated evidence; `Current state
-  only` — Avoid period-of-operation claims; `Evidence request` — Produce a
-  targeted collection list.
+  question `How should an uncertain evidence period be handled?`; options:
+  `Inventory evidence (Recommended)` — Identify dated records and current
+  configuration before making period claims; `Assess current state` — Limit
+  conclusions to present technical state; `Build evidence request` — List
+  required dated evidence without grading effectiveness.
 - `hipaa_output`; header `Output`; ask when report emphasis is absent; question
   `What should the report emphasize?`; options: `Safeguard matrix
   (Recommended)` — Map evidence, gaps, risk, and remediation; `Risk register` —
@@ -941,25 +969,31 @@ a period.
   — Prepare certification or surveillance evidence; `Corrective action` —
   Focus on known findings.
 - `iso_scope`; header `ISMS Scope`; ask when the ISMS boundary is unclear;
-  question `Is the ISMS scope defined?`; options: `Defined scope
-  (Recommended)` — Use supplied organizational and system boundaries; `Draft
-  scope` — Validate assumptions; `Unknown scope` — Begin discovery and avoid
-  conformity claims.
+  question `How should an uncertain ISMS boundary be handled?`; options: `Map
+  ISMS scope (Recommended)` — Identify organizational and system boundaries
+  before assessing; `Assess supplied boundary` — Use a supplied final boundary
+  and disclose unverified assumptions; `Validate supplied draft` — Test a
+  supplied draft and mark unresolved scope.
 - `iso_soa`; header `SoA`; ask when Statement of Applicability evidence is
-  absent; question `What Statement of Applicability evidence is available?`;
-  options: `Current SoA (Recommended)` — Use organizational applicability
-  decisions; `Partial SoA` — Flag missing applicability evidence; `No SoA` —
-  Use generic mapping without organizational claims.
-- `iso_basis`; header `Basis`; ask when control applicability basis is
-  unclear; question `Which control basis should drive conclusions?`; options:
-  `Org risk plan (Recommended)` — Follow the SoA and risk treatment plan; `Annex
-  A only` — Map against ISO 27001 Annex A; `Custom overlay` — Include supplied
-  ISO 27002 or customer mappings.
+  absent; question `How should absent Statement of Applicability evidence be
+  handled?`; options: `Inventory SoA first (Recommended)` — Determine whether
+  current, draft, or supporting applicability records exist; `Use supplied SoA`
+  — Apply the supplied organizational decisions and disclose evidence gaps;
+  `Use generic mapping` — Map Annex A without organizational applicability
+  claims.
+- `iso_basis`; header `Basis`; ask when control applicability basis is unclear;
+  question `How should an uncertain control-applicability basis be handled?`;
+  options: `Confirm basis first (Recommended)` — Establish the governing SoA,
+  risk treatment plan, or overlay before conclusions; `Use supplied SoA basis`
+  — Follow the supplied organizational applicability decisions; `Use Annex A
+  baseline` — Map Annex A without organizational applicability claims.
 - `iso_period`; header `Evidence`; ask when operating evidence period is
-  unclear; question `What operating evidence is available?`; options: `Dated
-  samples (Recommended)` — Use records covering the assessment period; `Current
-  state only` — Avoid effectiveness claims; `Design only` — Assess intended
-  control design.
+  unclear; question `How should an uncertain operating-evidence period be
+  handled?`; options: `Confirm period first (Recommended)` — Establish the
+  assessment period and available dated samples before effectiveness claims;
+  `Assess current state` — Limit conclusions to present technical state;
+  `Assess control design` — Evaluate intended design without operating
+  effectiveness claims.
 - `iso_output`; header `Output`; ask when deliverable is absent; question `What
   deliverable is needed?`; options: `Control matrix (Recommended)` — Provide
   mapping, evidence, gaps, and actions; `Audit evidence` — Emphasize traceable
@@ -979,9 +1013,11 @@ a period.
   and report uncertainty; `Cisco ASA` — Apply ASA parsing assumptions; `Cisco
   FTD` — Account for FTD-managed gaps.
 - `cisco_coverage`; header `Coverage`; ask when export completeness is unclear;
-  question `How complete is the supplied configuration?`; options: `Full export
-  (Recommended)` — Treat it as a complete running configuration; `Partial
-  excerpt` — Mark absent sections unknown; `Unsure` — Detect likely omissions.
+  question `How should uncertain Cisco export completeness be handled?`;
+  options: `Verify first (Recommended)` — Check expected sections and
+  truncation before making completeness claims; `Full artifact supplied` —
+  Treat the supplied running configuration as complete; `Partial artifact
+  supplied` — Mark omitted sections unknown.
 - `cisco_scope`; header `Scope`; ask when requested normalized components are
   absent; question `Which components should be normalized?`; options: `All
   sections (Recommended)` — Include all supported components; `Policy and NAT`
@@ -1000,9 +1036,11 @@ a period.
   `Focused analysis` — Parse relevant sections only; `Downstream task` —
   Prepare for conversion, diff, audit, or compliance.
 - `forti_coverage`; header `Coverage`; ask when export completeness is unclear;
-  question `How complete is the FortiGate export?`; options: `Full backup
-  (Recommended)` — Treat it as a full configuration; `Partial excerpt` — Mark
-  omitted tables and defaults unknown; `Unsure` — Detect likely omissions.
+  question `How should uncertain FortiGate export completeness be handled?`;
+  options: `Verify first (Recommended)` — Check expected tables, defaults, and
+  truncation before making completeness claims; `Full artifact supplied` —
+  Treat the supplied FortiGate backup as complete; `Partial artifact supplied`
+  — Mark omitted tables and defaults unknown.
 - `forti_vdom`; header `VDOM Scope`; ask when included VDOMs are unclear;
   question `Which VDOM scope should be included?`; options: `All detected
   (Recommended)` — Parse global state and every VDOM; `Named VDOMs` — Limit
@@ -1035,9 +1073,11 @@ a period.
   device-group, template, and local values; `Named context` — Limit resolution
   through Other; `Local only` — Avoid effective inherited-policy claims.
 - `palo_coverage`; header `Coverage`; ask when export completeness is unclear;
-  question `How complete is the supplied configuration?`; options: `Full export
-  (Recommended)` — Treat it as complete; `Partial excerpt` — Mark omitted
-  hierarchy unknown; `Unsure` — Detect missing hierarchy and references.
+  question `How should uncertain PAN-OS export completeness be handled?`;
+  options: `Verify first (Recommended)` — Check expected hierarchy and
+  references before making completeness claims; `Full artifact supplied` —
+  Treat the supplied PAN-OS configuration as complete; `Partial artifact
+  supplied` — Mark omitted hierarchy and references unknown.
 - `palo_output`; header `Output`; ask when output form is absent; question `What
   output should be returned?`; options: `JSON and gates (Recommended)` — Return
   normalized JSON and quality results; `Normalized JSON` — Return the schema
@@ -1060,9 +1100,11 @@ a period.
   (Recommended)` — Parse main and detected logical contexts; `Named context` —
   Limit parsing through Other; `Main only` — Ignore logical systems.
 - `srxp_coverage`; header `Coverage`; ask when export completeness is unclear;
-  question `How complete is the supplied configuration?`; options: `Full config
-  (Recommended)` — Treat it as complete; `Partial excerpt` — Mark missing
-  groups and policy unknown; `Unsure` — Detect unresolved inheritance.
+  question `How should uncertain Junos export completeness be handled?`;
+  options: `Verify first (Recommended)` — Check expected groups, inheritance,
+  and sections before making completeness claims; `Full artifact supplied` —
+  Treat the supplied Junos configuration as complete; `Partial artifact
+  supplied` — Mark missing groups, inheritance, and policy unknown.
 - `srxp_output`; header `Output`; ask when output form is absent; question `What
   output should be returned?`; options: `JSON and gates (Recommended)` — Return
   normalized JSON and quality results; `Normalized JSON` — Return the schema
@@ -1080,20 +1122,23 @@ a period.
   (Recommended)` — Identify gaps before formal assessment; `ROC support` —
   Organize QSA evidence; `SAQ support` — Tailor evidence to self-assessment.
 - `pci_scope`; header `CDE Scope`; ask when the CDE boundary is unclear;
-  question `How mature is the CDE boundary?`; options: `Defined CDE
-  (Recommended)` — Use identified account-data and connected systems; `Draft
-  CDE` — Validate proposed scope; `Unknown CDE` — Begin with data-flow
-  discovery.
+  question `How should an uncertain CDE boundary be handled?`; options: `Map
+  CDE scope (Recommended)` — Identify account-data systems, connected systems,
+  and flows before assessing; `Assess supplied boundary` — Use a supplied final
+  boundary and disclose unverified assumptions; `Validate supplied draft` —
+  Test a supplied preliminary boundary and mark unresolved scope.
 - `pci_segment`; header `Segmentation`; ask when segmentation reliance is
-  unclear; question `Is network segmentation relied upon for scope reduction?`;
-  options: `Scope reduction (Recommended)` — Test segmentation design and
-  evidence; `Not relied upon` — Treat connected networks as in scope; `Unknown`
-  — Identify evidence needed to decide.
+  unclear; question `How should uncertain segmentation reliance be handled?`;
+  options: `Verify segmentation (Recommended)` — Test segmentation design and
+  evidence before reducing scope; `No scope reduction` — Treat connected
+  networks as in scope without relying on segmentation; `Use verified
+  segmentation` — Apply a supplied validated segmentation boundary.
 - `pci_evidence`; header `Evidence`; ask when evidence completeness is unclear;
-  question `What evidence is available?`; options: `Config plus records
-  (Recommended)` — Include configuration, reviews, logs, scans, and records;
-  `Configuration only` — Mark procedural gaps; `Evidence request` — Produce
-  required artifacts and sampling.
+  question `How should uncertain evidence completeness be handled?`; options:
+  `Inventory evidence (Recommended)` — Identify configuration, reviews, logs,
+  scans, and records before grading; `Assess supplied artifacts` — Assess only
+  supplied evidence and disclose procedural gaps; `Build evidence request` —
+  List required artifacts and samples without grading implementation.
 - `pci_output`; header `Output`; ask when deliverable is absent; question `What
   deliverable is needed?`; options: `Requirement matrix (Recommended)` — Map
   evidence, gaps, and remediation; `Segmentation report` — Emphasize CDE
@@ -1102,38 +1147,45 @@ a period.
 ### A.13 `sd-onprem-proxmox-deploy`
 
 - `sd_stage`; header `Stage`; ask when deployment stage is absent; question
-  `What stage is the deployment in?`; options: `Plan or dry-run (Recommended)`
-  — Validate prerequisites and produce a plan; `Fresh deployment` — Prepare
-  candidate commands; `Troubleshooting` — Diagnose an existing deployment.
+  `What deployment workflow should be used?`; options: `Plan/dry-run
+  (Recommended)` — Validate prerequisites and produce a non-executing plan;
+  `Prepare fresh deployment` — Prepare candidate commands for a new appliance;
+  `Troubleshoot existing` — Diagnose an existing deployment.
 - `sd_release`; header `Release`; ask when exact SD On-Prem release is absent;
-  question `Which Security Director On-Prem release is being deployed?`;
-  options: `Verified release (Recommended)` — Use the exact release and guide;
-  `Different release` — Supply the release through Other; `Unknown release` —
-  Identify media and documentation first.
+  question `How should missing Security Director release details be handled?`;
+  options: `Discover first (Recommended)` — Identify the exact release and
+  matching guide before deployment planning; `Exact details supplied` — Use the
+  exact supplied release and matching guide; `Stop pending details` — Do not
+  produce release-dependent deployment steps.
 - `sd_media`; header `Artifacts`; ask when media presence or integrity is
-  unclear; question `Are the required release artifacts available and
-  verified?`; options: `Both verified (Recommended)` — Disk image and bundle
-  checksums are valid; `One missing` — Identify the missing artifact;
-  `Unverified` — Stop and verify integrity.
+  unclear; question `How should uncertain release media integrity be handled?`;
+  options: `Verify media first (Recommended)` — Check image and bundle presence,
+  versions, and checksums before deployment; `Use supplied verified media` —
+  Proceed with supplied artifacts and checksum evidence; `Stop pending media`
+  — Block deployment until required artifacts are supplied.
 - `sd_size`; header `Sizing`; ask when appliance flavor is absent; question
   `Which supported appliance size should be used?`; options: `Smallest fitting
   (Recommended)` — Select the lowest flavor meeting measured requirements;
   `Known flavor` — Use a flavor supplied through Other; `Need sizing` — Collect
   device, log, retention, and growth requirements.
 - `sd_proxmox`; header `Proxmox`; ask when VM placement values are incomplete;
-  question `Are the Proxmox placement values known?`; options: `Values ready
-  (Recommended)` — VMID, node, storage, bridge, and resources are known; `Need
-  selection` — Inspect capacity read-only; `Existing VM` — Validate an existing
-  VM.
+  question `How should incomplete Proxmox placement values be handled?`;
+  options: `Inspect/select values (Recommended)` — Inspect capacity read-only
+  and select missing VM placement values; `Use supplied new-VM values` — Use
+  supplied VMID, node, storage, bridge, and resources; `Validate existing VM` —
+  Inspect a supplied existing VM against deployment requirements.
 - `sd_network`; header `Network`; ask when IP, route, or internal CIDR values are
-  incomplete; question `Is the complete IP and routing plan available?`;
-  options: `Plan ready (Recommended)` — Required addresses, gateway, and
-  internal CIDR are defined; `Partial plan` — Identify missing values; `Need
-  design` — Produce a connectivity worksheet.
+  incomplete; question `How should incomplete IP and routing values be
+  handled?`; options: `Map network first (Recommended)` — Identify required
+  addresses, gateway, routes, and internal CIDR before deployment; `Use supplied
+  network plan` — Apply the complete supplied addressing and routing plan;
+  `Stop pending values` — Block deployment and list missing network values.
 - `sd_services`; header `DNS and NTP`; ask when supporting service reachability
-  is unverified; question `Have supporting services been validated?`; options:
-  `Both verified (Recommended)` — DNS and NTP tests pass; `Need tests` — Provide
-  safe validation commands; `Not ready` — Treat service readiness as a blocker.
+  is unverified; question `How should unverified supporting-service reachability
+  be handled?`; options: `Verify services first (Recommended)` — Run safe DNS
+  and NTP reachability checks before deployment; `Use supplied test results` —
+  Rely on supplied current DNS and NTP validation evidence; `Stop pending
+  readiness` — Treat unverified service reachability as a blocker.
 - `sd_transfer`; header `Transfer`; ask when bundle delivery method is absent;
   question `How will the installer bundle reach the appliance?`; options:
   `Approved HTTPS (Recommended)` — Use controlled HTTPS and checksums; `SCP
@@ -1162,20 +1214,25 @@ a period.
   A/C` — Include availability or confidentiality; `Custom scope` — Use
   categories supplied through Other.
 - `soc2_period`; header `Period`; ask when evidence period is absent; question
-  `What evidence period should be used?`; options: `Defined period
-  (Recommended)` — Use dated evidence for the stated period; `Point in time` —
-  Avoid operating-period conclusions; `Not established` — Identify retention
-  and sampling needs.
+  `How should an unspecified SOC 2 evidence period be handled?`; options:
+  `Confirm period first (Recommended)` — Establish dates and available samples
+  before operating-period conclusions; `Assess point in time` — Limit
+  conclusions to current control design and state; `Build evidence plan` —
+  Identify retention and sampling needs without grading operation.
 - `soc2_system`; header `System Docs`; ask when system description or control
-  matrix availability is unclear; question `What system-description and
-  control-matrix evidence is available?`; options: `Both available
-  (Recommended)` — Use both current documents; `Partial documents` — Flag
-  missing ownership; `None available` — Produce discovery questions.
+  matrix availability is unclear; question `How should incomplete
+  system-boundary evidence be handled?`; options: `Map system first
+  (Recommended)` — Identify services, infrastructure, people, data, and control
+  ownership before grading; `Use supplied documents` — Assess the supplied
+  system description and control matrix while disclosing gaps; `Build discovery
+  request` — List missing boundary and ownership evidence without grading.
 - `soc2_vendor`; header `Providers`; ask when subservice organization treatment
-  is unclear; question `How are subservice organizations treated?`; options:
-  `Carve-out method (Recommended)` — Identify complementary controls; `Inclusive
-  method` — Include provider evidence; `Unknown method` — Flag the governance
-  decision.
+  is unclear; question `How should uncertain subservice-organization treatment
+  be handled?`; options: `Inventory vendors first (Recommended)` — Identify
+  subservice organizations and governance decisions before assessment; `Use
+  supplied carve-out` — Apply a supplied carve-out method and identify
+  complementary controls; `Use supplied inclusive` — Apply a supplied inclusive
+  method and include provider evidence.
 - `soc2_output`; header `Output`; ask when deliverable is absent; question `What
   deliverable should be emphasized?`; options: `Control matrix (Recommended)` —
   Provide criteria mapping, evidence, gaps, and remediation; `Evidence request`
@@ -1190,19 +1247,23 @@ a period.
   configuration; `Troubleshoot` — Diagnose shortcut or forwarding problems;
   `Migration` — Plan transition from static or hub-only IPsec.
 - `advpn_release`; header `Platform`; ask when model or release is absent and
-  affects support; question `Are the SRX models and Junos releases known?`;
-  options: `Exact details (Recommended)` — Apply model- and release-specific
-  limits; `Infer outputs` — Infer cautiously from supplied evidence; `Unknown`
-  — Produce discovery checks first.
+  affects support; question `How should missing SRX model or Junos release
+  details be handled?`; options: `Discover first (Recommended)` — Identify
+  exact models and releases before support conclusions; `Exact details
+  supplied` — Apply model- and release-specific limits; `Infer conservatively`
+  — Limit output to evidence-supported design and disclose uncertainty.
 - `advpn_topo`; header `Topology`; ask when site, addressing, NAT, or HA
-  topology is incomplete; question `Is the hub, spoke, addressing, and NAT
-  topology complete?`; options: `Complete map (Recommended)` — Use supplied
-  sites, addresses, LANs, NAT, and HA roles; `Partial map` — Mark unresolved
-  elements; `Need design` — Build a topology worksheet.
+  topology is incomplete; question `How should incomplete ADVPN topology be
+  handled?`; options: `Map topology first (Recommended)` — Identify sites,
+  addresses, LANs, NAT, and HA roles before design; `Use supplied complete map`
+  — Design from a supplied complete topology; `Design from requirements` —
+  Build a new topology from supplied site and traffic requirements.
 - `advpn_auth`; header `Auth`; ask when peer authentication is absent; question
-  `What authentication design is available?`; options: `PKI available
-  (Recommended)` — Use certificate authentication; `PKI planned` — Include
-  enrollment prerequisites; `PSK only` — Report ADVPN limitations.
+  `How should unspecified peer authentication be handled?`; options: `Inventory
+  authentication (Recommended)` — Identify existing PKI, enrollment, and peer
+  identity constraints before design; `Use supplied PKI` — Use the supplied
+  certificate authority and enrollment design; `Assess supplied PSK` — Analyze
+  the supplied PSK design and report ADVPN limitations.
 - `advpn_route`; header `Routing`; ask when overlay routing is absent; question
   `Which overlay routing model should be used?`; options: `OSPF P2MP
   (Recommended)` — Use the documented point-to-multipoint model; `Existing
@@ -1219,10 +1280,12 @@ a period.
   safe form; `Dynamic gateway` — Use only with confirmed support; `Validate
   first` — Run read-only checks before selecting syntax.
 - `advpn_evidence`; header `Evidence`; ask when troubleshooting evidence is
-  incomplete; question `What troubleshooting evidence is available?`;
-  options: `Config and SAs (Recommended)` — Use redacted configuration, SAs,
-  routes, and flow evidence; `Configuration only` — Limit runtime conclusions;
-  `Error output` — Begin with errors and request targeted evidence.
+  incomplete; question `How should incomplete troubleshooting evidence be
+  handled?`; options: `Inventory evidence (Recommended)` — Identify available
+  configuration, SAs, routes, and flow evidence before diagnosis; `Use supplied
+  artifacts` — Diagnose only from supplied artifacts and limit runtime
+  conclusions; `Approved live collection` — Collect targeted read-only device
+  evidence with approval.
 
 ### A.16 `srx-autovpn-full-tunnel`
 
@@ -1232,10 +1295,11 @@ a period.
   Diagnose tunnel, routing, or backhaul problems; `Migration` — Plan transition
   from static or split-tunnel VPN.
 - `autovpn_release`; header `Platform`; ask when model or release is absent and
-  affects support; question `Are the SRX models and Junos releases known?`;
-  options: `Exact details (Recommended)` — Apply release-specific behavior;
-  `Infer outputs` — Infer cautiously from supplied evidence; `Unknown` —
-  Produce discovery checks first.
+  affects support; question `How should missing SRX model or Junos release
+  details be handled?`; options: `Discover first (Recommended)` — Identify
+  exact models and releases before support conclusions; `Exact details
+  supplied` — Apply release-specific behavior; `Infer conservatively` — Limit
+  output to evidence-supported design and disclose uncertainty.
 - `autovpn_traffic`; header `Traffic`; ask when backhaul behavior is unclear;
   question `What traffic model is required?`; options: `Full backhaul
   (Recommended)` — Send spoke traffic through the hub; `Split tunnel` —
@@ -1246,25 +1310,30 @@ a period.
   `Unique PSKs` — Use a distinct secret per spoke; `Existing legacy` — Assess a
   shared-secret design and document risk.
 - `autovpn_lans`; header `LAN Prefixes`; ask when spoke prefix allocation is
-  incomplete; question `How are spoke LAN prefixes allocated?`; options:
-  `Summarizable (Recommended)` — Use non-overlapping scalable ranges;
-  `Discontiguous` — Generate explicit handling and capacity caveats;
-  `Overlapping` — Stop and resolve overlap.
+  incomplete; question `How should incomplete spoke LAN allocation be
+  handled?`; options: `Map LANs first (Recommended)` — Identify every spoke
+  prefix and overlap before route design; `Use supplied scalable ranges` — Use
+  supplied non-overlapping summarizable prefixes; `Use supplied explicit
+  prefixes` — Handle supplied discontiguous prefixes without summarization.
 - `autovpn_nat`; header `Underlay`; ask when NAT between spokes and hub is
-  unclear; question `What NAT exists between spokes and the hub?`; options:
-  `Known NAT path (Recommended)` — Apply NAT-T to a documented path; `No NAT` —
-  Use directly reachable peers; `Unknown or double` — Require NAT behavior
-  tests.
+  unclear; question `How should uncertain underlay NAT be handled?`; options:
+  `Trace NAT first (Recommended)` — Test peer reachability and translation
+  behavior before tunnel design; `Use supplied NAT path` — Apply NAT-T to the
+  supplied documented translation path; `Use supplied no-NAT path` — Use
+  supplied directly reachable peer paths.
 - `autovpn_route`; header `Routing`; ask when management and default-route
-  separation is unclear; question `How is hub management and default routing
-  separated?`; options: `Separate management (Recommended)` — Keep management
-  independent of tunnel defaults; `Competing defaults` — Analyze recursion;
-  `Unknown state` — Collect routing evidence.
+  separation is unclear; question `How should uncertain management-route
+  separation be handled?`; options: `Inspect routes first (Recommended)` —
+  Trace management, peer, and default paths before route changes; `Use supplied
+  separate path` — Preserve a supplied independent management path; `Analyze
+  competing defaults` — Evaluate supplied competing defaults for recursion.
 - `autovpn_evidence`; header `Evidence`; ask when troubleshooting evidence is
-  incomplete; question `What troubleshooting evidence is available?`;
-  options: `Config and SAs (Recommended)` — Use configuration, SAs, routes,
-  sessions, and logs; `Configuration only` — Limit findings to static design;
-  `Error output` — Begin with failures and collect targeted evidence.
+  incomplete; question `How should incomplete troubleshooting evidence be
+  handled?`; options: `Inventory evidence (Recommended)` — Identify available
+  configuration, SAs, routes, sessions, and logs before diagnosis; `Use supplied
+  artifacts` — Diagnose only from supplied artifacts and limit runtime
+  conclusions; `Approved live collection` — Collect targeted read-only device
+  evidence with approval.
 
 ### A.17 `srx-dynamic-ip-feed`
 
@@ -1274,30 +1343,36 @@ a period.
   Diagnose download, parsing, mapping, or policy behavior; `Migration` —
   Convert an existing feed workflow.
 - `dif_release`; header `Platform`; ask when model or release is absent and
-  affects capability; question `Are the SRX model and Junos release known?`;
-  options: `Exact details (Recommended)` — Apply release-specific capabilities;
-  `Infer outputs` — Infer cautiously from evidence; `Unknown` — Produce
-  prerequisite checks.
+  affects capability; question `How should missing SRX model or Junos release
+  details be handled?`; options: `Discover first (Recommended)` — Identify the
+  exact model and release before capability conclusions; `Exact details
+  supplied` — Apply release-specific capabilities; `Infer conservatively` —
+  Limit output to evidence-supported design and disclose uncertainty.
 - `dif_source`; header `Feed Source`; ask when feed artifacts or publishing
-  design is incomplete; question `What feed artifacts are available?`; options:
-  `URL and archive (Recommended)` — Use documented URLs and archive layout;
-  `Existing failing feed` — Diagnose the supplied implementation; `Need feed
-  design` — Define structure and publishing first.
+  design is incomplete; question `How should an incomplete feed source be
+  handled?`; options: `Inspect source first (Recommended)` — Determine whether
+  an existing endpoint, archive, or publishing workflow can be used; `Use
+  supplied endpoint` — Integrate the supplied endpoint and archive layout;
+  `Design new endpoint` — Define a new supported HTTPS feed and publishing
+  workflow.
 - `dif_tls`; header `TLS`; ask when publisher trust method is absent; question
   `How should the HTTPS publisher be authenticated?`; options: `Trusted CA
   (Recommended)` — Validate an approved CA chain; `Private CA` — Include
   controlled CA import and rotation; `Lab unverified` — Classify bypass as
   non-production.
-- `dif_auth`; header `Feed Auth`; ask when application authentication is
-  required but unspecified; question `What application authentication is
-  required?`; options: `No extra auth (Recommended)` — Rely on authenticated
-  TLS and network controls; `Mutual TLS` — Use client certificates via approved
-  secret delivery; `Basic auth` — Protect credentials outside chat.
+- `dif_auth`; header `Feed Auth`; ask when feed authentication method is absent
+  or unclear; question `How should uncertain feed authentication be handled?`;
+  options: `Verify endpoint first (Recommended)` — Inspect endpoint
+  requirements and certificate behavior before selecting authentication;
+  `Mutual TLS` — Use client certificates through approved secret delivery;
+  `Basic or none` — Apply a supplied basic-auth or no-extra-auth requirement
+  while keeping credentials outside chat.
 - `dif_route`; header `Routing`; ask when feed-server routing context is absent;
-  question `Which routing context reaches the feed server?`; options: `Default
-  instance (Recommended)` — Use default routing after reachability validation;
-  `Named instance` — Use the specified instance and source; `Unknown` — Collect
-  route, DNS, and connection evidence.
+  question `How should an unknown feed-server route be handled?`; options:
+  `Trace route first (Recommended)` — Collect route, DNS, source, and connection
+  evidence before selecting context; `Use supplied default instance` — Use the
+  supplied default-instance path after reachability validation; `Use supplied
+  named instance` — Use the supplied routing instance and source address.
 - `dif_effect`; header `Policy Use`; ask when feed enforcement intent is absent;
   question `How will feed entries affect security policy?`; options: `Blocklist
   deny (Recommended)` — Deny new matching sessions with logging; `Allowlist
@@ -1322,15 +1397,17 @@ a period.
   — Diagnose IKE, IPsec, routing, or policy; `Migration` — Plan transition from
   policy-based or shared-tunnel VPN.
 - `hsvpn_release`; header `Platform`; ask when model or release is absent and
-  affects syntax; question `Are all SRX models and Junos releases known?`;
-  options: `Exact details (Recommended)` — Apply platform-specific syntax;
-  `Infer outputs` — Infer cautiously from evidence; `Unknown` — Produce
-  discovery checks.
-- `hsvpn_topo`; header `Topology`; ask when peer, prefix, NAT, HA, or st0 data is
-  incomplete; question `Is the complete hub-and-spoke topology available?`;
-  options: `Complete map (Recommended)` — Use supplied peers, LANs, WANs, NAT,
-  HA, and st0 allocation; `Partial map` — Mark unresolved selectors and routes;
-  `Need design` — Create a topology worksheet.
+  affects syntax; question `How should missing SRX model or Junos release
+  details be handled?`; options: `Discover first (Recommended)` — Identify
+  exact models and releases before syntax conclusions; `Exact details supplied`
+  — Apply platform-specific syntax; `Infer conservatively` — Limit output to
+  evidence-supported design and disclose uncertainty.
+- `hsvpn_topo`; header `Topology`; ask when peer, prefix, NAT, HA, or st0 data
+  is incomplete; question `How should incomplete hub-and-spoke topology be
+  handled?`; options: `Map topology first (Recommended)` — Identify peers,
+  LANs, WANs, NAT, HA, and st0 allocation before design; `Use supplied complete
+  map` — Design from a supplied complete topology; `Design from requirements` —
+  Build a new topology from supplied site and traffic requirements.
 - `hsvpn_traffic`; header `Traffic`; ask when spoke path requirements are
   unclear; question `How should spoke traffic be routed?`; options: `Central
   backhaul (Recommended)` — Route required traffic through the hub; `Split or
@@ -1340,15 +1417,19 @@ a period.
   (Recommended)` — Use PKI where available; `Unique PSKs` — Use distinct
   secrets via approved delivery; `Shared lab PSK` — Classify as lab-only.
 - `hsvpn_route`; header `Routing`; ask when management reachability and tunnel
-  defaults may conflict; question `Is management reachability protected from
-  tunnel defaults?`; options: `Separate route path (Recommended)` — Keep
-  management and peer paths independent; `Competing defaults` — Analyze
-  recursion; `Unknown state` — Collect route evidence.
+  defaults may conflict; question `How should uncertain management-route
+  protection be handled?`; options: `Inspect routes first (Recommended)` —
+  Trace management, peer, and tunnel-default paths before route changes; `Use
+  supplied separate path` — Preserve a supplied independent management path;
+  `Analyze competing defaults` — Evaluate supplied competing defaults for
+  recursion.
 - `hsvpn_evidence`; header `Evidence`; ask when troubleshooting evidence is
-  incomplete; question `What troubleshooting evidence is available?`;
-  options: `Config and SAs (Recommended)` — Use configuration, SAs, routes,
-  sessions, and logs; `Configuration only` — Limit runtime conclusions; `Error
-  output` — Begin with failures and request targeted evidence.
+  incomplete; question `How should incomplete troubleshooting evidence be
+  handled?`; options: `Inventory evidence (Recommended)` — Identify available
+  configuration, SAs, routes, sessions, and logs before diagnosis; `Use supplied
+  artifacts` — Diagnose only from supplied artifacts and limit runtime
+  conclusions; `Approved live collection` — Collect targeted read-only device
+  evidence with approval.
 
 ### A.19 `srx-mnha`
 
@@ -1358,28 +1439,34 @@ a period.
   synchronization, forwarding, or failover; `Migration` — Plan migration from
   chassis cluster or standalone SRX.
 - `mnha_release`; header `Platform`; ask when node models or releases are absent;
-  question `Are every node model and Junos release known?`; options: `Exact
-  details (Recommended)` — Apply release-specific syntax; `Infer outputs` —
-  Infer cautiously from evidence; `Unknown` — Avoid implementation-ready
-  configuration.
+  question `How should missing node model or Junos release details be handled?`;
+  options: `Discover first (Recommended)` — Identify every node model and
+  release before support conclusions; `Exact details supplied` — Apply
+  release-specific syntax; `Stop pending details` — Avoid implementation-ready
+  configuration until exact details are supplied.
 - `mnha_mode`; header `MNHA Mode`; ask when forwarding mode is absent; question
   `Which MNHA forwarding model is required?`; options: `Routed mode
   (Recommended)` — Use explicit routing and SRGs; `Gateway mode` — Provide
   default-gateway service behavior; `Hybrid mode` — Combine only for documented
   requirements.
 - `mnha_migrate`; header `Migration`; ask when starting state is unclear;
-  question `What is the starting state?`; options: `New deployment
-  (Recommended)` — Design without legacy cluster constraints; `Chassis cluster`
-  — Include staged migration and rollback; `Existing MNHA` — Audit or repair.
+  question `How should an uncertain MNHA starting state be handled?`; options:
+  `Inspect starting state (Recommended)` — Inventory the current HA design
+  before choosing a workflow; `Design supplied greenfield` — Design from a
+  supplied new-deployment baseline; `Plan supplied migration` — Plan migration
+  or repair from supplied current-state evidence.
 - `mnha_topo`; header `Topology`; ask when inter-node topology is incomplete;
-  question `What inter-node topology exists?`; options: `Symmetric links
-  (Recommended)` — Use matched interfaces and direct links; `Asymmetric links`
-  — Include inter-cluster data paths; `Unknown topology` — Collect diagrams.
+  question `How should incomplete inter-node topology be handled?`; options:
+  `Map topology first (Recommended)` — Identify node links, interfaces, and data
+  paths before design; `Use supplied symmetric map` — Design from supplied
+  matched interfaces and direct links; `Assess supplied asymmetric map` —
+  Include supplied inter-cluster data paths and asymmetry.
 - `mnha_service`; header `Services`; ask when stateful service scope is absent;
-  question `Which stateful services must survive failover?`; options: `Firewall
-  and NAT (Recommended)` — Preserve core session and NAT behavior; `IPsec
-  services` — Include tunnel ownership and rekey; `Advanced services` — Include
-  DHCP or security services.
+  question `Which stateful service bundle must survive failover?`; options:
+  `Firewall/NAT only (Recommended)` — Preserve core firewall sessions and NAT
+  state; `Firewall/NAT plus IPsec` — Also preserve tunnel ownership and rekey
+  behavior; `Advanced/mixed bundle` — Include supplied DHCP or advanced
+  security-service requirements.
 - `mnha_route`; header `Routing`; ask when upstream failover signaling is
   absent; question `How will upstream failover be signaled?`; options: `Dynamic
   routing (Recommended)` — Use supported routing and fast detection; `Static or
@@ -1404,38 +1491,44 @@ a period.
   Diagnose label, VRF, routing, or policy failures; `Migration` — Plan
   conversion to flow mode.
 - `mpls_release`; header `Platform`; ask when model or release is absent;
-  question `Are the SRX model and Junos release known?`; options: `Exact
-  supported (Recommended)` — Verify minimum supported release; `Infer outputs`
-  — Infer cautiously from evidence; `Unknown` — Treat support as a blocker.
+  question `How should missing SRX model or Junos release details be handled?`;
+  options: `Discover first (Recommended)` — Identify the exact model and release
+  before MPLS flow-mode support conclusions; `Exact details supplied` — Verify
+  the supplied platform against minimum support; `Stop pending details` — Treat
+  unknown platform support as a blocker.
 - `mpls_role`; header `Device Role`; ask when PE, CPE, or transit role is
-  unclear; question `What role does the SRX perform?`; options: `Secure PE or
-  CPE (Recommended)` — Apply security at the VPN edge; `Transit P role` —
-  Re-evaluate requested security function; `Existing mixed role` — Document
-  current responsibilities.
+  unclear; question `How should an uncertain SRX MPLS role be handled?`;
+  options: `Confirm role first (Recommended)` — Establish PE, CPE, transit, or
+  mixed responsibilities before design; `Use supplied edge role` — Apply
+  security for a supplied PE or CPE role; `Assess supplied transit role` —
+  Re-evaluate the requested security function for a supplied transit role.
 - `mpls_family`; header `IP Family`; ask when required address families are
   absent; question `Which address families are required?`; options: `IPv4 and
   VPNv4 (Recommended)` — Design the common IPv4 L3VPN case; `Dual stack` —
   Include IPv6 and VPNv6; `IPv6 focused` — Limit design to IPv6.
 - `mpls_signal`; header `Signaling`; ask when label signaling is absent;
-  question `Which label and transport protocols are used?`; options: `Existing
-  protocols (Recommended)` — Preserve documented LDP, RSVP, or BGP label
-  design; `LDP design` — Build an LDP transport; `Need selection` — Compare
-  supported options.
+  question `How should unspecified label signaling be handled?`; options:
+  `Inspect signaling first (Recommended)` — Identify transport and label
+  protocols before MPLS design; `Preserve supplied signaling` — Preserve the
+  supplied LDP, RSVP, or BGP label design; `Design new LDP transport` — Build a
+  new supported LDP transport from supplied requirements.
 - `mpls_vrf`; header `VRF Scope`; ask when VRF or route-target inventory is
-  incomplete; question `Is the VRF and route-target inventory complete?`;
-  options: `Complete inventory (Recommended)` — Use supplied VRFs, RDs, RTs,
-  interfaces, and prefixes; `Partial inventory` — Mark import/export unresolved;
-  `Need design` — Create a service matrix.
+  incomplete; question `How should an incomplete VRF inventory be handled?`;
+  options: `Inventory VRFs first (Recommended)` — Identify VRFs, RDs, RTs,
+  interfaces, and prefixes before policy design; `Use supplied complete matrix`
+  — Apply a supplied complete VRF and route-target inventory; `Design new
+  service matrix` — Build a new matrix from supplied service requirements.
 - `mpls_policy`; header `Policy Model`; ask when VRF-aware policy model is
   absent; question `How should security policy be organized?`; options: `VRF
   policy groups (Recommended)` — Use the scalable supported model; `VRF to
   zone` — Preserve existing zone design where supported; `Need validation` —
   Select after release checks.
 - `mpls_service`; header `Services`; ask when inspection services are absent;
-  question `Which security services must apply to MPLS traffic?`; options: `Base
-  policy (Recommended)` — Start with stateful policy and logging; `NAT or App-ID`
-  — Include explicitly required controls; `Full inspection` — Include IPS or
-  advanced services with capacity validation.
+  question `Which security-service bundle should apply to MPLS traffic?`;
+  options: `Base policy only (Recommended)` — Apply stateful policy and logging
+  without added services; `Base plus app/NAT` — Add supplied application or NAT
+  requirements; `Full inspection stack` — Include supplied IPS or advanced
+  services with capacity validation.
 
 ### A.21 `srx-nat`
 
@@ -1445,39 +1538,51 @@ a period.
   translation, routing, proxy, or session failures; `Migration` — Convert NAT
   behavior from another platform.
 - `nat_release`; header `Platform`; ask when model or release is absent and
-  affects feature support; question `Are the SRX model and Junos release
-  known?`; options: `Exact details (Recommended)` — Apply supported features and
-  syntax; `Infer outputs` — Infer cautiously from evidence; `Unknown` — Avoid
-  release-dependent claims.
+  affects feature support; question `How should missing SRX model or Junos
+  release details be handled?`; options: `Discover first (Recommended)` —
+  Identify the exact model and release before feature conclusions; `Exact
+  details supplied` — Apply supported features and syntax; `Infer
+  conservatively` — Limit output to evidence-supported behavior and disclose
+  uncertainty.
 - `nat_family`; header `NAT Type`; ask when translation family is absent;
-  question `Which NAT behavior is required?`; options: `Source NAT
-  (Recommended)` — Design outbound or inter-zone source translation;
-  `Destination or static` — Design inbound or bidirectional mapping; `Advanced
-  NAT` — Cover NAT64, CGN, persistent NAT, or hairpinning.
+  question `How should an unspecified translation family be handled?`; options:
+  `Identify family first (Recommended)` — Establish the address-family
+  translation before selecting NAT behavior; `NAT44` — Design supplied
+  IPv4-to-IPv4 translation requirements; `NAT64` — Design supplied IPv6-to-IPv4
+  translation requirements.
 - `nat_tuple`; header `Traffic`; ask when pre- or post-translation tuple is
-  incomplete; question `Is the pre- and post-translation traffic tuple
-  complete?`; options: `Complete tuple (Recommended)` — Use source,
-  destination, service, zones, and translated values; `Partial tuple` — Mark
-  unresolved fields; `Need discovery` — Build a flow worksheet.
+  incomplete; question `How should an incomplete translation tuple be
+  handled?`; options: `Trace tuple first (Recommended)` — Identify source,
+  destination, service, zones, and translated values before design; `Use
+  supplied complete tuple` — Apply the supplied pre- and post-translation
+  values; `Build tuple worksheet` — Produce a worksheet for missing tuple
+  fields.
 - `nat_context`; header `Context`; ask when zone, interface, or routing-instance
-  classification is unclear; question `How is traffic classified?`; options:
-  `Zones and interfaces (Recommended)` — Use explicit ingress and egress;
-  `Routing instances` — Include tenant-aware translation; `Both contexts` —
-  Model all classification inputs.
+  classification is unclear; question `How should uncertain traffic
+  classification be handled?`; options: `Inspect context first (Recommended)` —
+  Trace ingress, egress, zones, interfaces, and routing instances before rule
+  selection; `Use supplied zone context` — Apply supplied zone and interface
+  classification; `Use supplied routing context` — Apply supplied
+  routing-instance classification.
 - `nat_reach`; header `Reachability`; ask when translated-address reachability
-  is unclear; question `How will translated addresses be reachable?`; options:
-  `Routed prefix (Recommended)` — Use explicit routing; `Proxy ARP or NDP` —
-  Include neighbor-proxy behavior; `Unknown` — Validate routing and adjacency.
+  is unclear; question `How should uncertain translated-address reachability be
+  handled?`; options: `Trace reachability first (Recommended)` — Validate
+  routing and adjacency before choosing advertisement behavior; `Use supplied
+  routed prefix` — Use supplied explicit routing for translated addresses; `Use
+  supplied neighbor proxy` — Apply supplied proxy ARP or NDP behavior.
 - `nat_return`; header `Return Path`; ask when traffic symmetry is unclear;
-  question `Does return traffic traverse the same SRX?`; options: `Symmetric
-  return (Recommended)` — Preserve stateful return through the translator;
-  `Asymmetric return` — Redesign or validate session risk; `Unknown path` —
-  Collect routing and flow evidence.
+  question `How should uncertain NAT return symmetry be handled?`; options:
+  `Unknown—trace first (Recommended)` — Collect routing, session, and flow
+  evidence before assuming symmetry; `Use supplied symmetric path` — Preserve
+  the supplied stateful return through the translator; `Assess supplied
+  asymmetric path` — Analyze the supplied asymmetric path and session risk.
 - `nat_evidence`; header `Evidence`; ask when troubleshooting evidence is
-  incomplete; question `What troubleshooting evidence is available?`;
-  options: `Config and sessions (Recommended)` — Use NAT config, routes,
-  counters, sessions, and logs; `Configuration only` — Limit conclusions to
-  static logic; `Error or trace` — Begin with observed failure evidence.
+  incomplete; question `How should incomplete troubleshooting evidence be
+  handled?`; options: `Inventory evidence (Recommended)` — Identify available
+  NAT configuration, routes, counters, sessions, and logs before diagnosis;
+  `Use supplied artifacts` — Diagnose only from supplied artifacts and limit
+  runtime conclusions; `Approved live collection` — Collect targeted read-only
+  device evidence with approval.
 
 ### A.22 `srx-policy`
 
@@ -1487,37 +1592,45 @@ a period.
   Diagnose lookup, session, or application failures; `Migration` — Convert from
   another platform.
 - `policy_release`; header `Platform`; ask when model, release, or licensing is
-  absent and affects features; question `Are the SRX model, Junos release, and
-  licenses known?`; options: `Exact details (Recommended)` — Apply supported
-  policy and services; `Read-only check` — Determine capabilities from approved
-  evidence; `Unknown` — Mark feature conclusions unresolved.
+  absent and affects features; question `How should missing platform or license
+  details be handled?`; options: `Discover first (Recommended)` — Identify the
+  model, Junos release, and licenses before feature conclusions; `Exact details
+  supplied` — Apply supported policy and services from supplied details; `Infer
+  conservatively` — Limit output to evidence-supported base policy and disclose
+  uncertainty.
 - `policy_model`; header `Policy Model`; ask when architecture is absent;
   question `Which policy architecture should be used?`; options: `Global policy
   (Recommended)` — Use global policy where it safely reduces duplication;
   `Preserve zone-pair` — Retain explicit zone organization; `Review existing` —
   Assess the supplied mix first.
 - `policy_flow`; header `Traffic`; ask when traffic intent is incomplete;
-  question `How complete are the traffic requirements?`; options: `Complete
-  intent (Recommended)` — Use source, destination, application, service, zones,
-  and purpose; `Partial intent` — Produce discovery gaps; `Migration source` —
-  Derive intent from normalized source policy.
+  question `How should incomplete traffic intent be handled?`; options: `Map
+  flow first (Recommended)` — Identify source, destination, application,
+  service, zones, and purpose before policy design; `Use supplied complete
+  intent` — Design from supplied complete traffic requirements; `Derive from
+  migration source` — Derive intent from a supplied normalized source policy.
 - `policy_nat`; header `NAT Context`; ask when NAT involvement is unclear;
-  question `Is NAT involved in the policy flow?`; options: `No NAT
-  (Recommended)` — Evaluate original addresses and routing; `NAT involved` —
-  Model the correct pre/post-NAT tuple; `Unknown` — Build a packet-flow trace.
+  question `How should uncertain NAT involvement be handled?`; options: `Trace
+  first (Recommended)` — Build a packet-flow trace before selecting policy
+  addresses; `Model supplied NAT` — Use the supplied pre- and post-NAT tuple;
+  `Model supplied no-NAT` — Use supplied original addresses and routing without
+  translation.
 - `policy_service`; header `Services`; ask when inspection services are absent;
-  question `Which inspection services are required?`; options: `Base policy
-  (Recommended)` — Start with least privilege and logging; `App-ID or AppFW` —
-  Include application enforcement; `Advanced security` — Include licensed UTM,
-  NGFW, ATP, or IPS.
+  question `Which security-service bundle should policy apply?`; options: `Base
+  policy only (Recommended)` — Apply least privilege and logging without added
+  services; `Base plus app/NAT` — Add supplied application or NAT requirements;
+  `Full inspection stack` — Include supplied licensed UTM, NGFW, ATP, or IPS
+  requirements.
 - `policy_ip`; header `IP Family`; ask when address-family scope is absent;
-  question `Which traffic families must be covered?`; options: `IPv4 and IPv6
-  (Recommended)` — Evaluate controls for both; `IPv4 only` — Report IPv6
-  exposure; `Special traffic` — Include multicast, discovery, or control-plane
-  needs.
+  question `Which traffic-scope bundle should policy cover?`; options:
+  `Dual-stack unicast (Recommended)` — Evaluate IPv4 and IPv6 unicast controls;
+  `IPv4-only unicast` — Limit policy to IPv4 unicast and report IPv6 exposure;
+  `Unicast plus special` — Add supplied multicast, discovery, or control-plane
+  requirements to unicast scope.
 - `policy_session`; header `Sessions`; ask when existing-session behavior
   matters and is absent; question `How should existing sessions be treated
-  after a policy change?`; options: `New sessions only (Recommended)` —
-  Validate newly established sessions; `Existing sessions matter` — Include
-  separately approved targeted handling; `Maintenance window` — Build
-  verification and rollback around the change.
+  after a policy change?`; options: `Leave existing sessions (Recommended)` —
+  Validate new sessions without clearing existing state; `Clear targeted
+  sessions` — Clear only separately approved matching sessions;
+  `Maintenance-window reset` — Reset broader session state only under separate
+  maintenance approval with rollback.

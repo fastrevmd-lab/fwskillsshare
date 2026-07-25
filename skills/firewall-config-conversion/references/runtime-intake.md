@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "convert_release",
       "ask_when": "Target model or release affects syntax or support and is absent.",
       "header": "Release",
-      "question": "Is the target model and software release known?",
+      "question": "How should missing target model or release details be handled?",
       "options": [
         {
-          "label": "Exact target known (Recommended)",
-          "description": "Apply release-specific capabilities."
+          "label": "Discover first (Recommended)",
+          "description": "Identify the exact target model and release before conversion."
         },
         {
-          "label": "Family known",
-          "description": "Use conservative family syntax."
+          "label": "Exact details supplied",
+          "description": "Apply capabilities for the supplied target."
         },
         {
-          "label": "Unknown target",
-          "description": "Avoid implementation-ready syntax."
+          "label": "Infer conservatively",
+          "description": "Limit output to family-safe syntax and disclose uncertainty."
         }
       ]
     },
@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "convert_base",
       "ask_when": "Existing target state is unknown.",
       "header": "Baseline",
-      "question": "Will the output be applied to an existing target configuration?",
+      "question": "How should uncertain target baseline state be handled?",
       "options": [
         {
-          "label": "Clean target (Recommended)",
-          "description": "Generate against a new target."
+          "label": "Inspect target first (Recommended)",
+          "description": "Determine whether target state exists before generating configuration."
         },
         {
-          "label": "Merge target",
-          "description": "Account for supplied existing state."
+          "label": "Use supplied clean target",
+          "description": "Generate for a supplied empty target baseline."
         },
         {
-          "label": "Unknown state",
-          "description": "Produce a conflict checklist."
+          "label": "Use supplied merge target",
+          "description": "Account for a supplied existing target configuration."
         }
       ]
     },

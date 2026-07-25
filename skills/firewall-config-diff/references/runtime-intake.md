@@ -47,19 +47,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "diff_direction",
       "ask_when": "Input roles are ambiguous.",
       "header": "Direction",
-      "question": "How should the two inputs be labeled?",
+      "question": "How should ambiguous input roles be resolved?",
       "options": [
         {
-          "label": "A base, B new (Recommended)",
-          "description": "Classify changes directionally."
+          "label": "Establish baseline first (Recommended)",
+          "description": "Determine the authoritative baseline and comparison direction before classifying changes."
         },
         {
-          "label": "Unordered peers",
-          "description": "Treat inputs equally."
+          "label": "Use supplied A-to-B",
+          "description": "Treat supplied A as baseline and B as new."
         },
         {
-          "label": "Custom roles",
-          "description": "Use roles supplied through Other."
+          "label": "Compare as peers",
+          "description": "Treat inputs as unordered and report symmetric differences."
         }
       ]
     },

@@ -123,8 +123,17 @@ Every option contains:
   choice.
 
 The first option is the recommended safe default and its label ends with
-`(Recommended)`. The native free-text `Other` path remains available for exact
-values and choices not represented in the catalog.
+`(Recommended)`. When the triggering fact is unresolved, that default must not
+assert that the missing fact is known, complete, available, valid, or verified.
+Rewrite a factual prompt as an action or workflow decision when necessary so a
+safe discovery, inventory, inspection, mapping, tracing, confirmation, or
+verification option directly answers the question.
+
+Every option set is a mutually exclusive single-select choice along one
+material axis. Do not mix evidence availability with collection method, current
+state with requested workflow, or address family with special traffic. The
+native free-text `Other` path remains available for exact values and choices
+not represented in the catalog.
 
 Each `references/runtime-intake.md` contains:
 
@@ -178,6 +187,13 @@ deterministically.
 Add `scripts/check-runtime-intake.py` and invoke it from repository validation.
 The script accepts an optional skill name for sequential RED/GREEN testing and
 validates all skills when no name is supplied.
+
+Add `scripts/check-runtime-intake-safety.py` after structural validation. It
+parses all 22 Appendix A catalogs and all 22 package catalogs, requires exact
+ordered question-object equality for every skill, resolves each semantic
+regression key exactly once, and checks the exact safe first labels and
+single-axis option tuples identified by final review. It also accepts an
+optional skill name for focused package validation.
 
 For each skill, validate:
 

@@ -47,19 +47,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mnha_release",
       "ask_when": "Node models or releases are absent.",
       "header": "Platform",
-      "question": "Are every node model and Junos release known?",
+      "question": "How should missing node model or Junos release details be handled?",
       "options": [
         {
-          "label": "Exact details (Recommended)",
+          "label": "Discover first (Recommended)",
+          "description": "Identify every node model and release before support conclusions."
+        },
+        {
+          "label": "Exact details supplied",
           "description": "Apply release-specific syntax."
         },
         {
-          "label": "Infer outputs",
-          "description": "Infer cautiously from evidence."
-        },
-        {
-          "label": "Unknown",
-          "description": "Avoid implementation-ready configuration."
+          "label": "Stop pending details",
+          "description": "Avoid implementation-ready configuration until exact details are supplied."
         }
       ]
     },
@@ -87,19 +87,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mnha_migrate",
       "ask_when": "Starting state is unclear.",
       "header": "Migration",
-      "question": "What is the starting state?",
+      "question": "How should an uncertain MNHA starting state be handled?",
       "options": [
         {
-          "label": "New deployment (Recommended)",
-          "description": "Design without legacy cluster constraints."
+          "label": "Inspect starting state (Recommended)",
+          "description": "Inventory the current HA design before choosing a workflow."
         },
         {
-          "label": "Chassis cluster",
-          "description": "Include staged migration and rollback."
+          "label": "Design supplied greenfield",
+          "description": "Design from a supplied new-deployment baseline."
         },
         {
-          "label": "Existing MNHA",
-          "description": "Audit or repair."
+          "label": "Plan supplied migration",
+          "description": "Plan migration or repair from supplied current-state evidence."
         }
       ]
     },
@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mnha_topo",
       "ask_when": "Inter-node topology is incomplete.",
       "header": "Topology",
-      "question": "What inter-node topology exists?",
+      "question": "How should incomplete inter-node topology be handled?",
       "options": [
         {
-          "label": "Symmetric links (Recommended)",
-          "description": "Use matched interfaces and direct links."
+          "label": "Map topology first (Recommended)",
+          "description": "Identify node links, interfaces, and data paths before design."
         },
         {
-          "label": "Asymmetric links",
-          "description": "Include inter-cluster data paths."
+          "label": "Use supplied symmetric map",
+          "description": "Design from supplied matched interfaces and direct links."
         },
         {
-          "label": "Unknown topology",
-          "description": "Collect diagrams."
+          "label": "Assess supplied asymmetric map",
+          "description": "Include supplied inter-cluster data paths and asymmetry."
         }
       ]
     },
@@ -127,19 +127,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mnha_service",
       "ask_when": "Stateful service scope is absent.",
       "header": "Services",
-      "question": "Which stateful services must survive failover?",
+      "question": "Which stateful service bundle must survive failover?",
       "options": [
         {
-          "label": "Firewall and NAT (Recommended)",
-          "description": "Preserve core session and NAT behavior."
+          "label": "Firewall/NAT only (Recommended)",
+          "description": "Preserve core firewall sessions and NAT state."
         },
         {
-          "label": "IPsec services",
-          "description": "Include tunnel ownership and rekey."
+          "label": "Firewall/NAT plus IPsec",
+          "description": "Also preserve tunnel ownership and rekey behavior."
         },
         {
-          "label": "Advanced services",
-          "description": "Include DHCP or security services."
+          "label": "Advanced/mixed bundle",
+          "description": "Include supplied DHCP or advanced security-service requirements."
         }
       ]
     },

@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "audit_evidence",
       "ask_when": "The operational evidence availability is unclear.",
       "header": "Evidence",
-      "question": "What evidence can support the audit?",
+      "question": "How should uncertain operational evidence be handled?",
       "options": [
         {
-          "label": "Config and telemetry (Recommended)",
-          "description": "Combine configuration with hit counts, logs, and state."
+          "label": "Inventory evidence (Recommended)",
+          "description": "Identify available configuration and telemetry coverage before analysis."
         },
         {
-          "label": "Configuration only",
-          "description": "Perform static analysis and label telemetry dependencies."
+          "label": "Use supplied artifacts",
+          "description": "Analyze only supplied artifacts and label runtime dependencies."
         },
         {
-          "label": "Live read-only",
-          "description": "Collect approved read-only device evidence."
+          "label": "Approved live collection",
+          "description": "Collect targeted read-only device evidence with approval."
         }
       ]
     },

@@ -47,19 +47,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "policy_release",
       "ask_when": "The model, release, or licensing is absent and affects features.",
       "header": "Platform",
-      "question": "Are the SRX model, Junos release, and licenses known?",
+      "question": "How should missing platform or license details be handled?",
       "options": [
         {
-          "label": "Exact details (Recommended)",
-          "description": "Apply supported policy and services."
+          "label": "Discover first (Recommended)",
+          "description": "Identify the model, Junos release, and licenses before feature conclusions."
         },
         {
-          "label": "Read-only check",
-          "description": "Determine capabilities from approved evidence."
+          "label": "Exact details supplied",
+          "description": "Apply supported policy and services from supplied details."
         },
         {
-          "label": "Unknown",
-          "description": "Mark feature conclusions unresolved."
+          "label": "Infer conservatively",
+          "description": "Limit output to evidence-supported base policy and disclose uncertainty."
         }
       ]
     },
@@ -87,19 +87,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "policy_flow",
       "ask_when": "The traffic intent is incomplete.",
       "header": "Traffic",
-      "question": "How complete are the traffic requirements?",
+      "question": "How should incomplete traffic intent be handled?",
       "options": [
         {
-          "label": "Complete intent (Recommended)",
-          "description": "Use source, destination, application, service, zones, and purpose."
+          "label": "Map flow first (Recommended)",
+          "description": "Identify source, destination, application, service, zones, and purpose before policy design."
         },
         {
-          "label": "Partial intent",
-          "description": "Produce discovery gaps."
+          "label": "Use supplied complete intent",
+          "description": "Design from supplied complete traffic requirements."
         },
         {
-          "label": "Migration source",
-          "description": "Derive intent from normalized source policy."
+          "label": "Derive from migration source",
+          "description": "Derive intent from a supplied normalized source policy."
         }
       ]
     },
@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "policy_nat",
       "ask_when": "NAT involvement is unclear.",
       "header": "NAT Context",
-      "question": "Is NAT involved in the policy flow?",
+      "question": "How should uncertain NAT involvement be handled?",
       "options": [
         {
-          "label": "No NAT (Recommended)",
-          "description": "Evaluate original addresses and routing."
+          "label": "Trace first (Recommended)",
+          "description": "Build a packet-flow trace before selecting policy addresses."
         },
         {
-          "label": "NAT involved",
-          "description": "Model the correct pre/post-NAT tuple."
+          "label": "Model supplied NAT",
+          "description": "Use the supplied pre- and post-NAT tuple."
         },
         {
-          "label": "Unknown",
-          "description": "Build a packet-flow trace."
+          "label": "Model supplied no-NAT",
+          "description": "Use supplied original addresses and routing without translation."
         }
       ]
     },
@@ -127,19 +127,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "policy_service",
       "ask_when": "Inspection services are absent.",
       "header": "Services",
-      "question": "Which inspection services are required?",
+      "question": "Which security-service bundle should policy apply?",
       "options": [
         {
-          "label": "Base policy (Recommended)",
-          "description": "Start with least privilege and logging."
+          "label": "Base policy only (Recommended)",
+          "description": "Apply least privilege and logging without added services."
         },
         {
-          "label": "App-ID or AppFW",
-          "description": "Include application enforcement."
+          "label": "Base plus app/NAT",
+          "description": "Add supplied application or NAT requirements."
         },
         {
-          "label": "Advanced security",
-          "description": "Include licensed UTM, NGFW, ATP, or IPS."
+          "label": "Full inspection stack",
+          "description": "Include supplied licensed UTM, NGFW, ATP, or IPS requirements."
         }
       ]
     },
@@ -147,19 +147,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "policy_ip",
       "ask_when": "Address-family scope is absent.",
       "header": "IP Family",
-      "question": "Which traffic families must be covered?",
+      "question": "Which traffic-scope bundle should policy cover?",
       "options": [
         {
-          "label": "IPv4 and IPv6 (Recommended)",
-          "description": "Evaluate controls for both."
+          "label": "Dual-stack unicast (Recommended)",
+          "description": "Evaluate IPv4 and IPv6 unicast controls."
         },
         {
-          "label": "IPv4 only",
-          "description": "Report IPv6 exposure."
+          "label": "IPv4-only unicast",
+          "description": "Limit policy to IPv4 unicast and report IPv6 exposure."
         },
         {
-          "label": "Special traffic",
-          "description": "Include multicast, discovery, or control-plane needs."
+          "label": "Unicast plus special",
+          "description": "Add supplied multicast, discovery, or control-plane requirements to unicast scope."
         }
       ]
     },
@@ -170,16 +170,16 @@ platform or framework basis, evidence quality, then output preference.
       "question": "How should existing sessions be treated after a policy change?",
       "options": [
         {
-          "label": "New sessions only (Recommended)",
-          "description": "Validate newly established sessions."
+          "label": "Leave existing sessions (Recommended)",
+          "description": "Validate new sessions without clearing existing state."
         },
         {
-          "label": "Existing sessions matter",
-          "description": "Include separately approved targeted handling."
+          "label": "Clear targeted sessions",
+          "description": "Clear only separately approved matching sessions."
         },
         {
-          "label": "Maintenance window",
-          "description": "Build verification and rollback around the change."
+          "label": "Maintenance-window reset",
+          "description": "Reset broader session state only under separate maintenance approval with rollback."
         }
       ]
     }
