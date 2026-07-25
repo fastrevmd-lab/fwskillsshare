@@ -1133,17 +1133,6 @@ class MarkdownAnalysis:
                 after_completed_reference = True
             self._link_reference = None
 
-        if not same_paragraph and logical.startswith("    "):
-            self._append_logical_line(
-                source_start=source_start,
-                raw_line=raw_line,
-                masked_line=masked_line,
-                block_content=block_content,
-                parsed=parsed,
-                block_kind="indented-code",
-            )
-            return
-
         if not same_paragraph:
             indentation = len(logical) - len(logical.lstrip(" "))
             candidate = logical[indentation:] if indentation <= 3 else ""
@@ -1216,6 +1205,17 @@ class MarkdownAnalysis:
             )
             same_paragraph = True
 
+        if not same_paragraph and logical.startswith("    "):
+            self._append_logical_line(
+                source_start=source_start,
+                raw_line=raw_line,
+                masked_line=masked_line,
+                block_content=block_content,
+                parsed=parsed,
+                block_kind="indented-code",
+            )
+            return
+
         atx_match = ATX_HEADING_RE.match(logical)
         if atx_match is not None:
             level = len(atx_match.group("marker"))
@@ -1247,32 +1247,34 @@ class MarkdownAnalysis:
             and SETEXT_UNDERLINE_RE.fullmatch(logical) is not None
         ):
             if not self._paragraph.lines:
+                if not self._is_thematic_break(logical):
+                    line = self._append_logical_line(
+                        source_start=source_start,
+                        raw_line=raw_line,
+                        masked_line=masked_line,
+                        block_content=block_content,
+                        parsed=parsed,
+                        block_kind="paragraph",
+                    )
+                    self._paragraph.lines.append(line.content)
+                    return
+            else:
+                level = 1 if logical.lstrip().startswith("=") else 2
                 line = self._append_logical_line(
                     source_start=source_start,
                     raw_line=raw_line,
                     masked_line=masked_line,
                     block_content=block_content,
                     parsed=parsed,
-                    block_kind="paragraph",
+                    block_kind="setext-underline",
+                    heading_level=level,
                 )
-                self._paragraph.lines.append(line.content)
+                self._record_setext_heading(
+                    source_end=line.source_end,
+                    underline=logical,
+                )
+                self._close_paragraph()
                 return
-            level = 1 if logical.lstrip().startswith("=") else 2
-            line = self._append_logical_line(
-                source_start=source_start,
-                raw_line=raw_line,
-                masked_line=masked_line,
-                block_content=block_content,
-                parsed=parsed,
-                block_kind="setext-underline",
-                heading_level=level,
-            )
-            self._record_setext_heading(
-                source_end=line.source_end,
-                underline=logical,
-            )
-            self._close_paragraph()
-            return
 
         if self._is_thematic_break(logical):
             self._append_logical_line(

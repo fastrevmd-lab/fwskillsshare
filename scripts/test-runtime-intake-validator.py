@@ -761,7 +761,7 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
     def test_completed_reference_setext_opportunity_becomes_paragraph(
         self,
     ) -> None:
-        markers = ("-", "--", "---", "---  ", "---\t")
+        markers = ("-", "--")
 
         def wrap(lines: tuple[str, ...], container: str) -> str:
             if container == "quote":
@@ -792,6 +792,130 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                         VALIDATOR.validate_skill(
                             STANDARD_PROBE_PATH,
                             VALID_SKILL + "\n" + text,
+                        ),
+                        [],
+                    )
+
+    def test_completed_reference_preserves_thematic_break_precedence(
+        self,
+    ) -> None:
+        markers = ("---", "---  ", "---\t")
+
+        def wrap(
+            lines: tuple[str, ...],
+            container: str,
+            ending: str,
+        ) -> str:
+            if container == "quote":
+                return ending.join(f"> {line}" for line in lines) + ending
+            if container == "list":
+                return (
+                    f"- {lines[0]}{ending}"
+                    + ending.join(f"  {line}" for line in lines[1:])
+                    + ending
+                )
+            return ending.join(lines) + ending
+
+        for marker in markers:
+            for container in ("top-level", "quote", "list"):
+                for ending in ("\n", "\r\n"):
+                    with self.subTest(
+                        marker=repr(marker),
+                        container=container,
+                        ending=repr(ending),
+                    ):
+                        text = wrap(
+                            (
+                                "[foo]: /url",
+                                marker,
+                                "Runtime intake",
+                                "---",
+                            ),
+                            container,
+                            ending,
+                        )
+                        analysis = VALIDATOR.analyze_markdown(text)
+                        self.assertEqual(
+                            analysis.lines[1].block_kind,
+                            "thematic-break",
+                        )
+                        heading = analysis.headings[-1]
+                        self.assertEqual(
+                            (heading.level, heading.content, heading.style),
+                            (2, "Runtime intake", "setext"),
+                        )
+                        self.assert_skill_error(
+                            VALID_SKILL + "\n" + text,
+                            "expected exactly one '## Runtime intake' section",
+                        )
+                        self.assert_has_error(
+                            render_reference() + "\n" + text.replace(
+                                "Runtime intake",
+                                "When to ask",
+                            ),
+                            "expected exactly one active '## When to ask' heading",
+                        )
+
+    def test_completed_reference_keeps_indented_paragraph_continuation(
+        self,
+    ) -> None:
+        def wrap(
+            lines: tuple[str, ...],
+            container: str,
+            ending: str,
+        ) -> str:
+            if container == "quote":
+                return ending.join(f"> {line}" for line in lines) + ending
+            if container == "list":
+                return (
+                    f"- {lines[0]}{ending}"
+                    + ending.join(f"  {line}" for line in lines[1:])
+                    + ending
+                )
+            return ending.join(lines) + ending
+
+        for container in ("top-level", "quote", "list"):
+            for ending in ("\n", "\r\n"):
+                with self.subTest(
+                    container=container,
+                    ending=repr(ending),
+                ):
+                    text = wrap(
+                        (
+                            "[foo]: /url",
+                            "    extra",
+                            "Runtime intake",
+                            "---",
+                        ),
+                        container,
+                        ending,
+                    )
+                    analysis = VALIDATOR.analyze_markdown(text)
+                    heading = analysis.headings[-1]
+                    self.assertEqual(
+                        (heading.level, heading.content, heading.style),
+                        (2, "extra Runtime intake", "setext"),
+                    )
+                    self.assertEqual(
+                        analysis.lines[1].block_kind,
+                        "paragraph",
+                    )
+                    self.assertEqual(
+                        VALIDATOR.validate_skill(
+                            STANDARD_PROBE_PATH,
+                            VALID_SKILL + "\n" + text,
+                        ),
+                        [],
+                    )
+                    self.assertEqual(
+                        VALIDATOR.validate_catalog(
+                            Path("runtime-intake.md"),
+                            render_reference()
+                            + "\n"
+                            + text.replace(
+                                "Runtime intake",
+                                "When to ask",
+                            ),
                         ),
                         [],
                     )
