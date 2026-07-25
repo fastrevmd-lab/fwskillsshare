@@ -308,6 +308,95 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                     f"missing exact {expected_name} language",
                 )
 
+    def test_rejects_reference_headings_out_of_canonical_order(self) -> None:
+        reference = render_reference()
+        when_start = reference.index("## When to ask")
+        tool_start = reference.index("## Tool adaptation")
+        catalog_start = reference.index("## Question catalog")
+        mutant = (
+            reference[:when_start]
+            + reference[tool_start:catalog_start]
+            + reference[when_start:tool_start]
+            + reference[catalog_start:]
+        )
+
+        self.assert_has_error(
+            mutant,
+            "required headings are not in canonical order",
+        )
+
+    def test_rejects_adaptation_clauses_outside_tool_section(self) -> None:
+        reference = render_reference()
+        mutant = reference.replace(
+            f"Ask only unresolved material questions.\n\n"
+            f"## Tool adaptation\n\n{TOOL_ADAPTATION}",
+            f"Ask only unresolved material questions.\n\n{TOOL_ADAPTATION}\n\n"
+            "## Tool adaptation\n\nTool-specific projections follow.",
+            1,
+        )
+
+        self.assert_has_error(
+            mutant,
+            "Claude projection must be inside '## Tool adaptation'",
+        )
+
+    def test_rejects_json_catalog_outside_catalog_section(self) -> None:
+        reference = render_reference()
+        catalog_start = reference.index("```json")
+        catalog_end = reference.index("\n```", catalog_start) + len("\n```")
+        catalog = reference[catalog_start:catalog_end]
+        without_catalog = (
+            reference[:catalog_start] + reference[catalog_end:]
+        )
+        mutant = without_catalog.replace(
+            "## Question catalog",
+            f"{catalog}\n\n## Question catalog",
+            1,
+        )
+
+        self.assert_has_error(
+            mutant,
+            "JSON catalog must be inside '## Question catalog'",
+        )
+
+    def test_rejects_json_catalog_nested_in_outer_fence(self) -> None:
+        reference = render_reference()
+        catalog_start = reference.index("```json")
+        catalog_end = reference.index("\n```", catalog_start) + len("\n```")
+        catalog = reference[catalog_start:catalog_end]
+        mutant = (
+            reference[:catalog_start]
+            + f"````markdown\n{catalog}\n````"
+            + reference[catalog_end:]
+        )
+
+        self.assert_has_error(
+            mutant,
+            "expected exactly one active top-level JSON catalog",
+        )
+
+    def test_rejects_container_nested_reference_heading_duplicates(
+        self,
+    ) -> None:
+        prefixes = (
+            "- ",
+            "+ ",
+            "* ",
+            "1. ",
+            "2) ",
+            "> ",
+            "> - ",
+            "- > ",
+            "> 1. ",
+        )
+        for prefix in prefixes:
+            with self.subTest(prefix=prefix):
+                mutant = render_reference() + f"\n{prefix}## When to ask\n"
+                self.assert_has_error(
+                    mutant,
+                    "expected exactly one active '## When to ask' heading",
+                )
+
     def test_all_skill_runtime_sections_satisfy_connected_contract(self) -> None:
         skill_files = VALIDATOR.selected_skill_files(None)
         self.assertEqual(len(skill_files), 22)
@@ -413,6 +502,68 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                         mutant,
                         "expected exactly one '## Runtime intake' section",
                     )
+
+    def test_accepts_multiline_setext_heading_with_runtime_suffix(self) -> None:
+        mutant = (
+            "Actual heading prefix\n"
+            "Runtime intake\n"
+            "---\n\n"
+            f"{VALID_SKILL}"
+        )
+
+        self.assertEqual(
+            VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+            [],
+        )
+
+    def test_rejects_runtime_duplicates_inside_active_containers(self) -> None:
+        prefixes = (
+            "- ",
+            "+ ",
+            "* ",
+            "1. ",
+            "2) ",
+            "> ",
+            "> - ",
+            "- > ",
+            "> 1. ",
+            "1. > ",
+        )
+        headings = ("## Runtime intake", "## Runtime intake ###")
+        for prefix in prefixes:
+            for heading in headings:
+                with self.subTest(prefix=prefix, heading=heading):
+                    mutant = (
+                        f"{VALID_SKILL}\n"
+                        f"{prefix}{heading}\n\n"
+                        "Runtime intake is optional.\n"
+                    )
+                    self.assert_skill_error(
+                        mutant,
+                        "expected exactly one '## Runtime intake' section",
+                    )
+
+    def test_rejects_setext_runtime_duplicates_inside_containers(self) -> None:
+        cases = (
+            ("- Runtime intake", "  ---"),
+            ("1. Runtime intake", "   ---"),
+            ("2) Runtime intake", "   ==="),
+            ("> Runtime intake", "> ---"),
+            ("> - Runtime intake", ">   ---"),
+            ("- > Runtime intake", "  > ---"),
+        )
+        for content, underline in cases:
+            with self.subTest(content=content):
+                mutant = (
+                    f"{VALID_SKILL}\n"
+                    f"{content}\n"
+                    f"{underline}\n\n"
+                    "Runtime intake is optional.\n"
+                )
+                self.assert_skill_error(
+                    mutant,
+                    "expected exactly one '## Runtime intake' section",
+                )
 
     def test_rejects_noncanonical_setext_primary_runtime_heading(self) -> None:
         for underline in ("---", "==="):
@@ -731,6 +882,22 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                 self.assertEqual(
                     VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
                     [],
+                )
+
+    def test_rejects_raw_html_inside_active_containers(self) -> None:
+        cases = (
+            "- <div>",
+            "1. <script>",
+            "> <style>",
+            "> - <runtime-wrapper>",
+            "- > </runtime-wrapper>",
+            "2) <![CDATA[",
+        )
+        for opener in cases:
+            with self.subTest(opener=opener):
+                self.assert_skill_error(
+                    f"{VALID_SKILL}\n{opener}\n",
+                    "raw HTML block syntax is not allowed",
                 )
 
     def test_non_one_ordered_fence_markers_do_not_interrupt_paragraphs(

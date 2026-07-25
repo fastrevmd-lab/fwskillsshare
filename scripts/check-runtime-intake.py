@@ -11,18 +11,22 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = ROOT / "skills"
-CATALOG_RE = re.compile(r"```json\n(?P<payload>.*?)\n```", re.DOTALL)
+CATALOG_RE = re.compile(
+    r"^```json[ \t]*\r?\n(?P<payload>.*?)\r?\n```[ \t]*\r?$",
+    re.MULTILINE | re.DOTALL,
+)
 RUNTIME_ATX_HEADING_RE = re.compile(
     r"^(?P<indent> {0,3})##(?P<spacing>[ \t]+)Runtime intake"
     r"(?P<closing>[ \t]+#+)?[ \t]*\r?$",
     re.MULTILINE,
 )
-RUNTIME_SETEXT_HEADING_RE = re.compile(
-    r"^ {0,3}Runtime intake[ \t]*\r?\n"
-    r" {0,3}(?:=+|-+)[ \t]*\r?$",
+RUNTIME_SETEXT_CONTENT_RE = re.compile(r"^ {0,3}Runtime intake[ \t]*$")
+SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(?:=+|-+)[ \t]*$")
+SECTION_HEADING_RE = re.compile(r"^ {0,3}## [^\r\n]+\r?$", re.MULTILINE)
+REFERENCE_SECTION_BOUNDARY_RE = re.compile(
+    r"^ {0,3}#{1,2}(?:[ \t]+|(?=\r?$))[^\r\n]*\r?$",
     re.MULTILINE,
 )
-SECTION_HEADING_RE = re.compile(r"^ {0,3}## [^\r\n]+\r?$", re.MULTILINE)
 FENCE_LINE_RE = re.compile(
     r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
     r"(?P<ending>\r\n|\n|\r)?\Z"
@@ -408,28 +412,133 @@ def mask_inactive_markdown(text: str) -> str:
     return "".join(masked_lines)
 
 
+def strip_active_container_prefix(line: str) -> tuple[str, tuple[str, ...]]:
+    """Remove active blockquote/list markers from one line for block probes."""
+    cursor = 0
+    markers: list[str] = []
+    content_end = len(line.rstrip("\r\n"))
+
+    while cursor < content_end:
+        marker_start = cursor
+        indentation = 0
+        while (
+            indentation < 3
+            and cursor < content_end
+            and line[cursor] == " "
+        ):
+            cursor += 1
+            indentation += 1
+
+        if cursor < content_end and line[cursor] == ">":
+            cursor += 1
+            if cursor < content_end and line[cursor] in " \t":
+                cursor += 1
+            markers.append("quote")
+            continue
+
+        list_match = re.match(
+            r"(?:[-+*]|[0-9]{1,9}[.)])(?P<spacing>[ \t]{1,4})(?![ \t])",
+            line[cursor:content_end],
+        )
+        if list_match is not None:
+            cursor += list_match.end()
+            markers.append("list")
+            continue
+
+        cursor = marker_start
+        break
+
+    if not markers:
+        return line, ()
+    return line[cursor:], tuple(markers)
+
+
+def normalize_active_containers(
+    active_markdown: str,
+) -> tuple[str, list[tuple[str, ...]]]:
+    """Expose active Markdown blocks nested in list or quote containers."""
+    normalized_lines: list[str] = []
+    marker_signatures: list[tuple[str, ...]] = []
+    for line in active_markdown.splitlines(keepends=True):
+        normalized, markers = strip_active_container_prefix(line)
+        normalized_lines.append(normalized)
+        marker_signatures.append(markers)
+    return "".join(normalized_lines), marker_signatures
+
+
+def count_runtime_setext_headings(active_markdown: str) -> int:
+    """Count exact Runtime intake Setext headings by complete paragraph."""
+    normalized, marker_signatures = normalize_active_containers(active_markdown)
+    lines = normalized.splitlines()
+    count = 0
+    for index in range(1, len(lines)):
+        if SETEXT_UNDERLINE_RE.fullmatch(lines[index]) is None:
+            continue
+        if RUNTIME_SETEXT_CONTENT_RE.fullmatch(lines[index - 1]) is None:
+            continue
+
+        previous_index = index - 2
+        if previous_index >= 0 and lines[previous_index].strip():
+            content_markers = marker_signatures[index - 1]
+            previous_markers = marker_signatures[previous_index]
+            begins_new_container = (
+                bool(content_markers)
+                and content_markers != previous_markers
+            )
+            previous_is_block_boundary = bool(
+                ATX_BLOCK_BOUNDARY_RE.match(lines[previous_index])
+            )
+            if not begins_new_container and not previous_is_block_boundary:
+                continue
+        count += 1
+    return count
+
+
+def active_top_level_catalog_matches(text: str) -> list[re.Match[str]]:
+    """Return column-zero JSON fences whose opener is active Markdown."""
+    active_matches: list[re.Match[str]] = []
+    sentinel = "CATJSON"
+    for match in CATALOG_RE.finditer(text):
+        opener_start = match.start()
+        probe = (
+            text[:opener_start]
+            + sentinel
+            + text[opener_start + len(sentinel) :]
+        )
+        active_probe = mask_inactive_markdown(probe)
+        if (
+            active_probe[opener_start : opener_start + len(sentinel)]
+            == sentinel
+        ):
+            active_matches.append(match)
+    return active_matches
+
+
 def extract_runtime_section(path: Path, text: str) -> tuple[str | None, list[str]]:
     active_markdown = mask_inactive_markdown(text)
-    runtime_headings = [
-        ("atx", match)
-        for match in RUNTIME_ATX_HEADING_RE.finditer(active_markdown)
-    ]
-    runtime_headings.extend(
-        ("setext", match)
-        for match in RUNTIME_SETEXT_HEADING_RE.finditer(active_markdown)
+    normalized_containers, _marker_signatures = normalize_active_containers(
+        active_markdown
     )
-    runtime_headings.sort(key=lambda item: item[1].start())
-    if len(runtime_headings) != 1:
+    equivalent_atx = list(
+        RUNTIME_ATX_HEADING_RE.finditer(normalized_containers)
+    )
+    equivalent_setext_count = count_runtime_setext_headings(active_markdown)
+    if len(equivalent_atx) + equivalent_setext_count != 1:
         return None, [f"{path}: expected exactly one '## Runtime intake' section"]
 
-    heading_kind, heading_match = runtime_headings[0]
-    if heading_kind == "atx" and heading_match.group("indent"):
+    active_atx = list(RUNTIME_ATX_HEADING_RE.finditer(active_markdown))
+    if len(active_atx) != 1:
+        return None, [
+            f"{path}: primary '## Runtime intake' heading must use canonical "
+            "column-zero ATX form"
+        ]
+    heading_match = active_atx[0]
+    if heading_match.group("indent"):
         return None, [
             f"{path}: primary '## Runtime intake' heading must start at column zero"
         ]
     if (
-        heading_kind != "atx"
-        or heading_match.group("spacing") != " "
+        heading_match.group("spacing") != " "
         or heading_match.group("closing") is not None
     ):
         return None, [
@@ -448,7 +557,13 @@ def validate_ambiguous_markup(path: Path, text: str) -> list[str]:
     if "<!--" in text or "-->" in text:
         errors.append(f"{path}: HTML comment delimiters are not allowed")
     active_markdown = mask_inactive_markdown(text)
-    if any(pattern.search(active_markdown) for pattern in RAW_HTML_BLOCK_OPENERS):
+    normalized_containers, _marker_signatures = normalize_active_containers(
+        active_markdown
+    )
+    if any(
+        pattern.search(normalized_containers)
+        for pattern in RAW_HTML_BLOCK_OPENERS
+    ):
         errors.append(f"{path}: raw HTML block syntax is not allowed")
     return errors
 
@@ -471,35 +586,97 @@ def validate_skill(path: Path, text: str) -> list[str]:
 def validate_catalog(path: Path, text: str) -> list[str]:
     errors: list[str] = []
     active_markdown = mask_inactive_markdown(text)
+    normalized_containers, _marker_signatures = normalize_active_containers(
+        active_markdown
+    )
     if "<!--" in text or "-->" in text:
         errors.append(f"{path}: HTML comment delimiters are not allowed")
-    if any(pattern.search(active_markdown) for pattern in RAW_HTML_BLOCK_OPENERS):
+    if any(
+        pattern.search(normalized_containers)
+        for pattern in RAW_HTML_BLOCK_OPENERS
+    ):
         errors.append(f"{path}: raw HTML block syntax is not allowed")
+
+    canonical_heading_matches: dict[str, re.Match[str]] = {}
     for heading in REQUIRED_REFERENCE_HEADINGS:
-        heading_matches = re.findall(
-            rf"^{re.escape(heading)}[ \t]*\r?$",
-            active_markdown,
-            re.MULTILINE,
+        heading_matches = list(
+            re.finditer(
+                rf"^{re.escape(heading)}[ \t]*\r?$",
+                active_markdown,
+                re.MULTILINE,
+            )
+        )
+        equivalent_matches = list(
+            re.finditer(
+                rf"^{re.escape(heading)}[ \t]*\r?$",
+                normalized_containers,
+                re.MULTILINE,
+            )
         )
         if not heading_matches:
             errors.append(f"{path}: missing {heading!r}")
-        elif len(heading_matches) != 1:
+        elif len(heading_matches) != 1 or len(equivalent_matches) != 1:
             errors.append(
                 f"{path}: expected exactly one active {heading!r} heading"
             )
+        else:
+            canonical_heading_matches[heading] = heading_matches[0]
+
+    if len(canonical_heading_matches) == len(REQUIRED_REFERENCE_HEADINGS):
+        heading_positions = [
+            canonical_heading_matches[heading].start()
+            for heading in REQUIRED_REFERENCE_HEADINGS
+        ]
+        if heading_positions != sorted(heading_positions):
+            errors.append(
+                f"{path}: required headings are not in canonical order"
+            )
+
+    tool_heading = canonical_heading_matches.get("## Tool adaptation")
+    catalog_heading = canonical_heading_matches.get("## Question catalog")
+
     required_adaptation = (
         ("Claude projection", CLAUDE_ADAPTATION),
         ("Codex projection", CODEX_ADAPTATION),
         ("fallback and free-text Other", FALLBACK_ADAPTATION),
     )
+    tool_section = ""
+    if tool_heading is not None:
+        tool_start = tool_heading.end()
+        next_heading = REFERENCE_SECTION_BOUNDARY_RE.search(
+            active_markdown,
+            tool_start,
+        )
+        tool_end = next_heading.start() if next_heading else len(active_markdown)
+        tool_section = active_markdown[tool_start:tool_end]
     for name, required_text in required_adaptation:
         if required_text not in active_markdown:
             errors.append(f"{path}: missing exact {name} language")
+        elif required_text not in tool_section:
+            errors.append(
+                f"{path}: {name} must be inside '## Tool adaptation'"
+            )
 
-    matches = list(CATALOG_RE.finditer(text))
+    matches = active_top_level_catalog_matches(text)
     if len(matches) != 1:
-        errors.append(f"{path}: expected exactly one JSON catalog")
+        errors.append(
+            f"{path}: expected exactly one active top-level JSON catalog"
+        )
         return errors
+    if catalog_heading is not None:
+        catalog_start = catalog_heading.end()
+        next_heading = REFERENCE_SECTION_BOUNDARY_RE.search(
+            active_markdown,
+            catalog_start,
+        )
+        catalog_end = (
+            next_heading.start() if next_heading else len(active_markdown)
+        )
+        if not catalog_start <= matches[0].start() < catalog_end:
+            errors.append(
+                f"{path}: JSON catalog must be inside "
+                "'## Question catalog'"
+            )
 
     try:
         payload = json.loads(
