@@ -22,9 +22,16 @@ PLAN_PATH = (
 )
 SKILLS_DIR = ROOT / "skills"
 APPENDIX_MARKER = "## Appendix A: Exact question catalogs"
-PLAN_SECTION_CANDIDATE_RE = re.compile(
-    r"^(?P<heading> {0,3}###[ \t]+A\.(?P<number>\d+)[ \t]+"
-    r"`(?P<skill>[^`\r\n]+)`(?:[ \t]+#+)?[ \t]*\r?)$",
+PLAN_SECTION_LOOKALIKE_RE = re.compile(
+    r"^(?P<heading> {0,3}###[ \t]+A\.[^\r\n]*)\r?$",
+    re.MULTILINE,
+)
+PLAN_SECTION_IDENTITY_RE = re.compile(
+    r"^ {0,3}###[ \t]+A\.(?P<number>\d+)[ \t]+"
+    r"`(?P<skill>[^`\r\n]+)`"
+)
+PLAN_SECTION_RE = re.compile(
+    r"^### A\.(?P<number>\d+) `(?P<skill>[^`\r\n]+)`\r?$",
     re.MULTILINE,
 )
 PLAN_ROW_RE = re.compile(r"^- `(?P<id>[a-z][a-z0-9_]*)`; ", re.MULTILINE)
@@ -585,6 +592,11 @@ def parse_plan_row(skill: str, question_id: str, raw_row: str) -> dict[str, obje
 def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
     text = PLAN_PATH.read_text(encoding="utf-8")
     active_markdown = STRUCTURAL_VALIDATOR.mask_inactive_markdown(text)
+    if any(
+        pattern.search(active_markdown)
+        for pattern in STRUCTURAL_VALIDATOR.RAW_HTML_BLOCK_OPENERS
+    ):
+        raise ValueError(f"{PLAN_PATH}: raw HTML block syntax is not allowed")
     marker_matches = list(
         re.finditer(
             rf"^{re.escape(APPENDIX_MARKER)}[ \t]*\r?$",
@@ -597,26 +609,27 @@ def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
     appendix_start = marker_matches[0].start()
     appendix = text[appendix_start:]
     active_appendix = active_markdown[appendix_start:]
-    sections = list(PLAN_SECTION_CANDIDATE_RE.finditer(active_appendix))
+    lookalikes = list(PLAN_SECTION_LOOKALIKE_RE.finditer(active_appendix))
     catalogs: dict[str, list[dict[str, object]]] = {}
 
     seen_skills: set[str] = set()
-    for section in sections:
-        skill = section.group("skill")
+    for lookalike in lookalikes:
+        identity = PLAN_SECTION_IDENTITY_RE.match(lookalike.group("heading"))
+        if identity is None:
+            continue
+        skill = identity.group("skill")
         if skill in seen_skills:
             raise ValueError(
                 f"{PLAN_PATH}: duplicate Appendix A skill section {skill!r}"
             )
         seen_skills.add(skill)
-    for section in sections:
-        canonical_heading = (
-            f"### A.{section.group('number')} `{section.group('skill')}`"
-        )
-        if section.group("heading").rstrip("\r") != canonical_heading:
+    for lookalike in lookalikes:
+        if PLAN_SECTION_RE.fullmatch(lookalike.group("heading")) is None:
             raise ValueError(
                 f"{PLAN_PATH}: noncanonical Appendix A heading "
-                f"{section.group('heading').rstrip()!r}"
+                f"{lookalike.group('heading').rstrip()!r}"
             )
+    sections = list(PLAN_SECTION_RE.finditer(active_appendix))
     if len(sections) != len(EXPECTED_SKILLS):
         raise ValueError(
             f"{PLAN_PATH}: expected exactly {len(EXPECTED_SKILLS)} Appendix A "

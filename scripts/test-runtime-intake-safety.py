@@ -352,6 +352,8 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
         cases = (
             "### A.01 `cis-controls-ngfw-compliance` ###",
             "### A.1 `cis-controls-ngfw-compliance` ###",
+            "### A.01 cis-controls-ngfw-compliance",
+            "### A.1",
         )
         for replacement in cases:
             with self.subTest(heading=replacement):
@@ -370,6 +372,38 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                     SAFETY.parse_plan_catalogs()
                 self.tearDown()
                 self.setUp()
+
+    def test_trailing_extra_appendix_duplicate_is_rejected(self) -> None:
+        self.use_temp_catalogs()
+        text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+        duplicate = "### A.1 `cis-controls-ngfw-compliance` extra"
+        SAFETY.PLAN_PATH.write_text(
+            text.rstrip() + f"\n\n{duplicate}\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(
+            ValueError,
+            "duplicate Appendix A skill section",
+        ):
+            SAFETY.parse_plan_catalogs()
+
+    def test_raw_html_wrapped_appendix_is_rejected(self) -> None:
+        self.use_temp_catalogs()
+        text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+        text = text.replace(
+            SAFETY.APPENDIX_MARKER,
+            f"<div>\n{SAFETY.APPENDIX_MARKER}",
+            1,
+        )
+        SAFETY.PLAN_PATH.write_text(
+            text.rstrip() + "\n</div>\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(
+            ValueError,
+            "raw HTML block syntax is not allowed",
+        ):
+            SAFETY.parse_plan_catalogs()
 
     def test_closing_hash_appendix_duplicate_is_rejected(self) -> None:
         self.use_temp_catalogs()
