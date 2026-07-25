@@ -225,14 +225,18 @@ For each skill, validate:
   `request_user_input`;
 - before section extraction, the validator conservatively rejects either HTML
   comment delimiter (`<!--` or `-->`) anywhere in `SKILL.md`, including escaped
-  text and inline code, and rejects case-insensitive raw HTML type-1
-  `pre`/`script`/`style`/`textarea` opener or closer lines indented by zero to
-  three spaces;
-- only after those ambiguity checks, the validator masks standard backtick or
-  tilde fenced-code regions without changing length, newline positions, or
-  offsets; runtime and following section headings are discovered only in that
-  active-Markdown mask, then the original section is sliced by the preserved
-  offsets;
+  text, inline code, and fenced code;
+- the validator then masks standard backtick or tilde fenced-code regions
+  without changing length, newline positions, or offsets and rejects every
+  CommonMark 0.31.2 raw HTML block opener family in the resulting active
+  Markdown: case-insensitive type 1 `pre`/`script`/`style`/`textarea` tags,
+  processing instructions, declarations, CDATA, the complete type 6 block-tag
+  list with its specified boundary, and complete generic type 7 opening or
+  closing tag lines, all with at most three leading spaces;
+- raw HTML block syntax inside fenced code and inline placeholder tags that do
+  not meet a block-start rule remain permitted; runtime and following section
+  headings are discovered only in the same active-Markdown mask, then the
+  original section is sliced by the preserved offsets;
 - the section-scoped validator normalizes whitespace across that complete
   original section and requires equality to the approved standard template or
   the skill-selected `srx-mnha`/`srx-policy` compact template;
@@ -244,12 +248,12 @@ For each skill, validate:
   choices and free-text `Other` in plain-text fallback, and forbids
   generic-checklist substitution;
 - conservative ambiguity checks reject complete runtime regions hidden in HTML
-  comments or raw HTML type-1 blocks before heading discovery and cannot be
-  bypassed with escaped or inline-code comment delimiters; active-heading
-  discovery rejects a complete region in a code fence, while complete-section
-  equality rejects inactive fence wrappers inside an active section, extra or
-  contradictory prose, missing approved text, and duplicate active runtime
-  sections while permitting whitespace-only variation;
+  comments or any CommonMark raw HTML block family before heading discovery
+  and cannot be bypassed with escaped or inline-code comment delimiters;
+  active-heading discovery rejects a complete region in a code fence, while
+  complete-section equality rejects inactive fence wrappers inside an active
+  section, extra or contradictory prose, missing approved text, and duplicate
+  active runtime sections while permitting whitespace-only variation;
 - the exact section retains secret safety and separate live-change approval
   and links to `references/runtime-intake.md`;
 - the reference contains the required headings and one parseable JSON catalog;

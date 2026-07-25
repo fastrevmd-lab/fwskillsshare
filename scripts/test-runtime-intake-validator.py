@@ -74,6 +74,70 @@ FALLBACK_CLAUSE = (
     "labeled choices and a free-text `Other` path in concise plain text; do not "
     "substitute a generic checklist."
 )
+EXPECTED_COMMONMARK_TYPE6_TAGS = (
+    "address",
+    "article",
+    "aside",
+    "base",
+    "basefont",
+    "blockquote",
+    "body",
+    "caption",
+    "center",
+    "col",
+    "colgroup",
+    "dd",
+    "details",
+    "dialog",
+    "dir",
+    "div",
+    "dl",
+    "dt",
+    "fieldset",
+    "figcaption",
+    "figure",
+    "footer",
+    "form",
+    "frame",
+    "frameset",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "head",
+    "header",
+    "hr",
+    "html",
+    "iframe",
+    "legend",
+    "li",
+    "link",
+    "main",
+    "menu",
+    "menuitem",
+    "nav",
+    "noframes",
+    "ol",
+    "optgroup",
+    "option",
+    "p",
+    "param",
+    "search",
+    "section",
+    "summary",
+    "table",
+    "tbody",
+    "td",
+    "tfoot",
+    "th",
+    "thead",
+    "title",
+    "tr",
+    "track",
+    "ul",
+)
 VALID_SKILL = f"""\
 # Runtime Intake Probe
 
@@ -286,22 +350,108 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             "HTML comment delimiters are not allowed",
         )
 
-    def test_rejects_raw_html_type1_closer_line(self) -> None:
+    def test_rejects_raw_html_block_type1_closer_line(self) -> None:
         mutant = f"{VALID_SKILL}\n   </PrE>\n"
         self.assert_skill_error(
             mutant,
-            "raw HTML type-1 block tags are not allowed",
+            "raw HTML block syntax is not allowed",
         )
 
-    def test_rejects_bare_type1_opener_at_crlf_line_end(self) -> None:
+    def test_rejects_bare_raw_html_type1_opener_at_crlf_line_end(self) -> None:
         mutant = f"{VALID_SKILL}\r\n  <StYlE\r\n"
         self.assert_skill_error(
             mutant,
-            "raw HTML type-1 block tags are not allowed",
+            "raw HTML block syntax is not allowed",
         )
 
     def test_allows_four_space_indented_html_like_line(self) -> None:
-        mutant = f"{VALID_SKILL}\n    <pre>\n"
+        mutant = (
+            f"{VALID_SKILL}\n"
+            "    <pre>\n"
+            "    <?probe\n"
+            "    <!DOCTYPE fwskill\n"
+            "    <![CDATA[\n"
+            "    <div>\n"
+            "    <runtime-wrapper>\n"
+        )
+        self.assertEqual(
+            VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+            [],
+        )
+
+    def test_rejects_every_commonmark_type6_tag_name(self) -> None:
+        actual_tags = getattr(VALIDATOR, "COMMONMARK_TYPE6_TAGS", None)
+        self.assertEqual(actual_tags, EXPECTED_COMMONMARK_TYPE6_TAGS)
+
+        for tag_name in EXPECTED_COMMONMARK_TYPE6_TAGS:
+            with self.subTest(tag=tag_name):
+                mutant = f"{VALID_SKILL}\n<{tag_name}> trailing content\n"
+                self.assert_skill_error(
+                    mutant,
+                    "raw HTML block syntax is not allowed",
+                )
+
+    def test_rejects_type6_closer_with_trailing_content(self) -> None:
+        mutant = f"{VALID_SKILL}\r\n   </DiV> trailing content\r\n"
+        self.assert_skill_error(
+            mutant,
+            "raw HTML block syntax is not allowed",
+        )
+
+    def test_allows_non_type6_prefix_with_trailing_content(self) -> None:
+        mutant = (
+            f"{VALID_SKILL}\n"
+            "<diversion> remains inline\n"
+            "</searchable> remains inline\n"
+            "<runtime-wrapper> remains inline\n"
+            "</runtime-wrapper> remains inline\n"
+        )
+        self.assertEqual(
+            VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+            [],
+        )
+
+    def test_rejects_complete_generic_open_tag_line_with_attributes(self) -> None:
+        mutant = (
+            f"{VALID_SKILL}\r\n"
+            '   <Runtime-Wrapper disabled data-mode = "strict" count=2 />\t\r\n'
+        )
+        self.assert_skill_error(
+            mutant,
+            "raw HTML block syntax is not allowed",
+        )
+
+    def test_rejects_complete_generic_closing_tag_line(self) -> None:
+        mutant = f"{VALID_SKILL}\r\n  </Runtime-Wrapper   >\t\r\n"
+        self.assert_skill_error(
+            mutant,
+            "raw HTML block syntax is not allowed",
+        )
+
+    def test_allows_raw_html_block_decoys_inside_fenced_code(self) -> None:
+        mutant = (
+            "```html\r\n"
+            "<PRE>\r\n"
+            "</PRE>\r\n"
+            "<?probe mode=\"strict\"\r\n"
+            "<!DOCTYPE fwskill>\r\n"
+            "<![CDATA[probe]]>\r\n"
+            "<DiV class=\"runtime\">\r\n"
+            "<runtime-wrapper data-mode=\"strict\">\r\n"
+            "</runtime-wrapper>\r\n"
+            "```\r\n"
+            f"{VALID_SKILL}"
+        )
+        self.assertEqual(
+            VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+            [],
+        )
+
+    def test_allows_inline_placeholder_tags_in_prose(self) -> None:
+        mutant = (
+            f"{VALID_SKILL}\n"
+            "Use <name> port <port> and <spoke-WAN> only as inline placeholders.\n"
+        )
         self.assertEqual(
             VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
             [],
@@ -358,7 +508,7 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         mutant = wrap_complete_runtime_region("<pre>", "</pre>")
         self.assert_skill_error(
             mutant,
-            "raw HTML type-1 block tags are not allowed",
+            "raw HTML block syntax is not allowed",
         )
 
     def test_rejects_complete_runtime_region_inside_script_block(self) -> None:
@@ -368,7 +518,7 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         )
         self.assert_skill_error(
             mutant,
-            "raw HTML type-1 block tags are not allowed",
+            "raw HTML block syntax is not allowed",
         )
 
     def test_rejects_complete_runtime_region_inside_style_block(self) -> None:
@@ -378,7 +528,7 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         )
         self.assert_skill_error(
             mutant,
-            "raw HTML type-1 block tags are not allowed",
+            "raw HTML block syntax is not allowed",
         )
 
     def test_rejects_complete_runtime_region_inside_textarea_block(self) -> None:
@@ -388,7 +538,61 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         )
         self.assert_skill_error(
             mutant,
-            "raw HTML type-1 block tags are not allowed",
+            "raw HTML block syntax is not allowed",
+        )
+
+    def test_rejects_complete_runtime_region_inside_processing_instruction(
+        self,
+    ) -> None:
+        mutant = wrap_complete_runtime_region(
+            '  <?probe mode="strict"',
+            "?>",
+        )
+        self.assert_skill_error(
+            mutant,
+            "raw HTML block syntax is not allowed",
+        )
+
+    def test_rejects_complete_runtime_region_inside_declaration(self) -> None:
+        mutant = wrap_complete_runtime_region(
+            "   <!DoCtYpE fwskill",
+            ">",
+        )
+        self.assert_skill_error(
+            mutant,
+            "raw HTML block syntax is not allowed",
+        )
+
+    def test_rejects_complete_runtime_region_inside_cdata(self) -> None:
+        mutant = wrap_complete_runtime_region(
+            " <![CDATA[",
+            "]]>",
+        )
+        self.assert_skill_error(
+            mutant,
+            "raw HTML block syntax is not allowed",
+        )
+
+    def test_rejects_complete_runtime_region_inside_type6_div(self) -> None:
+        mutant = wrap_complete_runtime_region(
+            '<DiV class="runtime">',
+            "</dIv>",
+        )
+        self.assert_skill_error(
+            mutant,
+            "raw HTML block syntax is not allowed",
+        )
+
+    def test_rejects_complete_runtime_region_inside_generic_type7_tag(
+        self,
+    ) -> None:
+        mutant = wrap_complete_runtime_region(
+            '  <runtime-wrapper data-mode="strict">',
+            " </RUNTIME-WRAPPER>",
+        )
+        self.assert_skill_error(
+            mutant,
+            "raw HTML block syntax is not allowed",
         )
 
     def test_rejects_runtime_contract_inside_html_comment(self) -> None:

@@ -232,9 +232,112 @@ FENCE_LINE_RE = re.compile(
     r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
     r"(?P<ending>\r\n|\n|\r)?\Z"
 )
-RAW_HTML_TYPE1_LINE_RE = re.compile(
+COMMONMARK_TYPE6_TAGS = (
+    "address",
+    "article",
+    "aside",
+    "base",
+    "basefont",
+    "blockquote",
+    "body",
+    "caption",
+    "center",
+    "col",
+    "colgroup",
+    "dd",
+    "details",
+    "dialog",
+    "dir",
+    "div",
+    "dl",
+    "dt",
+    "fieldset",
+    "figcaption",
+    "figure",
+    "footer",
+    "form",
+    "frame",
+    "frameset",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "head",
+    "header",
+    "hr",
+    "html",
+    "iframe",
+    "legend",
+    "li",
+    "link",
+    "main",
+    "menu",
+    "menuitem",
+    "nav",
+    "noframes",
+    "ol",
+    "optgroup",
+    "option",
+    "p",
+    "param",
+    "search",
+    "section",
+    "summary",
+    "table",
+    "tbody",
+    "td",
+    "tfoot",
+    "th",
+    "thead",
+    "title",
+    "tr",
+    "track",
+    "ul",
+)
+COMMONMARK_TYPE6_TAG_PATTERN = "|".join(COMMONMARK_TYPE6_TAGS)
+RAW_HTML_TYPE1_RE = re.compile(
     r"^ {0,3}</?(?:pre|script|style|textarea)(?=[ \t>]|\r?$)",
-    re.IGNORECASE | re.MULTILINE,
+    re.ASCII | re.IGNORECASE | re.MULTILINE,
+)
+RAW_HTML_PROCESSING_INSTRUCTION_RE = re.compile(r"^ {0,3}<\?", re.MULTILINE)
+RAW_HTML_DECLARATION_RE = re.compile(r"^ {0,3}<![A-Za-z]", re.MULTILINE)
+RAW_HTML_CDATA_RE = re.compile(r"^ {0,3}<!\[CDATA\[", re.MULTILINE)
+RAW_HTML_TYPE6_RE = re.compile(
+    rf"^ {{0,3}}</?(?:{COMMONMARK_TYPE6_TAG_PATTERN})"
+    rf"(?=[ \t>]|\r?$|/>)",
+    re.ASCII | re.IGNORECASE | re.MULTILINE,
+)
+RAW_HTML_TAG_NAME_PATTERN = r"[A-Za-z][A-Za-z0-9-]*"
+RAW_HTML_ATTRIBUTE_NAME_PATTERN = r"[A-Za-z_:][A-Za-z0-9_.:-]*"
+RAW_HTML_UNQUOTED_VALUE_PATTERN = r"""[^ \t\n\r"'=<>`]+"""
+RAW_HTML_ATTRIBUTE_VALUE_PATTERN = (
+    rf"""(?:{RAW_HTML_UNQUOTED_VALUE_PATTERN}|'[^']*'|"[^"]*")"""
+)
+RAW_HTML_ATTRIBUTE_PATTERN = (
+    rf"[ \t]+{RAW_HTML_ATTRIBUTE_NAME_PATTERN}"
+    rf"(?:[ \t]*=[ \t]*{RAW_HTML_ATTRIBUTE_VALUE_PATTERN})?"
+)
+RAW_HTML_TYPE7_OPEN_TAG_PATTERN = (
+    r"<(?!(?i:pre|script|style|textarea)(?=[ \t/>]))"
+    rf"{RAW_HTML_TAG_NAME_PATTERN}(?:{RAW_HTML_ATTRIBUTE_PATTERN})*[ \t]*/?>"
+)
+RAW_HTML_TYPE7_CLOSING_TAG_PATTERN = (
+    rf"</{RAW_HTML_TAG_NAME_PATTERN}[ \t]*>"
+)
+RAW_HTML_TYPE7_RE = re.compile(
+    rf"^ {{0,3}}(?:{RAW_HTML_TYPE7_OPEN_TAG_PATTERN}|"
+    rf"{RAW_HTML_TYPE7_CLOSING_TAG_PATTERN})[ \t]*\r?$",
+    re.MULTILINE,
+)
+RAW_HTML_BLOCK_OPENERS = (
+    RAW_HTML_TYPE1_RE,
+    RAW_HTML_PROCESSING_INSTRUCTION_RE,
+    RAW_HTML_DECLARATION_RE,
+    RAW_HTML_CDATA_RE,
+    RAW_HTML_TYPE6_RE,
+    RAW_HTML_TYPE7_RE,
 )
 INVOCATION_CLAUSE = (
     "For each unresolved material fact whose catalog condition is true, invoke "
@@ -417,8 +520,9 @@ def validate_ambiguous_markup(path: Path, text: str) -> list[str]:
     errors: list[str] = []
     if "<!--" in text or "-->" in text:
         errors.append(f"{path}: HTML comment delimiters are not allowed")
-    if RAW_HTML_TYPE1_LINE_RE.search(text):
-        errors.append(f"{path}: raw HTML type-1 block tags are not allowed")
+    active_markdown = mask_inactive_markdown(text)
+    if any(pattern.search(active_markdown) for pattern in RAW_HTML_BLOCK_OPENERS):
+        errors.append(f"{path}: raw HTML block syntax is not allowed")
     return errors
 
 
@@ -944,21 +1048,29 @@ each selected question's 2-3 labeled choices and free-text `Other` path and
 must not substitute a generic checklist. Before heading extraction, the
 structural validator conservatively rejects either literal HTML comment
 delimiter anywhere in `SKILL.md`, including escaped and inline-code forms, and
-rejects case-insensitive raw HTML type-1 `pre`, `script`, `style`, or `textarea`
-opener/closer lines indented by up to three spaces. It then masks standard
+keeps that prohibition global even inside fences. It then masks standard
 backtick or tilde fenced-code regions while preserving length, newline
-positions, and offsets. It discovers the single runtime heading and following
-section heading only in that active-Markdown view, slices the original section
-by the preserved offsets, normalizes whitespace, selects the approved standard
-or skill-specific compact template by skill path, and requires equality across
+positions, and offsets. In that active-Markdown view it rejects every
+CommonMark 0.31.2 raw HTML block opener family: case-insensitive type 1
+`pre`, `script`, `style`, or `textarea` tags; processing instructions;
+declarations; CDATA; every type 6 block tag with the specified tag-name
+boundary; and complete generic type 7 opening or closing tag lines, each with
+at most three leading spaces. Raw-looking fenced content and inline
+placeholders that do not meet a block-start rule remain valid. The validator
+discovers the single runtime heading and following section heading only in
+that same active-Markdown view, slices the original section by the preserved
+offsets, normalizes whitespace, selects the approved standard or
+skill-specific compact template by skill path, and requires equality across
 the complete section. Validator-API mutation probes reject discretionary
 invocation, open-ended native questions, a one-summary fallback, contract
 clauses outside the runtime section, complete runtime regions hidden in a
-comment, raw HTML type-1 block, or either fence form, HTML-comment decoys,
+comment, any raw HTML block family, or either fence form, HTML-comment decoys,
 escaped and inline-code comment delimiters, fence wrappers around a complete
 region, inactive wrappers inside an active section, contradictory trailing
-prose, missing approved text, and duplicate active runtime sections. Fenced
-decoys may coexist with one active valid section. A masker probe locks CRLF
+prose, missing approved text, and duplicate active runtime sections. Boundary
+probes cover every type 6 tag, generic type 7 attributes and closers, CRLF,
+case, indentation, fenced raw syntax, and inline placeholders. Fenced decoys
+may coexist with one active valid section. A masker probe locks CRLF
 length/newline/offset preservation, a positive probe permits whitespace-only
 variation, and the real-file test applies the same validator to all 22 skills.
 

@@ -18,9 +18,112 @@ FENCE_LINE_RE = re.compile(
     r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
     r"(?P<ending>\r\n|\n|\r)?\Z"
 )
-RAW_HTML_TYPE1_LINE_RE = re.compile(
+COMMONMARK_TYPE6_TAGS = (
+    "address",
+    "article",
+    "aside",
+    "base",
+    "basefont",
+    "blockquote",
+    "body",
+    "caption",
+    "center",
+    "col",
+    "colgroup",
+    "dd",
+    "details",
+    "dialog",
+    "dir",
+    "div",
+    "dl",
+    "dt",
+    "fieldset",
+    "figcaption",
+    "figure",
+    "footer",
+    "form",
+    "frame",
+    "frameset",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "head",
+    "header",
+    "hr",
+    "html",
+    "iframe",
+    "legend",
+    "li",
+    "link",
+    "main",
+    "menu",
+    "menuitem",
+    "nav",
+    "noframes",
+    "ol",
+    "optgroup",
+    "option",
+    "p",
+    "param",
+    "search",
+    "section",
+    "summary",
+    "table",
+    "tbody",
+    "td",
+    "tfoot",
+    "th",
+    "thead",
+    "title",
+    "tr",
+    "track",
+    "ul",
+)
+COMMONMARK_TYPE6_TAG_PATTERN = "|".join(COMMONMARK_TYPE6_TAGS)
+RAW_HTML_TYPE1_RE = re.compile(
     r"^ {0,3}</?(?:pre|script|style|textarea)(?=[ \t>]|\r?$)",
-    re.IGNORECASE | re.MULTILINE,
+    re.ASCII | re.IGNORECASE | re.MULTILINE,
+)
+RAW_HTML_PROCESSING_INSTRUCTION_RE = re.compile(r"^ {0,3}<\?", re.MULTILINE)
+RAW_HTML_DECLARATION_RE = re.compile(r"^ {0,3}<![A-Za-z]", re.MULTILINE)
+RAW_HTML_CDATA_RE = re.compile(r"^ {0,3}<!\[CDATA\[", re.MULTILINE)
+RAW_HTML_TYPE6_RE = re.compile(
+    rf"^ {{0,3}}</?(?:{COMMONMARK_TYPE6_TAG_PATTERN})"
+    rf"(?=[ \t>]|\r?$|/>)",
+    re.ASCII | re.IGNORECASE | re.MULTILINE,
+)
+RAW_HTML_TAG_NAME_PATTERN = r"[A-Za-z][A-Za-z0-9-]*"
+RAW_HTML_ATTRIBUTE_NAME_PATTERN = r"[A-Za-z_:][A-Za-z0-9_.:-]*"
+RAW_HTML_UNQUOTED_VALUE_PATTERN = r"""[^ \t\n\r"'=<>`]+"""
+RAW_HTML_ATTRIBUTE_VALUE_PATTERN = (
+    rf"""(?:{RAW_HTML_UNQUOTED_VALUE_PATTERN}|'[^']*'|"[^"]*")"""
+)
+RAW_HTML_ATTRIBUTE_PATTERN = (
+    rf"[ \t]+{RAW_HTML_ATTRIBUTE_NAME_PATTERN}"
+    rf"(?:[ \t]*=[ \t]*{RAW_HTML_ATTRIBUTE_VALUE_PATTERN})?"
+)
+RAW_HTML_TYPE7_OPEN_TAG_PATTERN = (
+    r"<(?!(?i:pre|script|style|textarea)(?=[ \t/>]))"
+    rf"{RAW_HTML_TAG_NAME_PATTERN}(?:{RAW_HTML_ATTRIBUTE_PATTERN})*[ \t]*/?>"
+)
+RAW_HTML_TYPE7_CLOSING_TAG_PATTERN = (
+    rf"</{RAW_HTML_TAG_NAME_PATTERN}[ \t]*>"
+)
+RAW_HTML_TYPE7_RE = re.compile(
+    rf"^ {{0,3}}(?:{RAW_HTML_TYPE7_OPEN_TAG_PATTERN}|"
+    rf"{RAW_HTML_TYPE7_CLOSING_TAG_PATTERN})[ \t]*\r?$",
+    re.MULTILINE,
+)
+RAW_HTML_BLOCK_OPENERS = (
+    RAW_HTML_TYPE1_RE,
+    RAW_HTML_PROCESSING_INSTRUCTION_RE,
+    RAW_HTML_DECLARATION_RE,
+    RAW_HTML_CDATA_RE,
+    RAW_HTML_TYPE6_RE,
+    RAW_HTML_TYPE7_RE,
 )
 SENTENCE_BOUNDARY_RE = re.compile(r"[.!?](?=\s|$)")
 INITIALISM_END_RE = re.compile(r"(?:\b[A-Za-z]\.){2,}$")
@@ -258,8 +361,9 @@ def validate_ambiguous_markup(path: Path, text: str) -> list[str]:
     errors: list[str] = []
     if "<!--" in text or "-->" in text:
         errors.append(f"{path}: HTML comment delimiters are not allowed")
-    if RAW_HTML_TYPE1_LINE_RE.search(text):
-        errors.append(f"{path}: raw HTML type-1 block tags are not allowed")
+    active_markdown = mask_inactive_markdown(text)
+    if any(pattern.search(active_markdown) for pattern in RAW_HTML_BLOCK_OPENERS):
+        errors.append(f"{path}: raw HTML block syntax is not allowed")
     return errors
 
 
