@@ -1309,8 +1309,9 @@ capture boundary breadth and inherited-state treatment. All ten Task 32
 objects have exact question, trigger, and option contracts, safe confirmation,
 verification, inventory, or mapping defaults, synchronized Appendix/package
 content, and locked digests. The complete corpus contains 155 questions; the
-manifests contain 99 safe first labels and 55 exact option tuples; the semantic
-inventory pins 47 IDs, including all ten Task 32 objects.
+manifests contain 100 safe first labels and 56 exact option tuples; the
+semantic inventory pins 48 IDs, including all ten Task 32 objects and the
+final `convert_source` confirmation-first correction.
 
 Task 32 replaced per-line container-prefix removal with one source-mapped
 CommonMark 0.31.2 block-state analysis shared by skill, reference, and Appendix
@@ -1348,6 +1349,12 @@ all 119 structural and all 30 safety tests. Independent probes cover exact
 tab-indented headings, raw HTML, non-`1` paragraph continuation, and
 length/newline/offset preservation. The existing two installer byte-mutation
 tests remain unchanged and green.
+
+The final semantic-review RED ran 32 safety tests with three failures for
+`convert_source`: the stale auto-detection question, absent safe-label/tuple
+coverage, and the 99-versus-100 manifest count. The confirmation-first rewrite
+keeps the precise ambiguity trigger, retains 155 total questions, and GREEN
+passes all 32 with 100 safe labels, 56 exact tuples, and 48 semantic IDs.
 
 Update each Appendix row and its package JSON object together, then require
 both focused validators to pass before moving to the next independently
@@ -1485,10 +1492,12 @@ installable skill.
 ### A.4 `firewall-config-conversion`
 
 - `convert_source`; header `Source`; ask when the source platform cannot be
-  determined confidently; question `How should the source platform be
-  determined?`; options: `Auto-detect (Recommended)` — Detect vendor and
-  platform from syntax; `Prompt value` — Use the user's exact source platform;
-  `Unknown source` — Parse conservatively and report ambiguity.
+  determined confidently; question `How should an ambiguous source platform
+  be handled?`; options: `Confirm platform first (Recommended)` — Confirm the
+  vendor and platform before platform-specific conversion; `Use supplied exact
+  platform` — Use the exact platform supplied through `Other`; `Analyze as
+  unknown source` — Parse conservatively, report ambiguity, and avoid
+  implementation-ready conversion.
 - `convert_target`; header `Target`; ask when the exact target is absent;
   question `What exact target vendor and platform should receive the
   conversion?`; options: `Specify target (Recommended)` — Supply the exact

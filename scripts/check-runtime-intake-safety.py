@@ -90,7 +90,7 @@ EXPECTED_CATALOG_SHA256 = {
     "firewall-best-practices-audit":
         "058e2866ad8aa6189084615ec87dd2fa339bbf61eb30e7b5b87fe481bfb80e64",
     "firewall-config-conversion":
-        "7e23567bfc9642f7b9ba7ee7eaba81794bec82932eabf287c315b76c16a90051",
+        "a1f7e7f944013530edc2ba39a2e793226d11ded129b576f43d80e25718d6b33b",
     "firewall-config-diff":
         "3b80ffa9d28736ced888b50e187d3a33d64729b74d85aba5896cbc70ae0ef560",
     "hipaa-ngfw-compliance":
@@ -349,6 +349,8 @@ SAFE_FIRST_LABELS = {
         "Confirm architecture first (Recommended)",
     ("srx-policy", "policy_model"):
         "Confirm architecture first (Recommended)",
+    ("firewall-config-conversion", "convert_source"):
+        "Confirm platform first (Recommended)",
     ("parsing-cisco-configs", "cisco_platform"):
         "Confirm platform first (Recommended)",
     ("parsing-palo-configs", "palo_format"):
@@ -646,6 +648,11 @@ EXACT_OPTION_LABELS = {
         "Map boundary first (Recommended)",
         "Use supplied all-context boundary",
         "Use supplied named-context boundary",
+    ),
+    ("firewall-config-conversion", "convert_source"): (
+        "Confirm platform first (Recommended)",
+        "Use supplied exact platform",
+        "Analyze as unknown source",
     ),
 }
 

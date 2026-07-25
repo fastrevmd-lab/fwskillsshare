@@ -27,19 +27,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "convert_source",
       "ask_when": "The source platform cannot be determined confidently.",
       "header": "Source",
-      "question": "How should the source platform be determined?",
+      "question": "How should an ambiguous source platform be handled?",
       "options": [
         {
-          "label": "Auto-detect (Recommended)",
-          "description": "Detect vendor and platform from syntax."
+          "label": "Confirm platform first (Recommended)",
+          "description": "Confirm the vendor and platform before platform-specific conversion."
         },
         {
-          "label": "Prompt value",
-          "description": "Use the user's exact source platform."
+          "label": "Use supplied exact platform",
+          "description": "Use the exact platform supplied through `Other`."
         },
         {
-          "label": "Unknown source",
-          "description": "Parse conservatively and report ambiguity."
+          "label": "Analyze as unknown source",
+          "description": "Parse conservatively, report ambiguity, and avoid implementation-ready conversion."
         }
       ]
     },
