@@ -397,6 +397,102 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                     "expected exactly one active '## When to ask' heading",
                 )
 
+    def test_container_continuation_blocks_use_full_list_content_indent(
+        self,
+    ) -> None:
+        skill_cases = (
+            "10. item\n    ## Runtime intake ###\n",
+            "123456789. item\n           ## Runtime intake\n",
+            "-    item\n     ## Runtime intake\n",
+            "- outer\n  10. inner\n      ## Runtime intake\n",
+        )
+        for continuation in skill_cases:
+            with self.subTest(kind="skill", continuation=continuation):
+                self.assert_skill_error(
+                    f"{VALID_SKILL}\n{continuation}",
+                    "expected exactly one '## Runtime intake' section",
+                )
+
+        reference_cases = (
+            "10. item\n    ## When to ask\n",
+            "- outer\n  123456789) inner\n             ## When to ask\n",
+        )
+        for continuation in reference_cases:
+            with self.subTest(kind="reference", continuation=continuation):
+                self.assert_has_error(
+                    render_reference() + "\n" + continuation,
+                    "expected exactly one active '## When to ask' heading",
+                )
+
+        raw_html_cases = (
+            "10. item\n    <div>\n",
+            "-    item\n     <runtime-wrapper>\n",
+            "- outer\n  10. inner\n      <![CDATA[\n",
+        )
+        for continuation in raw_html_cases:
+            with self.subTest(kind="html", continuation=continuation):
+                self.assert_skill_error(
+                    f"{VALID_SKILL}\n{continuation}",
+                    "raw HTML block syntax is not allowed",
+                )
+
+    def test_non_one_ordered_markers_do_not_interrupt_open_paragraphs(
+        self,
+    ) -> None:
+        skill_cases = (
+            "A paragraph\n2. ## Runtime intake\n",
+            "A paragraph\n123456789) ## Runtime intake ###\n",
+            "- A paragraph\n  2. ## Runtime intake\n",
+        )
+        for suffix in skill_cases:
+            with self.subTest(kind="skill", suffix=suffix):
+                self.assertEqual(
+                    VALIDATOR.validate_skill(
+                        STANDARD_PROBE_PATH,
+                        f"{VALID_SKILL}\n{suffix}",
+                    ),
+                    [],
+                )
+
+        reference_cases = (
+            "A paragraph\n2. ## When to ask\n",
+            "- A paragraph\n  9) ## When to ask\n",
+        )
+        for suffix in reference_cases:
+            with self.subTest(kind="reference", suffix=suffix):
+                self.assertEqual(
+                    VALIDATOR.validate_catalog(
+                        Path("runtime-intake.md"),
+                        render_reference() + "\n" + suffix,
+                    ),
+                    [],
+                )
+
+    def test_ordered_markers_interrupt_only_at_commonmark_boundaries(
+        self,
+    ) -> None:
+        skill_cases = (
+            "A paragraph\n\n2. ## Runtime intake\n",
+            "A paragraph\n1. ## Runtime intake\n",
+        )
+        for suffix in skill_cases:
+            with self.subTest(kind="skill", suffix=suffix):
+                self.assert_skill_error(
+                    f"{VALID_SKILL}\n{suffix}",
+                    "expected exactly one '## Runtime intake' section",
+                )
+
+        reference_cases = (
+            "A paragraph\n\n2. ## When to ask\n",
+            "A paragraph\n1. ## When to ask\n",
+        )
+        for suffix in reference_cases:
+            with self.subTest(kind="reference", suffix=suffix):
+                self.assert_has_error(
+                    render_reference() + "\n" + suffix,
+                    "expected exactly one active '## When to ask' heading",
+                )
+
     def test_all_skill_runtime_sections_satisfy_connected_contract(self) -> None:
         skill_files = VALIDATOR.selected_skill_files(None)
         self.assertEqual(len(skill_files), 22)
@@ -564,6 +660,32 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                     mutant,
                     "expected exactly one '## Runtime intake' section",
                 )
+
+    def test_nested_setext_uses_complete_container_paragraph(self) -> None:
+        exact_nested = (
+            f"{VALID_SKILL}\n"
+            "- outer\n"
+            "  - Runtime intake\n"
+            "    ---\n"
+        )
+        self.assert_skill_error(
+            exact_nested,
+            "expected exactly one '## Runtime intake' section",
+        )
+
+        multiline_not_exact = (
+            f"{VALID_SKILL}\n"
+            "> - prefix\n"
+            ">   Runtime intake\n"
+            ">   ---\n"
+        )
+        self.assertEqual(
+            VALIDATOR.validate_skill(
+                STANDARD_PROBE_PATH,
+                multiline_not_exact,
+            ),
+            [],
+        )
 
     def test_rejects_noncanonical_setext_primary_runtime_heading(self) -> None:
         for underline in ("---", "==="):
@@ -882,6 +1004,70 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                 self.assertEqual(
                     VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
                     [],
+                )
+
+    def test_masks_fences_inside_quote_and_nested_containers(self) -> None:
+        wrappers = (
+            (
+                "> ````markdown\n"
+                "> ## Runtime intake\n"
+                "> <div>\n"
+                "> ````\n"
+            ),
+            (
+                "- > ~~~~markdown\n"
+                "  > ## Runtime intake ###\n"
+                "  > <runtime-wrapper>\n"
+                "  > ~~~~\n"
+            ),
+        )
+        for wrapper in wrappers:
+            with self.subTest(kind="skill", opener=wrapper.splitlines()[0]):
+                mutant = wrapper + VALID_SKILL
+                self.assertEqual(
+                    VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+                    [],
+                )
+                masked = VALIDATOR.mask_inactive_markdown(mutant)
+                self.assertEqual(len(masked), len(mutant))
+                self.assertNotIn("<runtime-wrapper>", masked)
+                self.assertNotIn("> <div>", masked)
+
+            with self.subTest(kind="reference", opener=wrapper.splitlines()[0]):
+                decoy = wrapper.replace("Runtime intake", "When to ask")
+                self.assertEqual(
+                    VALIDATOR.validate_catalog(
+                        Path("runtime-intake.md"),
+                        decoy + render_reference(),
+                    ),
+                    [],
+                )
+
+    def test_container_fence_closure_and_exit_restore_active_blocks(self) -> None:
+        cases = (
+            (
+                "> ````markdown\n"
+                "> hidden\n"
+                "> ````\n"
+                "## Runtime intake\n"
+            ),
+            (
+                "> ~~~~markdown\n"
+                "> hidden\n"
+                "## Runtime intake\n"
+            ),
+            (
+                "- > ````markdown\n"
+                "  > hidden\n"
+                "  > ````\n"
+                "## Runtime intake\n"
+            ),
+        )
+        for suffix in cases:
+            with self.subTest(suffix=suffix):
+                self.assert_skill_error(
+                    f"{VALID_SKILL}\n{suffix}",
+                    "expected exactly one '## Runtime intake' section",
                 )
 
     def test_rejects_raw_html_inside_active_containers(self) -> None:
@@ -1228,6 +1414,121 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         )
         self.assertEqual(
             VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+            [],
+        )
+
+    def test_type7_html_cannot_interrupt_an_open_paragraph(self) -> None:
+        skill_suffixes = (
+            "A paragraph\n<runtime-wrapper>\n",
+            "> A paragraph\n> <runtime-wrapper>\n",
+            "- A paragraph\n  <runtime-wrapper>\n",
+        )
+        for suffix in skill_suffixes:
+            with self.subTest(kind="skill", suffix=suffix):
+                self.assertEqual(
+                    VALIDATOR.validate_skill(
+                        STANDARD_PROBE_PATH,
+                        f"{VALID_SKILL}\n{suffix}",
+                    ),
+                    [],
+                )
+
+        reference_suffixes = (
+            "A paragraph\n<runtime-wrapper>\n",
+            "> A paragraph\n> <runtime-wrapper>\n",
+            "- A paragraph\n  <runtime-wrapper>\n",
+        )
+        for suffix in reference_suffixes:
+            with self.subTest(kind="reference", suffix=suffix):
+                self.assertEqual(
+                    VALIDATOR.validate_catalog(
+                        Path("runtime-intake.md"),
+                        render_reference() + "\n" + suffix,
+                    ),
+                    [],
+                )
+
+    def test_type7_html_starts_at_boundaries_but_types_one_and_three_to_six_interrupt(
+        self,
+    ) -> None:
+        interrupting_openers = (
+            "<pre>",
+            "<?probe",
+            "<!DOCTYPE fwskill>",
+            "<![CDATA[",
+            "<div>",
+        )
+        for opener in interrupting_openers:
+            with self.subTest(opener=opener):
+                self.assert_skill_error(
+                    f"{VALID_SKILL}\nA paragraph\n{opener}\n",
+                    "raw HTML block syntax is not allowed",
+                )
+
+        self.assert_skill_error(
+            f"{VALID_SKILL}\nA paragraph\n\n<runtime-wrapper>\n",
+            "raw HTML block syntax is not allowed",
+        )
+
+    def test_setext_h1_h2_boundaries_own_reference_sections(self) -> None:
+        tool_boundary_cases = (
+            "Other section\n---",
+            "Other section\ncontinued\n===",
+        )
+        for boundary in tool_boundary_cases:
+            with self.subTest(section="tool", boundary=boundary):
+                mutant = render_reference(adaptation=(
+                    f"Projection preface.\n\n{boundary}\n\n{TOOL_ADAPTATION}"
+                ))
+                self.assert_has_error(
+                    mutant,
+                    "Claude projection must be inside '## Tool adaptation'",
+                )
+
+        reference = render_reference()
+        catalog_start = reference.index("```json")
+        catalog_end = reference.index("\n```", catalog_start) + len("\n```")
+        catalog = reference[catalog_start:catalog_end]
+        without_catalog = reference[:catalog_start] + reference[catalog_end:]
+        mutant = without_catalog.replace(
+            "## Question catalog",
+            "## Question catalog\n\nCatalog preface.\n\n"
+            "Other section\ncontinued\n---\n\n"
+            f"{catalog}",
+            1,
+        )
+        self.assert_has_error(
+            mutant,
+            "JSON catalog must be inside '## Question catalog'",
+        )
+
+    def test_inactive_setext_boundaries_do_not_end_reference_sections(
+        self,
+    ) -> None:
+        prefixes = (
+            "````markdown\nOther section\n---\n````\n",
+            "> Other section\n> ---\n",
+            "- Other section\n  ---\n",
+        )
+        for prefix in prefixes:
+            with self.subTest(prefix=prefix.splitlines()[0]):
+                self.assertEqual(
+                    VALIDATOR.validate_catalog(
+                        Path("runtime-intake.md"),
+                        render_reference(
+                            adaptation=f"{prefix}\n{TOOL_ADAPTATION}",
+                        ),
+                    ),
+                    [],
+                )
+
+    def test_direct_catalog_validation_normalizes_crlf(self) -> None:
+        reference = render_reference().replace("\n", "\r\n")
+        self.assertEqual(
+            VALIDATOR.validate_catalog(
+                Path("runtime-intake.md"),
+                reference,
+            ),
             [],
         )
 
