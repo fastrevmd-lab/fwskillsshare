@@ -1356,6 +1356,41 @@ coverage, and the 99-versus-100 manifest count. The confirmation-first rewrite
 keeps the precise ambiguity trigger, retains 155 total questions, and GREEN
 passes all 32 with 100 safe labels, 56 exact tuples, and 48 semantic IDs.
 
+**Whole-review CommonMark remediation:** the shared analyzer now implements
+empty list items with marker-width-plus-one continuation indentation, including
+nine-digit markers and trailing spaces or tabs, while preventing an empty item
+from interrupting an open paragraph. Thematic breaks interrupt paragraphs and
+take precedence over list markers; a dash underline still takes Setext
+precedence when it completes a paragraph. These rules follow CommonMark 0.31.2
+examples 43, 58-60, and 279-285 plus list rule 3.
+
+Semantic heading discovery uses rendered ATX or complete Setext content across
+top-level, quote, and list containers. Required reference headings and the
+Appendix marker therefore reject closing-hash, noncanonical ATX spacing, and
+Setext equivalents while retaining one canonical top-level primary. Link
+reference definitions use buffered label, destination, and title phases,
+including escaped brackets, multiline labels and titles, the 999-character
+label limit, container ownership, and invalid-definition rollback. They form
+their own leaf blocks without interrupting open paragraphs. Runtime-section
+ownership ends at the next active top-level ATX or Setext H1/H2. Valid list
+markers at a failed item boundary exit the prior item instead of becoming lazy
+paragraph continuation, including ordered delimiter changes, while nested
+non-`1` markers retain paragraph behavior.
+
+HTML comments and fences retain container ownership: a deindented line exits a
+quote/list-scoped inactive block and is reprocessed as active Markdown, while a
+top-level unclosed comment retains document scope. Appendix row extraction uses
+the same source-mapped normalized active view, so container-prefixed comments
+cannot expose decoy rows. Type 1 raw HTML starts only at an opening
+`pre`, `script`, `style`, or `textarea` tag; complete closing tags follow type 7
+paragraph-interruption rules.
+
+The CommonMark RED commit ran 132 structural tests with 63 failures and 42
+safety tests with 19 failures plus one error. GREEN passes all 132 structural
+and all 42 safety tests without catalog or schema changes. The final evidence
+remains 155 questions, 100 safe first labels, 56 exact option tuples, and 48
+semantic IDs.
+
 Update each Appendix row and its package JSON object together, then require
 both focused validators to pass before moving to the next independently
 installable skill.

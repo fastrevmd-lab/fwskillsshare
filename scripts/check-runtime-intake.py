@@ -22,7 +22,6 @@ RUNTIME_ATX_HEADING_RE = re.compile(
     re.MULTILINE,
 )
 SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(?:=+|-+)[ \t]*$")
-SECTION_HEADING_RE = re.compile(r"^ {0,3}## [^\r\n]+\r?$", re.MULTILINE)
 FENCE_LINE_RE = re.compile(
     r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
     r"(?P<ending>\r\n|\n|\r)?\Z"
@@ -94,7 +93,7 @@ COMMONMARK_TYPE6_TAGS = (
 )
 COMMONMARK_TYPE6_TAG_PATTERN = "|".join(COMMONMARK_TYPE6_TAGS)
 RAW_HTML_TYPE1_RE = re.compile(
-    r"^ {0,3}</?(?:pre|script|style|textarea)(?=[ \t>]|\r?$)",
+    r"^ {0,3}<(?:pre|script|style|textarea)(?=[ \t>]|\r?$)",
     re.ASCII | re.IGNORECASE | re.MULTILINE,
 )
 RAW_HTML_PROCESSING_INSTRUCTION_RE = re.compile(r"^ {0,3}<\?", re.MULTILINE)
@@ -127,6 +126,7 @@ RAW_HTML_TYPE7_RE = re.compile(
     rf"{RAW_HTML_TYPE7_CLOSING_TAG_PATTERN})[ \t]*\r?$",
     re.MULTILINE,
 )
+LINK_TITLE_CLOSERS = {'"': '"', "'": "'", "(": ")"}
 SENTENCE_BOUNDARY_RE = re.compile(r"[.!?](?=\s|$)")
 INITIALISM_END_RE = re.compile(r"(?:\b[A-Za-z]\.){2,}$")
 CATALOG_KEYS = frozenset({"questions"})
@@ -323,6 +323,15 @@ class MarkdownContainer(NamedTuple):
     content_indent: int = 0
 
 
+class ListMarker(NamedTuple):
+    """A parsed CommonMark list marker and its content indentation."""
+
+    content_start: int
+    content_indent: int
+    ordered: int | None
+    empty: bool
+
+
 class MarkdownLine(NamedTuple):
     """An active logical line mapped to its physical source position."""
 
@@ -371,6 +380,18 @@ class MarkdownFence(NamedTuple):
     containers: tuple[MarkdownContainer, ...]
 
 
+class MarkdownLinkReference(NamedTuple):
+    """Continuation state for a multiline link reference definition."""
+
+    containers: tuple[MarkdownContainer, ...]
+    phase: str
+    pending_source_start: int | None = None
+    pending_lines: tuple[str, ...] = ()
+    label_length: int = 0
+    label_nonblank: bool = False
+    title_closer: str | None = None
+
+
 class ContainerParse(NamedTuple):
     """Container prefix result for one physical Markdown line."""
 
@@ -391,7 +412,8 @@ class MarkdownAnalysis:
         self._containers: tuple[MarkdownContainer, ...] = ()
         self._paragraph: MarkdownParagraph | None = None
         self._fence: MarkdownFence | None = None
-        self._in_comment = False
+        self._comment_containers: tuple[MarkdownContainer, ...] | None = None
+        self._link_reference: MarkdownLinkReference | None = None
         self._next_container_serial = 1
         self._analyze()
         self.active_text = "".join(self._active_parts)
@@ -456,7 +478,7 @@ class MarkdownAnalysis:
     def _list_marker(
         content: str,
         cursor: int,
-    ) -> tuple[int, int, int | None] | None:
+    ) -> ListMarker | None:
         probe = cursor
         indentation = 0
         while (
@@ -481,24 +503,30 @@ class MarkdownAnalysis:
         ):
             spacing_end += 1
         spacing_width = spacing_end - marker_end
-        if spacing_width == 0 or spacing_end == len(content):
+        empty = spacing_end == len(content)
+        if spacing_width == 0 and not empty:
             return None
 
-        if spacing_width <= 4:
+        marker_width = marker_match.end()
+        if empty:
+            content_start = spacing_end
+            content_indent = indentation + marker_width + 1
+        elif spacing_width <= 4:
             padding = spacing_width
             content_start = spacing_end
+            content_indent = indentation + marker_width + padding
         else:
             # Five or more following spaces count as one space of list
             # padding; the rest remains content indentation.
             padding = 1
             content_start = marker_end + 1
-        marker_width = marker_match.end()
-        content_indent = indentation + marker_width + padding
+            content_indent = indentation + marker_width + padding
         ordered = marker_match.group("ordered")
-        return (
+        return ListMarker(
             content_start,
             content_indent,
             int(ordered) if ordered is not None else None,
+            empty,
         )
 
     def _new_container(
@@ -513,6 +541,147 @@ class MarkdownAnalysis:
         )
         self._next_container_serial += 1
         return container
+
+    @staticmethod
+    def _is_thematic_break(content: str, cursor: int = 0) -> bool:
+        remainder = content[cursor:]
+        indentation = len(remainder) - len(remainder.lstrip(" "))
+        if indentation > 3:
+            return False
+        marks = remainder[indentation:].replace(" ", "").replace("\t", "")
+        return (
+            len(marks) >= 3
+            and marks[0] in "*-_"
+            and all(mark == marks[0] for mark in marks)
+        )
+
+    @staticmethod
+    def _atx_heading_content(
+        logical: str,
+        match: re.Match[str],
+    ) -> str:
+        content = logical[match.end() :].strip(" \t")
+        return re.sub(r"[ \t]+#+[ \t]*$", "", content).strip(" \t")
+
+    @staticmethod
+    def _scan_link_label_segment(
+        segment: str,
+    ) -> tuple[str, str, int, bool]:
+        """Scan one physical segment of a CommonMark link label."""
+        cursor = 0
+        while cursor < len(segment):
+            character = segment[cursor]
+            if character == "\\" and cursor + 1 < len(segment):
+                cursor += 2
+                continue
+            if character == "[":
+                return "invalid", "", cursor, False
+            if character == "]":
+                if segment[cursor + 1 : cursor + 2] != ":":
+                    return "invalid", "", cursor, False
+                label = segment[:cursor]
+                return (
+                    "closed",
+                    segment[cursor + 2 :],
+                    len(label),
+                    any(not char.isspace() for char in label),
+                )
+            cursor += 1
+        return (
+            "open",
+            "",
+            len(segment),
+            any(not char.isspace() for char in segment),
+        )
+
+    @staticmethod
+    def _scan_link_title(
+        text: str,
+        closer: str | None = None,
+    ) -> tuple[str, str | None]:
+        candidate = text
+        if closer is None:
+            indentation = len(candidate) - len(candidate.lstrip(" "))
+            if indentation > 3:
+                return "invalid", None
+            candidate = candidate[indentation:]
+            if not candidate or candidate[0] not in LINK_TITLE_CLOSERS:
+                return "invalid", None
+            closer = LINK_TITLE_CLOSERS[candidate[0]]
+            cursor = 1
+        else:
+            cursor = 0
+
+        while cursor < len(candidate):
+            character = candidate[cursor]
+            if character == "\\" and cursor + 1 < len(candidate):
+                cursor += 2
+                continue
+            if character == closer:
+                if candidate[cursor + 1 :].strip(" \t"):
+                    return "invalid", None
+                return "complete", closer
+            cursor += 1
+        return "open", closer
+
+    @classmethod
+    def _scan_link_destination(
+        cls,
+        text: str,
+    ) -> tuple[str, str | None]:
+        candidate = text.lstrip(" \t")
+        if not candidate:
+            return "destination", None
+
+        if candidate[0] == "<":
+            cursor = 1
+            while cursor < len(candidate):
+                character = candidate[cursor]
+                if character == "\\" and cursor + 1 < len(candidate):
+                    cursor += 2
+                    continue
+                if character == "<":
+                    return "invalid", None
+                if character == ">":
+                    cursor += 1
+                    break
+                cursor += 1
+            else:
+                return "invalid", None
+        else:
+            cursor = 0
+            depth = 0
+            while cursor < len(candidate) and candidate[cursor] not in " \t":
+                character = candidate[cursor]
+                if character == "\\" and cursor + 1 < len(candidate):
+                    cursor += 2
+                    continue
+                if character == "(":
+                    depth += 1
+                    if depth > 32:
+                        return "invalid", None
+                elif character == ")":
+                    if depth == 0:
+                        return "invalid", None
+                    depth -= 1
+                cursor += 1
+            if cursor == 0 or depth:
+                return "invalid", None
+
+        remainder = candidate[cursor:]
+        if not remainder:
+            return "optional-title", None
+        if remainder[0] not in " \t":
+            return "invalid", None
+        title = remainder.lstrip(" \t")
+        if not title:
+            return "optional-title", None
+        title_status, closer = cls._scan_link_title(title)
+        if title_status == "complete":
+            return "complete", None
+        if title_status == "open":
+            return "title", closer
+        return "invalid", None
 
     @staticmethod
     def _raw_html_kind(content: str) -> int | None:
@@ -547,13 +716,18 @@ class MarkdownAnalysis:
             return True
         if self._quote_prefix_end(content, cursor) is not None:
             return True
+        if self._is_thematic_break(content, cursor):
+            return True
         marker = self._list_marker(content, cursor)
         if marker is not None:
-            _content_start, _content_indent, ordered = marker
-            return ordered is None or ordered == 1
+            if marker.empty:
+                return False
+            return marker.ordered is None or marker.ordered == 1
         if ATX_HEADING_RE.match(remainder):
             return True
         if self._valid_fence_opener(remainder) is not None:
+            return True
+        if re.match(r"^ {0,3}<!--", remainder):
             return True
         html_kind = self._raw_html_kind(remainder)
         if html_kind is not None:
@@ -584,8 +758,17 @@ class MarkdownAnalysis:
                     container.content_indent,
                 )
             if next_cursor is None:
+                sibling_marker = (
+                    self._list_marker(content, cursor)
+                    if container.kind == "list"
+                    else None
+                )
+                is_list_sibling = (
+                    sibling_marker is not None
+                )
                 if (
                     allow_lazy
+                    and not is_list_sibling
                     and self._paragraph is not None
                     and self._paragraph.containers == self._containers
                     and not self._line_interrupts_paragraph(content, cursor)
@@ -616,22 +799,31 @@ class MarkdownAnalysis:
                 cursor = quote_end
                 continue
 
+            if self._is_thematic_break(content, cursor):
+                break
             marker = self._list_marker(content, cursor)
             if marker is None:
                 break
-            content_start, content_indent, ordered = marker
             current_path = tuple(containers)
             if (
-                ordered is not None
-                and ordered != 1
+                (
+                    marker.empty
+                    or (
+                        marker.ordered is not None
+                        and marker.ordered != 1
+                    )
+                )
                 and self._paragraph is not None
                 and self._paragraph.containers == current_path
             ):
                 break
             containers.append(
-                self._new_container("list", content_indent)
+                self._new_container(
+                    "list",
+                    marker.content_indent,
+                )
             )
-            cursor = content_start
+            cursor = marker.content_start
 
         return ContainerParse(cursor, tuple(containers))
 
@@ -711,6 +903,7 @@ class MarkdownAnalysis:
         path = parsed.containers
 
         if not logical.strip(" \t"):
+            self._link_reference = None
             self._append_logical_line(
                 source_start=source_start,
                 raw_line=raw_line,
@@ -729,6 +922,169 @@ class MarkdownAnalysis:
         if not same_paragraph:
             self._close_paragraph()
 
+        if self._link_reference is not None:
+            link_reference = self._link_reference
+            pending_lines = link_reference.pending_lines + (logical,)
+            if link_reference.containers == path:
+                if link_reference.phase == "label":
+                    status, suffix, length, nonblank = (
+                        self._scan_link_label_segment(logical)
+                    )
+                    label_length = link_reference.label_length + 1 + length
+                    label_nonblank = (
+                        link_reference.label_nonblank or nonblank
+                    )
+                    if status == "open" and label_length <= 999:
+                        self._append_logical_line(
+                            source_start=source_start,
+                            raw_line=raw_line,
+                            masked_line=masked_line,
+                            block_content=block_content,
+                            parsed=parsed,
+                            block_kind="link-reference-definition",
+                        )
+                        self._link_reference = MarkdownLinkReference(
+                            path,
+                            "label",
+                            link_reference.pending_source_start,
+                            pending_lines,
+                            label_length,
+                            label_nonblank,
+                        )
+                        self._close_paragraph()
+                        return
+                    if (
+                        status == "closed"
+                        and label_length <= 999
+                        and label_nonblank
+                    ):
+                        next_phase, title_closer = (
+                            self._scan_link_destination(suffix)
+                        )
+                        if next_phase != "invalid":
+                            self._append_logical_line(
+                                source_start=source_start,
+                                raw_line=raw_line,
+                                masked_line=masked_line,
+                                block_content=block_content,
+                                parsed=parsed,
+                                block_kind="link-reference-definition",
+                            )
+                            if next_phase == "destination":
+                                self._link_reference = MarkdownLinkReference(
+                                    path,
+                                    "destination",
+                                    link_reference.pending_source_start,
+                                    pending_lines,
+                                )
+                            elif next_phase == "optional-title":
+                                self._link_reference = MarkdownLinkReference(
+                                    path,
+                                    "optional-title",
+                                )
+                            elif next_phase == "title":
+                                self._link_reference = MarkdownLinkReference(
+                                    path,
+                                    "title",
+                                    link_reference.pending_source_start,
+                                    pending_lines,
+                                    title_closer=title_closer,
+                                )
+                            else:
+                                self._link_reference = None
+                            self._close_paragraph()
+                            return
+                elif link_reference.phase == "destination":
+                    next_phase, title_closer = self._scan_link_destination(
+                        logical
+                    )
+                    if next_phase not in ("invalid", "destination"):
+                        self._append_logical_line(
+                            source_start=source_start,
+                            raw_line=raw_line,
+                            masked_line=masked_line,
+                            block_content=block_content,
+                            parsed=parsed,
+                            block_kind="link-reference-definition",
+                        )
+                        if next_phase == "optional-title":
+                            self._link_reference = MarkdownLinkReference(
+                                path,
+                                "optional-title",
+                            )
+                        elif next_phase == "title":
+                            self._link_reference = MarkdownLinkReference(
+                                path,
+                                "title",
+                                link_reference.pending_source_start,
+                                pending_lines,
+                                title_closer=title_closer,
+                            )
+                        else:
+                            self._link_reference = None
+                        self._close_paragraph()
+                        return
+                elif link_reference.phase == "optional-title":
+                    title_status, closer = self._scan_link_title(logical)
+                    if title_status in ("complete", "open"):
+                        line = self._append_logical_line(
+                            source_start=source_start,
+                            raw_line=raw_line,
+                            masked_line=masked_line,
+                            block_content=block_content,
+                            parsed=parsed,
+                            block_kind="link-reference-definition",
+                        )
+                        self._link_reference = (
+                            None
+                            if title_status == "complete"
+                            else MarkdownLinkReference(
+                                path,
+                                "title",
+                                line.content_start,
+                                (logical,),
+                                title_closer=closer,
+                            )
+                        )
+                        self._close_paragraph()
+                        return
+                elif link_reference.phase == "title":
+                    assert link_reference.title_closer is not None
+                    title_status, _closer = self._scan_link_title(
+                        logical,
+                        link_reference.title_closer,
+                    )
+                    if title_status in ("complete", "open"):
+                        self._append_logical_line(
+                            source_start=source_start,
+                            raw_line=raw_line,
+                            masked_line=masked_line,
+                            block_content=block_content,
+                            parsed=parsed,
+                            block_kind="link-reference-definition",
+                        )
+                        self._link_reference = (
+                            None
+                            if title_status == "complete"
+                            else link_reference._replace(
+                                pending_lines=pending_lines
+                            )
+                        )
+                        self._close_paragraph()
+                        return
+
+            if link_reference.pending_lines:
+                assert link_reference.pending_source_start is not None
+                self._paragraph = MarkdownParagraph(
+                    link_reference.pending_source_start,
+                    link_reference.containers,
+                    list(link_reference.pending_lines),
+                )
+                same_paragraph = link_reference.containers == path
+                if not same_paragraph:
+                    self._close_paragraph()
+            self._link_reference = None
+
         if not same_paragraph and logical.startswith("    "):
             self._append_logical_line(
                 source_start=source_start,
@@ -739,6 +1095,65 @@ class MarkdownAnalysis:
                 block_kind="indented-code",
             )
             return
+
+        if not same_paragraph:
+            indentation = len(logical) - len(logical.lstrip(" "))
+            candidate = logical[indentation:] if indentation <= 3 else ""
+            if candidate.startswith("["):
+                status, suffix, length, nonblank = (
+                    self._scan_link_label_segment(candidate[1:])
+                )
+                next_phase = "invalid"
+                title_closer: str | None = None
+                if status == "closed" and length <= 999 and nonblank:
+                    next_phase, title_closer = (
+                        self._scan_link_destination(suffix)
+                    )
+                if (
+                    (status == "open" and length <= 999)
+                    or next_phase != "invalid"
+                ):
+                    line = self._append_logical_line(
+                        source_start=source_start,
+                        raw_line=raw_line,
+                        masked_line=masked_line,
+                        block_content=block_content,
+                        parsed=parsed,
+                        block_kind="link-reference-definition",
+                    )
+                    if status == "open":
+                        self._link_reference = MarkdownLinkReference(
+                            path,
+                            "label",
+                            line.content_start,
+                            (logical,),
+                            length,
+                            nonblank,
+                        )
+                    elif next_phase == "destination":
+                        self._link_reference = MarkdownLinkReference(
+                            path,
+                            "destination",
+                            line.content_start,
+                            (logical,),
+                        )
+                    elif next_phase == "optional-title":
+                        self._link_reference = MarkdownLinkReference(
+                            path,
+                            "optional-title",
+                        )
+                    elif next_phase == "title":
+                        self._link_reference = MarkdownLinkReference(
+                            path,
+                            "title",
+                            line.content_start,
+                            (logical,),
+                            title_closer=title_closer,
+                        )
+                    else:
+                        self._link_reference = None
+                    self._close_paragraph()
+                    return
 
         atx_match = ATX_HEADING_RE.match(logical)
         if atx_match is not None:
@@ -757,7 +1172,7 @@ class MarkdownAnalysis:
                     source_start,
                     line.source_end,
                     level,
-                    logical,
+                    self._atx_heading_content(logical, atx_match),
                     path,
                     "atx",
                 )
@@ -782,6 +1197,18 @@ class MarkdownAnalysis:
             self._record_setext_heading(
                 source_end=line.source_end,
                 underline=logical,
+            )
+            self._close_paragraph()
+            return
+
+        if self._is_thematic_break(logical):
+            self._append_logical_line(
+                source_start=source_start,
+                raw_line=raw_line,
+                masked_line=masked_line,
+                block_content=block_content,
+                parsed=parsed,
+                block_kind="thematic-break",
             )
             self._close_paragraph()
             return
@@ -853,12 +1280,28 @@ class MarkdownAnalysis:
             self._fence = None
             self._containers = continued.containers
 
-        original_containers = self._containers
-        if self._in_comment:
-            masked_line, self._in_comment = mask_html_comments(
-                raw_line,
-                True,
+        handled_comment = False
+        if self._comment_containers is not None:
+            continued = self._continue_existing_containers(
+                block_content,
+                allow_lazy=False,
             )
+            comment_path = self._comment_containers
+            if (
+                not block_content.strip(" ")
+                or continued.containers == comment_path
+            ):
+                masked_line, in_comment = mask_html_comments(raw_line, True)
+                if not in_comment:
+                    self._comment_containers = None
+                handled_comment = True
+            else:
+                # An HTML comment block opened inside a container ends when
+                # that container exits. Reprocess this physical line active.
+                self._comment_containers = None
+                self._containers = continued.containers
+
+        if handled_comment:
             masked_content = self._split_ending(masked_line)[0]
             block_content = self._expand_block_tabs(masked_content)
             parsed = self._parse_containers(
@@ -873,6 +1316,7 @@ class MarkdownAnalysis:
                 fence = opener.group("fence")
                 self._containers = parsed.containers
                 self._close_paragraph()
+                self._link_reference = None
                 self._fence = MarkdownFence(
                     fence[0],
                     len(fence),
@@ -881,18 +1325,20 @@ class MarkdownAnalysis:
                 self._append_masked_line(raw_line)
                 return
 
-            masked_line, self._in_comment = mask_html_comments(
+            masked_line, in_comment = mask_html_comments(
                 raw_line,
                 False,
             )
             if masked_line != raw_line:
-                self._containers = original_containers
+                self._containers = parsed.containers
                 masked_content = self._split_ending(masked_line)[0]
                 block_content = self._expand_block_tabs(masked_content)
                 parsed = self._parse_containers(
                     block_content,
                     allow_lazy=True,
                 )
+            if in_comment:
+                self._comment_containers = parsed.containers
 
         self._containers = parsed.containers
         self._classify_active_line(
@@ -969,19 +1415,16 @@ def active_top_level_catalog_matches(text: str) -> list[re.Match[str]]:
 def extract_runtime_section(path: Path, text: str) -> tuple[str | None, list[str]]:
     analysis = analyze_markdown(text)
     active_markdown = analysis.active_text
-    equivalent_atx = [
-        line
-        for line in analysis.lines
-        if line.block_kind == "atx"
-        and RUNTIME_ATX_HEADING_RE.fullmatch(line.content) is not None
-    ]
-    equivalent_setext = [
+    equivalent_headings = [
         heading
         for heading in analysis.headings
-        if heading.style == "setext"
-        and heading.content == "Runtime intake"
+        if heading.content == "Runtime intake"
+        and (
+            heading.style == "setext"
+            or heading.level == 2
+        )
     ]
-    if len(equivalent_atx) + len(equivalent_setext) != 1:
+    if len(equivalent_headings) != 1:
         return None, [f"{path}: expected exactly one '## Runtime intake' section"]
 
     active_atx = list(RUNTIME_ATX_HEADING_RE.finditer(active_markdown))
@@ -1005,8 +1448,15 @@ def extract_runtime_section(path: Path, text: str) -> tuple[str | None, list[str
         ]
 
     start = heading_match.end()
-    next_heading = SECTION_HEADING_RE.search(active_markdown, start)
-    end = next_heading.start() if next_heading else len(text)
+    next_heading = analysis.next_top_level_heading(
+        start,
+        maximum_level=2,
+    )
+    end = (
+        next_heading.source_start
+        if next_heading is not None
+        else len(text)
+    )
     return text[start:end], []
 
 
@@ -1045,31 +1495,34 @@ def validate_catalog(path: Path, text: str) -> list[str]:
         errors.append(f"{path}: raw HTML block syntax is not allowed")
 
     canonical_heading_matches: dict[str, re.Match[str]] = {}
-    for heading in REQUIRED_REFERENCE_HEADINGS:
+    for required_heading in REQUIRED_REFERENCE_HEADINGS:
+        marker, required_content = required_heading.split(" ", 1)
+        required_level = len(marker)
         heading_matches = list(
             re.finditer(
-                rf"^{re.escape(heading)}[ \t]*\r?$",
+                rf"^{re.escape(required_heading)}[ \t]*\r?$",
                 active_markdown,
                 re.MULTILINE,
             )
         )
-        equivalent_matches = [
-            line
-            for line in analysis.lines
-            if line.block_kind == "atx"
-            and re.fullmatch(
-                rf"{re.escape(heading)}[ \t]*",
-                line.content,
-            )
+        equivalent_headings = [
+            heading
+            for heading in analysis.headings
+            if heading.level == required_level
+            and heading.content == required_content
         ]
         if not heading_matches:
-            errors.append(f"{path}: missing {heading!r}")
-        elif len(heading_matches) != 1 or len(equivalent_matches) != 1:
+            errors.append(f"{path}: missing {required_heading!r}")
+        elif (
+            len(heading_matches) != 1
+            or len(equivalent_headings) != 1
+        ):
             errors.append(
-                f"{path}: expected exactly one active {heading!r} heading"
+                f"{path}: expected exactly one active "
+                f"{required_heading!r} heading"
             )
         else:
-            canonical_heading_matches[heading] = heading_matches[0]
+            canonical_heading_matches[required_heading] = heading_matches[0]
 
     if len(canonical_heading_matches) == len(REQUIRED_REFERENCE_HEADINGS):
         heading_positions = [

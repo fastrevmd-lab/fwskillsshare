@@ -200,8 +200,8 @@ sections, rejects noncanonical lexical numbering such as `A.01` and incorrect
 A.1 through A.22 number/name pairings, rejects duplicate package JSON members,
 and preserves same-line whitespace so noncanonical tabs or doubled spaces
 cannot be normalized away. It resolves each semantic regression key exactly
-once and checks the exact 89 safe first labels and 45 single-axis option tuples
-identified by final review.
+once and checks the complete 155-question corpus, the exact 100 safe first
+labels, and 56 single-axis option tuples identified by final review.
 
 The safety checker also locks the complete content and question order of all
 22 catalogs with canonical SHA-256 digests. Its optional skill argument limits
@@ -212,7 +212,7 @@ assertion counts separately from that whole-corpus work.
 
 Add `scripts/test-runtime-intake-safety.py` immediately after the safety
 checker in `just lint`. Its standard-library temporary-file tests must exercise
-all 37 explicitly pinned semantic IDs, duplicate or container-nested Appendix
+all 48 explicitly pinned semantic IDs, duplicate or container-nested Appendix
 sections and lookalikes, incorrect Appendix number/name pairing, noncanonical
 lexical numbering, duplicate package JSON members, inactive package catalogs,
 inactive Appendix decoy rows, same-line doubled whitespace in Appendix

@@ -1102,8 +1102,13 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 "noncanonical Appendix A heading",
             ),
             (
+                "1. first\n"
+                "2) ### A.1 `cis-controls-ngfw-compliance`\n",
+                "duplicate Appendix A skill section",
+            ),
+            (
                 "> 1. first\n"
-                "> 2. <div>\n",
+                "> 2) <div>\n",
                 "raw HTML block syntax is not allowed",
             ),
         )
@@ -1126,9 +1131,7 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
             "- first\n"
             "  2. ### A.1 `cis-controls-ngfw-compliance`\n",
             "1. first\n"
-            "2) <div>\n",
-            "1. first\n"
-            "2. ````markdown\n"
+            "2) ````markdown\n"
             "   ### A.1 `cis-controls-ngfw-compliance`\n"
             "   <div>\n"
             "   ````\n",
@@ -1206,9 +1209,26 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
         equivalents = (
             "Appendix A: Exact question catalogs\n---\n",
             "Appendix A: Exact\nquestion catalogs\n---\n",
+            "[foo\\]]: /url\n"
+            "Appendix A: Exact question catalogs\n"
+            "---\n",
+            "[\n"
+            "foo\n"
+            "]: /url\n"
+            "Appendix A: Exact question catalogs\n"
+            "---\n",
+            "[foo]: /url '\n"
+            " title\n"
+            " line\n"
+            " '\n"
+            "Appendix A: Exact question catalogs\n"
+            "---\n",
             "> Appendix A: Exact question catalogs\n> ---\n",
             "> Appendix A: Exact\n"
             "> question catalogs\n"
+            "> ---\n",
+            "> [foo\\]]: /url\n"
+            "> Appendix A: Exact question catalogs\n"
             "> ---\n",
             "- Appendix A: Exact question catalogs\n  ---\n",
             "10.\n"
@@ -1284,8 +1304,12 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
             with self.subTest(decoy=decoy.splitlines()[0]):
                 self.use_temp_catalogs()
                 text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
-                first_row = "- `cis_goal`;"
-                text = text.replace(first_row, decoy + first_row, 1)
+                following_row = "- `cis_version`;"
+                text = text.replace(
+                    following_row,
+                    decoy + following_row,
+                    1,
+                )
                 SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
                 catalogs = SAFETY.parse_plan_catalogs()
                 self.assertEqual(

@@ -355,8 +355,18 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             "[foo]: /url\nRuntime intake\n---\n",
             "[foo]:\n  /url\nRuntime intake\n---\n",
             "[foo]: /url\n  \"title\"\nRuntime intake\n---\n",
+            "[foo\\]]: /url\nRuntime intake\n---\n",
+            "[\nfoo\n]: /url\nRuntime intake\n---\n",
+            "[foo]: /url '\n title\n line\n '\nRuntime intake\n---\n",
             "> [foo]: /url\n> Runtime intake\n> ---\n",
+            "> [\n> foo\n> ]: /url\n"
+            "> Runtime intake\n> ---\n",
             "- [foo]: /url\n  Runtime intake\n  ---\n",
+            "- [foo]: /url '\n"
+            "  title\n"
+            "  '\n"
+            "  Runtime intake\n"
+            "  ---\n",
         )
         for suffix in skill_cases:
             with self.subTest(kind="skill", suffix=suffix):
@@ -368,6 +378,9 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         reference_cases = (
             "[foo]: /url\nWhen to ask\n---\n",
             "[foo]:\n  /url\nWhen to ask\n---\n",
+            "[foo\\]]: /url\nWhen to ask\n---\n",
+            "[\nfoo\n]: /url\nWhen to ask\n---\n",
+            "[foo]: /url \"\n title\n\"\nWhen to ask\n---\n",
             "> [foo]: /url\n> Tool adaptation\n> ---\n",
             "- [foo]: /url\n  Question catalog\n  ---\n",
         )
@@ -391,6 +404,15 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         controls = (
             "A paragraph\n[foo]: /url\nRuntime intake\n---\n",
             "> A paragraph\n> [foo]: /url\n> Runtime intake\n> ---\n",
+            "[foo]:\nRuntime intake\n---\n",
+            "[\n\nfoo\n]: /url\nRuntime intake\n---\n",
+            "[foo[bar]: /url\nRuntime intake\n---\n",
+            "[foo]: /url '\n"
+            "title\n"
+            "\n"
+            "'\n"
+            "Runtime intake\n"
+            "---\n",
             "    [foo]: /url\n"
             "    Runtime intake\n"
             "    ---\n",
@@ -819,8 +841,10 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         skill_cases = (
             "1. first\n2. ## Runtime intake ###\n",
             "2. first\n3. ## Runtime intake\n",
+            "1. first\n2) ## Runtime intake\n",
             "> 1. first\n> 2. ## Runtime intake\n",
             "1) first\n2) <div>\n",
+            "2) first\n3. <div>\n",
         )
         for suffix in skill_cases:
             with self.subTest(kind="skill", suffix=suffix):
@@ -834,6 +858,7 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         reference_cases = (
             "1. first\n2. ## When to ask ###\n",
             "2) first\n3) <div>\n",
+            "1) first\n2. ## When to ask\n",
             "> 2. first\n> 3. ## When to ask\n",
         )
         for suffix in reference_cases:
@@ -851,7 +876,6 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         nested_controls = (
             "- first\n  2. ## Runtime intake\n",
             "- first\n  2. <div>\n",
-            "1. first\n2) ## Runtime intake\n",
         )
         for suffix in nested_controls:
             with self.subTest(kind="control", suffix=suffix):
@@ -869,8 +893,12 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             "2. ````html\r\n"
             "   <div>\r\n"
             "   ````\r\n",
+            "1. first\n"
+            "2) ````html\n"
+            "   <div>\n"
+            "   ````\n",
             "> 2) first\n"
-            "> 3) ~~~~html\n"
+            "> 3. ~~~~html\n"
             ">    <div>\n"
             ">    ~~~~\n",
         )
@@ -1998,6 +2026,14 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                     [],
                 )
 
+        for heading in ("# Workflow", "##\tWorkflow", "##  Workflow"):
+            with self.subTest(heading=heading):
+                mutant = VALID_SKILL.replace("## Workflow", heading, 1)
+                self.assertEqual(
+                    VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+                    [],
+                )
+
         nested = VALID_SKILL.replace(
             "## Workflow",
             "> Workflow\n> ---\n\n## Workflow",
@@ -2023,6 +2059,25 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertIsNotNone(section)
         self.assertIn("````markdown", section)
+
+        for inactive_heading in (
+            "> # Workflow",
+            "- ##\tWorkflow",
+            "````markdown\n##  Workflow\n````",
+        ):
+            with self.subTest(inactive_heading=inactive_heading):
+                mutant = VALID_SKILL.replace(
+                    "## Workflow",
+                    f"{inactive_heading}\n\n## Workflow",
+                    1,
+                )
+                section, errors = VALIDATOR.extract_runtime_section(
+                    STANDARD_PROBE_PATH,
+                    mutant,
+                )
+                self.assertEqual(errors, [])
+                self.assertIsNotNone(section)
+                self.assertIn(inactive_heading.splitlines()[0], section)
 
     def test_setext_h1_h2_boundaries_own_reference_sections(self) -> None:
         tool_boundary_cases = (

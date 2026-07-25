@@ -22,10 +22,6 @@ PLAN_PATH = (
 )
 SKILLS_DIR = ROOT / "skills"
 APPENDIX_MARKER = "## Appendix A: Exact question catalogs"
-APPENDIX_MARKER_EQUIVALENT_RE = re.compile(
-    r"^ {0,3}##[ \t]+Appendix A: Exact question catalogs"
-    r"(?:[ \t]+#+)?[ \t]*$"
-)
 PLAN_SECTION_LOOKALIKE_RE = re.compile(
     r"^(?P<heading> {0,3}###[ \t]+A\.[^\r\n]*)\r?$",
     re.MULTILINE,
@@ -38,7 +34,10 @@ PLAN_SECTION_RE = re.compile(
     r"^### A\.(?P<number>\d+) `(?P<skill>[^`\r\n]+)`\r?$",
     re.MULTILINE,
 )
-PLAN_ROW_RE = re.compile(r"^- `(?P<id>[a-z][a-z0-9_]*)`; ", re.MULTILINE)
+PLAN_ROW_RE = re.compile(
+    r"^(?:- )?`(?P<id>[a-z][a-z0-9_]*)`; ",
+    re.MULTILINE,
+)
 PLAN_ROW_CONTENT_RE = re.compile(
     r"header `(?P<header>[^`]+)`; "
     r"ask when (?P<ask_when>.*?); "
@@ -761,15 +760,20 @@ def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
     if analysis.raw_html_lines:
         raise ValueError(f"{PLAN_PATH}: raw HTML block syntax is not allowed")
     equivalent_markers = [
-        line
-        for line in analysis.lines
-        if line.block_kind == "atx"
-        and APPENDIX_MARKER_EQUIVALENT_RE.fullmatch(line.content)
+        heading
+        for heading in analysis.headings
+        if heading.level == 2
+        and heading.content == "Appendix A: Exact question catalogs"
     ]
     noncanonical_markers = [
-        line
-        for line in equivalent_markers
-        if line.content.rstrip(" \t") != APPENDIX_MARKER
+        heading
+        for heading in equivalent_markers
+        if heading.style == "atx"
+        and not any(
+            line.source_start == heading.source_start
+            and line.content.rstrip(" \t") == APPENDIX_MARKER
+            for line in analysis.lines
+        )
     ]
     if noncanonical_markers:
         raise ValueError(f"{PLAN_PATH}: noncanonical Appendix A marker")
@@ -787,8 +791,8 @@ def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
     if len(marker_matches) != 1:
         raise ValueError(f"{PLAN_PATH}: missing {APPENDIX_MARKER!r}")
     appendix_start = marker_matches[0].start()
-    active_appendix = active_markdown[appendix_start:]
-    normalized_appendix = analysis.normalized_from(appendix_start)
+    active_appendix = analysis.normalized_from(appendix_start)
+    normalized_appendix = active_appendix
     lookalikes = list(PLAN_SECTION_LOOKALIKE_RE.finditer(normalized_appendix))
     catalogs: dict[str, list[dict[str, object]]] = {}
 
