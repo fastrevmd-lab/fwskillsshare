@@ -26,6 +26,14 @@ SPEC.loader.exec_module(SAFETY)
 
 CATALOG_RE = re.compile(r"```json\n(?P<payload>.*?)\n```", re.DOTALL)
 DESIRED_SEMANTICS = {
+    ("cis-controls-ngfw-compliance", "cis_version"): (
+        "How should an unspecified governing CIS Controls version be resolved?",
+        (
+            "Confirm version first (Recommended)",
+            "Use supplied CIS v8.1",
+            "Use supplied CIS v8",
+        ),
+    ),
     ("cis-controls-ngfw-compliance", "cis_scope"): (
         "How should an unspecified firewall estate scope be resolved?",
         (
@@ -183,6 +191,15 @@ DESIRED_SEMANTICS = {
             "Confirm model first (Recommended)",
             "Use supplied full backhaul",
             "Use supplied split tunnel",
+        ),
+    ),
+    ("srx-autovpn-full-tunnel", "autovpn_auth"): (
+        "How should an unspecified target peer-authentication model be "
+        "resolved?",
+        (
+            "Confirm auth first (Recommended)",
+            "Use supplied PKI model",
+            "Use supplied unique-PSK model",
         ),
     ),
     ("srx-dynamic-ip-feed", "dif_tls"): (
@@ -409,6 +426,60 @@ DESIRED_SEMANTICS = {
         ),
     ),
 }
+FINAL_CORPUS_EXPECTED_QUESTIONS = {
+    ("cis-controls-ngfw-compliance", "cis_version"): {
+        "ask_when": "The governing CIS Controls version is absent.",
+        "question":
+            "How should an unspecified governing CIS Controls version be "
+            "resolved?",
+        "options": [
+            {
+                "label": "Confirm version first (Recommended)",
+                "description":
+                    "Confirm the governing version and any organizational "
+                    "crosswalk before grading.",
+            },
+            {
+                "label": "Use supplied CIS v8.1",
+                "description":
+                    "Apply CIS Controls v8.1 as explicitly supplied.",
+            },
+            {
+                "label": "Use supplied CIS v8",
+                "description":
+                    "Apply CIS Controls v8 as explicitly supplied.",
+            },
+        ],
+    },
+    ("srx-autovpn-full-tunnel", "autovpn_auth"): {
+        "ask_when":
+            "The target peer-authentication model is absent and affects the "
+            "design.",
+        "question":
+            "How should an unspecified target peer-authentication model be "
+            "resolved?",
+        "options": [
+            {
+                "label": "Confirm auth first (Recommended)",
+                "description":
+                    "Confirm target peer authentication and existing "
+                    "constraints before design.",
+            },
+            {
+                "label": "Use supplied PKI model",
+                "description":
+                    "Use the supplied certificate and scalable group-identity "
+                    "model.",
+            },
+            {
+                "label": "Use supplied unique-PSK model",
+                "description":
+                    "Use the supplied requirement for a distinct PSK per "
+                    "spoke without requesting secret values.",
+            },
+        ],
+    },
+}
 TASK_30_SEMANTIC_KEYS = frozenset(
     {
         ("cis-controls-ngfw-compliance", "cis_scope"),
@@ -484,16 +555,22 @@ TASK_32_EXPECTED_ASK_WHEN = {
 FINAL_REVIEW_SEMANTIC_KEYS = frozenset(
     {
         ("firewall-config-conversion", "convert_source"),
+        ("cis-controls-ngfw-compliance", "cis_version"),
+        ("srx-autovpn-full-tunnel", "autovpn_auth"),
     }
 )
 FINAL_REVIEW_EXPECTED_ASK_WHEN = {
     ("firewall-config-conversion", "convert_source"):
         "The source platform cannot be determined confidently.",
+    ("cis-controls-ngfw-compliance", "cis_version"):
+        "The governing CIS Controls version is absent.",
+    ("srx-autovpn-full-tunnel", "autovpn_auth"):
+        "The target peer-authentication model is absent and affects the design.",
 }
 EXPECTED_FINAL_QUESTION_COUNT = 155
-EXPECTED_FINAL_SAFE_LABEL_COUNT = 100
-EXPECTED_FINAL_EXACT_TUPLE_COUNT = 56
-EXPECTED_FINAL_SEMANTIC_ID_COUNT = 48
+EXPECTED_FINAL_SAFE_LABEL_COUNT = 102
+EXPECTED_FINAL_EXACT_TUPLE_COUNT = 58
+EXPECTED_FINAL_SEMANTIC_ID_COUNT = 50
 
 
 class RuntimeIntakeSafetyTests(unittest.TestCase):
@@ -559,6 +636,19 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 )
                 self.assertEqual(question["question"], expected_question)
                 self.assertEqual(actual_labels, expected_labels)
+
+    def test_final_corpus_question_objects_are_exact(self) -> None:
+        for key, expected in FINAL_CORPUS_EXPECTED_QUESTIONS.items():
+            with self.subTest(skill=key[0], question_id=key[1]):
+                question = self.package_question(*key)
+                self.assertEqual(
+                    {
+                        "ask_when": question["ask_when"],
+                        "question": question["question"],
+                        "options": question["options"],
+                    },
+                    expected,
+                )
 
     def test_review_semantics_have_exact_manifest_coverage(self) -> None:
         protected_keys = (
