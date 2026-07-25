@@ -58,12 +58,44 @@ DESIRED_SEMANTICS = {
             "Use supplied enterprise scope",
         ),
     ),
+    ("cmmc-nist-800-171-ngfw-compliance", "cmmc_stage"): (
+        "How should an unspecified assessment stage be resolved?",
+        (
+            "Confirm stage first (Recommended)",
+            "Use supplied pre-assessment",
+            "Use supplied formal assessment",
+        ),
+    ),
+    ("firewall-best-practices-audit", "audit_depth"): (
+        "How should an unspecified finding-detail tier be resolved?",
+        (
+            "Confirm detail first (Recommended)",
+            "Use supplied full detail",
+            "Use supplied material-only detail",
+        ),
+    ),
     ("firewall-config-diff", "diff_ignore"): (
         "How should an unspecified difference allowlist be handled?",
         (
             "Stop pending allowlist (Recommended)",
             "Use supplied complete allowlist",
             "Use no exclusions",
+        ),
+    ),
+    ("firewall-config-diff", "diff_output"): (
+        "How should an unspecified result-detail tier be resolved?",
+        (
+            "Confirm detail first (Recommended)",
+            "Use supplied full report",
+            "Use supplied material summary",
+        ),
+    ),
+    ("firewall-config-diff", "diff_format"): (
+        "How should an unspecified result format be resolved?",
+        (
+            "Confirm format first (Recommended)",
+            "Use supplied human-readable",
+            "Use supplied machine-readable",
         ),
     ),
     ("hipaa-ngfw-compliance", "hipaa_vendor"): (
@@ -128,6 +160,29 @@ DESIRED_SEMANTICS = {
             "Confirm method first (Recommended)",
             "Use supplied HTTPS",
             "Use supplied SCP",
+        ),
+    ),
+    ("sd-onprem-proxmox-deploy", "sd_size"): (
+        "How should unresolved appliance sizing be handled?",
+        (
+            "Measure requirements first (Recommended)",
+            "Use supplied final flavor",
+        ),
+    ),
+    ("srx-advpn", "advpn_route"): (
+        "How should an unspecified ADVPN routing model be resolved?",
+        (
+            "Confirm model first (Recommended)",
+            "Use supplied OSPF P2MP",
+            "Use supplied other model",
+        ),
+    ),
+    ("srx-autovpn-full-tunnel", "autovpn_traffic"): (
+        "How should an unspecified AutoVPN traffic model be resolved?",
+        (
+            "Confirm model first (Recommended)",
+            "Use supplied full backhaul",
+            "Use supplied split tunnel",
         ),
     ),
     ("srx-dynamic-ip-feed", "dif_tls"): (
@@ -202,6 +257,53 @@ DESIRED_SEMANTICS = {
             "Use supplied combined auth",
         ),
     ),
+    ("srx-dynamic-ip-feed", "dif_session"): (
+        "How should unspecified existing-session behavior be resolved?",
+        (
+            "Confirm behavior first (Recommended)",
+            "Use supplied new-sessions-only",
+            "Use supplied targeted clear",
+        ),
+    ),
+    ("srx-dynamic-ip-feed", "dif_poll"): (
+        "How should an unspecified polling cadence be resolved?",
+        (
+            "Confirm cadence first (Recommended)",
+            "Use supplied standard interval",
+            "Use supplied custom interval",
+        ),
+    ),
+    ("srx-ipsec-hub-spoke", "hsvpn_traffic"): (
+        "How should an unspecified hub-spoke traffic model be resolved?",
+        (
+            "Confirm model first (Recommended)",
+            "Use supplied central backhaul",
+            "Use supplied split tunnel",
+        ),
+    ),
+    ("srx-mnha", "mnha_route"): (
+        "How should unresolved MNHA signaling design be handled?",
+        (
+            "Design from topology first (Recommended)",
+            "Use supplied complete design",
+        ),
+    ),
+    ("srx-mpls-in-flow", "mpls_policy"): (
+        "How should an unspecified VRF policy architecture be resolved?",
+        (
+            "Confirm architecture first (Recommended)",
+            "Use supplied policy groups",
+            "Use supplied VRF-to-zone",
+        ),
+    ),
+    ("srx-policy", "policy_model"): (
+        "How should an unspecified policy architecture be resolved?",
+        (
+            "Confirm architecture first (Recommended)",
+            "Use supplied global policy",
+            "Use supplied zone-pair policy",
+        ),
+    ),
     ("hipaa-ngfw-compliance", "hipaa_role"): (
         "How should an unspecified HIPAA responsibility be handled?",
         (
@@ -235,6 +337,23 @@ TASK_30_SEMANTIC_KEYS = frozenset(
         ("pci-ngfw-compliance", "pci_overlay"),
         ("sd-onprem-proxmox-deploy", "sd_transfer"),
         ("srx-dynamic-ip-feed", "dif_tls"),
+    }
+)
+TASK_31_SEMANTIC_KEYS = frozenset(
+    {
+        ("cmmc-nist-800-171-ngfw-compliance", "cmmc_stage"),
+        ("firewall-best-practices-audit", "audit_depth"),
+        ("firewall-config-diff", "diff_output"),
+        ("firewall-config-diff", "diff_format"),
+        ("sd-onprem-proxmox-deploy", "sd_size"),
+        ("srx-advpn", "advpn_route"),
+        ("srx-autovpn-full-tunnel", "autovpn_traffic"),
+        ("srx-dynamic-ip-feed", "dif_session"),
+        ("srx-dynamic-ip-feed", "dif_poll"),
+        ("srx-ipsec-hub-spoke", "hsvpn_traffic"),
+        ("srx-mnha", "mnha_route"),
+        ("srx-mpls-in-flow", "mpls_policy"),
+        ("srx-policy", "policy_model"),
     }
 )
 
@@ -304,7 +423,8 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 self.assertEqual(actual_labels, expected_labels)
 
     def test_review_semantics_have_exact_manifest_coverage(self) -> None:
-        for key in TASK_30_SEMANTIC_KEYS:
+        protected_keys = TASK_30_SEMANTIC_KEYS | TASK_31_SEMANTIC_KEYS
+        for key in protected_keys:
             with self.subTest(skill=key[0], question_id=key[1]):
                 _expected_question, expected_labels = DESIRED_SEMANTICS[key]
                 self.assertEqual(

@@ -145,21 +145,17 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "mnha_route",
-      "ask_when": "Upstream failover signaling is absent.",
+      "ask_when": "A complete upstream failover signaling design is absent.",
       "header": "Routing",
-      "question": "How will upstream failover be signaled?",
+      "question": "How should unresolved MNHA signaling design be handled?",
       "options": [
         {
-          "label": "Dynamic routing (Recommended)",
-          "description": "Use supported routing and fast detection."
+          "label": "Design from topology first (Recommended)",
+          "description": "Derive a complete signaling design from topology and convergence requirements."
         },
         {
-          "label": "Static or VIP",
-          "description": "Use explicit tracking and ownership."
-        },
-        {
-          "label": "Need design",
-          "description": "Compare convergence models."
+          "label": "Use supplied complete design",
+          "description": "Use the supplied complete signaling, tracking, ownership, and convergence design."
         }
       ]
     },

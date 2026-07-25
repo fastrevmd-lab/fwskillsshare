@@ -127,19 +127,39 @@ platform or framework basis, evidence quality, then output preference.
       "id": "diff_output",
       "ask_when": "Result detail is absent.",
       "header": "Output",
-      "question": "How detailed should the result be?",
+      "question": "How should an unspecified result-detail tier be resolved?",
       "options": [
         {
-          "label": "Full diff report (Recommended)",
-          "description": "Include equivalence, additions, removals, impact, and confidence."
+          "label": "Confirm detail first (Recommended)",
+          "description": "Confirm the result-detail tier before producing the comparison."
         },
         {
-          "label": "Risk summary",
-          "description": "Return material differences only."
+          "label": "Use supplied full report",
+          "description": "Return the complete comparison with all supported difference detail."
         },
         {
-          "label": "Machine output",
-          "description": "Emphasize structured diff data."
+          "label": "Use supplied material summary",
+          "description": "Return only material differences and their risk."
+        }
+      ]
+    },
+    {
+      "id": "diff_format",
+      "ask_when": "Result format is absent.",
+      "header": "Format",
+      "question": "How should an unspecified result format be resolved?",
+      "options": [
+        {
+          "label": "Confirm format first (Recommended)",
+          "description": "Confirm the required result format before rendering the comparison."
+        },
+        {
+          "label": "Use supplied human-readable",
+          "description": "Render the result in the supplied human-readable format."
+        },
+        {
+          "label": "Use supplied machine-readable",
+          "description": "Render the result in the supplied machine-readable format."
         }
       ]
     }

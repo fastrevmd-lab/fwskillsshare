@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "policy_model",
       "ask_when": "The architecture is absent.",
       "header": "Policy Model",
-      "question": "Which policy architecture should be used?",
+      "question": "How should an unspecified policy architecture be resolved?",
       "options": [
         {
-          "label": "Global policy (Recommended)",
-          "description": "Use global policy where it safely reduces duplication."
+          "label": "Confirm architecture first (Recommended)",
+          "description": "Confirm the policy architecture before organizing rules."
         },
         {
-          "label": "Preserve zone-pair",
-          "description": "Retain explicit zone organization."
+          "label": "Use supplied global policy",
+          "description": "Use the supplied global-policy architecture."
         },
         {
-          "label": "Review existing",
-          "description": "Assess the supplied mix first."
+          "label": "Use supplied zone-pair policy",
+          "description": "Use the supplied zone-pair architecture and specify a complete mixed architecture through Other."
         }
       ]
     },

@@ -1327,10 +1327,11 @@ installable skill.
   overlay; `Standard only` — Use the selected standard without an additive
   contractual overlay.
 - `cmmc_stage`; header `Stage`; ask when assessment stage is absent; question
-  `What is the assessment being prepared for?`; options: `Readiness review
-  (Recommended)` — Identify gaps before formal assessment; `SSP and POAM` —
-  Produce SSP and POA&M evidence; `C3PAO support` — Organize defensible external
-  assessment evidence.
+  `How should an unspecified assessment stage be resolved?`; options: `Confirm
+  stage first (Recommended)` — Confirm the lifecycle stage before selecting an
+  assessment workflow; `Use supplied pre-assessment` — Treat the supplied stage
+  as readiness work before formal assessment; `Use supplied formal assessment`
+  — Treat the supplied stage as formal-assessment preparation.
 - `cmmc_boundary`; header `CUI Scope`; ask when the CUI boundary maturity is
   unknown; question `How should an uncertain CUI boundary be handled?`;
   options: `Map boundary first (Recommended)` — Identify CUI assets, flows, and
@@ -1382,10 +1383,11 @@ installable skill.
   assets, trust levels, and required flows; `Infer cautiously` — Label inferred
   boundaries; `Generic severity` — Avoid environment-specific impact claims.
 - `audit_depth`; header `Depth`; ask when finding detail is not specified;
-  question `How much finding detail should be returned?`; options: `Full
-  findings (Recommended)` — Include evidence, impact, confidence, and
-  remediation; `Critical and high` — Return only material findings; `Top
-  actions` — Produce a short remediation backlog.
+  question `How should an unspecified finding-detail tier be resolved?`;
+  options: `Confirm detail first (Recommended)` — Confirm the required
+  finding-detail tier before producing findings; `Use supplied full detail` —
+  Return every in-scope finding with complete supporting detail; `Use supplied
+  material-only detail` — Return only material findings with supporting detail.
 - `audit_remed`; header `Fix Format`; ask when remediation format is absent;
   question `How should remediation be presented?`; options: `Guidance and CLI
   (Recommended)` — Include candidate syntax and verification; `Guidance only`
@@ -1463,10 +1465,17 @@ installable skill.
   the supplied complete allowlist; `Use no exclusions` — Report all material
   differences without an allowlist.
 - `diff_output`; header `Output`; ask when result detail is absent; question
-  `How detailed should the result be?`; options: `Full diff report
-  (Recommended)` — Include equivalence, additions, removals, impact, and
-  confidence; `Risk summary` — Return material differences only; `Machine
-  output` — Emphasize structured diff data.
+  `How should an unspecified result-detail tier be resolved?`; options:
+  `Confirm detail first (Recommended)` — Confirm the result-detail tier before
+  producing the comparison; `Use supplied full report` — Return the complete
+  comparison with all supported difference detail; `Use supplied material
+  summary` — Return only material differences and their risk.
+- `diff_format`; header `Format`; ask when result format is absent; question
+  `How should an unspecified result format be resolved?`; options: `Confirm
+  format first (Recommended)` — Confirm the required result format before
+  rendering the comparison; `Use supplied human-readable` — Render the result
+  in the supplied human-readable format; `Use supplied machine-readable` —
+  Render the result in the supplied machine-readable format.
 
 ### A.6 `hipaa-ngfw-compliance`
 
@@ -1723,10 +1732,11 @@ installable skill.
   Proceed with supplied artifacts and checksum evidence; `Stop pending media`
   — Block deployment until required artifacts are supplied.
 - `sd_size`; header `Sizing`; ask when appliance flavor is absent; question
-  `Which supported appliance size should be used?`; options: `Smallest fitting
-  (Recommended)` — Select the lowest flavor meeting measured requirements;
-  `Known flavor` — Use a flavor supplied through Other; `Need sizing` — Collect
-  device, log, retention, and growth requirements.
+  `How should unresolved appliance sizing be handled?`; options: `Measure
+  requirements first (Recommended)` — Measure device, traffic, log, retention,
+  and growth requirements before selecting a flavor; `Use supplied final
+  flavor` — Use the supplied final supported flavor without reselecting its
+  size.
 - `sd_proxmox`; header `Proxmox`; ask when VM placement values are incomplete;
   question `How should incomplete Proxmox VM state be resolved?`; options:
   `Inspect state first (Recommended)` — Inspect Proxmox and VM evidence
@@ -1828,10 +1838,11 @@ installable skill.
   certificate authority and enrollment design; `Assess supplied PSK` — Analyze
   the supplied PSK design and report ADVPN limitations.
 - `advpn_route`; header `Routing`; ask when overlay routing is absent; question
-  `Which overlay routing model should be used?`; options: `OSPF P2MP
-  (Recommended)` — Use the documented point-to-multipoint model; `Existing
-  routing` — Preserve and assess the supplied protocol; `Need design` — Compare
-  supported models.
+  `How should an unspecified ADVPN routing model be resolved?`; options:
+  `Confirm model first (Recommended)` — Confirm the routing model before
+  designing the overlay; `Use supplied OSPF P2MP` — Use the supplied OSPF
+  point-to-multipoint routing model; `Use supplied other model` — Use the
+  complete alternative routing model specified through Other.
 - `advpn_traffic`; header `Traffic`; ask when branch path requirements are
   unclear; question `What branch traffic behavior is required?`; options:
   `Shortcuts plus hub (Recommended)` — Support hub paths and spoke shortcuts;
@@ -1864,9 +1875,11 @@ installable skill.
   supplied` — Apply release-specific behavior; `Infer conservatively` — Limit
   output to evidence-supported design and disclose uncertainty.
 - `autovpn_traffic`; header `Traffic`; ask when backhaul behavior is unclear;
-  question `What traffic model is required?`; options: `Full backhaul
-  (Recommended)` — Send spoke traffic through the hub; `Split tunnel` —
-  Preserve specified local paths; `Compare models` — Evaluate both designs.
+  question `How should an unspecified AutoVPN traffic model be resolved?`;
+  options: `Confirm model first (Recommended)` — Confirm the traffic model
+  before designing spoke forwarding; `Use supplied full backhaul` — Backhaul
+  all scoped spoke traffic through the hub as supplied; `Use supplied split
+  tunnel` — Preserve the supplied split-tunnel and local path requirements.
 - `autovpn_auth`; header `Auth`; ask when peer authentication is absent;
   question `What peer authentication model should be used?`; options: `PKI
   zero-touch (Recommended)` — Use certificates and scalable group identity;
@@ -1946,15 +1959,18 @@ installable skill.
   permit` — Permit members within constrained policy; `Both uses` — Define
   separate objects and precedence.
 - `dif_session`; header `Sessions`; ask when existing-session behavior matters
-  and is absent; question `What should happen to existing sessions when the feed
-  changes?`; options: `New sessions only (Recommended)` — Apply changes to new
-  evaluations; `Clear matches` — Include separately approved targeted clearing;
-  `Need decision` — Explain enforcement timing first.
+  and is absent; question `How should unspecified existing-session behavior be
+  resolved?`; options: `Confirm behavior first (Recommended)` — Confirm
+  existing-session behavior before accounting for enforcement timing; `Use
+  supplied new-sessions-only` — Apply feed changes only to new session
+  evaluations; `Use supplied targeted clear` — Record targeted-clear intent and
+  require separate live approval before clearing.
 - `dif_poll`; header `Polling`; ask when refresh requirements are absent;
-  question `What refresh behavior is required?`; options: `Standard interval
-  (Recommended)` — Use a conservative supported interval; `Faster updates` —
-  Validate load and reliability; `Custom cadence` — Use a value supplied
-  through Other.
+  question `How should an unspecified polling cadence be resolved?`; options:
+  `Confirm cadence first (Recommended)` — Confirm the polling cadence before
+  selecting an interval; `Use supplied standard interval` — Use the supplied
+  conservative supported standard interval; `Use supplied custom interval` —
+  Use the supplied custom interval after validating load and reliability.
 
 ### A.18 `srx-ipsec-hub-spoke`
 
@@ -1976,9 +1992,12 @@ installable skill.
   map` — Design from a supplied complete topology; `Design from requirements` —
   Build a new topology from supplied site and traffic requirements.
 - `hsvpn_traffic`; header `Traffic`; ask when spoke path requirements are
-  unclear; question `How should spoke traffic be routed?`; options: `Central
-  backhaul (Recommended)` — Route required traffic through the hub; `Split or
-  local` — Preserve specified local paths; `Compare models` — Evaluate both.
+  unclear; question `How should an unspecified hub-spoke traffic model be
+  resolved?`; options: `Confirm model first (Recommended)` — Confirm the
+  traffic model before designing spoke forwarding; `Use supplied central
+  backhaul` — Backhaul all scoped spoke traffic through the hub as supplied;
+  `Use supplied split tunnel` — Preserve the supplied split-tunnel paths and
+  specify local variants through Other.
 - `hsvpn_auth`; header `Auth`; ask when peer authentication is absent; question
   `What peer authentication should be used?`; options: `Certificates
   (Recommended)` — Use PKI where available; `Unique PSKs` — Use distinct
@@ -2036,11 +2055,12 @@ installable skill.
   services; `Use supplied core-plus-IPsec` — Use firewall and NAT plus the
   complete supplied IPsec failover scope and specify advanced combinations
   through Other.
-- `mnha_route`; header `Routing`; ask when upstream failover signaling is
-  absent; question `How will upstream failover be signaled?`; options: `Dynamic
-  routing (Recommended)` — Use supported routing and fast detection; `Static or
-  VIP` — Use explicit tracking and ownership; `Need design` — Compare
-  convergence models.
+- `mnha_route`; header `Routing`; ask when a complete upstream failover
+  signaling design is absent; question `How should unresolved MNHA signaling
+  design be handled?`; options: `Design from topology first (Recommended)` —
+  Derive a complete signaling design from topology and convergence
+  requirements; `Use supplied complete design` — Use the supplied complete
+  signaling, tracking, ownership, and convergence design.
 - `mnha_objective`; header `Objectives`; ask when resilience priority is
   absent; question `What resilience objective matters most?`; options:
   `Stateful failover (Recommended)` — Prioritize session continuity; `Fast
@@ -2088,10 +2108,11 @@ installable skill.
   — Apply a supplied complete VRF and route-target inventory; `Design new
   service matrix` — Build a new matrix from supplied service requirements.
 - `mpls_policy`; header `Policy Model`; ask when VRF-aware policy model is
-  absent; question `How should security policy be organized?`; options: `VRF
-  policy groups (Recommended)` — Use the scalable supported model; `VRF to
-  zone` — Preserve existing zone design where supported; `Need validation` —
-  Select after release checks.
+  absent; question `How should an unspecified VRF policy architecture be
+  resolved?`; options: `Confirm architecture first (Recommended)` — Confirm the
+  VRF policy architecture before organizing policy; `Use supplied policy
+  groups` — Use the supplied VRF policy-group architecture; `Use supplied
+  VRF-to-zone` — Use the supplied VRF-to-zone architecture.
 - `mpls_service`; header `Services`; ask when inspection services are absent;
   question `How should unspecified security-service scope be handled?`;
   options: `Confirm services first (Recommended)` — Inventory application, NAT,
@@ -2171,10 +2192,12 @@ installable skill.
   conservatively` — Limit output to evidence-supported base policy and disclose
   uncertainty.
 - `policy_model`; header `Policy Model`; ask when architecture is absent;
-  question `Which policy architecture should be used?`; options: `Global policy
-  (Recommended)` — Use global policy where it safely reduces duplication;
-  `Preserve zone-pair` — Retain explicit zone organization; `Review existing` —
-  Assess the supplied mix first.
+  question `How should an unspecified policy architecture be resolved?`;
+  options: `Confirm architecture first (Recommended)` — Confirm the policy
+  architecture before organizing rules; `Use supplied global policy` — Use the
+  supplied global-policy architecture; `Use supplied zone-pair policy` — Use
+  the supplied zone-pair architecture and specify a complete mixed architecture
+  through Other.
 - `policy_flow`; header `Traffic`; ask when traffic intent is incomplete;
   question `How should incomplete traffic intent be handled?`; options: `Map
   flow first (Recommended)` — Identify source, destination, application,

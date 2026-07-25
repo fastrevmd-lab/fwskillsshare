@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "cmmc_stage",
       "ask_when": "Assessment stage is absent.",
       "header": "Stage",
-      "question": "What is the assessment being prepared for?",
+      "question": "How should an unspecified assessment stage be resolved?",
       "options": [
         {
-          "label": "Readiness review (Recommended)",
-          "description": "Identify gaps before formal assessment."
+          "label": "Confirm stage first (Recommended)",
+          "description": "Confirm the lifecycle stage before selecting an assessment workflow."
         },
         {
-          "label": "SSP and POAM",
-          "description": "Produce SSP and POA&M evidence."
+          "label": "Use supplied pre-assessment",
+          "description": "Treat the supplied stage as readiness work before formal assessment."
         },
         {
-          "label": "C3PAO support",
-          "description": "Organize defensible external assessment evidence."
+          "label": "Use supplied formal assessment",
+          "description": "Treat the supplied stage as formal-assessment preparation."
         }
       ]
     },

@@ -147,19 +147,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mpls_policy",
       "ask_when": "The VRF-aware policy model is absent.",
       "header": "Policy Model",
-      "question": "How should security policy be organized?",
+      "question": "How should an unspecified VRF policy architecture be resolved?",
       "options": [
         {
-          "label": "VRF policy groups (Recommended)",
-          "description": "Use the scalable supported model."
+          "label": "Confirm architecture first (Recommended)",
+          "description": "Confirm the VRF policy architecture before organizing policy."
         },
         {
-          "label": "VRF to zone",
-          "description": "Preserve existing zone design where supported."
+          "label": "Use supplied policy groups",
+          "description": "Use the supplied VRF policy-group architecture."
         },
         {
-          "label": "Need validation",
-          "description": "Select after release checks."
+          "label": "Use supplied VRF-to-zone",
+          "description": "Use the supplied VRF-to-zone architecture."
         }
       ]
     },

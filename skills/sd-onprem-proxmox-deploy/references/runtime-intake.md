@@ -60,11 +60,10 @@ platform or framework basis, evidence quality, then output preference.
       "id": "sd_size",
       "ask_when": "The appliance flavor is absent.",
       "header": "Sizing",
-      "question": "Which supported appliance size should be used?",
+      "question": "How should unresolved appliance sizing be handled?",
       "options": [
-        {"label": "Smallest fitting (Recommended)", "description": "Select the lowest flavor meeting measured requirements."},
-        {"label": "Known flavor", "description": "Use a flavor supplied through Other."},
-        {"label": "Need sizing", "description": "Collect device, log, retention, and growth requirements."}
+        {"label": "Measure requirements first (Recommended)", "description": "Measure device, traffic, log, retention, and growth requirements before selecting a flavor."},
+        {"label": "Use supplied final flavor", "description": "Use the supplied final supported flavor without reselecting its size."}
       ]
     },
     {

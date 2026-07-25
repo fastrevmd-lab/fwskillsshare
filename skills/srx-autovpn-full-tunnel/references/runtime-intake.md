@@ -67,19 +67,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "autovpn_traffic",
       "ask_when": "Backhaul behavior is unclear.",
       "header": "Traffic",
-      "question": "What traffic model is required?",
+      "question": "How should an unspecified AutoVPN traffic model be resolved?",
       "options": [
         {
-          "label": "Full backhaul (Recommended)",
-          "description": "Send spoke traffic through the hub."
+          "label": "Confirm model first (Recommended)",
+          "description": "Confirm the traffic model before designing spoke forwarding."
         },
         {
-          "label": "Split tunnel",
-          "description": "Preserve specified local paths."
+          "label": "Use supplied full backhaul",
+          "description": "Backhaul all scoped spoke traffic through the hub as supplied."
         },
         {
-          "label": "Compare models",
-          "description": "Evaluate both designs."
+          "label": "Use supplied split tunnel",
+          "description": "Preserve the supplied split-tunnel and local path requirements."
         }
       ]
     },

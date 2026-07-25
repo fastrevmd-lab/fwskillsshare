@@ -87,19 +87,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "hsvpn_traffic",
       "ask_when": "Spoke path requirements are unclear.",
       "header": "Traffic",
-      "question": "How should spoke traffic be routed?",
+      "question": "How should an unspecified hub-spoke traffic model be resolved?",
       "options": [
         {
-          "label": "Central backhaul (Recommended)",
-          "description": "Route required traffic through the hub."
+          "label": "Confirm model first (Recommended)",
+          "description": "Confirm the traffic model before designing spoke forwarding."
         },
         {
-          "label": "Split or local",
-          "description": "Preserve specified local paths."
+          "label": "Use supplied central backhaul",
+          "description": "Backhaul all scoped spoke traffic through the hub as supplied."
         },
         {
-          "label": "Compare models",
-          "description": "Evaluate both."
+          "label": "Use supplied split tunnel",
+          "description": "Preserve the supplied split-tunnel paths and specify local variants through Other."
         }
       ]
     },

@@ -86,13 +86,13 @@ EXPECTED_CATALOG_SHA256 = {
     "cis-controls-ngfw-compliance":
         "36e3bf588d757c5d4e4eb554383891c68f813cbca8dc0768081afdff0432b9ec",
     "cmmc-nist-800-171-ngfw-compliance":
-        "9addc8cdcfc970ea5087d95d640d86b8695837f74ca7afba84a321ce20054fe5",
+        "97cdac86336fb74c1f1d85d8b3875d9379d16369094b91b5e7f26a7957bf2b20",
     "firewall-best-practices-audit":
-        "03e0a7b24132a62065b1ce119b2b1974bc97ab477e0ee6ede4e039196a25a030",
+        "8b853cf308499d27abfeecb332465d44494eaf2bc064db77648fa06f2f5d103d",
     "firewall-config-conversion":
         "7e23567bfc9642f7b9ba7ee7eaba81794bec82932eabf287c315b76c16a90051",
     "firewall-config-diff":
-        "7b56f4b51693140bde7ef1d86024563d18285293b6f419238fb45fcb94cc47f9",
+        "3b80ffa9d28736ced888b50e187d3a33d64729b74d85aba5896cbc70ae0ef560",
     "hipaa-ngfw-compliance":
         "8d55b564d3dc9c3838c0184124d2937e7778c99cf461b65aaab0fdecff25d390",
     "iso27001-ngfw-compliance":
@@ -108,25 +108,25 @@ EXPECTED_CATALOG_SHA256 = {
     "pci-ngfw-compliance":
         "be8aa6f3d7d9f9cc0b2bd83df41d8fe085bf82ca1f8b26a05b2a973408a1b3ff",
     "sd-onprem-proxmox-deploy":
-        "75add48ae585220170c3386bb464a122a12eca59892d5a7c4c405c33b9d0d5d2",
+        "8bb5379c013fbc560bc2069f5a5a332541c189436ab8a704f4bc3859ee658bf9",
     "soc2-ngfw-compliance":
         "2d7c045877c37220a6447234844512d594e16b41f0b905c9aa725b10291fceea",
     "srx-advpn":
-        "f4f36efedd495e6866cd0d4812aa2876e58a7cc2018c3fcbceb904f7d4847837",
+        "0a4cfbd6ba15e4003d9cc668840c24a218539059d63f09591bfc73166c781b41",
     "srx-autovpn-full-tunnel":
-        "5fc2245ccf43ca81f36094e397531f09be9a70ee18d4c3ab711df92b36e18ff6",
+        "d8ae7ee5b58d6412868e8f7ef9337184060cb8d9f6aec7571751674deb7509e9",
     "srx-dynamic-ip-feed":
-        "0c7719121c78336c965f515f2c7ecb171a83df9c4e127fbdbcd87ec096c6abca",
+        "ea5a19c8933eadfc94dd1c9daf9880082ed32f04012bc006ef158ad518791d13",
     "srx-ipsec-hub-spoke":
-        "3e4e0a5f725b58c2d287835690a4d554242ceb7bea3d0e9eb52e6ecbf6129156",
+        "e1f9c59cd39aeef8346ca558b968c9d12348691bd09fb2601dfbfe1121eb3080",
     "srx-mnha":
-        "fc6211bafd7849792651d77ae7616dab7a025481514eefe288ad35072bf671d9",
+        "3ef71cc47caf6781a141ed9ea74446691944ccfd33d1ba94bc6ee587e6428d38",
     "srx-mpls-in-flow":
-        "786dcf2196762dd1c2fb463dca1492ebf264ef671a352f6b8b74aa4c8b03c240",
+        "528ce7a884e9c1d98421afdf75e096a8dd5c44c6fb97b675aad1cceff60b44dd",
     "srx-nat":
         "b656fabb08f40dcbb609cc04f549dc7682a7ce527bd5b9858d7f085fef5b1601",
     "srx-policy":
-        "bd080b00c35715d741793dc364fcb682f14f70fedcb294f22e802f7f9b1a288e",
+        "1172cdc0d1f9b0dbdd9e4a1dd3df5fcfc5030272ef6aa71ccbd076855a361c7a",
 }
 
 # Appendix A intentionally uses compact "ask when ..." fragments for these
@@ -324,6 +324,32 @@ SAFE_FIRST_LABELS = {
         "Map flow first (Recommended)",
     ("srx-policy", "policy_nat"):
         "Trace first (Recommended)",
+    ("cmmc-nist-800-171-ngfw-compliance", "cmmc_stage"):
+        "Confirm stage first (Recommended)",
+    ("firewall-best-practices-audit", "audit_depth"):
+        "Confirm detail first (Recommended)",
+    ("firewall-config-diff", "diff_output"):
+        "Confirm detail first (Recommended)",
+    ("firewall-config-diff", "diff_format"):
+        "Confirm format first (Recommended)",
+    ("sd-onprem-proxmox-deploy", "sd_size"):
+        "Measure requirements first (Recommended)",
+    ("srx-advpn", "advpn_route"):
+        "Confirm model first (Recommended)",
+    ("srx-autovpn-full-tunnel", "autovpn_traffic"):
+        "Confirm model first (Recommended)",
+    ("srx-dynamic-ip-feed", "dif_session"):
+        "Confirm behavior first (Recommended)",
+    ("srx-dynamic-ip-feed", "dif_poll"):
+        "Confirm cadence first (Recommended)",
+    ("srx-ipsec-hub-spoke", "hsvpn_traffic"):
+        "Confirm model first (Recommended)",
+    ("srx-mnha", "mnha_route"):
+        "Design from topology first (Recommended)",
+    ("srx-mpls-in-flow", "mpls_policy"):
+        "Confirm architecture first (Recommended)",
+    ("srx-policy", "policy_model"):
+        "Confirm architecture first (Recommended)",
 }
 
 # These final-review findings require exact, single-axis option sets, not only a
@@ -488,6 +514,69 @@ EXACT_OPTION_LABELS = {
         "Inventory vendors first (Recommended)",
         "Use supplied uniform treatment",
         "Use supplied mixed treatment",
+    ),
+    ("cmmc-nist-800-171-ngfw-compliance", "cmmc_stage"): (
+        "Confirm stage first (Recommended)",
+        "Use supplied pre-assessment",
+        "Use supplied formal assessment",
+    ),
+    ("firewall-best-practices-audit", "audit_depth"): (
+        "Confirm detail first (Recommended)",
+        "Use supplied full detail",
+        "Use supplied material-only detail",
+    ),
+    ("firewall-config-diff", "diff_output"): (
+        "Confirm detail first (Recommended)",
+        "Use supplied full report",
+        "Use supplied material summary",
+    ),
+    ("firewall-config-diff", "diff_format"): (
+        "Confirm format first (Recommended)",
+        "Use supplied human-readable",
+        "Use supplied machine-readable",
+    ),
+    ("sd-onprem-proxmox-deploy", "sd_size"): (
+        "Measure requirements first (Recommended)",
+        "Use supplied final flavor",
+    ),
+    ("srx-advpn", "advpn_route"): (
+        "Confirm model first (Recommended)",
+        "Use supplied OSPF P2MP",
+        "Use supplied other model",
+    ),
+    ("srx-autovpn-full-tunnel", "autovpn_traffic"): (
+        "Confirm model first (Recommended)",
+        "Use supplied full backhaul",
+        "Use supplied split tunnel",
+    ),
+    ("srx-dynamic-ip-feed", "dif_session"): (
+        "Confirm behavior first (Recommended)",
+        "Use supplied new-sessions-only",
+        "Use supplied targeted clear",
+    ),
+    ("srx-dynamic-ip-feed", "dif_poll"): (
+        "Confirm cadence first (Recommended)",
+        "Use supplied standard interval",
+        "Use supplied custom interval",
+    ),
+    ("srx-ipsec-hub-spoke", "hsvpn_traffic"): (
+        "Confirm model first (Recommended)",
+        "Use supplied central backhaul",
+        "Use supplied split tunnel",
+    ),
+    ("srx-mnha", "mnha_route"): (
+        "Design from topology first (Recommended)",
+        "Use supplied complete design",
+    ),
+    ("srx-mpls-in-flow", "mpls_policy"): (
+        "Confirm architecture first (Recommended)",
+        "Use supplied policy groups",
+        "Use supplied VRF-to-zone",
+    ),
+    ("srx-policy", "policy_model"): (
+        "Confirm architecture first (Recommended)",
+        "Use supplied global policy",
+        "Use supplied zone-pair policy",
     ),
 }
 

@@ -167,19 +167,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "dif_session",
       "ask_when": "Existing-session behavior matters and is absent.",
       "header": "Sessions",
-      "question": "What should happen to existing sessions when the feed changes?",
+      "question": "How should unspecified existing-session behavior be resolved?",
       "options": [
         {
-          "label": "New sessions only (Recommended)",
-          "description": "Apply changes to new evaluations."
+          "label": "Confirm behavior first (Recommended)",
+          "description": "Confirm existing-session behavior before accounting for enforcement timing."
         },
         {
-          "label": "Clear matches",
-          "description": "Include separately approved targeted clearing."
+          "label": "Use supplied new-sessions-only",
+          "description": "Apply feed changes only to new session evaluations."
         },
         {
-          "label": "Need decision",
-          "description": "Explain enforcement timing first."
+          "label": "Use supplied targeted clear",
+          "description": "Record targeted-clear intent and require separate live approval before clearing."
         }
       ]
     },
@@ -187,19 +187,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "dif_poll",
       "ask_when": "Refresh requirements are absent.",
       "header": "Polling",
-      "question": "What refresh behavior is required?",
+      "question": "How should an unspecified polling cadence be resolved?",
       "options": [
         {
-          "label": "Standard interval (Recommended)",
-          "description": "Use a conservative supported interval."
+          "label": "Confirm cadence first (Recommended)",
+          "description": "Confirm the polling cadence before selecting an interval."
         },
         {
-          "label": "Faster updates",
-          "description": "Validate load and reliability."
+          "label": "Use supplied standard interval",
+          "description": "Use the supplied conservative supported standard interval."
         },
         {
-          "label": "Custom cadence",
-          "description": "Use a value supplied through Other."
+          "label": "Use supplied custom interval",
+          "description": "Use the supplied custom interval after validating load and reliability."
         }
       ]
     }

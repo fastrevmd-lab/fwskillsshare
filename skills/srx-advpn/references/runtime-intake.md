@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "advpn_route",
       "ask_when": "Overlay routing is absent.",
       "header": "Routing",
-      "question": "Which overlay routing model should be used?",
+      "question": "How should an unspecified ADVPN routing model be resolved?",
       "options": [
         {
-          "label": "OSPF P2MP (Recommended)",
-          "description": "Use the documented point-to-multipoint model."
+          "label": "Confirm model first (Recommended)",
+          "description": "Confirm the routing model before designing the overlay."
         },
         {
-          "label": "Existing routing",
-          "description": "Preserve and assess the supplied protocol."
+          "label": "Use supplied OSPF P2MP",
+          "description": "Use the supplied OSPF point-to-multipoint routing model."
         },
         {
-          "label": "Need design",
-          "description": "Compare supported models."
+          "label": "Use supplied other model",
+          "description": "Use the complete alternative routing model specified through Other."
         }
       ]
     },

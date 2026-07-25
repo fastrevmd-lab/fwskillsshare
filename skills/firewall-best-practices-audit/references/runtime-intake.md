@@ -107,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "audit_depth",
       "ask_when": "The finding detail is not specified.",
       "header": "Depth",
-      "question": "How much finding detail should be returned?",
+      "question": "How should an unspecified finding-detail tier be resolved?",
       "options": [
         {
-          "label": "Full findings (Recommended)",
-          "description": "Include evidence, impact, confidence, and remediation."
+          "label": "Confirm detail first (Recommended)",
+          "description": "Confirm the required finding-detail tier before producing findings."
         },
         {
-          "label": "Critical and high",
-          "description": "Return only material findings."
+          "label": "Use supplied full detail",
+          "description": "Return every in-scope finding with complete supporting detail."
         },
         {
-          "label": "Top actions",
-          "description": "Produce a short remediation backlog."
+          "label": "Use supplied material-only detail",
+          "description": "Return only material findings with supporting detail."
         }
       ]
     },
