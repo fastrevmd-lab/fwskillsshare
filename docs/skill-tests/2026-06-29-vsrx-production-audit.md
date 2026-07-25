@@ -104,3 +104,15 @@ findings (SEC-ANY-ANY, SEC-NO-DENY-ALL); v1.1 adds SEC-SSH-ROOT-LOGIN,
 SEC-SERVICES-UNREFERENCED, and SEC-ZONES-NAT-NO-POLICY — exactly the
 control-plane / service-hygiene surface v1.0 missed — without over-firing on the
 present controls. The v1.1 coverage goal is met on a live device.
+
+---
+
+## Issue #15 validation follow-up (2026-07-22)
+
+See the
+[dated issue #15 follow-up](2026-07-22-firewall-best-practices-audit-v1.1-follow-up.md)
+for an offline replay of the preserved policy-light worked-example projection
+and a secret-free policy-heavy synthetic SRX fixture. No Junos connector was
+available for that session, so the follow-up does not claim a new live
+`vSRX-Production` collection and records current-device recollection as the
+remaining acceptance gap.

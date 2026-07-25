@@ -1,7 +1,7 @@
 ---
 name: srx-dynamic-ip-feed
-description: Configure, audit, and troubleshoot Juniper SRX dynamic IP objects from HTTPS feeds. Use when handling feed archives, dynamic-address mapping, certificate validation, basic auth, mTLS, session scanning, routing-instance reachability, show security dynamic-address, ipfd logs, or feed and TLS failures. Use srx-policy for SecIntel feeds.
-version: 1.0.2
+description: Configure, audit, and troubleshoot Juniper SRX dynamic IP objects from HTTPS feeds. Use when handling feed archives, dynamic-address mapping, certificate validation, basic auth, mTLS, session scanning, routing-instance reachability, Recovery Mode after reboot, show security dynamic-address, ipfd logs, or feed and TLS failures. Use srx-policy for SecIntel feeds.
+version: 1.0.3
 author:
   - fastrevmd-lab
   - Claude
@@ -9,7 +9,7 @@ author:
 license: MIT
 metadata:
   hermes:
-    tags: [srx, junos, dynamic-address, feed-server, ipfd, feed-name, session-scan, mutual-tls, basic-auth, firewall, security-policy, pki, tls, nginx]
+    tags: [srx, junos, dynamic-address, feed-server, ipfd, feed-name, session-scan, mutual-tls, basic-auth, recovery-mode, reboot-safety, firewall, security-policy, pki, tls, nginx]
     related_skills: [parsing-srx-configs, srx-policy]
   sources:
     - title: SRX Dynamic IP Objects aka Feed-server
@@ -354,16 +354,15 @@ A common structure is:
 
 ## Routing Instance Reachability
 
-If the feed server is reachable only through a non-default routing instance, configure the feed-server routing table. The hidden stanza uses `table.inet` format without the normal trailing `.0`:
+**Warning — non-default feed-server routing-table pins are not reboot-safe on vSRX 24.4R1.9.** A saved configuration containing `security dynamic-address feed-server <server> routing-table <instance>.inet` can commit and fetch normally after the table already exists, yet fail normal boot validation with `routing table <instance>.inet cannot find`. The device can then activate Recovery Mode and load its rescue configuration. A successful interactive commit is not reboot-safety proof; this failure was [field-observed on 18 devices](https://github.com/fastrevmd-lab/fwskillsshare/issues/18).
 
-```junos
-set routing-instances vr-1 instance-type virtual-router
-set security dynamic-address feed-server debian-1 routing-table vr-1.inet
-```
+**Preferred reboot-safe path:** make the feed server reachable through the default routing instance and omit the feed-server `routing-table` statement. On the affected release, devices using the same feed server without the pin booted normally.
 
-Live-verified on vSRX 24.4R1: the table name takes NO trailing `.0` — `routing-table vr-1.inet.0` and even `inet.0` are rejected with `routing table ... cannot find`, while the bare form `inet` (default instance) and `<instance>.inet` are accepted. The referenced instance's table must already exist on the device when the commit is validated: defining the routing instance in the same candidate still fails commit check with "cannot find" — commit the instance first.
+For diagnosis only, the interactive syntax was live-verified as `<instance>.inet`, without the normal trailing `.0`; `<instance>.inet.0` and `inet.0` were rejected, while bare `inet` and `<instance>.inet` were accepted. Committing the routing instance first only satisfies the interactive commit dependency; it does not make the saved configuration boot-safe.
 
-Verify routing and source reachability from the relevant routing instance before troubleshooting TLS or feed syntax.
+`event-options` is an **unsupported/unverified** workaround for this defect. Juniper documents that an event policy can [change and commit configuration](https://www.juniper.net/documentation/us/en/software/junos/automation-scripting/topics/concept/junos-script-automation-event-policy-change-configuration-overview.html), but not a supported boot trigger/order that waits for this routing table and avoids persisting the pin into the next boot. Do not present it as reboot-safe without a Juniper-confirmed procedure for the exact platform/release and controlled cold-boot validation with console and rollback protection.
+
+Juniper documents the Recovery Mode banner, `UI_DEVICE_IN_RECOVERY_MODE`, and that immediately after recovery `rollback 1` contains the failed configuration in [Rescue and Recovery of Configuration File](https://www.juniper.net/documentation/us/en/software/junos/junos-install-upgrade/topics/topic-map/rescue-and-recovery-config-file.html).
 
 ## Verification Commands
 
@@ -434,6 +433,7 @@ Read `references/feed-update-test.md` when validating that feed changes propagat
 | `IPFD_DA_FEED_CERT_SUBJ_CHECK_FAIL` | URL hostname does not match server cert CN/SAN | Use correct DNS/static-host-mapping and URL hostname, regenerate cert if needed |
 | Initial GET works but updates do not | Archive not recreated, mtime/headers not changing, HEAD handling issue | Recreate `.tgz`, nginx logs, check HEAD 200 responses |
 | Feed unreachable only from SRX | Routing or source path issue | static route/default route, routing-instance `routing-table`, DNS/static-host-mapping |
+| Device reverts to an older/rescue configuration after reboot; Recovery Mode banner or `UI_DEVICE_IN_RECOVERY_MODE` appears | Saved non-default feed-server `routing-table <instance>.inet` pin failed normal boot validation | Use console or protected out-of-band access; inspect `rollback 1` and boot/commit logs for `routing table ... cannot find` as diagnostic evidence only; require explicit change approval, a rollback plan, and post-change verification before any recovery/configuration write |
 | Old sessions still pass after feed change | Existing sessions not being reconciled | Consider `set security dynamic-address session-scan`; use deny/reject policies for blacklist entries |
 | Scale concerns | Platform limits or PFE update time | `/var/log/ipfd`, platform capacity, staged performance testing |
 
@@ -455,6 +455,8 @@ Read `references/feed-update-test.md` when validating that feed changes propagat
 
 8. **Leaking feed-server credentials.** SRX basic auth passwords and private keys should not be pasted into chat/logs/tickets. Use redaction and credential-handling practices.
 
+9. **Treating an interactive commit as reboot-safety proof.** A non-default feed-server routing-table pin can commit and operate normally but still trigger Recovery Mode at the next boot. Prefer default-instance reachability and omit the pin.
+
 ## Verification Checklist
 
 - [ ] Feed archive URL is reachable from the SRX routing context.
@@ -471,6 +473,8 @@ Read `references/feed-update-test.md` when validating that feed changes propagat
 - [ ] `show log messages | match ipfd` shows succeeded or succeeded<file not changed>.
 - [ ] Server logs show expected GET/HEAD behavior.
 - [ ] Update test confirms changed archive contents appear without commit.
+- [ ] Persistent configuration omits non-default feed-server `routing-table <instance>.inet`; a successful interactive commit and healthy feed are not reboot-safety proof.
+- [ ] Any exception is recorded as unsupported/unverified until Juniper confirms the exact platform/release procedure and a controlled lab cold boot passes with console and rollback protection; never validate first in production.
 
 ## Source
 

@@ -43,6 +43,7 @@ EXPECTED_SKILL_NAMES = frozenset(
         "pci-ngfw-compliance",
         "soc2-ngfw-compliance",
         "sd-onprem-proxmox-deploy",
+        "srx-disa-stig-compliance",
         "srx-advpn",
         "srx-autovpn-full-tunnel",
         "srx-dynamic-ip-feed",

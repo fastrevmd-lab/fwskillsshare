@@ -1,7 +1,7 @@
 ---
 name: srx-policy
 description: Design, migrate, configure, audit, and troubleshoot Juniper SRX security policy on Junos 23.x+ non-Branch platforms. Use when handling global or zone policy, address and application objects, AppID, AppFW, NGWF, EWF, SecIntel, ATP, logging, rule order, hit counts, default deny, or cross-VLAN mDNS and SSDP boundaries.
-version: 1.2.4
+version: 1.2.5
 author:
   - fastrevmd-lab
   - Claude
@@ -15,11 +15,11 @@ metadata:
     - title: Configuring Security Policies | Junos OS
       author: Juniper Networks
       url: https://www.juniper.net/documentation/us/en/software/junos/security-policies/topics/topic-map/security-policy-configuration.html
-      retrieved: "2026-05-15"
+      retrieved: "2026-07-22"
     - title: Global Policy Overview | Junos OS
       author: Juniper Networks
       url: https://www.juniper.net/documentation/us/en/software/junos/security-policies/topics/topic-map/security-global-policies.html
-      retrieved: "2026-05-15"
+      retrieved: "2026-07-22"
     - title: Security Policy Applications and Application Sets | Junos OS
       author: Juniper Networks
       url: https://www.juniper.net/documentation/us/en/software/junos/security-policies/topics/topic-map/policy-application-sets-configuration.html
@@ -76,9 +76,19 @@ metadata:
 
 Use this skill for Juniper SRX security policy design on Junos 23.x and newer non-Branch SRX platforms. It focuses on the policy layer that decides whether traffic is permitted, denied, logged, counted, or passed into security services such as AppID/AppFW, NextGen Web Filtering (NGWF), Enhanced Web Filtering (EWF), SecIntel, and ATP-backed protections.
 
-Strong default: for greenfield SRX deployments and migrations from other firewall vendors, recommend `security policies global` rather than building the design primarily as many `from-zone ... to-zone ...` policy contexts. Treat old-style zone-to-zone policy as a compatibility pattern for existing Junos estates, small isolated exceptions, or cases where the customer explicitly standardizes on it.
+## Enforced Global-Policy Output Contract
 
-Why global policy is the recommended migration target:
+For greenfield, migration, and onboarding work, generated policy MUST use `security policies global`; express zones only as `match from-zone` and `match to-zone` fields inside each global policy. Do not preserve zone-pair structure merely because it appears in the input.
+
+Use zone-to-zone output only after the caller explicitly opts into one of these exceptions and record the exception and affected rules in the result:
+
+- existing-estate compatibility where structural change is outside scope;
+- an isolated exception that is clearer and safer as a zone-pair policy;
+- a customer standard or toolchain that requires zone-pair contexts.
+
+Day-one SRX onboarding MUST detect `set security policies from-zone ... to-zone ...` contexts and rewrite them under `security policies global` by default. Preserve each source context's rule order, move its zones into match fields, verify semantic parity, and only remove or deactivate the legacy contexts with explicit approval and rollback protection. Read `references/zone-pair-to-global-example.md` for the complete detect-and-rewrite example.
+
+Why global policy is the enforced generation target:
 
 - Most vendor rulebases already behave like one ordered policy table with source zone, destination zone, source, destination, service/application, action, logging, and profiles as fields.
 - Junos global policy lets a rule match one or more `from-zone` and `to-zone` values inside the policy itself.
@@ -107,60 +117,13 @@ Use this skill for SRX policy behavior after relevant configuration is identifie
 8. Add logging and counts intentionally; log high-risk denies and important permits, but do not flood logs on high-volume noise without a reason.
 9. Verify hit counts and live sessions after every policy import or reorder.
 
-Example global policy skeleton:
+Read `references/zone-pair-to-global-example.md` for a complete ordered global table. Use multiple `match from-zone` and `match to-zone` statements only when one logical rule legitimately spans several zones with identical criteria and action; Juniper warns that careless multizone grouping can permit spoofed traffic.
 
-```junos
-set security address-book global address NET-USERS 10.10.0.0/16
-set security address-book global address NET-SERVERS 10.20.0.0/16
-set security address-book global address DNS-1 10.20.10.53/32
-# BAD-SOURCES: static placeholder; in production replace with a dynamic-address
-# object or SecIntel feed (see srx-dynamic-ip-feed skill).
-set security address-book global address BAD-NET-1 192.0.2.0/24
-set security address-book global address-set BAD-SOURCES address BAD-NET-1
-set applications application-set APP-DNS application junos-dns-udp
-set applications application-set APP-DNS application junos-dns-tcp
+### Explicit Zone-to-Zone Opt-Out
 
-set security policies global policy 010-DENY-BAD-SOURCES match from-zone USERS
-set security policies global policy 010-DENY-BAD-SOURCES match to-zone SERVERS
-set security policies global policy 010-DENY-BAD-SOURCES match source-address BAD-SOURCES
-set security policies global policy 010-DENY-BAD-SOURCES match destination-address any
-set security policies global policy 010-DENY-BAD-SOURCES match application any
-set security policies global policy 010-DENY-BAD-SOURCES then deny
-set security policies global policy 010-DENY-BAD-SOURCES then log session-init
-set security policies global policy 010-DENY-BAD-SOURCES then count
+Use `security policies from-zone <zone> to-zone <zone>` only when the caller selects an exception in the enforced output contract. State why global policy is unsuitable, constrain the zone-pair scope, and keep all other generated rules global.
 
-set security policies global policy 100-USERS-DNS match from-zone USERS
-set security policies global policy 100-USERS-DNS match to-zone SERVERS
-set security policies global policy 100-USERS-DNS match source-address NET-USERS
-set security policies global policy 100-USERS-DNS match destination-address DNS-1
-set security policies global policy 100-USERS-DNS match application APP-DNS
-set security policies global policy 100-USERS-DNS then permit
-set security policies global policy 100-USERS-DNS then log session-close
-set security policies global policy 100-USERS-DNS then count
-
-set security policies global policy 999-DENY-REST match from-zone any
-set security policies global policy 999-DENY-REST match to-zone any
-set security policies global policy 999-DENY-REST match source-address any
-set security policies global policy 999-DENY-REST match destination-address any
-set security policies global policy 999-DENY-REST match application any
-set security policies global policy 999-DENY-REST then deny
-set security policies global policy 999-DENY-REST then log session-init
-set security policies global policy 999-DENY-REST then count
-```
-
-Use multiple `match from-zone` and `match to-zone` statements when one logical rule legitimately spans several zones. Do not use this to hide unclear segmentation; group zones only when the security intent is truly the same.
-
-### When Zone-to-Zone Policy Is Still Acceptable
-
-Use `security policies from-zone <zone> to-zone <zone>` when:
-
-- you are preserving an existing Junos policy model and minimizing change risk;
-- the device has a small, stable set of zone pairs;
-- one zone pair needs a local exception that would be less clear in global policy;
-- an operational standard, toolchain, or management platform requires zone-pair contexts;
-- you are doing a staged migration and need to compare old and new behavior carefully.
-
-Even then, avoid uncontrolled sprawl. Repeated rules across many zone pairs are a signal that the policy should probably be global.
+Do not treat a small rulebase, an existing zone-pair input, or a staged migration as an implicit opt-out. Repeated rules across zone pairs require a global rewrite unless the caller explicitly chooses otherwise.
 
 ## Policy Evaluation and Rule Order
 
@@ -268,7 +231,7 @@ Verification:
 ```text
 show security application-firewall rule-set APPFW-STREAMING
 show services application-identification application summary | match <app>
-show security policies hit-count global
+show security policies hit-count
 show security flow session source-prefix <client> extensive
 ```
 
@@ -317,7 +280,7 @@ Operational checks vary by deployment, but collect at least:
 
 ```text
 show system license
-show security policies hit-count global
+show security policies hit-count
 show security flow session source-prefix <source> extensive
 show log messages | match "secintel|atp|utm|web-filter|threat"
 ```
@@ -341,6 +304,8 @@ Read `references/service-discovery.md` when troubleshooting mDNS, SSDP, casting,
 9. If NAT exists, resolve post-NAT policy expectations with `srx-nat` before writing final policies.
 10. Commit in a lab, generate traffic, and compare hit counts and session tuples against expected behavior.
 
+For day-one SRX onboarding, first detect zone-pair contexts, then use the same workflow to rewrite them into one global table. Preserve order within each original context; separate contexts have no shared total order, so exact zone match fields preserve their independence. Because regular policies have lookup priority over global policies, plan removal or deactivation of migrated contexts as an approved cutover rather than leaving shadowing duplicates active.
+
 Policy naming convention:
 
 ```text
@@ -353,6 +318,16 @@ Policy naming convention:
 ```
 
 Avoid names that encode only zone pairs, such as `TRUST-TO-UNTRUST-1`, when the policy is global. Encode the business intent and keep numeric ordering stable.
+
+## Pre-Return Self-Check
+
+Before returning any generated or rewritten policy:
+
+1. Search the proposed set-format output for `set security policies from-zone`; absent an explicit opt-out, this must return no matches.
+2. Confirm every generated rule starts under `set security policies global policy` and carries intended `match from-zone` and `match to-zone` fields.
+3. Compare the final global order with the source order within every original context; re-display it after any `insert` operation.
+4. Confirm no active legacy zone-pair rule can match first. Use `show security match-policies global ...` for pre-cutover global checks, then test effective lookup after the approved cutover.
+5. Report any exception, uncertainty, unsupported feature, or unconverted rule instead of silently returning zone-pair output.
 
 ## Verification Commands
 
@@ -372,10 +347,12 @@ Policy counters and order:
 ```text
 show security policies
 show security policies detail
-show security policies hit-count global
+show security policies hit-count
 show security policies hit-count from-zone <src-zone> to-zone <dst-zone>
 clear security policies hit-count
 ```
+
+The `from-zone` and `to-zone` hit-count filters are for zone-based policies only. Use the unfiltered command for global policies and identify the `junos-global` rows.
 
 Sessions and flow:
 
@@ -425,7 +402,7 @@ commit confirmed 10
 
 | Symptom | Likely Cause | Check | Fix |
 |---|---|---|---|
-| Expected global policy not hit | Rule order, zone mismatch, address/application mismatch, or NAT changed destination | `show security policies hit-count global`, session extensive | Move specific rule up, fix `match from-zone/to-zone`, address, app, or NAT expectations |
+| Expected global policy not hit | Rule order, zone mismatch, address/application mismatch, or NAT changed destination | `show security policies hit-count`, session extensive | Move specific rule up, fix `match from-zone/to-zone`, address, app, or NAT expectations |
 | New permit never matches despite a clean commit | Rule was appended below the default-deny because a later `insert ... before/after` reordered around it | `show configuration security policies global \| display set` | Re-`insert` the permit above the default-deny; re-dump final order before commit |
 | Zone-to-zone policy hit instead of global design | Legacy policies remain active or evaluation expectation is wrong | Full `show configuration security policies` | Consolidate into global policy and remove/disable duplicates after testing |
 | AppFW rule has zero hits | Base policy not permitting flow, AppID package missing, wrong dynamic app | AppID version, AppFW rule-set counters, session policy | Install AppID package, fix base policy, choose correct dynamic app/group |
@@ -438,7 +415,7 @@ commit confirmed 10
 
 ## Common Pitfalls
 
-1. **Defaulting to zone-to-zone policy for migrations.** For greenfield and cross-vendor migrations, strongly recommend `security policies global` unless a specific constraint says otherwise.
+1. **Defaulting to zone-to-zone policy for migrations.** Generate `security policies global`; zone-pair output requires the caller's explicit opt-out and a recorded reason.
 
 2. **Using global policy as an unstructured dumping ground.** Global policy still needs clear order, names, comments, and a final default deny.
 
@@ -470,7 +447,8 @@ commit confirmed 10
 
 - [ ] Platform and Junos release support the requested policy/security-service features.
 - [ ] License/subscription/package state is verified for AppID, AppFW, web filtering, SecIntel, or ATP features.
-- [ ] Greenfield/migration design uses `security policies global` unless a documented reason requires zone-to-zone policy.
+- [ ] Generated/onboarded policy uses `security policies global`, or the caller's explicit zone-pair opt-out and affected rules are recorded.
+- [ ] Pre-return search found no unintended `set security policies from-zone` output.
 - [ ] Global address-book objects are used for reusable migrated objects.
 - [ ] Applications/application sets express business intent and avoid unnecessary `any`.
 - [ ] Rule order is explicit: denies/exceptions, permits, temporary migration exceptions, final deny.
