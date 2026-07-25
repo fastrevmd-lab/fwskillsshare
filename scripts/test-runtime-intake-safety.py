@@ -869,6 +869,94 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 self.tearDown()
                 self.setUp()
 
+    def test_appendix_empty_list_items_open_at_block_boundaries(self) -> None:
+        cases = (
+            (
+                "10.\n"
+                "    ### A.1 `cis-controls-ngfw-compliance`\n",
+                "duplicate Appendix A skill section",
+            ),
+            (
+                "123456789)\t  \n"
+                "           ### A.01 malformed\n",
+                "noncanonical Appendix A heading",
+            ),
+            (
+                "+ \t \n"
+                "  <div>\n",
+                "raw HTML block syntax is not allowed",
+            ),
+        )
+        for insertion, error in cases:
+            with self.subTest(insertion=insertion):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    insertion + "\n### A.1 `cis-controls-ngfw-compliance`",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, error):
+                    SAFETY.parse_plan_catalogs()
+                self.tearDown()
+                self.setUp()
+
+    def test_appendix_empty_list_items_do_not_interrupt_paragraphs(
+        self,
+    ) -> None:
+        accepted = (
+            "A paragraph\n10.\n"
+            "    ### A.1 `cis-controls-ngfw-compliance`\n",
+            "A paragraph\n123456789)\t \n"
+            "           <div>\n",
+        )
+        for insertion in accepted:
+            with self.subTest(insertion=insertion):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    insertion + "\n### A.1 `cis-controls-ngfw-compliance`",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                catalogs = SAFETY.parse_plan_catalogs()
+                self.assertEqual(tuple(catalogs), SAFETY.EXPECTED_SKILLS)
+                self.tearDown()
+                self.setUp()
+
+    def test_appendix_empty_item_fences_and_comments_are_inactive(
+        self,
+    ) -> None:
+        decoys = (
+            "10.\t \r\n"
+            "    ````markdown\r\n"
+            "    ### A.1 `cis-controls-ngfw-compliance`\r\n"
+            "    <div>\r\n"
+            "    ````\r\n",
+            "10.   \n"
+            "    <!--\n"
+            "    ### A.01 malformed\n"
+            "    - `fake`; header `Fake`; ask when fake; "
+            "question `Fake?`; options: `Fake` — fake.\n"
+            "    -->\n",
+        )
+        for decoy in decoys:
+            with self.subTest(decoy=decoy.splitlines()[0]):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    decoy + "\n### A.1 `cis-controls-ngfw-compliance`",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                catalogs = SAFETY.parse_plan_catalogs()
+                self.assertEqual(tuple(catalogs), SAFETY.EXPECTED_SKILLS)
+                self.tearDown()
+                self.setUp()
+
     def test_appendix_tabbed_non_one_marker_respects_paragraph_state(
         self,
     ) -> None:
@@ -937,6 +1025,48 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 self.tearDown()
                 self.setUp()
 
+    def test_appendix_thematic_breaks_close_paragraphs(self) -> None:
+        cases = (
+            (
+                "A paragraph\n***\n"
+                "2. ### A.1 `cis-controls-ngfw-compliance`\n",
+                "duplicate Appendix A skill section",
+            ),
+            (
+                "A paragraph\n_ _ _\n"
+                "2. ### A.01 malformed\n",
+                "noncanonical Appendix A heading",
+            ),
+            (
+                "> A paragraph\n> * * *\n"
+                "> 2. ### A.1 `cis-controls-ngfw-compliance`\n",
+                "duplicate Appendix A skill section",
+            ),
+            (
+                "- A paragraph\n  ***\n"
+                "  2. <div>\n",
+                "raw HTML block syntax is not allowed",
+            ),
+            (
+                "---\n<runtime-wrapper>\n",
+                "raw HTML block syntax is not allowed",
+            ),
+        )
+        for insertion, error in cases:
+            with self.subTest(insertion=insertion):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    insertion + "\n### A.1 `cis-controls-ngfw-compliance`",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, error):
+                    SAFETY.parse_plan_catalogs()
+                self.tearDown()
+                self.setUp()
+
         raw_html_rejected = (
             "A paragraph\n\n2. <div>\n",
             "A paragraph\n1. <div>\n",
@@ -956,6 +1086,65 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                     "raw HTML block syntax is not allowed",
                 ):
                     SAFETY.parse_plan_catalogs()
+                self.tearDown()
+                self.setUp()
+
+    def test_appendix_ordered_list_siblings_are_active(self) -> None:
+        cases = (
+            (
+                "1. first\n"
+                "2. ### A.1 `cis-controls-ngfw-compliance`\n",
+                "duplicate Appendix A skill section",
+            ),
+            (
+                "2) first\n"
+                "3) ### A.01 malformed\n",
+                "noncanonical Appendix A heading",
+            ),
+            (
+                "> 1. first\n"
+                "> 2. <div>\n",
+                "raw HTML block syntax is not allowed",
+            ),
+        )
+        for insertion, error in cases:
+            with self.subTest(insertion=insertion):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    insertion + "\n### A.1 `cis-controls-ngfw-compliance`",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, error):
+                    SAFETY.parse_plan_catalogs()
+                self.tearDown()
+                self.setUp()
+
+        controls = (
+            "- first\n"
+            "  2. ### A.1 `cis-controls-ngfw-compliance`\n",
+            "1. first\n"
+            "2) <div>\n",
+            "1. first\n"
+            "2. ````markdown\n"
+            "   ### A.1 `cis-controls-ngfw-compliance`\n"
+            "   <div>\n"
+            "   ````\n",
+        )
+        for insertion in controls:
+            with self.subTest(control=insertion):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    insertion + "\n### A.1 `cis-controls-ngfw-compliance`",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                catalogs = SAFETY.parse_plan_catalogs()
+                self.assertEqual(tuple(catalogs), SAFETY.EXPECTED_SKILLS)
                 self.tearDown()
                 self.setUp()
 
@@ -1012,6 +1201,158 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                     SAFETY.parse_plan_catalogs()
                 self.tearDown()
                 self.setUp()
+
+    def test_appendix_marker_rejects_setext_equivalents(self) -> None:
+        equivalents = (
+            "Appendix A: Exact question catalogs\n---\n",
+            "Appendix A: Exact\nquestion catalogs\n---\n",
+            "> Appendix A: Exact question catalogs\n> ---\n",
+            "> Appendix A: Exact\n"
+            "> question catalogs\n"
+            "> ---\n",
+            "- Appendix A: Exact question catalogs\n  ---\n",
+            "10.\n"
+            "    Appendix A: Exact question catalogs\n"
+            "    ---\n",
+        )
+        for equivalent in equivalents:
+            with self.subTest(equivalent=equivalent):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    SAFETY.APPENDIX_MARKER,
+                    equivalent + "\n" + SAFETY.APPENDIX_MARKER,
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "expected exactly one active Appendix A marker",
+                ):
+                    SAFETY.parse_plan_catalogs()
+                self.tearDown()
+                self.setUp()
+
+    def test_appendix_marker_setext_uses_complete_heading_text(self) -> None:
+        decoys = (
+            "Planning context\n"
+            "Appendix A: Exact question catalogs\n"
+            "---\n",
+            "> Planning context\n"
+            "> Appendix A: Exact question catalogs\n"
+            "> ---\n",
+            "````markdown\n"
+            "Appendix A: Exact question catalogs\n"
+            "---\n"
+            "````\n",
+            "<!--\n"
+            "Appendix A: Exact question catalogs\n"
+            "---\n"
+            "-->\n",
+        )
+        for decoy in decoys:
+            with self.subTest(decoy=decoy.splitlines()[0]):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    SAFETY.APPENDIX_MARKER,
+                    decoy + "\n" + SAFETY.APPENDIX_MARKER,
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                catalogs = SAFETY.parse_plan_catalogs()
+                self.assertEqual(tuple(catalogs), SAFETY.EXPECTED_SKILLS)
+                self.tearDown()
+                self.setUp()
+
+    def test_container_comments_do_not_pollute_appendix_rows(self) -> None:
+        decoys = (
+            "> <!--\n"
+            "> - `fake`; header `Fake`; ask when fake; question `Fake?`; "
+            "options: `Fake` — fake.\n"
+            "> -->\n",
+            "- <!--\n"
+            "  - `fake`; header `Fake`; ask when fake; question `Fake?`; "
+            "options: `Fake` — fake.\n"
+            "  -->\n",
+            "> - <!--\r\n"
+            ">   - `fake`; header `Fake`; ask when fake; question `Fake?`; "
+            "options: `Fake` — fake.\r\n"
+            ">   -->\r\n",
+        )
+        for decoy in decoys:
+            with self.subTest(decoy=decoy.splitlines()[0]):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                first_row = "- `cis_goal`;"
+                text = text.replace(first_row, decoy + first_row, 1)
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                catalogs = SAFETY.parse_plan_catalogs()
+                self.assertEqual(
+                    catalogs["cis-controls-ngfw-compliance"][0]["id"],
+                    "cis_goal",
+                )
+                self.tearDown()
+                self.setUp()
+
+    def test_container_scoped_comments_end_when_the_container_exits(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "> <!--\n"
+                "### A.1 `cis-controls-ngfw-compliance`\n",
+                "duplicate Appendix A skill section",
+            ),
+            (
+                "- <!--\n"
+                "### A.01 malformed\n",
+                "noncanonical Appendix A heading",
+            ),
+            (
+                "> - <!--\r\n"
+                "<div>\r\n",
+                "raw HTML block syntax is not allowed",
+            ),
+            (
+                "> <!--\n"
+                "-->\n"
+                "### A.1 `cis-controls-ngfw-compliance`\n",
+                "duplicate Appendix A skill section",
+            ),
+        )
+        for insertion, error in cases:
+            with self.subTest(insertion=insertion):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    insertion + "\n### A.1 `cis-controls-ngfw-compliance`",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, error):
+                    SAFETY.parse_plan_catalogs()
+                self.tearDown()
+                self.setUp()
+
+    def test_top_level_comments_retain_document_scope(self) -> None:
+        self.use_temp_catalogs()
+        text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+        text = text.replace(
+            "### A.1 `cis-controls-ngfw-compliance`",
+            "<!--\n"
+            "### A.01 malformed\n"
+            "<div>\n"
+            "### A.1 `cis-controls-ngfw-compliance`",
+            1,
+        )
+        SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+        with self.assertRaisesRegex(
+            ValueError,
+            "expected exactly 22 Appendix A sections, found 0",
+        ):
+            SAFETY.parse_plan_catalogs()
 
     def test_appendix_type7_html_does_not_interrupt_paragraphs(self) -> None:
         cases = (
