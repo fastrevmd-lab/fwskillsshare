@@ -58,6 +58,16 @@ VALID_CATALOG = {
     ]
 }
 
+REQUIRED_RUNTIME_CONTRACT = (
+    "before continuing or issuing an open-ended request",
+    "2-3 labeled choices",
+    "do not substitute a generic checklist",
+    "at most three",
+    "do not repeat answered questions",
+    "full catalog",
+    "free-text `Other` path",
+)
+
 
 def render_reference(
     catalog: dict[str, object] | None = None,
@@ -105,6 +115,18 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             ),
             [],
         )
+
+    def test_all_skill_runtime_sections_require_catalog_shaped_fallback(self) -> None:
+        skill_files = VALIDATOR.selected_skill_files(None)
+        self.assertEqual(len(skill_files), 22)
+
+        for skill_file in skill_files:
+            with self.subTest(skill=skill_file.parent.name):
+                text = skill_file.read_text(encoding="utf-8")
+                runtime_section = text.split("## Runtime intake\n", 1)[1]
+                runtime_section = runtime_section.split("\n## ", 1)[0]
+                for required in REQUIRED_RUNTIME_CONTRACT:
+                    self.assertIn(required, runtime_section)
 
     def test_accepts_initialism_in_question(self) -> None:
         catalog = copy.deepcopy(VALID_CATALOG)

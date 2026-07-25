@@ -63,8 +63,11 @@ literal native-tool payload. For Claude, project each selected neutral entry to
 only `question`, `header`, and `options`, then add `multiSelect: false`; never
 send `id` or `ask_when`. For Codex, project each selected neutral entry to only
 `id`, `header`, `question`, and `options`; never send `ask_when` or
-`multiSelect`. Without a native tool, ask the same questions in concise plain
-text with a free-text `Other` path.
+`multiSelect`. For each unresolved material fact whose catalog condition is
+true, invoke the native interaction tool before continuing or issuing an
+open-ended request. Without a native tool, present each selected catalog
+question in concise plain text with its 2-3 labeled choices and a free-text
+`Other` path; do not substitute a generic checklist.
 
 ## Invocation Decision
 
@@ -96,8 +99,9 @@ Prioritize unresolved questions in this order:
 4. Evidence completeness and confidence.
 5. Output format and emphasis.
 
-Ask no more than three questions per call. Re-evaluate after every response and
-ask another round only if the response exposes a new material ambiguity.
+Ask no more than three single-select catalog questions per call. Re-evaluate
+after every response and ask another round only if the response exposes a new
+material ambiguity. Do not repeat answered questions or show the full catalog.
 
 ## Portable Question Contract
 
@@ -218,9 +222,11 @@ For each skill, validate:
 - `SKILL.md` contains a `## Runtime intake` section;
 - the section names Claude `AskUserQuestion` and Codex
   `request_user_input`;
-- the section defines conditional invocation, no-repeat behavior, a
-  three-question batch limit, plain-text fallback, secret safety, and separate
-  live-change approval;
+- the section requires catalog questions before continuing or issuing an
+  open-ended request, defines no-repeat and no-full-catalog behavior, limits
+  each round to three single-select questions, preserves 2-3 labeled choices
+  and free-text `Other` in plain-text fallback, forbids generic-checklist
+  substitution, and retains secret safety and separate live-change approval;
 - `SKILL.md` links to `references/runtime-intake.md`;
 - the reference contains the required headings and one parseable JSON catalog;
 - the reference contains the exact Claude projection, Codex projection, and

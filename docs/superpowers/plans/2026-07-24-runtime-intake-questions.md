@@ -19,10 +19,11 @@
 - Keep every `SKILL.md` at or below 500 lines.
 - Ask only when an unresolved answer materially changes safety, scope, correctness, confidence, or output.
 - Inspect the prompt and approved read-only evidence before asking.
-- Never repeat answered questions or present the complete catalog automatically.
-- Ask no more than three single-select questions per interaction round.
+- For each unresolved material fact whose catalog condition is true, ask its catalog question before continuing or issuing an open-ended request.
+- Never repeat answered questions or show the full catalog.
+- Ask no more than three single-select catalog questions per interaction round, then re-evaluate.
 - Use Claude `AskUserQuestion`, Codex `request_user_input`, or a concise plain-text fallback.
-- Keep a free-text `Other` path.
+- In plain text, preserve each selected catalog question's 2-3 labeled choices and free-text `Other` path; do not substitute a generic checklist.
 - Never request passwords, PSKs, private keys, tokens, device credentials, or unredacted customer data.
 - Treat answers as context, not authorization for configuration, commit, upgrade, reboot, delete, or failover.
 - Obtain separate explicit approval immediately before any live or destructive action.
@@ -40,11 +41,9 @@ available approved read-only evidence. If unresolved facts could materially
 change safety, scope, correctness, confidence, or the requested output, read
 `references/runtime-intake.md`.
 
-Invoke Claude `AskUserQuestion` or Codex `request_user_input` only for those
-unresolved facts. Do not repeat answered questions or present the full catalog
-automatically. Ask at most three single-select questions per round, then
-re-evaluate. If no native interaction tool is available, ask the same questions
-in concise plain text and preserve a free-text `Other` path.
+For each unresolved material fact whose catalog condition is true, invoke Claude `AskUserQuestion` or Codex `request_user_input` before continuing or issuing an open-ended request.
+Ask at most three single-select catalog questions per round, then re-evaluate; do not repeat answered questions or show the full catalog.
+Without a native tool, present each selected catalog question with its 2-3 labeled choices and a free-text `Other` path in concise plain text; do not substitute a generic checklist.
 
 Never request secrets or unredacted customer data. Treat intake answers as task
 context, not approval for a live change; obtain separate explicit approval
@@ -58,7 +57,7 @@ with this exact compact form so the file remains below 500 lines:
 ## Runtime intake
 
 Use this skill only for MNHA-specific design and behavior. Use `parsing-srx-configs` for full-config extraction, `srx-nat` for general NAT, and `srx-policy` for general policy design.
-Before acting, inspect the request, artifacts, and approved read-only evidence. If unresolved facts materially change safety, scope, correctness, confidence, or output, read `references/runtime-intake.md`. Use Claude `AskUserQuestion` or Codex `request_user_input` only for unresolved facts; do not repeat answered questions, and ask at most three single-select questions per round. If neither tool is available, use concise plain text with a free-text `Other` path. Never request secrets or unredacted customer data. Answers are context, not live-change approval; obtain separate explicit approval before configuration, commit, upgrade, reboot, delete, or failover.
+Before acting, inspect the request, artifacts, and approved read-only evidence. If unresolved facts materially change safety, scope, correctness, confidence, or output, read `references/runtime-intake.md`. For each unresolved material fact whose catalog condition is true, invoke Claude `AskUserQuestion` or Codex `request_user_input` before continuing or issuing an open-ended request. Ask at most three single-select catalog questions per round, then re-evaluate; do not repeat answered questions or show the full catalog. Without a native tool, present each selected catalog question with its 2-3 labeled choices and a free-text `Other` path in concise plain text; do not substitute a generic checklist. Never request secrets or unredacted customer data. Answers are context, not live-change approval; obtain separate explicit approval before configuration, commit, upgrade, reboot, delete, or failover.
 ```
 
 For `srx-policy`, replace the existing four-line `## Scope and routing` block
@@ -68,7 +67,7 @@ with this exact compact form:
 ## Runtime intake
 
 Use this skill for SRX policy behavior after relevant configuration is identified. Use `parsing-srx-configs` for full-config extraction and `srx-nat` when translation changes the policy match.
-Before acting, inspect the request, artifacts, and approved read-only evidence. If unresolved facts materially change safety, scope, correctness, confidence, or output, read `references/runtime-intake.md`. Use Claude `AskUserQuestion` or Codex `request_user_input` only for unresolved facts; do not repeat answered questions, and ask at most three single-select questions per round. If neither tool is available, use concise plain text with a free-text `Other` path. Never request secrets or unredacted customer data. Answers are context, not live-change approval; obtain separate explicit approval before configuration, commit, upgrade, reboot, delete, or failover.
+Before acting, inspect the request, artifacts, and approved read-only evidence. If unresolved facts materially change safety, scope, correctness, confidence, or output, read `references/runtime-intake.md`. For each unresolved material fact whose catalog condition is true, invoke Claude `AskUserQuestion` or Codex `request_user_input` before continuing or issuing an open-ended request. Ask at most three single-select catalog questions per round, then re-evaluate; do not repeat answered questions or show the full catalog. Without a native tool, present each selected catalog question with its 2-3 labeled choices and a free-text `Other` path in concise plain text; do not substitute a generic checklist. Never request secrets or unredacted customer data. Answers are context, not live-change approval; obtain separate explicit approval before configuration, commit, upgrade, reboot, delete, or failover.
 ```
 
 Every `references/runtime-intake.md` must use this structure:
@@ -231,8 +230,11 @@ REQUIRED_SKILL_TEXT = (
     "references/runtime-intake.md",
     "AskUserQuestion",
     "request_user_input",
+    "before continuing or issuing an open-ended request",
     "at most three",
+    "2-3 labeled choices",
     "plain text",
+    "do not substitute a generic checklist",
     "Never request secrets",
     "separate explicit approval",
 )
@@ -748,6 +750,15 @@ noncanonical same-line tabs or doubled spaces in Appendix question fields. It
 requires exact per-skill question-object equality and locks all 22 complete
 catalog contents and question order with canonical SHA-256 digests, in
 addition to the audited 62 safe first labels and 18 single-axis option tuples.
+
+**Task 29 catalog-fallback audit:** the shared `SKILL.md` contract requires each
+true unresolved material catalog condition to be asked before continuing or
+issuing an open-ended request. Every native-tool round remains limited to at
+most three single-select catalog questions. A plain-text fallback preserves
+each selected question's 2-3 labeled choices and free-text `Other` path and
+must not substitute a generic checklist. A real-file regression test checks
+these requirements, the no-repeat rule, and the full-catalog restraint across
+all 22 runtime sections.
 
 The optional skill argument limits equality, digest, safe-default, and
 option-tuple assertions to the selected package, while every focused run still

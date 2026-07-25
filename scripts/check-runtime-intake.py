@@ -32,8 +32,11 @@ REQUIRED_SKILL_TEXT = (
     "references/runtime-intake.md",
     "AskUserQuestion",
     "request_user_input",
+    "before continuing or issuing an open-ended request",
     "at most three",
+    "2-3 labeled choices",
     "plain text",
+    "do not substitute a generic checklist",
     "Never request secrets",
     "separate explicit approval",
 )
