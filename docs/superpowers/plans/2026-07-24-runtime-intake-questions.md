@@ -232,6 +232,11 @@ FENCE_LINE_RE = re.compile(
     r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
     r"(?P<ending>\r\n|\n|\r)?\Z"
 )
+LIST_ITEM_FENCE_LINE_RE = re.compile(
+    r"^(?P<container> {0,3}(?:[-+*]|[0-9]{1,9}[.)]) {1,4})"
+    r"(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
+    r"(?P<ending>\r\n|\n|\r)?\Z"
+)
 COMMONMARK_TYPE6_TAGS = (
     "address",
     "article",
@@ -473,10 +478,16 @@ def mask_inactive_markdown(text: str) -> str:
     in_comment = False
     fence_character: str | None = None
     fence_length = 0
+    fence_container_indent = 0
 
     for line in text.splitlines(keepends=True):
-        fence_match = FENCE_LINE_RE.fullmatch(line)
         if fence_character is not None:
+            closing_candidate = (
+                line[fence_container_indent:]
+                if line.startswith(" " * fence_container_indent)
+                else ""
+            )
+            fence_match = FENCE_LINE_RE.fullmatch(closing_candidate)
             masked_lines.append(mask_non_newline_characters(line))
             if (
                 fence_match is not None
@@ -486,15 +497,24 @@ def mask_inactive_markdown(text: str) -> str:
             ):
                 fence_character = None
                 fence_length = 0
+                fence_container_indent = 0
             continue
 
-        if not in_comment and fence_match is not None:
-            fence = fence_match.group("fence")
-            info = fence_match.group("rest")
+        fence_match = FENCE_LINE_RE.fullmatch(line)
+        list_fence_match = LIST_ITEM_FENCE_LINE_RE.fullmatch(line)
+        opener_match = fence_match or list_fence_match
+        if not in_comment and opener_match is not None:
+            fence = opener_match.group("fence")
+            info = opener_match.group("rest")
             valid_opener = fence[0] == "~" or "`" not in info
             if valid_opener:
                 fence_character = fence[0]
                 fence_length = len(fence)
+                fence_container_indent = (
+                    len(list_fence_match.group("container"))
+                    if list_fence_match is not None
+                    else 0
+                )
                 masked_lines.append(mask_non_newline_characters(line))
                 continue
 
@@ -1049,19 +1069,27 @@ must not substitute a generic checklist. Before heading extraction, the
 structural validator conservatively rejects either literal HTML comment
 delimiter anywhere in `SKILL.md`, including escaped and inline-code forms, and
 keeps that prohibition global even inside fences. It then masks standard
-backtick or tilde fenced-code regions while preserving length, newline
-positions, and offsets. In that active-Markdown view it rejects every
-CommonMark 0.31.2 raw HTML block opener family: case-insensitive type 1
-`pre`, `script`, `style`, or `textarea` tags; processing instructions;
-declarations; CDATA; every type 6 block tag with the specified tag-name
-boundary; and complete generic type 7 opening or closing tag lines, each with
-at most three leading spaces. Raw-looking fenced content and inline
-placeholders that do not meet a block-start rule remain valid. The validator
-discovers the single runtime heading and following section heading only in
-that same active-Markdown view, slices the original section by the preserved
-offsets, normalizes whitespace, selects the approved standard or
-skill-specific compact template by skill path, and requires equality across
-the complete section. Validator-API mutation probes reject discretionary
+backtick or tilde fenced-code regions, including direct list-item fence
+openers, while preserving length, newline positions, and offsets. The separate
+list-item opener path permits zero to three spaces before `-`/`+`/`*` or an
+ordered marker of one to nine digits plus `.`/`)`, then one to four spaces. It
+captures the resulting continuation indentation so a list-item closer is
+checked by the unchanged ordinary fence matcher only after that exact prefix
+is removed. Prose with a later fence sequence, ten-digit ordered markers,
+four-space-indented markers, invalid marker spacing, and backtick info strings
+containing a backtick remain active rather than becoming fences. In that
+active-Markdown view the validator rejects every CommonMark 0.31.2 raw HTML
+block opener family: case-insensitive type 1 `pre`, `script`, `style`, or
+`textarea` tags; processing instructions; declarations; CDATA; every type 6
+block tag with the specified tag-name boundary; and complete generic type 7
+opening or closing tag lines, each with at most three leading spaces.
+Raw-looking fenced content and inline placeholders that do not meet a
+block-start rule remain valid. The validator discovers the single runtime
+heading and following section heading only in that same active-Markdown view,
+slices the original section by the preserved offsets, normalizes whitespace,
+selects the approved standard or skill-specific compact template by skill
+path, and requires equality across the complete section. Validator-API
+mutation probes reject discretionary
 invocation, open-ended native questions, a one-summary fallback, contract
 clauses outside the runtime section, complete runtime regions hidden in a
 comment, any raw HTML block family, or either fence form, HTML-comment decoys,
@@ -1069,8 +1097,12 @@ escaped and inline-code comment delimiters, fence wrappers around a complete
 region, inactive wrappers inside an active section, contradictory trailing
 prose, missing approved text, and duplicate active runtime sections. Boundary
 probes cover every type 6 tag, generic type 7 attributes and closers, CRLF,
-case, indentation, fenced raw syntax, and inline placeholders. Fenced decoys
-may coexist with one active valid section. A masker probe locks CRLF
+case, indentation, fenced raw syntax, and inline placeholders. List-container
+probes cover all bullet markers, both ordered delimiters, one- and nine-digit
+boundaries, one-to-four-space marker padding, correctly indented continuations
+and closers, all non-comment raw HTML families, offset preservation, invalid
+near-markers, and unchanged top-level closer behavior. Fenced decoys may
+coexist with one active valid section. A masker probe locks CRLF
 length/newline/offset preservation, a positive probe permits whitespace-only
 variation, and the real-file test applies the same validator to all 22 skills.
 

@@ -447,6 +447,124 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             [],
         )
 
+    def test_allows_raw_html_inside_bullet_list_item_fences(self) -> None:
+        cases = (
+            ("-", "`", "<PRE>"),
+            ("+", "~", "<?probe mode=\"strict\""),
+            ("*", "`", "<![CDATA[probe]]>"),
+        )
+        for marker, fence_character, raw_html in cases:
+            with self.subTest(marker=marker, fence=fence_character):
+                fence = fence_character * 3
+                continuation = " " * (len(marker) + 1)
+                mutant = (
+                    f"{marker} {fence}html\r\n"
+                    f"{continuation}{raw_html}\r\n"
+                    f"{continuation}{fence}\r\n"
+                    f"{VALID_SKILL}"
+                )
+                self.assertEqual(
+                    VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+                    [],
+                )
+
+    def test_allows_raw_html_inside_ordered_list_item_fences(self) -> None:
+        cases = (
+            ("1.", "`", "<!DOCTYPE fwskill>"),
+            ("9)", "~", "<DiV class=\"runtime\">"),
+        )
+        for marker, fence_character, raw_html in cases:
+            with self.subTest(marker=marker, fence=fence_character):
+                fence = fence_character * 3
+                continuation = " " * (len(marker) + 1)
+                mutant = (
+                    f"{marker} {fence}html\r\n"
+                    f"{continuation}{raw_html}\r\n"
+                    f"{continuation}{fence}\r\n"
+                    f"{VALID_SKILL}"
+                )
+                self.assertEqual(
+                    VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+                    [],
+                )
+
+    def test_masks_list_item_fence_boundaries_and_preserves_offsets(self) -> None:
+        marker_prefix = "   123456789)    "
+        continuation = " " * len(marker_prefix)
+        source = (
+            "Lead\r\n"
+            f"{marker_prefix}~~~~html\r\n"
+            f"{continuation}<runtime-wrapper>\r\n"
+            f"{continuation}   ~~~~\r\n"
+            "Tail\r\n"
+        )
+        masked = VALIDATOR.mask_inactive_markdown(source)
+
+        self.assertEqual(len(masked), len(source))
+        self.assertEqual(
+            [index for index, char in enumerate(masked) if char in "\r\n"],
+            [index for index, char in enumerate(source) if char in "\r\n"],
+        )
+        for active_text in ("Lead", "Tail"):
+            offset = source.index(active_text)
+            self.assertEqual(masked[offset : offset + len(active_text)], active_text)
+        self.assertNotIn("<runtime-wrapper>", masked)
+        self.assertNotIn("~~~~html", masked)
+
+    def test_supports_one_to_four_spaces_after_list_markers(self) -> None:
+        for spacing_width in range(1, 5):
+            with self.subTest(spacing_width=spacing_width):
+                spacing = " " * spacing_width
+                continuation = " " * (1 + spacing_width)
+                mutant = (
+                    f"-{spacing}```html\n"
+                    f"{continuation}<div>\n"
+                    f"{continuation}```\n"
+                    f"{VALID_SKILL}"
+                )
+                masked = VALIDATOR.mask_inactive_markdown(mutant)
+                self.assertNotIn("<div>", masked)
+                self.assertEqual(
+                    VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+                    [],
+                )
+
+    def test_does_not_treat_near_list_markers_as_fence_openers(self) -> None:
+        cases = (
+            ("- text ```", "  ```"),
+            ("1234567890. ```html", "  ```"),
+            ("    - ```html", "  ```"),
+            ("-     ```html", "  ```"),
+            ("-```html", "  ```"),
+            ("1.```html", "   ```"),
+            ("- ```bad`info", "  ```"),
+        )
+        for opener, closer in cases:
+            with self.subTest(opener=opener):
+                mutant = (
+                    f"{opener}\n"
+                    "  <div>\n"
+                    f"{closer}\n"
+                    f"{VALID_SKILL}"
+                )
+                self.assert_skill_error(
+                    mutant,
+                    "raw HTML block syntax is not allowed",
+                )
+
+    def test_list_marker_fence_line_does_not_close_top_level_fence(self) -> None:
+        mutant = (
+            "````html\n"
+            "- ````\n"
+            "<div>\n"
+            "````\n"
+            f"{VALID_SKILL}"
+        )
+        self.assertEqual(
+            VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+            [],
+        )
+
     def test_allows_inline_placeholder_tags_in_prose(self) -> None:
         mutant = (
             f"{VALID_SKILL}\n"

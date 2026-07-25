@@ -18,6 +18,11 @@ FENCE_LINE_RE = re.compile(
     r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
     r"(?P<ending>\r\n|\n|\r)?\Z"
 )
+LIST_ITEM_FENCE_LINE_RE = re.compile(
+    r"^(?P<container> {0,3}(?:[-+*]|[0-9]{1,9}[.)]) {1,4})"
+    r"(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
+    r"(?P<ending>\r\n|\n|\r)?\Z"
+)
 COMMONMARK_TYPE6_TAGS = (
     "address",
     "article",
@@ -314,10 +319,16 @@ def mask_inactive_markdown(text: str) -> str:
     in_comment = False
     fence_character: str | None = None
     fence_length = 0
+    fence_container_indent = 0
 
     for line in text.splitlines(keepends=True):
-        fence_match = FENCE_LINE_RE.fullmatch(line)
         if fence_character is not None:
+            closing_candidate = (
+                line[fence_container_indent:]
+                if line.startswith(" " * fence_container_indent)
+                else ""
+            )
+            fence_match = FENCE_LINE_RE.fullmatch(closing_candidate)
             masked_lines.append(mask_non_newline_characters(line))
             if (
                 fence_match is not None
@@ -327,15 +338,24 @@ def mask_inactive_markdown(text: str) -> str:
             ):
                 fence_character = None
                 fence_length = 0
+                fence_container_indent = 0
             continue
 
-        if not in_comment and fence_match is not None:
-            fence = fence_match.group("fence")
-            info = fence_match.group("rest")
+        fence_match = FENCE_LINE_RE.fullmatch(line)
+        list_fence_match = LIST_ITEM_FENCE_LINE_RE.fullmatch(line)
+        opener_match = fence_match or list_fence_match
+        if not in_comment and opener_match is not None:
+            fence = opener_match.group("fence")
+            info = opener_match.group("rest")
             valid_opener = fence[0] == "~" or "`" not in info
             if valid_opener:
                 fence_character = fence[0]
                 fence_length = len(fence)
+                fence_container_indent = (
+                    len(list_fence_match.group("container"))
+                    if list_fence_match is not None
+                    else 0
+                )
                 masked_lines.append(mask_non_newline_characters(line))
                 continue
 

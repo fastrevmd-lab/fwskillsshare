@@ -226,13 +226,22 @@ For each skill, validate:
 - before section extraction, the validator conservatively rejects either HTML
   comment delimiter (`<!--` or `-->`) anywhere in `SKILL.md`, including escaped
   text, inline code, and fenced code;
-- the validator then masks standard backtick or tilde fenced-code regions
-  without changing length, newline positions, or offsets and rejects every
-  CommonMark 0.31.2 raw HTML block opener family in the resulting active
-  Markdown: case-insensitive type 1 `pre`/`script`/`style`/`textarea` tags,
-  processing instructions, declarations, CDATA, the complete type 6 block-tag
-  list with its specified boundary, and complete generic type 7 opening or
-  closing tag lines, all with at most three leading spaces;
+- the validator then masks standard backtick or tilde fenced-code regions,
+  including fences opened directly after a CommonMark list marker, without
+  changing length, newline positions, or offsets; direct list-item openers
+  allow zero to three spaces before `-`/`+`/`*` or a one-to-nine-digit
+  `.`/`)` marker and one to four following spaces, and closing candidates are
+  evaluated only after removing that captured list continuation indentation;
+- ordinary fence closer recognition remains unchanged, invalid backtick info
+  strings remain active, and prose with a later fence sequence, ten-digit
+  ordered markers, four-space-indented markers, and invalid marker spacing do
+  not become fence openers;
+- the validator rejects every CommonMark 0.31.2 raw HTML block opener family
+  in the resulting active Markdown: case-insensitive type 1
+  `pre`/`script`/`style`/`textarea` tags, processing instructions,
+  declarations, CDATA, the complete type 6 block-tag list with its specified
+  boundary, and complete generic type 7 opening or closing tag lines, all with
+  at most three leading spaces;
 - raw HTML block syntax inside fenced code and inline placeholder tags that do
   not meet a block-start rule remain permitted; runtime and following section
   headings are discovered only in the same active-Markdown mask, then the
