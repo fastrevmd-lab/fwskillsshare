@@ -116,7 +116,12 @@ disposable VM instead. Never substitute a test sourced from the Proxmox host.
 
 ### 3.3 Prove the exact configured bundle path without exposing seed secrets
 
-Complete this before extraction. The restricted-server pattern in this guide
+Complete this before extraction. Choose exactly one branch below and test the
+same method that will be seeded into the appliance.
+
+#### Direct HTTP branch
+
+The restricted-server pattern in this guide
 requires **direct HTTP with no SNAT and no HTTP proxy**, so both nftables and the
 application server observe the original SD management IP. Fully retrieve the
 exact URL from the source-identical `sd-preflight` probe. Record authentication
@@ -149,6 +154,9 @@ SD_BUNDLE_LOG=$(mktemp /var/tmp/sd-bundle-http.XXXXXX.log)
 SD_BUNDLE_PID=
 SD_BUNDLE_NFT_TABLE=sd_bundle_gate_$$
 SD_BUNDLE_NFT_CREATED=false
+SD_BUNDLE_ALLOW_COUNTER=sd_bundle_allowed
+SD_BUNDLE_DROP_COUNTER=sd_bundle_dropped
+SD_APPROVED_EVIDENCE=/path/to/approved/sd-bundle-evidence.txt
 
 # A hard link avoids a second multi-GB copy and exposes only this filename.
 case "$SD_BUNDLE_NAME" in *.tgz) ;; *) exit 1 ;; esac
@@ -177,11 +185,26 @@ example allows only the proposed SD source to the bound host IP/port and drops
 other sources to that socket; adapt it to the site's existing Proxmox firewall:
 
 ```bash
+sd_nft_counter_packets() {
+  nft list counter inet "$SD_BUNDLE_NFT_TABLE" "$1" |
+    awk '{
+      for (field = 1; field <= NF; field++) {
+        if ($field == "packets") {
+          print $(field + 1)
+          found = 1
+          exit
+        }
+      }
+    }
+    END { if (!found) exit 1 }'
+}
+
 cleanup_sd_bundle() {
   if test -n "$SD_BUNDLE_PID" && kill -0 "$SD_BUNDLE_PID" 2>/dev/null; then
     kill "$SD_BUNDLE_PID"
     wait "$SD_BUNDLE_PID" || true
   fi
+  SD_BUNDLE_PID=
   if test "$SD_BUNDLE_NFT_CREATED" = true; then
     nft delete table inet "$SD_BUNDLE_NFT_TABLE"
     SD_BUNDLE_NFT_CREATED=false
@@ -203,12 +226,16 @@ if nft list table inet "$SD_BUNDLE_NFT_TABLE" >/dev/null 2>&1; then
 fi
 nft add table inet "$SD_BUNDLE_NFT_TABLE"
 SD_BUNDLE_NFT_CREATED=true
+nft add counter inet "$SD_BUNDLE_NFT_TABLE" "$SD_BUNDLE_ALLOW_COUNTER"
+nft add counter inet "$SD_BUNDLE_NFT_TABLE" "$SD_BUNDLE_DROP_COUNTER"
 nft add chain inet "$SD_BUNDLE_NFT_TABLE" input \
   '{ type filter hook input priority -10; policy accept; }'
 nft add rule inet "$SD_BUNDLE_NFT_TABLE" input ip daddr "$SD_BUNDLE_HOST_IP" \
-  tcp dport "$SD_BUNDLE_PORT" ip saddr "$SD_SOURCE_IP/32" counter accept
+  tcp dport "$SD_BUNDLE_PORT" ip saddr "$SD_SOURCE_IP/32" \
+  counter name "$SD_BUNDLE_ALLOW_COUNTER" accept
 nft add rule inet "$SD_BUNDLE_NFT_TABLE" input ip daddr "$SD_BUNDLE_HOST_IP" \
-  tcp dport "$SD_BUNDLE_PORT" counter drop
+  tcp dport "$SD_BUNDLE_PORT" \
+  counter name "$SD_BUNDLE_DROP_COUNTER" drop
 nft list table inet "$SD_BUNDLE_NFT_TABLE"
 
 python3 "$SD_BUNDLE_SERVER" \
@@ -246,35 +273,49 @@ SD_DOWNLOADED_BYTES=$(ip netns exec sd-preflight \
 test "${SD_DOWNLOADED_BYTES%.*}" -eq "$SD_EXPECTED_BYTES"
 grep -F "COMPLETE source=$SD_SOURCE_IP " "$SD_BUNDLE_LOG" |
   grep -F "bytes=$SD_EXPECTED_BYTES"
+SD_ALLOW_AFTER=$(sd_nft_counter_packets "$SD_BUNDLE_ALLOW_COUNTER")
+test "$SD_ALLOW_AFTER" -gt 0
+SD_DROP_BEFORE=$(sd_nft_counter_packets "$SD_BUNDLE_DROP_COUNTER")
 ```
 
 From one separately approved non-SD test source, the same URL must fail while the
-gate is installed. Record both the allowed counter and dropped counter from
-`nft list table inet "$SD_BUNDLE_NFT_TABLE"`.
+gate is installed. Because nftables drops that probe before it reaches the
+application, do not expect an application `DENY` log. The block below requires
+the named nftables drop counter to increase.
 
-If SCP is the selected seed method, use the exact seeded host, port, username,
-and path from the namespace. Fully retrieve it and prove noninteractive
-authentication, readability, expected filename and byte size/checksum,
-gateway/hops, policy, NAT, return path, and bidirectional session counters.
-Never place a password on a command line or in evidence. A host-side file read or
-an HTTP test cannot substitute for the configured SCP path.
-
-Immediately after an HTTP preflight retrieval, stop the server and remove the
-temporary exposure. First copy the relevant access-log lines and nftables
-counters into the approved evidence record, with credentials redacted. Then use
-explicit targets—never recursively delete `<base>`:
+Immediately after the allowed and denied probes, capture the completion record
+and final allowed/dropped counters, then stop the server and remove
+the temporary exposure. Use explicit targets—never recursively delete `<base>`.
+Do not enter the SCP branch or §3.4, which installs another trap, until this
+block succeeds:
 
 ```bash
+# Capture HTTP evidence before teardown.
+SD_DROP_AFTER=$(sd_nft_counter_packets "$SD_BUNDLE_DROP_COUNTER")
+test "$SD_DROP_AFTER" -gt "$SD_DROP_BEFORE"
+{
+  grep -E '^(READY|COMPLETE) ' "$SD_BUNDLE_LOG"
+  nft list table inet "$SD_BUNDLE_NFT_TABLE"
+} >>"$SD_APPROVED_EVIDENCE"
+grep -F "COMPLETE source=$SD_SOURCE_IP " "$SD_BUNDLE_LOG"
 cleanup_sd_bundle
 trap - EXIT INT TERM
 ```
 
-For HTTP, recreate the same restricted, bundle-only window for the appliance's
-one-time first-boot download and close it immediately after the successful
-transfer. For SCP, retain the exact approved service long enough for first boot,
-require its redacted audit record of the completed appliance transfer, then
-revoke any temporary account, credential, rule, or path access. Do not run the
-HTTP cleanup function in the SCP branch.
+#### SCP branch
+
+When SCP is selected, skip the entire Direct HTTP branch: do not create its
+webroot, nftables table, server, variables, or cleanup trap. Use the exact seeded
+host, port, username, and path from the namespace. Fully retrieve it and prove
+noninteractive authentication, readability, expected filename and byte
+size/checksum, gateway/hops, policy, NAT, return path, and bidirectional session
+counters. Never place a password on a command line or in evidence. A host-side
+file read or an HTTP test cannot substitute for the configured SCP path.
+
+Retain the exact approved SCP service long enough for first boot, require its
+redacted audit record of the completed appliance transfer, then revoke any
+temporary account, credential, rule, or path access. The HTTP cleanup function
+does not exist and must not be called in this branch.
 
 ### 3.4 Prove device and log return paths
 
@@ -467,26 +508,50 @@ qm set <vmid> --boot order=virtio0     # SEPARATE command — see §9
 
 ## 6. First boot + verify
 
-For the example HTTP seed, recreate the approved §3.3 bundle-only webroot and
-temporary `/32` host-firewall gate, then start the server bound to the approved
-host IP. If SCP was selected instead, do not substitute this HTTP service:
-revalidate the exact approved account, endpoint, path restriction, and audit
-logging. Then `qm start <vmid>`.
-Sequence:
+### HTTP first-boot delivery
+
+Rerun the §3.3 Direct HTTP setup/server blocks with a new private webroot, log,
+nftables table, and installed cleanup trap. Recompute the expected size in that
+approved shell before starting the guest:
+
+```bash
+SD_EXPECTED_BYTES=$(stat -c %s "$SD_BUNDLE_SOURCE")
+qm start <vmid>
+```
+
+A normal
+`200` request line is not completion evidence because it may
+be logged before the body finishes. Wait for the bundled server's exact
+`COMPLETE source=<SD-mgmt-IP> ... bytes=<expected>` record. Capture the record
+and counters, then tear down immediately—do not wait for the container install
+and do not let a later trap replace this HTTP cleanup trap:
+
+```bash
+# Capture first-boot HTTP evidence before teardown.
+{
+  grep -E '^(READY|COMPLETE) ' "$SD_BUNDLE_LOG"
+  nft list table inet "$SD_BUNDLE_NFT_TABLE"
+} >>"$SD_APPROVED_EVIDENCE"
+grep -F "COMPLETE source=$SD_SOURCE_IP " "$SD_BUNDLE_LOG" |
+  grep -F "bytes=$SD_EXPECTED_BYTES"
+cleanup_sd_bundle
+trap - EXIT INT TERM
+```
+
+### SCP first-boot delivery
+
+Skip all HTTP setup and cleanup. Revalidate the exact approved SCP account,
+endpoint, path restriction, and audit logging, then `qm start <vmid>`. After the
+SCP service records the completed appliance transfer, retain redacted transfer
+and session evidence and immediately revoke any temporary account, credential,
+rule, or path access. Never retain a plaintext credential as evidence.
+
+For either method, continue verification after the delivery window is closed:
+
 - mgmt IP answers ping within ~1–2 min (network seeded);
-- the configured service records a completed transfer from the observed SD
-  source (HTTP must emit `COMPLETE source=<SD-mgmt-IP> ... bytes=<expected>`);
 - container-stack install runs (**tens of minutes** — OpenSearch, Kafka, etc.);
 - ingress comes up (`https://<ui-vip>` serves the Juniper self-signed cert, may 404);
 - app pods finish → `https://<ui-vip>/login` returns 200.
-
-For HTTP, a normal `200` request line is not completion evidence because it may
-be logged before the body finishes. Wait for the bundled server's exact
-`COMPLETE` byte-count record. Then capture/redact the log and checksum evidence,
-run `cleanup_sd_bundle`, and clear its trap. Do not leave the server, firewall
-table, hard link, or private webroot in place. For SCP, retain redacted transfer
-and session evidence, then revoke any temporary account/rule or other delivery
-window; never retain a plaintext credential as evidence.
 
 Snapshot the VM before onboarding. Assign the **subscription/license** (Admin →
 Subscriptions) — **log analytics / "All Security Events" is gated behind it**,
