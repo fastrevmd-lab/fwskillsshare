@@ -45,14 +45,62 @@ FALLBACK_CLAUSE = (
     "labeled choices and a free-text `Other` path in concise plain text; do not "
     "substitute a generic checklist."
 )
-CONNECTED_RUNTIME_CONTRACT = " ".join(
-    (INVOCATION_CLAUSE, ROUNDS_CLAUSE, FALLBACK_CLAUSE)
+STANDARD_INTRO = (
+    "Before starting the workflow, inspect the request, supplied artifacts, and "
+    "available approved read-only evidence. If unresolved facts could materially "
+    "change safety, scope, correctness, confidence, or the requested output, read "
+    "`references/runtime-intake.md`."
 )
-REQUIRED_RUNTIME_TEXT = (
-    "references/runtime-intake.md",
-    "Never request secrets",
-    "separate explicit approval",
+STANDARD_SAFETY = (
+    "Never request secrets or unredacted customer data. Treat intake answers as "
+    "task context, not approval for a live change; obtain separate explicit "
+    "approval before configuration, commit, upgrade, reboot, delete, or failover "
+    "actions."
 )
+COMPACT_INTRO = (
+    "Before acting, inspect the request, artifacts, and approved read-only "
+    "evidence. If unresolved facts materially change safety, scope, correctness, "
+    "confidence, or output, read `references/runtime-intake.md`."
+)
+COMPACT_SAFETY = (
+    "Never request secrets or unredacted customer data. Answers are context, not "
+    "live-change approval; obtain separate explicit approval before configuration, "
+    "commit, upgrade, reboot, delete, or failover."
+)
+STANDARD_RUNTIME_TEMPLATE = " ".join(
+    (
+        STANDARD_INTRO,
+        INVOCATION_CLAUSE,
+        ROUNDS_CLAUSE,
+        FALLBACK_CLAUSE,
+        STANDARD_SAFETY,
+    )
+)
+COMPACT_SCOPE_TEXT = {
+    "srx-mnha": (
+        "Use this skill only for MNHA-specific design and behavior. Use "
+        "`parsing-srx-configs` for full-config extraction, `srx-nat` for general "
+        "NAT, and `srx-policy` for general policy design."
+    ),
+    "srx-policy": (
+        "Use this skill for SRX policy behavior after relevant configuration is "
+        "identified. Use `parsing-srx-configs` for full-config extraction and "
+        "`srx-nat` when translation changes the policy match."
+    ),
+}
+APPROVED_RUNTIME_TEMPLATES = {
+    skill_name: " ".join(
+        (
+            scope_text,
+            COMPACT_INTRO,
+            INVOCATION_CLAUSE,
+            ROUNDS_CLAUSE,
+            FALLBACK_CLAUSE,
+            COMPACT_SAFETY,
+        )
+    )
+    for skill_name, scope_text in COMPACT_SCOPE_TEXT.items()
+}
 REQUIRED_REFERENCE_HEADINGS = (
     "# Runtime Intake",
     "## When to ask",
@@ -111,6 +159,13 @@ def normalize_whitespace(text: str) -> str:
     return " ".join(text.split())
 
 
+def approved_runtime_template(path: Path) -> str:
+    return APPROVED_RUNTIME_TEMPLATES.get(
+        path.parent.name,
+        STANDARD_RUNTIME_TEMPLATE,
+    )
+
+
 def extract_runtime_section(path: Path, text: str) -> tuple[str | None, list[str]]:
     matches = list(RUNTIME_HEADING_RE.finditer(text))
     if len(matches) != 1:
@@ -127,15 +182,9 @@ def validate_skill(path: Path, text: str) -> list[str]:
     if runtime_section is None:
         return errors
 
-    for required in REQUIRED_RUNTIME_TEXT:
-        if required not in runtime_section:
-            errors.append(f"{path}: runtime intake missing {required!r}")
-
     normalized_section = normalize_whitespace(runtime_section)
-    if CONNECTED_RUNTIME_CONTRACT not in normalized_section:
-        errors.append(
-            f"{path}: runtime intake missing exact connected catalog contract"
-        )
+    if normalized_section != approved_runtime_template(path):
+        errors.append(f"{path}: runtime intake does not match approved template")
     return errors
 
 

@@ -223,16 +223,21 @@ For each skill, validate:
 - `SKILL.md` contains a `## Runtime intake` section;
 - the section names Claude `AskUserQuestion` and Codex
   `request_user_input`;
-- a section-scoped validator requires one connected exact clause sequence that
-  mandates catalog questions before continuing or issuing an open-ended
-  request, limits each round to three single-select catalog questions, requires
-  another round while any unresolved material catalog condition remains true,
-  continues only when none remain, defines no-repeat and no-full-catalog
-  behavior, preserves each selected question's 2-3 labeled choices and
-  free-text `Other` in plain-text fallback, and forbids generic-checklist
-  substitution;
-- the section retains secret safety and separate live-change approval;
-- `SKILL.md` links to `references/runtime-intake.md`;
+- a section-scoped validator normalizes whitespace across the complete section
+  and requires equality to the approved standard template or the
+  skill-selected `srx-mnha`/`srx-policy` compact template;
+- the exact template mandates catalog questions before continuing or issuing
+  an open-ended request, limits each round to three single-select catalog
+  questions, requires another round while any unresolved material catalog
+  condition remains true, continues only when none remain, defines no-repeat
+  and no-full-catalog behavior, preserves each selected question's 2-3 labeled
+  choices and free-text `Other` in plain-text fallback, and forbids
+  generic-checklist substitution;
+- complete-section equality rejects a contract hidden in an HTML comment or
+  code fence, extra or contradictory prose, missing approved text, and
+  duplicate runtime sections while permitting whitespace-only variation;
+- the exact section retains secret safety and separate live-change approval
+  and links to `references/runtime-intake.md`;
 - the reference contains the required headings and one parseable JSON catalog;
 - the reference contains the exact Claude projection, Codex projection, and
   plain-text fallback with free-text `Other` language;
