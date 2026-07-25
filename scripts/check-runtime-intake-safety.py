@@ -45,10 +45,6 @@ PLAN_OPTION_RE = re.compile(
     r"`(?P<label>[^`]+)` — (?P<description>.*?)"
     r"(?=; `[^`]+` — |\Z)"
 )
-REFERENCE_CATALOG_RE = re.compile(
-    r"```json\n(?P<payload>.*?)\n```",
-    re.DOTALL,
-)
 EXPECTED_SKILLS = (
     "cis-controls-ngfw-compliance",
     "cmmc-nist-800-171-ngfw-compliance",
@@ -681,8 +677,11 @@ def parse_plan_row(skill: str, question_id: str, raw_row: str) -> dict[str, obje
 def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
     text = PLAN_PATH.read_text(encoding="utf-8")
     active_markdown = STRUCTURAL_VALIDATOR.mask_inactive_markdown(text)
+    normalized_active_markdown, _marker_signatures = (
+        STRUCTURAL_VALIDATOR.normalize_active_containers(active_markdown)
+    )
     if any(
-        pattern.search(active_markdown)
+        pattern.search(normalized_active_markdown)
         for pattern in STRUCTURAL_VALIDATOR.RAW_HTML_BLOCK_OPENERS
     ):
         raise ValueError(f"{PLAN_PATH}: raw HTML block syntax is not allowed")
@@ -696,9 +695,11 @@ def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
     if len(marker_matches) != 1:
         raise ValueError(f"{PLAN_PATH}: missing {APPENDIX_MARKER!r}")
     appendix_start = marker_matches[0].start()
-    appendix = text[appendix_start:]
     active_appendix = active_markdown[appendix_start:]
-    lookalikes = list(PLAN_SECTION_LOOKALIKE_RE.finditer(active_appendix))
+    normalized_appendix, _appendix_marker_signatures = (
+        STRUCTURAL_VALIDATOR.normalize_active_containers(active_appendix)
+    )
+    lookalikes = list(PLAN_SECTION_LOOKALIKE_RE.finditer(normalized_appendix))
     catalogs: dict[str, list[dict[str, object]]] = {}
 
     seen_skills: set[str] = set()
@@ -741,9 +742,8 @@ def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
             if index + 1 < len(sections)
             else len(active_appendix)
         )
-        body = appendix[section.end() : body_end]
-        active_body = active_appendix[section.end() : body_end]
-        rows = list(PLAN_ROW_RE.finditer(active_body))
+        body = active_appendix[section.end() : body_end]
+        rows = list(PLAN_ROW_RE.finditer(body))
         catalogs[skill] = []
         for row_index, row in enumerate(rows):
             row_end = (
@@ -764,9 +764,10 @@ def parse_reference_catalogs() -> dict[str, list[dict[str, object]]]:
     for skill in EXPECTED_SKILLS:
         path = SKILLS_DIR / skill / "references" / "runtime-intake.md"
         text = path.read_text(encoding="utf-8")
-        matches = list(REFERENCE_CATALOG_RE.finditer(text))
-        if len(matches) != 1:
-            raise ValueError(f"{path}: expected exactly one JSON catalog")
+        structural_errors = STRUCTURAL_VALIDATOR.validate_catalog(path, text)
+        if structural_errors:
+            raise ValueError("; ".join(structural_errors))
+        matches = STRUCTURAL_VALIDATOR.active_top_level_catalog_matches(text)
         try:
             payload = json.loads(
                 matches[0].group("payload"),

@@ -563,6 +563,106 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 self.tearDown()
                 self.setUp()
 
+    def test_container_nested_appendix_headings_are_rejected(self) -> None:
+        prefixes = (
+            "- ",
+            "1. ",
+            "> ",
+            "> - ",
+            "- > ",
+        )
+        for prefix in prefixes:
+            with self.subTest(prefix=prefix):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                duplicate = (
+                    f"{prefix}### A.1 `cis-controls-ngfw-compliance`\n\n"
+                )
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    duplicate + "### A.1 `cis-controls-ngfw-compliance`",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "duplicate Appendix A skill section",
+                ):
+                    SAFETY.parse_plan_catalogs()
+                self.tearDown()
+                self.setUp()
+
+    def test_container_nested_appendix_lookalike_is_rejected(self) -> None:
+        self.use_temp_catalogs()
+        text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+        text = text.replace(
+            "### A.1 `cis-controls-ngfw-compliance`",
+            "> ### A.01 malformed\n\n"
+            "### A.1 `cis-controls-ngfw-compliance`",
+            1,
+        )
+        SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+        with self.assertRaisesRegex(
+            ValueError,
+            "noncanonical Appendix A heading",
+        ):
+            SAFETY.parse_plan_catalogs()
+
+    def test_container_nested_raw_html_in_appendix_is_rejected(self) -> None:
+        self.use_temp_catalogs()
+        text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+        text = text.replace(
+            "### A.1 `cis-controls-ngfw-compliance`",
+            "- <div>\n\n### A.1 `cis-controls-ngfw-compliance`",
+            1,
+        )
+        SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+        with self.assertRaisesRegex(
+            ValueError,
+            "raw HTML block syntax is not allowed",
+        ):
+            SAFETY.parse_plan_catalogs()
+
+    def test_inactive_appendix_decoy_rows_do_not_pollute_active_rows(
+        self,
+    ) -> None:
+        decoy_row = (
+            "- `decoy`; header `Decoy`; ask when decoy is absent; "
+            "question `Which decoy is required?`; options: "
+            "`First (Recommended)` — Use the first decoy; "
+            "`Second` — Use the second decoy.\n"
+        )
+        wrappers = (
+            f"````markdown\n{decoy_row}````\n",
+            f"<!--\n{decoy_row}-->\n",
+        )
+        for wrapper in wrappers:
+            with self.subTest(opener=wrapper.splitlines()[0]):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "- `cis_scope`;",
+                    wrapper + "- `cis_scope`;",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                catalogs = SAFETY.parse_plan_catalogs()
+                self.assertEqual(
+                    [question["id"] for question in catalogs[
+                        "cis-controls-ngfw-compliance"
+                    ]],
+                    [
+                        "cis_goal",
+                        "cis_version",
+                        "cis_ig",
+                        "cis_scope",
+                        "cis_evidence",
+                        "cis_output",
+                    ],
+                )
+                self.tearDown()
+                self.setUp()
+
     def test_appendix_number_name_pairing_is_rejected(self) -> None:
         self.use_temp_catalogs()
         text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
@@ -603,6 +703,30 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
         )
         path.write_text(text, encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "duplicate JSON object key 'id'"):
+            SAFETY.parse_reference_catalogs()
+
+    def test_inactive_package_catalog_is_rejected_standalone(self) -> None:
+        self.use_temp_catalogs()
+        path = (
+            SAFETY.SKILLS_DIR
+            / "cis-controls-ngfw-compliance"
+            / "references"
+            / "runtime-intake.md"
+        )
+        text = path.read_text(encoding="utf-8")
+        catalog_start = text.index("```json")
+        catalog_end = text.index("\n```", catalog_start) + len("\n```")
+        catalog = text[catalog_start:catalog_end]
+        path.write_text(
+            text[:catalog_start]
+            + f"````markdown\n{catalog}\n````"
+            + text[catalog_end:],
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(
+            ValueError,
+            "expected exactly one active top-level JSON catalog",
+        ):
             SAFETY.parse_reference_catalogs()
 
     def test_same_line_doubled_field_whitespace_is_rejected(self) -> None:
