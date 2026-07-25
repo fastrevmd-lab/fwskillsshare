@@ -397,6 +397,7 @@ class ContainerParse(NamedTuple):
 
     cursor: int
     containers: tuple[MarkdownContainer, ...]
+    lazy: bool = False
 
 
 class MarkdownAnalysis:
@@ -782,7 +783,7 @@ class MarkdownAnalysis:
                     == self._containers
                     and not self._line_interrupts_paragraph(content, cursor)
                 ):
-                    return ContainerParse(cursor, self._containers)
+                    return ContainerParse(cursor, self._containers, True)
                 break
             cursor = next_cursor
             matched.append(container)
@@ -834,7 +835,11 @@ class MarkdownAnalysis:
             )
             cursor = marker.content_start
 
-        return ContainerParse(cursor, tuple(containers))
+        return ContainerParse(
+            cursor,
+            tuple(containers),
+            continued.lazy,
+        )
 
     def _append_masked_line(self, line: str) -> None:
         masked = mask_non_newline_characters(line)
@@ -944,7 +949,10 @@ class MarkdownAnalysis:
                     block_content,
                     parsed.cursor,
                 )
-                or SETEXT_UNDERLINE_RE.fullmatch(logical) is not None
+                or (
+                    not parsed.lazy
+                    and SETEXT_UNDERLINE_RE.fullmatch(logical) is not None
+                )
             )
         ):
             assert pending_reference.pending_source_start is not None
@@ -1117,6 +1125,21 @@ class MarkdownAnalysis:
                 same_paragraph = link_reference.containers == path
                 if not same_paragraph:
                     self._close_paragraph()
+            elif (
+                link_reference.phase == "optional-title"
+                and link_reference.containers == path
+            ):
+                source_content = self._split_ending(masked_line)[0]
+                self._paragraph = MarkdownParagraph(
+                    source_start
+                    + self._source_index_for_column(
+                        source_content,
+                        parsed.cursor,
+                    ),
+                    path,
+                    [],
+                )
+                same_paragraph = True
             self._link_reference = None
 
         if not same_paragraph and logical.startswith("    "):
@@ -1216,6 +1239,8 @@ class MarkdownAnalysis:
 
         if (
             same_paragraph
+            and self._paragraph is not None
+            and self._paragraph.lines
             and SETEXT_UNDERLINE_RE.fullmatch(logical) is not None
         ):
             level = 1 if logical.lstrip().startswith("=") else 2

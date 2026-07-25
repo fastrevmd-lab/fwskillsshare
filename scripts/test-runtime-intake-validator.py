@@ -663,6 +663,101 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                         "expected exactly one active '## When to ask' heading",
                     )
 
+    def test_pending_link_references_distinguish_lazy_setext_text(
+        self,
+    ) -> None:
+        pending_states = {
+            "label": "[foo",
+            "destination": "[foo]:",
+            "same-line-title": '[foo]: /url "',
+            "optional-title": "[foo]: /url",
+        }
+        containers = {
+            "list": "- ",
+            "quote": "> ",
+        }
+        for state, pending in pending_states.items():
+            for container, prefix in containers.items():
+                for ending in ("\n", "\r\n"):
+                    with self.subTest(
+                        state=state,
+                        container=container,
+                        ending=repr(ending),
+                    ):
+                        text = (
+                            prefix
+                            + pending
+                            + ending
+                            + "==="
+                            + ending
+                        )
+                        analysis = VALIDATOR.analyze_markdown(text)
+                        self.assertEqual(analysis.headings, [])
+                        self.assertEqual(
+                            [
+                                block.kind
+                                for block in analysis.lines[-1].containers
+                            ],
+                            [container],
+                        )
+                        self.assertEqual(
+                            VALIDATOR.validate_skill(
+                                STANDARD_PROBE_PATH,
+                                VALID_SKILL + "\n" + text,
+                            ),
+                            [],
+                        )
+                        self.assertEqual(
+                            VALIDATOR.validate_catalog(
+                                Path("runtime-intake.md"),
+                                render_reference() + "\n" + text,
+                            ),
+                            [],
+                        )
+
+    def test_completed_reference_preserves_lazy_type7_paragraphs(
+        self,
+    ) -> None:
+        containers = {
+            "list": "- ",
+            "quote": "> ",
+        }
+        for container, prefix in containers.items():
+            for ending in ("\n", "\r\n"):
+                with self.subTest(
+                    container=container,
+                    ending=repr(ending),
+                ):
+                    text = (
+                        prefix
+                        + "[foo]: /url"
+                        + ending
+                        + "<runtime-wrapper>"
+                        + ending
+                    )
+                    analysis = VALIDATOR.analyze_markdown(text)
+                    current = analysis.lines[-1]
+                    self.assertEqual(current.block_kind, "paragraph")
+                    self.assertEqual(
+                        [block.kind for block in current.containers],
+                        [container],
+                    )
+                    self.assertEqual(analysis.raw_html_lines, [])
+                    self.assertEqual(
+                        VALIDATOR.validate_skill(
+                            STANDARD_PROBE_PATH,
+                            VALID_SKILL + "\n" + text,
+                        ),
+                        [],
+                    )
+                    self.assertEqual(
+                        VALIDATOR.validate_catalog(
+                            Path("runtime-intake.md"),
+                            render_reference() + "\n" + text,
+                        ),
+                        [],
+                    )
+
     def test_pending_link_reference_interrupts_preserve_source_mapping(
         self,
     ) -> None:
