@@ -85,21 +85,21 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "autovpn_auth",
-      "ask_when": "Peer authentication is absent.",
+      "ask_when": "The target peer-authentication model is absent and affects the design.",
       "header": "Auth",
-      "question": "What peer authentication model should be used?",
+      "question": "How should an unspecified target peer-authentication model be resolved?",
       "options": [
         {
-          "label": "PKI zero-touch (Recommended)",
-          "description": "Use certificates and scalable group identity."
+          "label": "Confirm auth first (Recommended)",
+          "description": "Confirm target peer authentication and existing constraints before design."
         },
         {
-          "label": "Unique PSKs",
-          "description": "Use a distinct secret per spoke."
+          "label": "Use supplied PKI model",
+          "description": "Use the supplied certificate and scalable group-identity model."
         },
         {
-          "label": "Existing legacy",
-          "description": "Assess a shared-secret design and document risk."
+          "label": "Use supplied unique-PSK model",
+          "description": "Use the supplied requirement for a distinct PSK per spoke without requesting secret values."
         }
       ]
     },

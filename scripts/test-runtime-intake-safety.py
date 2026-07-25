@@ -1647,7 +1647,7 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
         self.assertEqual(
             completed.stdout.strip(),
             "OK: 1 selected plan/reference catalog; parsed all 22 catalogs and "
-            "resolved all manifest keys; 2 safe defaults; 1 exact option tuple",
+            "resolved all manifest keys; 3 safe defaults; 2 exact option tuples",
         )
 
     def test_digest_manifest_covers_every_catalog(self) -> None:

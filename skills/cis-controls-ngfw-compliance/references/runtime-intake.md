@@ -45,21 +45,21 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "cis_version",
-      "ask_when": "The governing CIS version is absent.",
+      "ask_when": "The governing CIS Controls version is absent.",
       "header": "CIS Version",
-      "question": "Which CIS Controls version should govern the assessment?",
+      "question": "How should an unspecified governing CIS Controls version be resolved?",
       "options": [
         {
-          "label": "CIS v8.1 (Recommended)",
-          "description": "Use the current v8.1 safeguard structure."
+          "label": "Confirm version first (Recommended)",
+          "description": "Confirm the governing version and any organizational crosswalk before grading."
         },
         {
-          "label": "CIS v8",
-          "description": "Use the original v8 structure."
+          "label": "Use supplied CIS v8.1",
+          "description": "Apply CIS Controls v8.1 as explicitly supplied."
         },
         {
-          "label": "Org profile",
-          "description": "Follow a supplied organizational crosswalk."
+          "label": "Use supplied CIS v8",
+          "description": "Apply CIS Controls v8 as explicitly supplied."
         }
       ]
     },

@@ -83,7 +83,7 @@ STRUCTURAL_VALIDATOR = importlib.util.module_from_spec(STRUCTURAL_SPEC)
 STRUCTURAL_SPEC.loader.exec_module(STRUCTURAL_VALIDATOR)
 EXPECTED_CATALOG_SHA256 = {
     "cis-controls-ngfw-compliance":
-        "36e3bf588d757c5d4e4eb554383891c68f813cbca8dc0768081afdff0432b9ec",
+        "02375cf9ac6fffdf7a276435310e04b11e41df31261a632ec50dbce44aabb0dd",
     "cmmc-nist-800-171-ngfw-compliance":
         "97cdac86336fb74c1f1d85d8b3875d9379d16369094b91b5e7f26a7957bf2b20",
     "firewall-best-practices-audit":
@@ -113,7 +113,7 @@ EXPECTED_CATALOG_SHA256 = {
     "srx-advpn":
         "a5e9c9dc1be96a5b7700ba280d6bdcf199b6cbc6e6a106f4d7613b2b95b310e3",
     "srx-autovpn-full-tunnel":
-        "d8ae7ee5b58d6412868e8f7ef9337184060cb8d9f6aec7571751674deb7509e9",
+        "8347ee64559f60ffb2ff5f041815faed1398eccc7680c1392c221f1df828e7ba",
     "srx-dynamic-ip-feed":
         "ea5a19c8933eadfc94dd1c9daf9880082ed32f04012bc006ef158ad518791d13",
     "srx-ipsec-hub-spoke":
@@ -170,6 +170,8 @@ PLAN_ASK_WHEN_THE_IDS = {
 # Final-review regression inventory. Each key is an independently unsafe
 # recommended default, and each value is the exact safe first label.
 SAFE_FIRST_LABELS = {
+    ("cis-controls-ngfw-compliance", "cis_version"):
+        "Confirm version first (Recommended)",
     ("cis-controls-ngfw-compliance", "cis_scope"):
         "Inventory estate first (Recommended)",
     ("cis-controls-ngfw-compliance", "cis_evidence"):
@@ -264,6 +266,8 @@ SAFE_FIRST_LABELS = {
         "Inventory evidence (Recommended)",
     ("srx-autovpn-full-tunnel", "autovpn_release"):
         "Discover first (Recommended)",
+    ("srx-autovpn-full-tunnel", "autovpn_auth"):
+        "Confirm auth first (Recommended)",
     ("srx-autovpn-full-tunnel", "autovpn_lans"):
         "Map LANs first (Recommended)",
     ("srx-autovpn-full-tunnel", "autovpn_nat"):
@@ -375,6 +379,11 @@ SAFE_FIRST_LABELS = {
 # These final-review findings require exact, single-axis option sets, not only a
 # safe first label.
 EXACT_OPTION_LABELS = {
+    ("cis-controls-ngfw-compliance", "cis_version"): (
+        "Confirm version first (Recommended)",
+        "Use supplied CIS v8.1",
+        "Use supplied CIS v8",
+    ),
     ("cis-controls-ngfw-compliance", "cis_scope"): (
         "Inventory estate first (Recommended)",
         "Use supplied full estate",
@@ -568,6 +577,11 @@ EXACT_OPTION_LABELS = {
         "Confirm model first (Recommended)",
         "Use supplied full backhaul",
         "Use supplied split tunnel",
+    ),
+    ("srx-autovpn-full-tunnel", "autovpn_auth"): (
+        "Confirm auth first (Recommended)",
+        "Use supplied PKI model",
+        "Use supplied unique-PSK model",
     ),
     ("srx-dynamic-ip-feed", "dif_session"): (
         "Confirm behavior first (Recommended)",

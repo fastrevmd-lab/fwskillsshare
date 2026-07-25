@@ -1388,8 +1388,18 @@ paragraph-interruption rules.
 The CommonMark RED commit ran 132 structural tests with 63 failures and 42
 safety tests with 19 failures plus one error. GREEN passes all 132 structural
 and all 42 safety tests without catalog or schema changes. The final evidence
-remains 155 questions, 100 safe first labels, 56 exact option tuples, and 48
-semantic IDs.
+remains 155 questions.
+
+**Final whole-corpus semantic remediation:** `cis_version` now confirms the
+governing CIS Controls version before grading and keeps organizational
+crosswalk confirmation inside that discovery choice rather than a competing
+version. `autovpn_auth` now confirms the target peer-authentication model before
+design and offers only explicitly supplied PKI or unique-PSK target models;
+assessment of legacy current state is no longer mixed into the target-model
+axis. The RED ran 43 safety tests with nine failures for the two stale question
+objects, absent manifest coverage, and old inventory counts. GREEN passes all
+43. The complete corpus remains 155 questions with 102 safe first labels, 58
+exact option tuples, and 50 semantic IDs.
 
 Update each Appendix row and its package JSON object together, then require
 both focused validators to pass before moving to the next independently
@@ -1403,11 +1413,13 @@ installable skill.
   remediation priorities; `Evidence package` — Organize evidence for an
   existing assessment; `Control mapping` — Map controls without grading
   implementation.
-- `cis_version`; header `CIS Version`; ask when the governing CIS version is
-  absent; question `Which CIS Controls version should govern the assessment?`;
-  options: `CIS v8.1 (Recommended)` — Use the current v8.1 safeguard structure;
-  `CIS v8` — Use the original v8 structure; `Org profile` — Follow a supplied
-  organizational crosswalk.
+- `cis_version`; header `CIS Version`; ask when the governing CIS Controls
+  version is absent; question `How should an unspecified governing CIS Controls
+  version be resolved?`; options: `Confirm version first (Recommended)` —
+  Confirm the governing version and any organizational crosswalk before
+  grading; `Use supplied CIS v8.1` — Apply CIS Controls v8.1 as explicitly
+  supplied; `Use supplied CIS v8` — Apply CIS Controls v8 as explicitly
+  supplied.
 - `cis_ig`; header `CIS Group`; ask when the Implementation Group is absent and
   affects safeguard scope; question `Which Implementation Group should be
   assessed?`; options: `IG2 (Recommended)` — Assess IG1 and IG2 for a typical
@@ -2031,11 +2043,14 @@ installable skill.
   before designing spoke forwarding; `Use supplied full backhaul` — Backhaul
   all scoped spoke traffic through the hub as supplied; `Use supplied split
   tunnel` — Preserve the supplied split-tunnel and local path requirements.
-- `autovpn_auth`; header `Auth`; ask when peer authentication is absent;
-  question `What peer authentication model should be used?`; options: `PKI
-  zero-touch (Recommended)` — Use certificates and scalable group identity;
-  `Unique PSKs` — Use a distinct secret per spoke; `Existing legacy` — Assess a
-  shared-secret design and document risk.
+- `autovpn_auth`; header `Auth`; ask when the target peer-authentication model
+  is absent and affects the design; question `How should an unspecified target
+  peer-authentication model be resolved?`; options: `Confirm auth first
+  (Recommended)` — Confirm target peer authentication and existing constraints
+  before design; `Use supplied PKI model` — Use the supplied certificate and
+  scalable group-identity model; `Use supplied unique-PSK model` — Use the
+  supplied requirement for a distinct PSK per spoke without requesting secret
+  values.
 - `autovpn_lans`; header `LAN Prefixes`; ask when spoke prefix allocation is
   incomplete; question `How should incomplete spoke LAN allocation be
   handled?`; options: `Map LANs first (Recommended)` — Identify every spoke
