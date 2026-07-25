@@ -640,9 +640,22 @@ def validate_skill(path: Path, text: str) -> list[str]:
 def validate_catalog(path: Path, text: str) -> list[str]:
     errors: list[str] = []
     active_markdown = mask_inactive_markdown(text)
+    if "<!--" in text or "-->" in text:
+        errors.append(f"{path}: HTML comment delimiters are not allowed")
+    if any(pattern.search(active_markdown) for pattern in RAW_HTML_BLOCK_OPENERS):
+        errors.append(f"{path}: raw HTML block syntax is not allowed")
     for heading in REQUIRED_REFERENCE_HEADINGS:
-        if heading not in active_markdown:
+        heading_matches = re.findall(
+            rf"^{re.escape(heading)}[ \t]*\r?$",
+            active_markdown,
+            re.MULTILINE,
+        )
+        if not heading_matches:
             errors.append(f"{path}: missing {heading!r}")
+        elif len(heading_matches) != 1:
+            errors.append(
+                f"{path}: expected exactly one active {heading!r} heading"
+            )
     required_adaptation = (
         ("Claude projection", CLAUDE_ADAPTATION),
         ("Codex projection", CODEX_ADAPTATION),

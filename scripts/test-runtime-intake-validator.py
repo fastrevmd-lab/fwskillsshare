@@ -262,6 +262,34 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                         errors,
                     )
 
+    def test_rejects_required_heading_text_embedded_in_active_prose(
+        self,
+    ) -> None:
+        mutant = render_reference().replace(
+            "# Runtime Intake",
+            "prefix # Runtime Intake suffix",
+            1,
+        )
+        self.assert_has_error(mutant, "missing '# Runtime Intake'")
+
+    def test_rejects_duplicate_exact_active_reference_heading(self) -> None:
+        mutant = render_reference().replace(
+            "## When to ask",
+            "## When to ask\n\n## When to ask",
+            1,
+        )
+        self.assert_has_error(
+            mutant,
+            "expected exactly one active '## When to ask' heading",
+        )
+
+    def test_rejects_raw_html_wrapped_reference(self) -> None:
+        mutant = f"<div>\n{render_reference()}</div>\n"
+        self.assert_has_error(
+            mutant,
+            "raw HTML block syntax is not allowed",
+        )
+
     def test_rejects_inactive_exact_adaptation_clauses(self) -> None:
         cases = (
             ("Claude projection", CLAUDE_ADAPTATION),
