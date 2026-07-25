@@ -737,6 +737,15 @@ class MarkdownAnalysis:
             return False
         return False
 
+    def _open_paragraph_containers(
+        self,
+    ) -> tuple[MarkdownContainer, ...] | None:
+        if self._paragraph is not None:
+            return self._paragraph.containers
+        if self._link_reference is not None:
+            return self._link_reference.containers
+        return None
+
     def _continue_existing_containers(
         self,
         content: str,
@@ -769,8 +778,8 @@ class MarkdownAnalysis:
                 if (
                     allow_lazy
                     and not is_list_sibling
-                    and self._paragraph is not None
-                    and self._paragraph.containers == self._containers
+                    and self._open_paragraph_containers()
+                    == self._containers
                     and not self._line_interrupts_paragraph(content, cursor)
                 ):
                     return ContainerParse(cursor, self._containers)
@@ -805,6 +814,7 @@ class MarkdownAnalysis:
             if marker is None:
                 break
             current_path = tuple(containers)
+            open_paragraph_path = self._open_paragraph_containers()
             if (
                 (
                     marker.empty
@@ -813,8 +823,7 @@ class MarkdownAnalysis:
                         and marker.ordered != 1
                     )
                 )
-                and self._paragraph is not None
-                and self._paragraph.containers == current_path
+                and open_paragraph_path == current_path
             ):
                 break
             containers.append(
@@ -930,9 +939,12 @@ class MarkdownAnalysis:
             pending_reference is not None
             and pending_reference.pending_lines
             and pending_reference.containers == path
-            and self._line_interrupts_paragraph(
-                block_content,
-                parsed.cursor,
+            and (
+                self._line_interrupts_paragraph(
+                    block_content,
+                    parsed.cursor,
+                )
+                or SETEXT_UNDERLINE_RE.fullmatch(logical) is not None
             )
         ):
             assert pending_reference.pending_source_start is not None

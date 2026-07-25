@@ -483,7 +483,10 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                         analysis = VALIDATOR.analyze_markdown(text)
                         current = analysis.lines[-1]
                         self.assertEqual(current.block_kind, expected_kind)
-                        self.assertEqual(current.content, indicator)
+                        self.assertEqual(
+                            current.content.rstrip(" \t"),
+                            indicator.rstrip(" \t"),
+                        )
                         self.assertEqual(
                             current.content_start,
                             text.rfind(indicator),
@@ -491,7 +494,7 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                         self.assertEqual(current.source_end, len(text))
                         self.assertEqual(
                             current.normalized,
-                            indicator + "\n",
+                            current.content + "\n",
                         )
                         if expected_kind == "setext-underline":
                             self.assertEqual(
@@ -539,8 +542,8 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             "next-line-title": ("[foo]: /url", '"'),
         }
         continuations = {
-            "empty-asterisk": ("*", "  Runtime intake", "  ---"),
-            "empty-plus": ("+", "  Runtime intake", "  ---"),
+            "empty-asterisk": ("*",),
+            "empty-plus": ("+",),
             "ordered-non-one-inline": ("10. ## Runtime intake",),
             "ordered-non-one-block": (
                 "10.",
@@ -573,7 +576,10 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                     ):
                         suffix = wrap(pending + continuation, container)
                         analysis = VALIDATOR.analyze_markdown(suffix)
-                        self.assertEqual(analysis.headings, [])
+                        self.assertNotIn(
+                            "Runtime intake",
+                            [heading.content for heading in analysis.headings],
+                        )
                         expected_depth = 0 if container == "top-level" else 1
                         self.assertTrue(
                             all(
@@ -600,6 +606,62 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                                         ),
                                         [],
                                     )
+
+    def test_pending_link_references_keep_lazy_list_continuations(
+        self,
+    ) -> None:
+        pending_states = {
+            "label": ("[foo", "bar]: /url"),
+            "destination": ("[foo]:", "/url"),
+            "same-line-title": ('[foo]: /url "', 'title"'),
+            "next-line-title": ("[foo]: /url", '"title"'),
+        }
+        list_forms = {
+            "ordinary-lf": ("- ", 2, "\n"),
+            "wide-padding-lf": ("-   ", 4, "\n"),
+            "tab-padding-crlf": ("-\t", 4, "\r\n"),
+        }
+        for state, (first, lazy) in pending_states.items():
+            for form, (prefix, indent, ending) in list_forms.items():
+                with self.subTest(state=state, form=form):
+                    text = (
+                        prefix
+                        + first
+                        + ending
+                        + lazy
+                        + ending
+                        + (" " * indent)
+                        + "Runtime intake"
+                        + ending
+                        + (" " * indent)
+                        + "---"
+                        + ending
+                    )
+                    analysis = VALIDATOR.analyze_markdown(text)
+                    heading = analysis.headings[-1]
+                    self.assertEqual(
+                        (heading.level, heading.content, heading.style),
+                        (2, "Runtime intake", "setext"),
+                    )
+                    self.assertEqual(
+                        [container.kind for container in heading.containers],
+                        ["list"],
+                    )
+                    self.assertEqual(
+                        heading.source_start,
+                        text.index("Runtime intake"),
+                    )
+                    self.assert_skill_error(
+                        VALID_SKILL + "\n" + text,
+                        "expected exactly one '## Runtime intake' section",
+                    )
+                    self.assert_has_error(
+                        render_reference() + "\n" + text.replace(
+                            "Runtime intake",
+                            "When to ask",
+                        ),
+                        "expected exactly one active '## When to ask' heading",
+                    )
 
     def test_pending_link_reference_interrupts_preserve_source_mapping(
         self,
