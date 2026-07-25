@@ -114,12 +114,12 @@ platform or framework basis, evidence quality, then output preference.
           "description": "Verify endpoint requirements before selecting authentication and risk-classify explicit no-extra-auth requests supplied through Other."
         },
         {
-          "label": "Use supplied mutual TLS",
-          "description": "Use supplied client-certificate requirements through approved secret delivery."
+          "label": "Use supplied single auth",
+          "description": "Use one exact supplied mTLS or Basic mechanism specified via Other while keeping credentials outside chat."
         },
         {
-          "label": "Use supplied basic auth",
-          "description": "Use supplied basic-auth requirements while keeping credentials outside chat."
+          "label": "Use supplied combined auth",
+          "description": "Use supplied mTLS plus Basic authentication when both are required while keeping credentials outside chat."
         }
       ]
     },

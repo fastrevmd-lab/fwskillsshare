@@ -98,7 +98,7 @@ EXPECTED_CATALOG_SHA256 = {
     "srx-autovpn-full-tunnel":
         "5fc2245ccf43ca81f36094e397531f09be9a70ee18d4c3ab711df92b36e18ff6",
     "srx-dynamic-ip-feed":
-        "3936a0b697b471ce07db4f245c713345137ea5b839b631ce695c3211bb4f3a77",
+        "1e583e93da2dea6d2633c88a8e0fb362c26dd18bda19aba1fd60b5cad7f5641e",
     "srx-ipsec-hub-spoke":
         "3e4e0a5f725b58c2d287835690a4d554242ceb7bea3d0e9eb52e6ecbf6129156",
     "srx-mnha":
@@ -315,8 +315,8 @@ EXACT_OPTION_LABELS = {
     ),
     ("srx-dynamic-ip-feed", "dif_auth"): (
         "Verify endpoint first (Recommended)",
-        "Use supplied mutual TLS",
-        "Use supplied basic auth",
+        "Use supplied single auth",
+        "Use supplied combined auth",
     ),
     ("srx-ipsec-hub-spoke", "hsvpn_evidence"): (
         "Inventory evidence (Recommended)",
@@ -497,10 +497,10 @@ def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
 
     for index, section in enumerate(sections):
         skill = section.group("skill")
-        section_number = int(section.group("number"))
+        section_number = section.group("number")
         expected_number = index + 1
         expected_skill = EXPECTED_SKILLS[index]
-        if section_number != expected_number or skill != expected_skill:
+        if section_number != str(expected_number) or skill != expected_skill:
             raise ValueError(
                 f"{PLAN_PATH}: expected Appendix A.{expected_number} "
                 f"`{expected_skill}`, found Appendix A.{section_number} "

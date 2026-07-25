@@ -742,12 +742,12 @@ description with a period.
 
 **Task 28 final-review audit:** `scripts/check-runtime-intake-safety.py` parses
 all Appendix A rows and all package JSON catalogs. It rejects duplicate
-Appendix sections, incorrect A.1 through A.22 number/name pairings, duplicate
-package JSON members, and noncanonical same-line tabs or doubled spaces in
-Appendix question fields. It requires exact per-skill question-object equality
-and locks all 22 complete catalog contents and question order with canonical
-SHA-256 digests, in addition to the audited 62 safe first labels and 18
-single-axis option tuples.
+Appendix sections, noncanonical lexical numbering such as `A.01`, incorrect
+A.1 through A.22 number/name pairings, duplicate package JSON members, and
+noncanonical same-line tabs or doubled spaces in Appendix question fields. It
+requires exact per-skill question-object equality and locks all 22 complete
+catalog contents and question order with canonical SHA-256 digests, in
+addition to the audited 62 safe first labels and 18 single-axis option tuples.
 
 The optional skill argument limits equality, digest, safe-default, and
 option-tuple assertions to the selected package, while every focused run still
@@ -755,9 +755,10 @@ parses all 22 plan and package catalogs and resolves all manifest keys.
 Focused output must distinguish those whole-corpus checks from selected
 assertion counts. `scripts/test-runtime-intake-safety.py`, run immediately
 after the checker in `just lint`, uses temporary files and the real parser to
-cover the ten audited semantic IDs, duplicate and numbering failures,
-same-line question/label/description whitespace, focused output counts,
-complete digest coverage, and synchronized content and order mutation.
+cover the ten audited semantic IDs, duplicate, number/name-pairing, and lexical
+numbering failures, same-line question/label/description whitespace, focused
+output counts, complete digest coverage, and synchronized content and order
+mutation.
 
 Update each Appendix row and its package JSON object together, then require
 both focused validators to pass before moving to the next independently
@@ -1387,10 +1388,11 @@ installable skill.
   or unclear; question `How should uncertain feed authentication be handled?`;
   options: `Verify endpoint first (Recommended)` — Verify endpoint requirements
   before selecting authentication and risk-classify explicit no-extra-auth
-  requests supplied through Other; `Use supplied mutual TLS` — Use supplied
-  client-certificate requirements through approved secret delivery; `Use
-  supplied basic auth` — Use supplied basic-auth requirements while keeping
-  credentials outside chat.
+  requests supplied through Other; `Use supplied single auth` — Use one exact
+  supplied mTLS or Basic mechanism specified via Other while keeping
+  credentials outside chat; `Use supplied combined auth` — Use supplied mTLS
+  plus Basic authentication when both are required while keeping credentials
+  outside chat.
 - `dif_route`; header `Routing`; ask when feed-server routing context is absent;
   question `How should an unknown feed-server route be handled?`; options:
   `Trace route first (Recommended)` — Collect route, DNS, source, and connection

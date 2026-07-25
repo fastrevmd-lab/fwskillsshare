@@ -86,8 +86,8 @@ DESIRED_SEMANTICS = {
         "How should uncertain feed authentication be handled?",
         (
             "Verify endpoint first (Recommended)",
-            "Use supplied mutual TLS",
-            "Use supplied basic auth",
+            "Use supplied single auth",
+            "Use supplied combined auth",
         ),
     ),
     ("hipaa-ngfw-compliance", "hipaa_role"): (
@@ -200,6 +200,18 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
         )
         SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "expected Appendix A.2"):
+            SAFETY.parse_plan_catalogs()
+
+    def test_appendix_numbering_is_lexically_exact(self) -> None:
+        self.use_temp_catalogs()
+        text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+        text = text.replace(
+            "### A.1 `cis-controls-ngfw-compliance`",
+            "### A.01 `cis-controls-ngfw-compliance`",
+            1,
+        )
+        SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "expected Appendix A.1"):
             SAFETY.parse_plan_catalogs()
 
     def test_duplicate_package_json_member_is_rejected(self) -> None:
