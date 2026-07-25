@@ -22,6 +22,10 @@ PLAN_PATH = (
 )
 SKILLS_DIR = ROOT / "skills"
 APPENDIX_MARKER = "## Appendix A: Exact question catalogs"
+APPENDIX_MARKER_EQUIVALENT_RE = re.compile(
+    r"^ {0,3}##[ \t]+Appendix A: Exact question catalogs"
+    r"(?:[ \t]+#+)?[ \t]*$"
+)
 PLAN_SECTION_LOOKALIKE_RE = re.compile(
     r"^(?P<heading> {0,3}###[ \t]+A\.[^\r\n]*)\r?$",
     re.MULTILINE,
@@ -745,15 +749,27 @@ def parse_plan_row(skill: str, question_id: str, raw_row: str) -> dict[str, obje
 
 def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
     text = PLAN_PATH.read_text(encoding="utf-8")
-    active_markdown = STRUCTURAL_VALIDATOR.mask_inactive_markdown(text)
-    normalized_active_markdown, _marker_signatures = (
-        STRUCTURAL_VALIDATOR.normalize_active_containers(active_markdown)
-    )
-    if any(
-        pattern.search(normalized_active_markdown)
-        for pattern in STRUCTURAL_VALIDATOR.RAW_HTML_BLOCK_OPENERS
-    ):
+    analysis = STRUCTURAL_VALIDATOR.analyze_markdown(text)
+    active_markdown = analysis.active_text
+    if analysis.raw_html_lines:
         raise ValueError(f"{PLAN_PATH}: raw HTML block syntax is not allowed")
+    equivalent_markers = [
+        line
+        for line in analysis.lines
+        if line.block_kind == "atx"
+        and APPENDIX_MARKER_EQUIVALENT_RE.fullmatch(line.content)
+    ]
+    noncanonical_markers = [
+        line
+        for line in equivalent_markers
+        if line.content.rstrip(" \t") != APPENDIX_MARKER
+    ]
+    if noncanonical_markers:
+        raise ValueError(f"{PLAN_PATH}: noncanonical Appendix A marker")
+    if len(equivalent_markers) != 1:
+        raise ValueError(
+            f"{PLAN_PATH}: expected exactly one active Appendix A marker"
+        )
     marker_matches = list(
         re.finditer(
             rf"^{re.escape(APPENDIX_MARKER)}[ \t]*\r?$",
@@ -765,9 +781,7 @@ def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
         raise ValueError(f"{PLAN_PATH}: missing {APPENDIX_MARKER!r}")
     appendix_start = marker_matches[0].start()
     active_appendix = active_markdown[appendix_start:]
-    normalized_appendix, _appendix_marker_signatures = (
-        STRUCTURAL_VALIDATOR.normalize_active_containers(active_appendix)
-    )
+    normalized_appendix = analysis.normalized_from(appendix_start)
     lookalikes = list(PLAN_SECTION_LOOKALIKE_RE.finditer(normalized_appendix))
     catalogs: dict[str, list[dict[str, object]]] = {}
 

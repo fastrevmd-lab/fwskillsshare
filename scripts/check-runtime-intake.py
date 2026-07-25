@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 from pathlib import Path
+from typing import NamedTuple
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,26 +21,13 @@ RUNTIME_ATX_HEADING_RE = re.compile(
     r"(?P<closing>[ \t]+#+)?[ \t]*\r?$",
     re.MULTILINE,
 )
-RUNTIME_SETEXT_CONTENT_RE = re.compile(r"^ {0,3}Runtime intake[ \t]*$")
 SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(?:=+|-+)[ \t]*$")
 SECTION_HEADING_RE = re.compile(r"^ {0,3}## [^\r\n]+\r?$", re.MULTILINE)
-REFERENCE_SECTION_BOUNDARY_RE = re.compile(
-    r"^ {0,3}#{1,2}(?:[ \t]+|(?=\r?$))[^\r\n]*\r?$",
-    re.MULTILINE,
-)
 FENCE_LINE_RE = re.compile(
     r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
     r"(?P<ending>\r\n|\n|\r)?\Z"
 )
-LIST_ITEM_FENCE_LINE_RE = re.compile(
-    r"^(?P<container> {0,3}(?:(?P<bullet>[-+*])|"
-    r"(?P<ordered>[0-9]{1,9})[.)]) {1,4})"
-    r"(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
-    r"(?P<ending>\r\n|\n|\r)?\Z"
-)
-ATX_BLOCK_BOUNDARY_RE = re.compile(
-    r"^ {0,3}#{1,6}(?:[ \t]+|(?=\r?$))"
-)
+ATX_HEADING_RE = re.compile(r"^ {0,3}(?P<marker>#{1,6})(?:[ \t]+|$)")
 COMMONMARK_TYPE6_TAGS = (
     "address",
     "article",
@@ -138,14 +126,6 @@ RAW_HTML_TYPE7_RE = re.compile(
     rf"^ {{0,3}}(?:{RAW_HTML_TYPE7_OPEN_TAG_PATTERN}|"
     rf"{RAW_HTML_TYPE7_CLOSING_TAG_PATTERN})[ \t]*\r?$",
     re.MULTILINE,
-)
-RAW_HTML_BLOCK_OPENERS = (
-    RAW_HTML_TYPE1_RE,
-    RAW_HTML_PROCESSING_INSTRUCTION_RE,
-    RAW_HTML_DECLARATION_RE,
-    RAW_HTML_CDATA_RE,
-    RAW_HTML_TYPE6_RE,
-    RAW_HTML_TYPE7_RE,
 )
 SENTENCE_BOUNDARY_RE = re.compile(r"[.!?](?=\s|$)")
 INITIALISM_END_RE = re.compile(r"(?:\b[A-Za-z]\.){2,}$")
@@ -292,6 +272,11 @@ def normalize_whitespace(text: str) -> str:
     return " ".join(text.split())
 
 
+def normalize_line_endings(text: str) -> str:
+    """Normalize every CommonMark line ending at a public parse boundary."""
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def approved_runtime_template(path: Path) -> str:
     return APPROVED_RUNTIME_TEMPLATES.get(
         path.parent.name,
@@ -330,168 +315,597 @@ def mask_html_comments(line: str, in_comment: bool) -> tuple[str, bool]:
     return "".join(masked_parts), in_comment
 
 
-def mask_inactive_markdown(text: str) -> str:
-    """Blank HTML comments and fenced code while preserving offsets/newlines."""
-    masked_lines: list[str] = []
-    in_comment = False
-    fence_character: str | None = None
-    fence_length = 0
-    fence_container_indent = 0
-    paragraph_open = False
+class MarkdownContainer(NamedTuple):
+    """One active CommonMark container block."""
 
-    for line in text.splitlines(keepends=True):
-        if fence_character is not None:
-            list_container_ended = (
-                fence_container_indent > 0
-                and bool(line.strip(" \t\r\n"))
-                and not line.startswith(" " * fence_container_indent)
-            )
-            if list_container_ended:
-                fence_character = None
-                fence_length = 0
-                fence_container_indent = 0
-            else:
-                closing_candidate = (
-                    line[fence_container_indent:]
-                    if line.startswith(" " * fence_container_indent)
-                    else ""
-                )
-                fence_match = FENCE_LINE_RE.fullmatch(closing_candidate)
-                masked_lines.append(mask_non_newline_characters(line))
-                if (
-                    fence_match is not None
-                    and fence_match.group("fence")[0] == fence_character
-                    and len(fence_match.group("fence")) >= fence_length
-                    and not fence_match.group("rest").strip(" \t")
-                ):
-                    fence_character = None
-                    fence_length = 0
-                    fence_container_indent = 0
-                continue
-
-        fence_match = FENCE_LINE_RE.fullmatch(line)
-        list_fence_match = LIST_ITEM_FENCE_LINE_RE.fullmatch(line)
-        list_fence_can_open = (
-            list_fence_match is not None
-            and (
-                list_fence_match.group("bullet") is not None
-                or not paragraph_open
-                or int(list_fence_match.group("ordered")) == 1
-            )
-        )
-        opener_match = fence_match or (
-            list_fence_match if list_fence_can_open else None
-        )
-        if not in_comment and opener_match is not None:
-            fence = opener_match.group("fence")
-            info = opener_match.group("rest")
-            valid_opener = fence[0] == "~" or "`" not in info
-            if valid_opener:
-                fence_character = fence[0]
-                fence_length = len(fence)
-                fence_container_indent = (
-                    len(list_fence_match.group("container"))
-                    if list_fence_match is not None
-                    else 0
-                )
-                paragraph_open = False
-                masked_lines.append(mask_non_newline_characters(line))
-                continue
-
-        masked_line, in_comment = mask_html_comments(line, in_comment)
-        masked_lines.append(masked_line)
-        if not masked_line.strip(" \t\r\n"):
-            paragraph_open = False
-        elif ATX_BLOCK_BOUNDARY_RE.match(masked_line):
-            paragraph_open = False
-        else:
-            # Conservatively keep unfamiliar active syntax in paragraph
-            # context so it cannot make a later non-1 marker hide content.
-            paragraph_open = True
-
-    return "".join(masked_lines)
+    serial: int
+    kind: str
+    content_indent: int = 0
 
 
-def strip_active_container_prefix(line: str) -> tuple[str, tuple[str, ...]]:
-    """Remove active blockquote/list markers from one line for block probes."""
-    cursor = 0
-    markers: list[str] = []
-    content_end = len(line.rstrip("\r\n"))
+class MarkdownLine(NamedTuple):
+    """An active logical line mapped to its physical source position."""
 
-    while cursor < content_end:
-        marker_start = cursor
+    source_start: int
+    source_end: int
+    content_start: int
+    content: str
+    normalized: str
+    containers: tuple[MarkdownContainer, ...]
+    block_kind: str
+    heading_level: int | None = None
+
+    @property
+    def top_level(self) -> bool:
+        return not self.containers
+
+
+class MarkdownHeading(NamedTuple):
+    """An ATX or Setext heading with complete logical content."""
+
+    source_start: int
+    source_end: int
+    level: int
+    content: str
+    containers: tuple[MarkdownContainer, ...]
+    style: str
+
+    @property
+    def top_level(self) -> bool:
+        return not self.containers
+
+
+class MarkdownParagraph(NamedTuple):
+    """The open paragraph that can receive lazy continuation lines."""
+
+    source_start: int
+    containers: tuple[MarkdownContainer, ...]
+    lines: list[str]
+
+
+class MarkdownFence(NamedTuple):
+    """An open fenced code block scoped to its container path."""
+
+    character: str
+    length: int
+    containers: tuple[MarkdownContainer, ...]
+
+
+class ContainerParse(NamedTuple):
+    """Container prefix result for one physical Markdown line."""
+
+    cursor: int
+    containers: tuple[MarkdownContainer, ...]
+
+
+class MarkdownAnalysis:
+    """CommonMark-aware block view used by every structural probe."""
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self.lines: list[MarkdownLine] = []
+        self.headings: list[MarkdownHeading] = []
+        self.raw_html_lines: list[MarkdownLine] = []
+        self._active_parts: list[str] = []
+        self._normalized_parts: list[str] = []
+        self._containers: tuple[MarkdownContainer, ...] = ()
+        self._paragraph: MarkdownParagraph | None = None
+        self._fence: MarkdownFence | None = None
+        self._in_comment = False
+        self._next_container_serial = 1
+        self._analyze()
+        self.active_text = "".join(self._active_parts)
+        self.normalized_text = "".join(self._normalized_parts)
+
+    @staticmethod
+    def _split_ending(line: str) -> tuple[str, str]:
+        content = line.rstrip("\r\n")
+        return content, line[len(content) :]
+
+    @staticmethod
+    def _consume_indentation(
+        content: str,
+        cursor: int,
+        width: int,
+    ) -> int | None:
+        end = cursor + width
+        if content[cursor:end] == " " * width:
+            return end
+        return None
+
+    @staticmethod
+    def _quote_prefix_end(content: str, cursor: int) -> int | None:
+        probe = cursor
         indentation = 0
         while (
             indentation < 3
-            and cursor < content_end
-            and line[cursor] == " "
+            and probe < len(content)
+            and content[probe] == " "
         ):
-            cursor += 1
+            probe += 1
+            indentation += 1
+        if probe >= len(content) or content[probe] != ">":
+            return None
+        probe += 1
+        if probe < len(content) and content[probe] in " \t":
+            probe += 1
+        return probe
+
+    @staticmethod
+    def _list_marker(
+        content: str,
+        cursor: int,
+    ) -> tuple[int, int, int | None] | None:
+        probe = cursor
+        indentation = 0
+        while (
+            indentation < 3
+            and probe < len(content)
+            and content[probe] == " "
+        ):
+            probe += 1
             indentation += 1
 
-        if cursor < content_end and line[cursor] == ">":
-            cursor += 1
-            if cursor < content_end and line[cursor] in " \t":
-                cursor += 1
-            markers.append("quote")
-            continue
-
-        list_match = re.match(
-            r"(?:[-+*]|[0-9]{1,9}[.)])(?P<spacing>[ \t]{1,4})(?![ \t])",
-            line[cursor:content_end],
+        marker_match = re.match(
+            r"(?:(?P<bullet>[-+*])|(?P<ordered>[0-9]{1,9})[.)])",
+            content[probe:],
         )
-        if list_match is not None:
-            cursor += list_match.end()
-            markers.append("list")
-            continue
+        if marker_match is None:
+            return None
+        marker_end = probe + marker_match.end()
+        spacing_end = marker_end
+        while (
+            spacing_end < len(content)
+            and content[spacing_end] in " \t"
+        ):
+            spacing_end += 1
+        spacing_width = spacing_end - marker_end
+        if spacing_width == 0 or spacing_end == len(content):
+            return None
 
-        cursor = marker_start
-        break
+        if spacing_width <= 4:
+            padding = spacing_width
+            content_start = spacing_end
+        else:
+            # Five or more following spaces count as one space of list
+            # padding; the rest remains content indentation.
+            padding = 1
+            content_start = marker_end + 1
+        marker_width = marker_match.end()
+        content_indent = indentation + marker_width + padding
+        ordered = marker_match.group("ordered")
+        return (
+            content_start,
+            content_indent,
+            int(ordered) if ordered is not None else None,
+        )
 
-    if not markers:
-        return line, ()
-    return line[cursor:], tuple(markers)
+    def _new_container(
+        self,
+        kind: str,
+        content_indent: int = 0,
+    ) -> MarkdownContainer:
+        container = MarkdownContainer(
+            self._next_container_serial,
+            kind,
+            content_indent,
+        )
+        self._next_container_serial += 1
+        return container
 
+    @staticmethod
+    def _raw_html_kind(content: str) -> int | None:
+        if RAW_HTML_TYPE1_RE.match(content):
+            return 1
+        if RAW_HTML_PROCESSING_INSTRUCTION_RE.match(content):
+            return 3
+        if RAW_HTML_DECLARATION_RE.match(content):
+            return 4
+        if RAW_HTML_CDATA_RE.match(content):
+            return 5
+        if RAW_HTML_TYPE6_RE.match(content):
+            return 6
+        if RAW_HTML_TYPE7_RE.fullmatch(content):
+            return 7
+        return None
 
-def normalize_active_containers(
-    active_markdown: str,
-) -> tuple[str, list[tuple[str, ...]]]:
-    """Expose active Markdown blocks nested in list or quote containers."""
-    normalized_lines: list[str] = []
-    marker_signatures: list[tuple[str, ...]] = []
-    for line in active_markdown.splitlines(keepends=True):
-        normalized, markers = strip_active_container_prefix(line)
-        normalized_lines.append(normalized)
-        marker_signatures.append(markers)
-    return "".join(normalized_lines), marker_signatures
+    @staticmethod
+    def _valid_fence_opener(content: str) -> re.Match[str] | None:
+        match = FENCE_LINE_RE.fullmatch(content)
+        if match is None:
+            return None
+        fence = match.group("fence")
+        info = match.group("rest")
+        if fence[0] == "`" and "`" in info:
+            return None
+        return match
 
+    def _line_interrupts_paragraph(self, content: str, cursor: int) -> bool:
+        remainder = content[cursor:]
+        if not remainder.strip(" \t"):
+            return True
+        if self._quote_prefix_end(content, cursor) is not None:
+            return True
+        marker = self._list_marker(content, cursor)
+        if marker is not None:
+            _content_start, _content_indent, ordered = marker
+            return ordered is None or ordered == 1
+        if ATX_HEADING_RE.match(remainder):
+            return True
+        if self._valid_fence_opener(remainder) is not None:
+            return True
+        html_kind = self._raw_html_kind(remainder)
+        if html_kind is not None:
+            return html_kind != 7
+        # A Setext underline completes the current paragraph.
+        if SETEXT_UNDERLINE_RE.fullmatch(remainder):
+            return False
+        return False
 
-def count_runtime_setext_headings(active_markdown: str) -> int:
-    """Count exact Runtime intake Setext headings by complete paragraph."""
-    normalized, marker_signatures = normalize_active_containers(active_markdown)
-    lines = normalized.splitlines()
-    count = 0
-    for index in range(1, len(lines)):
-        if SETEXT_UNDERLINE_RE.fullmatch(lines[index]) is None:
-            continue
-        if RUNTIME_SETEXT_CONTENT_RE.fullmatch(lines[index - 1]) is None:
-            continue
+    def _continue_existing_containers(
+        self,
+        content: str,
+        *,
+        allow_lazy: bool,
+    ) -> ContainerParse:
+        if not content.strip(" \t"):
+            return ContainerParse(len(content), self._containers)
 
-        previous_index = index - 2
-        if previous_index >= 0 and lines[previous_index].strip():
-            content_markers = marker_signatures[index - 1]
-            previous_markers = marker_signatures[previous_index]
-            begins_new_container = (
-                bool(content_markers)
-                and content_markers != previous_markers
-            )
-            previous_is_block_boundary = bool(
-                ATX_BLOCK_BOUNDARY_RE.match(lines[previous_index])
-            )
-            if not begins_new_container and not previous_is_block_boundary:
+        cursor = 0
+        matched: list[MarkdownContainer] = []
+        for container in self._containers:
+            if container.kind == "quote":
+                next_cursor = self._quote_prefix_end(content, cursor)
+            else:
+                next_cursor = self._consume_indentation(
+                    content,
+                    cursor,
+                    container.content_indent,
+                )
+            if next_cursor is None:
+                if (
+                    allow_lazy
+                    and self._paragraph is not None
+                    and self._paragraph.containers == self._containers
+                    and not self._line_interrupts_paragraph(content, cursor)
+                ):
+                    return ContainerParse(cursor, self._containers)
+                break
+            cursor = next_cursor
+            matched.append(container)
+        return ContainerParse(cursor, tuple(matched))
+
+    def _parse_containers(
+        self,
+        content: str,
+        *,
+        allow_lazy: bool,
+    ) -> ContainerParse:
+        continued = self._continue_existing_containers(
+            content,
+            allow_lazy=allow_lazy,
+        )
+        cursor = continued.cursor
+        containers = list(continued.containers)
+
+        while cursor < len(content):
+            quote_end = self._quote_prefix_end(content, cursor)
+            if quote_end is not None:
+                containers.append(self._new_container("quote"))
+                cursor = quote_end
                 continue
-        count += 1
-    return count
+
+            marker = self._list_marker(content, cursor)
+            if marker is None:
+                break
+            content_start, content_indent, ordered = marker
+            current_path = tuple(containers)
+            if (
+                ordered is not None
+                and ordered != 1
+                and self._paragraph is not None
+                and self._paragraph.containers == current_path
+            ):
+                break
+            containers.append(
+                self._new_container("list", content_indent)
+            )
+            cursor = content_start
+
+        return ContainerParse(cursor, tuple(containers))
+
+    def _append_masked_line(self, line: str) -> None:
+        masked = mask_non_newline_characters(line)
+        self._active_parts.append(masked)
+        self._normalized_parts.append(masked)
+
+    def _close_paragraph(self) -> None:
+        self._paragraph = None
+
+    def _append_logical_line(
+        self,
+        *,
+        source_start: int,
+        raw_line: str,
+        masked_line: str,
+        parsed: ContainerParse,
+        block_kind: str,
+        heading_level: int | None = None,
+    ) -> MarkdownLine:
+        content, ending = self._split_ending(masked_line)
+        logical = content[parsed.cursor:]
+        normalized = logical + ending
+        line = MarkdownLine(
+            source_start,
+            source_start + len(raw_line),
+            source_start + parsed.cursor,
+            logical,
+            normalized,
+            parsed.containers,
+            block_kind,
+            heading_level,
+        )
+        self.lines.append(line)
+        self._active_parts.append(masked_line)
+        self._normalized_parts.append(normalized)
+        return line
+
+    def _record_setext_heading(
+        self,
+        *,
+        source_end: int,
+        underline: str,
+    ) -> None:
+        if self._paragraph is None:
+            return
+        raw_content = " ".join(
+            line.strip(" \t") for line in self._paragraph.lines
+        ).strip()
+        self.headings.append(
+            MarkdownHeading(
+                self._paragraph.source_start,
+                source_end,
+                1 if underline.lstrip().startswith("=") else 2,
+                raw_content,
+                self._paragraph.containers,
+                "setext",
+            )
+        )
+
+    def _classify_active_line(
+        self,
+        *,
+        source_start: int,
+        raw_line: str,
+        masked_line: str,
+        parsed: ContainerParse,
+    ) -> None:
+        physical, _ending = self._split_ending(masked_line)
+        logical = physical[parsed.cursor:]
+        path = parsed.containers
+
+        if not logical.strip(" \t"):
+            self._append_logical_line(
+                source_start=source_start,
+                raw_line=raw_line,
+                masked_line=masked_line,
+                parsed=parsed,
+                block_kind="blank",
+            )
+            self._close_paragraph()
+            return
+
+        same_paragraph = (
+            self._paragraph is not None
+            and self._paragraph.containers == path
+        )
+        if not same_paragraph:
+            self._close_paragraph()
+
+        if not same_paragraph and logical.startswith("    "):
+            self._append_logical_line(
+                source_start=source_start,
+                raw_line=raw_line,
+                masked_line=masked_line,
+                parsed=parsed,
+                block_kind="indented-code",
+            )
+            return
+
+        atx_match = ATX_HEADING_RE.match(logical)
+        if atx_match is not None:
+            level = len(atx_match.group("marker"))
+            line = self._append_logical_line(
+                source_start=source_start,
+                raw_line=raw_line,
+                masked_line=masked_line,
+                parsed=parsed,
+                block_kind="atx",
+                heading_level=level,
+            )
+            self.headings.append(
+                MarkdownHeading(
+                    source_start,
+                    line.source_end,
+                    level,
+                    logical,
+                    path,
+                    "atx",
+                )
+            )
+            self._close_paragraph()
+            return
+
+        if (
+            same_paragraph
+            and SETEXT_UNDERLINE_RE.fullmatch(logical) is not None
+        ):
+            level = 1 if logical.lstrip().startswith("=") else 2
+            line = self._append_logical_line(
+                source_start=source_start,
+                raw_line=raw_line,
+                masked_line=masked_line,
+                parsed=parsed,
+                block_kind="setext-underline",
+                heading_level=level,
+            )
+            self._record_setext_heading(
+                source_end=line.source_end,
+                underline=logical,
+            )
+            self._close_paragraph()
+            return
+
+        html_kind = self._raw_html_kind(logical)
+        if html_kind is not None and not (
+            html_kind == 7 and same_paragraph
+        ):
+            line = self._append_logical_line(
+                source_start=source_start,
+                raw_line=raw_line,
+                masked_line=masked_line,
+                parsed=parsed,
+                block_kind=f"raw-html-{html_kind}",
+            )
+            self.raw_html_lines.append(line)
+            self._close_paragraph()
+            return
+
+        line = self._append_logical_line(
+            source_start=source_start,
+            raw_line=raw_line,
+            masked_line=masked_line,
+            parsed=parsed,
+            block_kind="paragraph",
+        )
+        if same_paragraph:
+            assert self._paragraph is not None
+            self._paragraph.lines.append(logical)
+        else:
+            self._paragraph = MarkdownParagraph(
+                line.content_start,
+                path,
+                [logical],
+            )
+
+    def _process_line(self, source_start: int, raw_line: str) -> None:
+        physical, _ending = self._split_ending(raw_line)
+
+        if self._fence is not None:
+            continued = self._continue_existing_containers(
+                physical,
+                allow_lazy=False,
+            )
+            fence_path = self._fence.containers
+            if (
+                not physical.strip(" \t")
+                or continued.containers == fence_path
+            ):
+                logical = physical[continued.cursor:]
+                closing = FENCE_LINE_RE.fullmatch(logical)
+                self._append_masked_line(raw_line)
+                if (
+                    closing is not None
+                    and closing.group("fence")[0]
+                    == self._fence.character
+                    and len(closing.group("fence"))
+                    >= self._fence.length
+                    and not closing.group("rest").strip(" \t")
+                ):
+                    self._fence = None
+                self._containers = continued.containers
+                return
+            # Exiting a quote/list closes its fenced child. Reprocess this
+            # deindented physical line as a new active block.
+            self._fence = None
+            self._containers = continued.containers
+
+        original_containers = self._containers
+        if self._in_comment:
+            masked_line, self._in_comment = mask_html_comments(
+                raw_line,
+                True,
+            )
+            parsed = self._parse_containers(
+                self._split_ending(masked_line)[0],
+                allow_lazy=True,
+            )
+        else:
+            parsed = self._parse_containers(physical, allow_lazy=True)
+            logical = physical[parsed.cursor:]
+            opener = self._valid_fence_opener(logical)
+            if opener is not None:
+                fence = opener.group("fence")
+                self._containers = parsed.containers
+                self._close_paragraph()
+                self._fence = MarkdownFence(
+                    fence[0],
+                    len(fence),
+                    parsed.containers,
+                )
+                self._append_masked_line(raw_line)
+                return
+
+            masked_line, self._in_comment = mask_html_comments(
+                raw_line,
+                False,
+            )
+            if masked_line != raw_line:
+                self._containers = original_containers
+                parsed = self._parse_containers(
+                    self._split_ending(masked_line)[0],
+                    allow_lazy=True,
+                )
+
+        self._containers = parsed.containers
+        self._classify_active_line(
+            source_start=source_start,
+            raw_line=raw_line,
+            masked_line=masked_line,
+            parsed=parsed,
+        )
+
+    def _analyze(self) -> None:
+        source_start = 0
+        for raw_line in self.text.splitlines(keepends=True):
+            self._process_line(source_start, raw_line)
+            source_start += len(raw_line)
+        if source_start < len(self.text):
+            self._process_line(source_start, self.text[source_start:])
+
+    def normalized_from(self, source_start: int) -> str:
+        return "".join(
+            line.normalized
+            for line in self.lines
+            if line.source_start >= source_start
+        )
+
+    def next_top_level_heading(
+        self,
+        source_start: int,
+        *,
+        maximum_level: int,
+    ) -> MarkdownHeading | None:
+        return next(
+            (
+                heading
+                for heading in self.headings
+                if heading.top_level
+                and heading.level <= maximum_level
+                and heading.source_start >= source_start
+            ),
+            None,
+        )
+
+
+def analyze_markdown(text: str) -> MarkdownAnalysis:
+    """Build the shared source-mapped active Markdown block view."""
+    return MarkdownAnalysis(text)
+
+
+def mask_inactive_markdown(text: str) -> str:
+    """Blank comments and container-scoped fences without changing offsets."""
+    return analyze_markdown(text).active_text
 
 
 def active_top_level_catalog_matches(text: str) -> list[re.Match[str]]:
@@ -515,15 +929,21 @@ def active_top_level_catalog_matches(text: str) -> list[re.Match[str]]:
 
 
 def extract_runtime_section(path: Path, text: str) -> tuple[str | None, list[str]]:
-    active_markdown = mask_inactive_markdown(text)
-    normalized_containers, _marker_signatures = normalize_active_containers(
-        active_markdown
-    )
-    equivalent_atx = list(
-        RUNTIME_ATX_HEADING_RE.finditer(normalized_containers)
-    )
-    equivalent_setext_count = count_runtime_setext_headings(active_markdown)
-    if len(equivalent_atx) + equivalent_setext_count != 1:
+    analysis = analyze_markdown(text)
+    active_markdown = analysis.active_text
+    equivalent_atx = [
+        line
+        for line in analysis.lines
+        if line.block_kind == "atx"
+        and RUNTIME_ATX_HEADING_RE.fullmatch(line.content) is not None
+    ]
+    equivalent_setext = [
+        heading
+        for heading in analysis.headings
+        if heading.style == "setext"
+        and heading.content == "Runtime intake"
+    ]
+    if len(equivalent_atx) + len(equivalent_setext) != 1:
         return None, [f"{path}: expected exactly one '## Runtime intake' section"]
 
     active_atx = list(RUNTIME_ATX_HEADING_RE.finditer(active_markdown))
@@ -556,14 +976,7 @@ def validate_ambiguous_markup(path: Path, text: str) -> list[str]:
     errors: list[str] = []
     if "<!--" in text or "-->" in text:
         errors.append(f"{path}: HTML comment delimiters are not allowed")
-    active_markdown = mask_inactive_markdown(text)
-    normalized_containers, _marker_signatures = normalize_active_containers(
-        active_markdown
-    )
-    if any(
-        pattern.search(normalized_containers)
-        for pattern in RAW_HTML_BLOCK_OPENERS
-    ):
+    if analyze_markdown(text).raw_html_lines:
         errors.append(f"{path}: raw HTML block syntax is not allowed")
     return errors
 
@@ -584,17 +997,13 @@ def validate_skill(path: Path, text: str) -> list[str]:
 
 
 def validate_catalog(path: Path, text: str) -> list[str]:
+    text = normalize_line_endings(text)
     errors: list[str] = []
-    active_markdown = mask_inactive_markdown(text)
-    normalized_containers, _marker_signatures = normalize_active_containers(
-        active_markdown
-    )
+    analysis = analyze_markdown(text)
+    active_markdown = analysis.active_text
     if "<!--" in text or "-->" in text:
         errors.append(f"{path}: HTML comment delimiters are not allowed")
-    if any(
-        pattern.search(normalized_containers)
-        for pattern in RAW_HTML_BLOCK_OPENERS
-    ):
+    if analysis.raw_html_lines:
         errors.append(f"{path}: raw HTML block syntax is not allowed")
 
     canonical_heading_matches: dict[str, re.Match[str]] = {}
@@ -606,13 +1015,15 @@ def validate_catalog(path: Path, text: str) -> list[str]:
                 re.MULTILINE,
             )
         )
-        equivalent_matches = list(
-            re.finditer(
-                rf"^{re.escape(heading)}[ \t]*\r?$",
-                normalized_containers,
-                re.MULTILINE,
+        equivalent_matches = [
+            line
+            for line in analysis.lines
+            if line.block_kind == "atx"
+            and re.fullmatch(
+                rf"{re.escape(heading)}[ \t]*",
+                line.content,
             )
-        )
+        ]
         if not heading_matches:
             errors.append(f"{path}: missing {heading!r}")
         elif len(heading_matches) != 1 or len(equivalent_matches) != 1:
@@ -643,11 +1054,15 @@ def validate_catalog(path: Path, text: str) -> list[str]:
     tool_section = ""
     if tool_heading is not None:
         tool_start = tool_heading.end()
-        next_heading = REFERENCE_SECTION_BOUNDARY_RE.search(
-            active_markdown,
+        next_heading = analysis.next_top_level_heading(
             tool_start,
+            maximum_level=2,
         )
-        tool_end = next_heading.start() if next_heading else len(active_markdown)
+        tool_end = (
+            next_heading.source_start
+            if next_heading is not None
+            else len(active_markdown)
+        )
         tool_section = active_markdown[tool_start:tool_end]
     for name, required_text in required_adaptation:
         if required_text not in active_markdown:
@@ -665,12 +1080,14 @@ def validate_catalog(path: Path, text: str) -> list[str]:
         return errors
     if catalog_heading is not None:
         catalog_start = catalog_heading.end()
-        next_heading = REFERENCE_SECTION_BOUNDARY_RE.search(
-            active_markdown,
+        next_heading = analysis.next_top_level_heading(
             catalog_start,
+            maximum_level=2,
         )
         catalog_end = (
-            next_heading.start() if next_heading else len(active_markdown)
+            next_heading.source_start
+            if next_heading is not None
+            else len(active_markdown)
         )
         if not catalog_start <= matches[0].start() < catalog_end:
             errors.append(

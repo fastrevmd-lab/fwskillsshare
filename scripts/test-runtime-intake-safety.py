@@ -794,7 +794,9 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
     ) -> None:
         accepted = (
             "A paragraph\n2. ### A.1 `cis-controls-ngfw-compliance`\n",
+            "A paragraph\n2. <div>\n",
             "- A paragraph\n  9) ### A.1 `cis-controls-ngfw-compliance`\n",
+            "- A paragraph\n  9) <div>\n",
         )
         for insertion in accepted:
             with self.subTest(outcome="accepted", insertion=insertion):
@@ -828,6 +830,28 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 with self.assertRaisesRegex(
                     ValueError,
                     "duplicate Appendix A skill section",
+                ):
+                    SAFETY.parse_plan_catalogs()
+                self.tearDown()
+                self.setUp()
+
+        raw_html_rejected = (
+            "A paragraph\n\n2. <div>\n",
+            "A paragraph\n1. <div>\n",
+        )
+        for insertion in raw_html_rejected:
+            with self.subTest(outcome="raw-html-rejected", insertion=insertion):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    insertion + "\n### A.1 `cis-controls-ngfw-compliance`",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "raw HTML block syntax is not allowed",
                 ):
                     SAFETY.parse_plan_catalogs()
                 self.tearDown()

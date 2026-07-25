@@ -426,7 +426,7 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
 
         raw_html_cases = (
             "10. item\n    <div>\n",
-            "-    item\n     <runtime-wrapper>\n",
+            "-    item\n     <div>\n",
             "- outer\n\n  10. inner\n      <![CDATA[\n",
         )
         for continuation in raw_html_cases:
@@ -442,7 +442,9 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         skill_cases = (
             "A paragraph\n2. ## Runtime intake\n",
             "A paragraph\n123456789) ## Runtime intake ###\n",
+            "A paragraph\n2. <div>\n",
             "- A paragraph\n  2. ## Runtime intake\n",
+            "- A paragraph\n  2. <div>\n",
         )
         for suffix in skill_cases:
             with self.subTest(kind="skill", suffix=suffix):
@@ -456,7 +458,9 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
 
         reference_cases = (
             "A paragraph\n2. ## When to ask\n",
+            "A paragraph\n2. <div>\n",
             "- A paragraph\n  9) ## When to ask\n",
+            "- A paragraph\n  9) <div>\n",
         )
         for suffix in reference_cases:
             with self.subTest(kind="reference", suffix=suffix):
@@ -474,23 +478,34 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         skill_cases = (
             "A paragraph\n\n2. ## Runtime intake\n",
             "A paragraph\n1. ## Runtime intake\n",
+            "A paragraph\n\n2. <div>\n",
+            "A paragraph\n1. <div>\n",
         )
         for suffix in skill_cases:
             with self.subTest(kind="skill", suffix=suffix):
-                self.assert_skill_error(
-                    f"{VALID_SKILL}\n{suffix}",
-                    "expected exactly one '## Runtime intake' section",
+                expected = (
+                    "raw HTML block syntax is not allowed"
+                    if "<div>" in suffix
+                    else "expected exactly one '## Runtime intake' section"
                 )
+                self.assert_skill_error(f"{VALID_SKILL}\n{suffix}", expected)
 
         reference_cases = (
             "A paragraph\n\n2. ## When to ask\n",
             "A paragraph\n1. ## When to ask\n",
+            "A paragraph\n\n2. <div>\n",
+            "A paragraph\n1. <div>\n",
         )
         for suffix in reference_cases:
             with self.subTest(kind="reference", suffix=suffix):
+                expected = (
+                    "raw HTML block syntax is not allowed"
+                    if "<div>" in suffix
+                    else "expected exactly one active '## When to ask' heading"
+                )
                 self.assert_has_error(
                     render_reference() + "\n" + suffix,
-                    "expected exactly one active '## When to ask' heading",
+                    expected,
                 )
 
     def test_all_skill_runtime_sections_satisfy_connected_contract(self) -> None:
@@ -1104,13 +1119,6 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                 "   ~~~",
                 "expected exactly one '## Runtime intake' section",
             ),
-            (
-                "9.",
-                "```html",
-                "   <runtime-wrapper>",
-                "   ```",
-                "raw HTML block syntax is not allowed",
-            ),
         )
         for marker, opener, payload, closer, expected_error in cases:
             with self.subTest(marker=marker, opener=opener):
@@ -1122,6 +1130,21 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                     f"{closer}\n"
                 )
                 self.assert_skill_error(mutant, expected_error)
+
+        type7_paragraph = (
+            f"{VALID_SKILL}\n"
+            "Workflow paragraph.\n"
+            "9. ```html\n"
+            "   <runtime-wrapper>\n"
+            "   ```\n"
+        )
+        self.assertEqual(
+            VALIDATOR.validate_skill(
+                STANDARD_PROBE_PATH,
+                type7_paragraph,
+            ),
+            [],
+        )
 
     def test_keeps_non_one_ordered_fence_continuations_active(self) -> None:
         source = (
