@@ -403,6 +403,27 @@ class MarkdownAnalysis:
         return content, line[len(content) :]
 
     @staticmethod
+    def _expand_block_tabs(content: str) -> str:
+        """Expand tabs to CommonMark's four-column block tab stops."""
+        return content.expandtabs(4)
+
+    @staticmethod
+    def _source_index_for_column(content: str, column: int) -> int:
+        """Map an expanded block column back to a physical source index."""
+        visual_column = 0
+        for index, character in enumerate(content):
+            if visual_column >= column:
+                return index
+            if character == "\t":
+                next_column = visual_column + (4 - visual_column % 4)
+            else:
+                next_column = visual_column + 1
+            if next_column >= column:
+                return index + 1
+            visual_column = next_column
+        return len(content)
+
+    @staticmethod
     def _consume_indentation(
         content: str,
         cursor: int,
@@ -628,17 +649,22 @@ class MarkdownAnalysis:
         source_start: int,
         raw_line: str,
         masked_line: str,
+        block_content: str,
         parsed: ContainerParse,
         block_kind: str,
         heading_level: int | None = None,
     ) -> MarkdownLine:
-        content, ending = self._split_ending(masked_line)
-        logical = content[parsed.cursor:]
+        source_content, ending = self._split_ending(masked_line)
+        logical = block_content[parsed.cursor:]
         normalized = logical + ending
         line = MarkdownLine(
             source_start,
             source_start + len(raw_line),
-            source_start + parsed.cursor,
+            source_start
+            + self._source_index_for_column(
+                source_content,
+                parsed.cursor,
+            ),
             logical,
             normalized,
             parsed.containers,
@@ -678,10 +704,10 @@ class MarkdownAnalysis:
         source_start: int,
         raw_line: str,
         masked_line: str,
+        block_content: str,
         parsed: ContainerParse,
     ) -> None:
-        physical, _ending = self._split_ending(masked_line)
-        logical = physical[parsed.cursor:]
+        logical = block_content[parsed.cursor:]
         path = parsed.containers
 
         if not logical.strip(" \t"):
@@ -689,6 +715,7 @@ class MarkdownAnalysis:
                 source_start=source_start,
                 raw_line=raw_line,
                 masked_line=masked_line,
+                block_content=block_content,
                 parsed=parsed,
                 block_kind="blank",
             )
@@ -707,6 +734,7 @@ class MarkdownAnalysis:
                 source_start=source_start,
                 raw_line=raw_line,
                 masked_line=masked_line,
+                block_content=block_content,
                 parsed=parsed,
                 block_kind="indented-code",
             )
@@ -719,6 +747,7 @@ class MarkdownAnalysis:
                 source_start=source_start,
                 raw_line=raw_line,
                 masked_line=masked_line,
+                block_content=block_content,
                 parsed=parsed,
                 block_kind="atx",
                 heading_level=level,
@@ -745,6 +774,7 @@ class MarkdownAnalysis:
                 source_start=source_start,
                 raw_line=raw_line,
                 masked_line=masked_line,
+                block_content=block_content,
                 parsed=parsed,
                 block_kind="setext-underline",
                 heading_level=level,
@@ -764,6 +794,7 @@ class MarkdownAnalysis:
                 source_start=source_start,
                 raw_line=raw_line,
                 masked_line=masked_line,
+                block_content=block_content,
                 parsed=parsed,
                 block_kind=f"raw-html-{html_kind}",
             )
@@ -775,6 +806,7 @@ class MarkdownAnalysis:
             source_start=source_start,
             raw_line=raw_line,
             masked_line=masked_line,
+            block_content=block_content,
             parsed=parsed,
             block_kind="paragraph",
         )
@@ -789,19 +821,20 @@ class MarkdownAnalysis:
             )
 
     def _process_line(self, source_start: int, raw_line: str) -> None:
-        physical, _ending = self._split_ending(raw_line)
+        source_content, _ending = self._split_ending(raw_line)
+        block_content = self._expand_block_tabs(source_content)
 
         if self._fence is not None:
             continued = self._continue_existing_containers(
-                physical,
+                block_content,
                 allow_lazy=False,
             )
             fence_path = self._fence.containers
             if (
-                not physical.strip(" \t")
+                not block_content.strip(" ")
                 or continued.containers == fence_path
             ):
-                logical = physical[continued.cursor:]
+                logical = block_content[continued.cursor:]
                 closing = FENCE_LINE_RE.fullmatch(logical)
                 self._append_masked_line(raw_line)
                 if (
@@ -826,13 +859,15 @@ class MarkdownAnalysis:
                 raw_line,
                 True,
             )
+            masked_content = self._split_ending(masked_line)[0]
+            block_content = self._expand_block_tabs(masked_content)
             parsed = self._parse_containers(
-                self._split_ending(masked_line)[0],
+                block_content,
                 allow_lazy=True,
             )
         else:
-            parsed = self._parse_containers(physical, allow_lazy=True)
-            logical = physical[parsed.cursor:]
+            parsed = self._parse_containers(block_content, allow_lazy=True)
+            logical = block_content[parsed.cursor:]
             opener = self._valid_fence_opener(logical)
             if opener is not None:
                 fence = opener.group("fence")
@@ -852,8 +887,10 @@ class MarkdownAnalysis:
             )
             if masked_line != raw_line:
                 self._containers = original_containers
+                masked_content = self._split_ending(masked_line)[0]
+                block_content = self._expand_block_tabs(masked_content)
                 parsed = self._parse_containers(
-                    self._split_ending(masked_line)[0],
+                    block_content,
                     allow_lazy=True,
                 )
 
@@ -862,6 +899,7 @@ class MarkdownAnalysis:
             source_start=source_start,
             raw_line=raw_line,
             masked_line=masked_line,
+            block_content=block_content,
             parsed=parsed,
         )
 
