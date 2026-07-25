@@ -1154,7 +1154,7 @@ A.1 through A.22 number/name pairings, duplicate package JSON members, and
 noncanonical same-line tabs or doubled spaces in Appendix question fields. It
 requires exact per-skill question-object equality and locks all 22 complete
 catalog contents and question order with canonical SHA-256 digests, in
-addition to the audited 62 safe first labels and 18 single-axis option tuples.
+addition to the safe-first and single-axis option manifests.
 
 **Task 29 catalog-fallback audit:** the shared `SKILL.md` contract requires each
 true unresolved material catalog condition to be asked before continuing or
@@ -1235,12 +1235,39 @@ The optional skill argument limits equality, digest, safe-default, and
 option-tuple assertions to the selected package, while every focused run still
 parses all 22 plan and package catalogs and resolves all manifest keys.
 Focused output must distinguish those whole-corpus checks from selected
-assertion counts. `scripts/test-runtime-intake-safety.py`, run immediately
-after the checker in `just lint`, uses temporary files and the real parser to
-cover the ten audited semantic IDs, duplicate, number/name-pairing, and lexical
-numbering failures, same-line question/label/description whitespace, focused
-output counts, complete digest coverage, and synchronized content and order
-mutation.
+assertion counts.
+
+**Task 30 whole-branch audit:** the safety manifests now cover 76 safe first
+labels and 32 exact single-axis option tuples. Twenty-four explicit semantic
+contracts include the separated scope, framework/overlay, asset, allowlist,
+third-party-path, parsing-depth, version/overlay, transfer-method, and CA-source
+decisions. The two additive-overlay decisions are independent catalog
+questions, and every Task 30 rewrite or addition has exact question/option
+tuple coverage plus a locked catalog digest.
+
+Structural heading discovery treats optional-closing-hash ATX and Setext
+`Runtime intake` headings as equivalents for duplicate detection, while only
+the exact column-zero `## Runtime intake` form can be the approved primary.
+Reference headings must each be one exact active heading line, exact
+adaptation clauses must remain active, and HTML comment or raw-HTML block
+syntax is rejected. Raw JSON catalog fences continue to parse from the
+original reference.
+
+The Appendix parser reuses the structural active-Markdown mask, so unclosed
+fences and comments hide decoy headings and rows. It scans every active H3
+whose content begins `A.` as an Appendix lookalike, checks duplicate identities
+before requiring an exact canonical heading full match, and retains the exact
+22-section lexical number/name order. Active raw-HTML block syntax is rejected.
+Installer validation checks every family install and every explicit skill
+selection for `SKILL.md`, `references/runtime-intake.md`, and source-present
+`agents/openai.yaml` in disposable destinations.
+
+`scripts/test-runtime-intake-safety.py`, run immediately after the checker in
+`just lint`, uses temporary files and the real parsers to cover semantic
+contracts, inactive and noncanonical Appendix headings, duplicate,
+number/name-pairing, lexical-numbering, raw-wrapper, same-line
+question/label/description whitespace, focused-output, complete-digest, and
+synchronized content/order mutations.
 
 Update each Appendix row and its package JSON object together, then require
 both focused validators to pass before moving to the next independently
