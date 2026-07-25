@@ -1301,6 +1301,54 @@ both mutation tests and verifies byte-identical `SKILL.md`,
 `references/runtime-intake.md`, and source-present `agents/openai.yaml` files
 across all five family installs and all 22 explicit installs.
 
+**Task 32 final-remediation audit:** the eight residual mixed-axis objects now
+separate platform, artifact format, gateway support, resilience objective,
+Trust Services categories, component coverage, and configuration-context
+selection. New `audit_boundary` and `palo_inheritance` objects independently
+capture boundary breadth and inherited-state treatment. All ten Task 32
+objects have exact question, trigger, and option contracts, safe confirmation,
+verification, inventory, or mapping defaults, synchronized Appendix/package
+content, and locked digests. The complete corpus contains 155 questions; the
+manifests contain 99 safe first labels and 55 exact option tuples; the semantic
+inventory pins 47 IDs, including all ten Task 32 objects.
+
+Task 32 replaced per-line container-prefix removal with one source-mapped
+CommonMark 0.31.2 block-state analysis shared by skill, reference, and Appendix
+probes. The analysis maintains persistent quote and list container paths,
+computes list content indentation from marker width and one-to-four-column
+padding, expands tabs at four-column block tab stops, and maps expanded logical
+columns back to physical source offsets. It tracks complete paragraphs, so an
+ordered marker whose numeric value is not `1` cannot interrupt open paragraph
+text, while bullets, value `1`, and an ordered marker after a block boundary
+remain real list items. Active ATX headings, complete multiline Setext
+headings, indented code, and raw HTML block families are classified from the
+same logical block view. Type 7 raw HTML cannot interrupt an open paragraph;
+types 1 and 3-6 retain their interrupting behavior, while the global
+HTML-comment delimiter policy remains conservative.
+
+Backtick and tilde fences are scoped to their complete list/blockquote
+container path. Fenced content remains inactive through correctly indented
+continuations and closers, while container exit restores processing of the
+same physical line as active Markdown. The length-preserving active view and
+logical source mapping cover nine-digit markers, one-to-four-space and tab
+padding, continuation indentation beyond three columns, nested lists, quote
+and list combinations, and CRLF. Reference section ownership now ends at the
+first active top-level ATX or complete Setext H1/H2 boundary; fenced or
+container-nested Setext headings do not end a top-level section. The public
+catalog validator normalizes CRLF before checking exact multiline adaptation
+clauses. Appendix marker accounting treats active top-level and
+container-nested equivalents uniformly and distinguishes duplicates from
+noncanonical closing-hash forms.
+
+The initial Task 32 structural RED ran 116 tests with 29 failures; the safety
+RED ran 28 tests with 13 failures. The first state-machine GREEN passed all 116
+and all 28. A subsequent tab-stop RED ran 119 structural tests with eight
+failures and 30 safety tests with three failures; visual-column GREEN passes
+all 119 structural and all 30 safety tests. Independent probes cover exact
+tab-indented headings, raw HTML, non-`1` paragraph continuation, and
+length/newline/offset preservation. The existing two installer byte-mutation
+tests remain unchanged and green.
+
 Update each Appendix row and its package JSON object together, then require
 both focused validators to pass before moving to the next independently
 installable skill.
