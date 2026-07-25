@@ -789,6 +789,61 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 self.tearDown()
                 self.setUp()
 
+    def test_appendix_list_indentation_uses_tab_stop_columns(self) -> None:
+        cases = (
+            (
+                "-\titem\n"
+                "\t### A.1 `cis-controls-ngfw-compliance`\n",
+                "duplicate Appendix A skill section",
+            ),
+            (
+                "10.\titem\n"
+                " \t### A.01 malformed\n",
+                "noncanonical Appendix A heading",
+            ),
+            (
+                "- \titem\n"
+                "  \t<div>\n",
+                "raw HTML block syntax is not allowed",
+            ),
+        )
+        for insertion, error in cases:
+            with self.subTest(insertion=insertion):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    insertion + "\n### A.1 `cis-controls-ngfw-compliance`",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, error):
+                    SAFETY.parse_plan_catalogs()
+                self.tearDown()
+                self.setUp()
+
+    def test_appendix_tabbed_non_one_marker_respects_paragraph_state(
+        self,
+    ) -> None:
+        accepted = (
+            "A paragraph\n2.\t### A.1 `cis-controls-ngfw-compliance`\n",
+            "A paragraph\n2.\t<div>\n",
+        )
+        for insertion in accepted:
+            with self.subTest(outcome="accepted", insertion=insertion):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    insertion + "\n### A.1 `cis-controls-ngfw-compliance`",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                catalogs = SAFETY.parse_plan_catalogs()
+                self.assertEqual(tuple(catalogs), SAFETY.EXPECTED_SKILLS)
+                self.tearDown()
+                self.setUp()
+
     def test_appendix_non_one_ordered_markers_respect_paragraph_state(
         self,
     ) -> None:

@@ -436,6 +436,90 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                     "raw HTML block syntax is not allowed",
                 )
 
+    def test_list_indentation_uses_tab_stop_columns(self) -> None:
+        skill_cases = (
+            "-\titem\n\t## Runtime intake ###\n",
+            "10.\titem\n \t## Runtime intake\n",
+            "- \titem\n  \t## Runtime intake\n",
+        )
+        for continuation in skill_cases:
+            with self.subTest(kind="skill", continuation=continuation):
+                self.assert_skill_error(
+                    f"{VALID_SKILL}\n{continuation}",
+                    "expected exactly one '## Runtime intake' section",
+                )
+
+        reference_cases = (
+            "-\titem\n\t## When to ask\n",
+            "10.\titem\n \t## When to ask\n",
+        )
+        for continuation in reference_cases:
+            with self.subTest(kind="reference", continuation=continuation):
+                self.assert_has_error(
+                    render_reference() + "\n" + continuation,
+                    "expected exactly one active '## When to ask' heading",
+                )
+
+        raw_html_cases = (
+            "-\titem\n\t<div>\n",
+            "10.\titem\n \t<![CDATA[\n",
+        )
+        for continuation in raw_html_cases:
+            with self.subTest(kind="html", continuation=continuation):
+                self.assert_skill_error(
+                    f"{VALID_SKILL}\n{continuation}",
+                    "raw HTML block syntax is not allowed",
+                )
+
+    def test_tab_indented_non_one_ordered_markers_respect_paragraphs(
+        self,
+    ) -> None:
+        accepted = (
+            "A paragraph\n2.\t## Runtime intake\n",
+            "A paragraph\n2.\t<div>\n",
+        )
+        for suffix in accepted:
+            with self.subTest(outcome="accepted", suffix=suffix):
+                self.assertEqual(
+                    VALIDATOR.validate_skill(
+                        STANDARD_PROBE_PATH,
+                        f"{VALID_SKILL}\n{suffix}",
+                    ),
+                    [],
+                )
+
+        rejected = (
+            "A paragraph\n\n2.\t## Runtime intake\n",
+            "A paragraph\n1.\t## Runtime intake\n",
+            "A paragraph\n\n2.\t<div>\n",
+            "A paragraph\n1.\t<div>\n",
+        )
+        for suffix in rejected:
+            with self.subTest(outcome="rejected", suffix=suffix):
+                expected = (
+                    "raw HTML block syntax is not allowed"
+                    if "<div>" in suffix
+                    else "expected exactly one '## Runtime intake' section"
+                )
+                self.assert_skill_error(f"{VALID_SKILL}\n{suffix}", expected)
+
+    def test_tab_indented_list_fence_preserves_offsets(self) -> None:
+        source = (
+            "-\t````html\r\n"
+            "\t<div>\r\n"
+            "\t````\r\n"
+            "Tail\r\n"
+        )
+        masked = VALIDATOR.mask_inactive_markdown(source)
+        self.assertEqual(len(masked), len(source))
+        self.assertEqual(
+            [index for index, char in enumerate(masked) if char in "\r\n"],
+            [index for index, char in enumerate(source) if char in "\r\n"],
+        )
+        self.assertNotIn("<div>", masked)
+        tail_offset = source.index("Tail")
+        self.assertEqual(masked[tail_offset : tail_offset + 4], "Tail")
+
     def test_non_one_ordered_markers_do_not_interrupt_open_paragraphs(
         self,
     ) -> None:
