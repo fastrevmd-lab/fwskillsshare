@@ -16,8 +16,8 @@
 <em>a mechub project — sovereign network-security automation</em></p>
 
 <p align="center">
-  <img alt="skills" src="https://img.shields.io/badge/skills-21-0D9488">
-  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-21%2F21-262B38">
+  <img alt="skills" src="https://img.shields.io/badge/skills-22-0D9488">
+  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-21%2F22-262B38">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
 </p>
@@ -28,7 +28,7 @@ Agent skills for the firewall work you actually do — parsing, auditing, conver
 
 Firewall work is unforgiving. A confidently wrong `access-list` line, a Junos stanza that won't commit, a compliance claim you can't back up in an audit — these aren't cosmetic. Coding agents are astonishingly good at producing *plausible* firewall config and astonishingly bad at knowing when it's wrong.
 
-These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 21. Hack around with them. Make them your own.
+These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 22. Hack around with them. Make them your own.
 
 > **Unofficial / community project.** Not affiliated with, endorsed by, or supported by Cisco, Fortinet, Palo Alto Networks, Juniper Networks, or HPE. See [License and Provenance](#license-and-provenance) for the full notice and the trademark disclaimer.
 
@@ -102,7 +102,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**21 skills** across four families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, or compliance language in your message or a pasted config. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
+**22 skills** across four families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, or compliance language in your message or a pasted config. The newest `sd-onprem-proxmox-deploy` package is a draft; the original 21 packages retain the completed review record below. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 ### Config parsers
 
@@ -117,6 +117,7 @@ Normalize a vendor config into the shared intermediate schema. Everything else c
 
 Actionable Junos playbooks — commands, design guidance, verification, troubleshooting matrices, source attribution.
 
+- **[sd-onprem-proxmox-deploy](./skills/sd-onprem-proxmox-deploy/SKILL.md)** — **New draft:** deploy Security Director On-Prem 25/26 on Proxmox from KVM artifacts, with mandatory source-identical routing, bundle, device-channel, and TLS log-path proof before VM creation.
 - **[srx-policy](./skills/srx-policy/SKILL.md)** — Global vs zone-to-zone policy on 23.x+, AppID/AppFW, NGWF-first web filtering, SecIntel, ATP, hit-count troubleshooting.
 - **[srx-nat](./skills/srx-nat/SKILL.md)** — Source/destination/static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin, proxy-ARP, session verification.
 - **[srx-mnha](./skills/srx-mnha/SKILL.md)** — Multi-Node High Availability: routed/default-gateway/hybrid modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, DHCP caveats.
@@ -149,17 +150,17 @@ Map firewall capability to control evidence — assessor/auditor output template
 
 ## Quality and Review
 
-All **21 / 21 skills** have passed independent technical review — first on 2026-06-30, then re-reviewed on 2026-07-02 with a two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax correctness for Cisco ASA/FTD, FortiGate, PAN-OS, and Junos SRX; schema/field accuracy; standards/control-ID accuracy; secret hygiene) followed by per-skill application QA tests (fixture execution for the parsers, engineer-walkthrough scenarios for the playbooks, control-ID spot-checks for the compliance skills). Disputed Junos syntax claims were settled empirically by commit-checking on a live vSRX 24.4R1. All findings were remediated and the four `parsing-*` skills share one byte-identical intermediate schema (verified by `scripts/check-shared-schema.py`).
+The **original 21 / 21 skills** passed independent technical review — first on 2026-06-30, then re-reviewed on 2026-07-02 with a two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax correctness for Cisco ASA/FTD, FortiGate, PAN-OS, and Junos SRX; schema/field accuracy; standards/control-ID accuracy; secret hygiene) followed by per-skill application QA tests (fixture execution for the parsers, engineer-walkthrough scenarios for the playbooks, control-ID spot-checks for the compliance skills). Disputed Junos syntax claims were settled empirically by commit-checking on a live vSRX 24.4R1. All findings were remediated and the four `parsing-*` skills share one byte-identical intermediate schema (verified by `scripts/check-shared-schema.py`).
 
-A third round on 2026-07-04/05 applied an authoring-quality pass across all 21 skills (frontmatter, discovery keywords, secret redaction, cross-skill hand-offs, progressive disclosure into `references/` files), then closed it out with fresh clean-context retrieval tests against the restructured skills — every question had to be answerable from the SKILL.md pointers alone. The tests passed and surfaced a handful of fixes (including two operational-command syntax errors caught and corrected by live verification on vSRX 24.4R1), all remediated.
+A third round on 2026-07-04/05 applied an authoring-quality pass across those original 21 skills (frontmatter, discovery keywords, secret redaction, cross-skill hand-offs, progressive disclosure into `references/` files), then closed it out with fresh clean-context retrieval tests against the restructured skills — every question had to be answerable from the SKILL.md pointers alone. The tests passed and surfaced a handful of fixes (including two operational-command syntax errors caught and corrected by live verification on vSRX 24.4R1), all remediated. `sd-onprem-proxmox-deploy` was added later and remains explicitly labeled draft pending the same full review depth.
 
 | Family | Skills | Reviewed |
 |--------|-------:|:--------:|
 | Config parsers | 4 | 4 / 4 |
-| SRX operational playbooks | 8 | 8 / 8 |
+| SRX operational playbooks | 9 | 8 / 9 |
 | NGFW compliance playbooks | 6 | 6 / 6 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
-| **Total** | **21** | **21 / 21** |
+| **Total** | **22** | **21 / 22** |
 
 These are research/operational and assessment-support skills, not certified products: review their output against current vendor documentation, live device behavior, and (for compliance work) a qualified assessor before relying on it.
 
@@ -186,7 +187,7 @@ cd fwskillsshare
 Flags:
 
 ```text
---all                 Install all 21 skills
+--all                 Install all 22 skills
 --skill NAME          Install a specific skill (repeatable)
 --family NAME         parsers | srx | tooling | compliance (repeatable)
 --target WHERE        claude | codex | hermes | both | all

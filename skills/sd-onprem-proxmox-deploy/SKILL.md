@@ -1,7 +1,7 @@
 ---
 name: sd-onprem-proxmox-deploy
 description: Deploy and validate Juniper Security Director On-Prem 25/26 as a Proxmox VE KVM guest. Use when planning, installing, rebuilding, validating network connectivity or first-boot seed data, and onboarding SRX/Junos devices. Not for Junos Space Security Director or Security Director Cloud.
-version: 0.3.0
+version: 0.3.1
 author:
   - fastrevmd-lab
   - Claude
@@ -29,7 +29,7 @@ metadata:
     - title: "set ipaddress change | SD On-Prem 25.4.1"
       author: Juniper Networks
       url: https://www.juniper.net/documentation/us/en/software/sd-on-prem25.4.1/sd-on-prem-user-guide/user-guide/topics/reference/set-ipaddress.html
-      note: "The documented restricted-CLI operation changes only the management IP address."
+      note: "The documented management-IP workflow prompts for netmask and gateway; it does not document a gateway-only command."
       retrieved: "2026-07-24"
   verified_on:
     - release: "26.2.1-5348"
@@ -39,7 +39,7 @@ metadata:
 
 # Deploying Security Director On-Prem on Proxmox VE
 
-> **STATUS: draft (v0.3.0).** Procedure below was executed end-to-end on
+> **STATUS: draft (v0.3.1).** Procedure below was executed end-to-end on
 > **SD On-Prem 26.2.1-5348** on Proxmox VE 9.2. Values in `<angle brackets>` are
 > site-specific. Finalize/promote via `writing-skills` after a second clean run.
 
@@ -104,7 +104,8 @@ vendor `.bin` in **extract-only mode (`--no-run`)** to generate the qcow2s + ISO
    |---|---|---|---|---|---|---|---|---|
    | `<fw>-discovery` | `<SD-mgmt-IP>` | `<fw-mgmt-IP>:22` | `<SD-gateway>` | `<routers/FWs>` | `<zones/rule>` | `<none/SNAT>` | `<to translated/original source>` | `<session In/Out>` |
    | `<fw>-device` | `<device-source>` | `<device-VIP>:7804` | `<device-gateway>` | `<routers/FWs>` | `<zones/rule>` | `<none/SNAT>` | `<to translated/original source>` | `<listener + session>` |
-   | `<fw>-logs` | `<revenue-source>` | `<log-VIP>:6514` | `<device-gateway>` | `<routers/FWs>` | `<zones/rule>` | `<none/SNAT>` | `<to translated/original source>` | `<listener + session>` |
+   | `<fw>-logs` | `<revenue-source>` | `<log-VIP>:6514/TLS` | `<device-gateway>` | `<routers/FWs>` | `<zones/rule>` | `<none/SNAT>` | `<to translated/original source>` | `<TLS handshake + session>` |
+   | `bundle` | `<SD-mgmt-IP>` | `<exact HTTP URL or SCP endpoint/path>` | `<SD-gateway>` | `<routers/FWs>` | `<zones/rule>` | `<none/approved translation>` | `<to observed source>` | `<full retrieval + identity>` |
 
 3. Attach a disposable probe VM or network namespace to the **same Proxmox
    bridge** and configure the exact proposed SD management source IP/prefix and
@@ -113,18 +114,32 @@ vendor `.bin` in **extract-only mode (`--no-run`)** to generate the qcow2s + ISO
    - complete TCP/22 (or the selected management service) to **every** firewall;
    - query every DNS server with `dig @<server> <name>`;
    - obtain a valid NTP response with `chronyd -Q`, `ntpdate -q`, or `sntp`.
-4. Bind temporary listeners to the proposed device and log VIPs. Test
-   TCP/7804 from each device-management source and TCP/6514 from each selected
-   revenue/log source. The source must match the matrix; testing from a
-   convenient host or `fxp0` does not prove the reverse path.
-5. While each probe is active, inspect every stateful transit firewall. Require
+4. From that same exact source, fully retrieve the configured bundle path
+   **before extraction**:
+   - For the restricted HTTP pattern below, require a direct path with no SNAT
+     and no HTTP proxy so the server observes `<SD-mgmt-IP>`. Prove intentionally
+     unauthenticated HTTP, readability, expected filename and byte size/checksum,
+     gateway/hops, `NAT=none`, return path, and bidirectional session counters.
+   - If SCP is selected, retrieve the exact seeded host, port, username, and path.
+     Prove noninteractive authentication, readability, expected filename and
+     byte size/checksum, gateway/hops, policy, NAT, return path, and bidirectional
+     session counters. Never record a password in commands or evidence.
+   If direct HTTP or the exact configured SCP path cannot be proved, STOP.
+   Separately design and approve any translated, proxied, or alternate method;
+   record both original and server-observed sources and preflight that exact
+   method before reopening the gate.
+5. Bind temporary listeners to the proposed device and log VIPs. Test TCP/7804
+   from each device-management source. For TCP/6514, complete and validate a TLS
+   handshake from every selected revenue/log source; a TCP connect alone is a
+   failure. Missing TLS tooling is `UNTESTED`, which keeps the gate closed.
+6. While each probe is active, inspect every stateful transit firewall. Require
    request and reply packets (`In` and `Out` both non-zero), expected zones and
    policy, expected translation, and a return route to the translated or
    original source. Route/config inspection alone is not proof.
-6. Record the results and obtain approval for any required firewall or routing
+7. Record the results and obtain approval for any required firewall or routing
    changes. Re-run failed probes after the approved change. Advance only when
-   the matrix has no failed or untested row.
-7. Confirm host CPU, RAM, and thin block storage headroom for the selected flavor.
+   the matrix, including the bundle and TLS rows, has no failed or untested row.
+8. Confirm host CPU, RAM, and thin block storage headroom for the selected flavor.
 
 **Regression guard (remote lab, 2026-07-24):** hypervisor-only DNS/NTP checks
 passed while the seed used gateway `10.88.15.254`. The installed SD source
@@ -157,7 +172,7 @@ extractor. It is interactive; the **prompt order (26.2.1)** is:
 14. LOG Collector VIP
 15. LOG Collector FQDN *(optional)*
 16. Software Bundle Path — SCP `user@host:port/path` **or** HTTP `http://host:port/path` (see below)
-17. *(if HTTP bundle)* HTTP Proxy URL *(optional — blank)*
+17. *(if HTTP bundle)* HTTP Proxy URL *(blank for this direct restricted-server pattern)*
 18. NTP Server *(single IP/host — must be reachable!)*
 19. Security Director CIDR *(optional → default `10.42.0.0/21`)*
 20. **Configuration ID / flavor** (`1`/`2`/`3` from the sizing table) — **easy to miss; not defaulted, loops on invalid**
@@ -167,11 +182,18 @@ extractor. It is interactive; the **prompt order (26.2.1)** is:
 Output: `<staging>/<version>/` with `Security-Director-OnPrem-disk-0/1/2.qcow2`,
 `Security-Director-OnPrem-kvm.iso`, `kvm-env.ini`, `sd-onprem.xml`.
 
-> **Bundle delivery.** SCP bakes a password into `kvm-env.ini`; prefer **HTTP no-auth**
-> served from the host at boot time (the URL is only format-checked at extract time):
-> `python3 -m http.server <port> --bind <host-mgmt-ip> --directory <staging-dir>`.
-> Confirm the management IP/prefix, gateway, bridge, DNS, NTP, and all VIPs in
-> `kvm-env.ini` match the passed STOP-gate evidence before booting.
+> **Bundle delivery.** Never serve `<staging-dir>` or an extraction directory:
+> it contains `kvm-env.ini` (CLI/SCP credentials) plus XML, qcow2, and ISO files.
+> File mode `0600` does not protect them from a web server running as their
+> owner. Serve only the `.tgz` from a dedicated bundle-only webroot, bind the
+> approved host IP, and restrict the host firewall to `<SD-mgmt-IP>/32` and the
+> selected port. Stop the server and remove its temporary rule immediately after
+> each preflight or appliance retrieval. Use bundled
+> `scripts/serve_bundle.py`; it enforces the exact file/source and emits a
+> `COMPLETE` byte count only after streaming finishes. See the HOWTO for evidence
+> and fail-closed cleanup.
+> Confirm management IP/prefix, gateway, bridge, DNS, NTP, bundle URL, and all
+> VIPs in `kvm-env.ini` match the passed STOP-gate evidence before booting.
 
 Driving it non-interactively: pipe the answers in order via stdin, but only after
 verifying every value's format (a looping validator desyncs the pipe). All values
@@ -202,13 +224,20 @@ qm set <vmid> --boot order=virtio0     # SEPARATE command — see gotcha
 
 ### 3. First boot
 
-Start the HTTP bundle server (if used), then `qm start <vmid>`. The seed ISO applies
-network config and the VM pulls + decrypts the `.tgz`, then installs its container
-stack (RKE/k8s + SD) — **long (tens of minutes)**. Progress signals:
+For HTTP, recreate the approved bundle-only webroot/firewall window and start
+its bound server. For SCP, revalidate the approved exact account, endpoint, and
+path restriction; do not substitute an HTTP service. Then `qm start <vmid>`.
+The seed ISO applies network config and the VM pulls + decrypts the `.tgz`, then
+installs its container stack (RKE/k8s + SD) — **long (tens of minutes)**.
+Progress signals:
 - mgmt IP answers ping within ~1–2 min (network seeded),
-- the bundle server logs a `GET` from the mgmt IP (pull started),
+- the configured service records a completed transfer from the observed SD
+  source (HTTP must emit a matching `COMPLETE` byte count),
 - SD CLI (`ssh cliadmin@<mgmt-ip>` on 26.2.1) then UI VIP
   (`https://<ui-vip>`) come up last.
+Close the temporary bundle-delivery window as soon as the successful transfer
+completes: remove the HTTP server/rule/webroot or the temporary SCP access, as
+applicable. Retain redacted transfer, session, and checksum evidence.
 Snapshot the VM before onboarding.
 
 ### 4. Onboard Junos/SRX devices
@@ -241,19 +270,21 @@ Snapshot the VM before onboarding.
 - **NTP must be reachable** — an internet NTP behind a site that blocks outbound 123
   hangs first boot; use an internal NTP. SD egresses via its default gateway, so a
   plain reachable internal server needs no extra routes.
-- **The default gateway is a first-boot seed decision.** The 26.2.1 restricted
-  CLI has an IP-address change workflow but no supported standalone gateway
-  change. If the seeded gateway is wrong, preserve the failed guest for rollback
-  evidence and rebuild from corrected seed data with fresh disks. Do not assume
-  that swapping the ISO on initialized disks will replace the gateway.
+- **There is no documented gateway-only CLI command.** The documented
+  `set ipaddress change <IP>` workflow prompts for management IP, netmask, and
+  gateway. For the verified 26.2.1 wrong-seed incident, preserving the failed
+  guest and rebuilding from corrected seed data with fresh disks is the
+  conservative recovery policy—not a claim about universal vendor behavior.
 - **Every DNS server must actually answer DNS.** A non-resolving entry (ping/NTP-only
   host) loops first boot on `DNS address is not connectable` — the appliance boots,
   applies config, but never pulls the bundle (0 requests to the bundle server).
   Fix = correct the DNS in `kvm-env.ini` and rebuild the ISO (re-run `--no-run`),
   swap the cdrom, reboot; disks/imports stay. Diagnose via the VGA console
   (`qm monitor <vmid>` → `screendump`) — it names the unreachable server.
-- **Log transport is TLS on TCP/6514** (not UDP/514). Permit tcp/6514 through
-  every transit FW, and **source-NAT on the FW that fronts SD** — TLS is
+- **Log transport is TLS on TCP/6514** (not UDP/514). A plain TCP connect does
+  not pass preflight; require a successful TLS handshake from every selected
+  revenue source. Permit tcp/6514 through every transit FW, and **source-NAT on
+  the FW that fronts SD** — TLS is
   bidirectional and SD's only route off its subnet is its default gateway, so it
   can't reply to a device's fabric IP. Verify: the FW session shows `In` AND `Out`
   packets both non-zero.
@@ -284,9 +315,10 @@ Snapshot the VM before onboarding.
 
 ## Rollback
 
-For a wrong seeded gateway, protect/stop the failed guest and build a fresh VM
-from corrected seed data and fresh disks; do not destroy the rollback copy until
-the replacement passes the same connectivity matrix. `qm stop <vmid> && qm
-destroy <vmid>` removes an explicitly approved disposable VM (verify the VMID;
-never destroy a protected guest). Stop the HTTP bundle server. No libvirt state
-remains.
+For the verified 26.2.1 wrong-seed case, protect/stop the failed guest and build
+a fresh VM from corrected seed data and fresh disks; do not destroy the rollback
+copy until the replacement passes the same connectivity matrix. `qm stop <vmid>
+&& qm destroy <vmid>` removes an explicitly approved disposable VM (verify the
+VMID; never destroy a protected guest). Stop the bundle server; remove its
+temporary host-firewall rule, bundle-only webroot, and test certificates. No
+libvirt state remains.

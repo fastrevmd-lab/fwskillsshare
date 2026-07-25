@@ -16,6 +16,8 @@ lint:
 
 test:
     python3 scripts/check-shared-schema.py
+    python3 scripts/check-installer.py
+    python3 scripts/check-sd-bundle-server.py
 
 guard: lint test
 

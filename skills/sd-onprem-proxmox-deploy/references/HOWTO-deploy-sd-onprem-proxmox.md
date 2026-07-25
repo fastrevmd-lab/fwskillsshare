@@ -74,7 +74,8 @@ service ports:
 |---|---|---|---|---|---|---|---|---|
 | `<fw>-discovery` | `<SD-mgmt-IP>` | `<fw-mgmt-IP>:TCP/22` | `<SD-gateway>` | `<hop list>` | `<from/to + rule>` | `<none/SNAT>` | `<to translated/original source>` | `<SSH banner + In/Out>` |
 | `<fw>-device` | `<device-management-source>` | `<device-VIP>:TCP/7804` | `<device-gateway>` | `<hop list>` | `<from/to + rule>` | `<none/SNAT>` | `<to translated/original source>` | `<listener + In/Out>` |
-| `<fw>-logs` | `<revenue-source>` | `<log-VIP>:TCP/6514` | `<device-gateway>` | `<hop list>` | `<from/to + rule>` | `<none/SNAT>` | `<to translated/original source>` | `<listener + In/Out>` |
+| `<fw>-logs` | `<revenue-source>` | `<log-VIP>:TCP/6514 TLS` | `<device-gateway>` | `<hop list>` | `<from/to + rule>` | `<none/SNAT>` | `<to translated/original source>` | `<TLS handshake + In/Out>` |
+| `bundle` | `<SD-mgmt-IP>` | `<exact HTTP URL or SCP endpoint/path>` | `<SD-gateway>` | `<hop list>` | `<from/to + rule>` | `<none/approved translation>` | `<to observed source>` | `<full retrieval + identity + In/Out>` |
 
 For a stateful firewall, "`permit` exists" is insufficient. Its route lookup,
 security policy, and source NAT must agree in both directions. If source NAT is
@@ -110,21 +111,239 @@ require a valid NTP reply. Ping or a generic UDP probe is not an NTP test. Repea
 the SSH/management-service probe for **every** firewall; a successful test to one
 subnet does not prove another routed or tunneled target.
 
-Delete the disposable namespace after capturing the evidence:
-
-```bash
-ip netns delete sd-preflight
-```
-
 If the namespace cannot faithfully use the production bridge/VLAN, use a small
 disposable VM instead. Never substitute a test sourced from the Proxmox host.
 
-### 3.3 Prove device and log return paths
+### 3.3 Prove the exact configured bundle path without exposing seed secrets
 
-Add the proposed device VIP and log VIP to the disposable probe and bind temporary
-listeners on TCP/7804 and TCP/6514. From each firewall, initiate from the exact
-management source selected for device connection and the exact revenue source
-selected for logging. Use a TLS-capable listener for 6514 when available.
+Complete this before extraction. The restricted-server pattern in this guide
+requires **direct HTTP with no SNAT and no HTTP proxy**, so both nftables and the
+application server observe the original SD management IP. Fully retrieve the
+exact URL from the source-identical `sd-preflight` probe. Record authentication
+as intentionally `N/A`, readability, filename, expected byte size or vendor
+checksum, route, policy, `NAT=none`, return path, and bidirectional session
+counters. A Proxmox-host read does not count.
+
+If only SNAT/proxy delivery is possible, STOP. Do not merely allow a translated
+or shared proxy IP: that weakens the `/32` source boundary and tests a different
+path. Create a separately approved authenticated design that records original
+and server-observed source addresses, then preflight the exact configured method.
+
+For HTTP, **never serve `<base>` or `<base>/<version>`**. Those directories contain
+`kvm-env.ini`, which can contain plaintext CLI/SCP credentials, plus XML, qcow2,
+and ISO artifacts. Mode `0600` does not protect a file from a Python process
+running as its owner. Run the following blocks in one approved privileged shell
+so cleanup-trap state persists. Create a dedicated webroot containing only the
+`.tgz`:
+
+```bash
+set -euo pipefail
+SD_BUNDLE_SOURCE=/var/lib/vz/sd-onprem/Juniper-Security-Director-<ver>-<build>.tgz
+SD_BUNDLE_ROOT=$(mktemp -d /var/lib/vz/sd-bundle-only.XXXXXX)
+SD_BUNDLE_NAME=$(basename -- "$SD_BUNDLE_SOURCE")
+SD_BUNDLE_SERVER=/path/to/sd-onprem-proxmox-deploy/scripts/serve_bundle.py
+SD_BUNDLE_HOST_IP=<approved-host-IP>
+SD_BUNDLE_PORT=8085
+SD_SOURCE_IP=<SD-mgmt-IP>
+SD_BUNDLE_LOG=$(mktemp /var/tmp/sd-bundle-http.XXXXXX.log)
+SD_BUNDLE_PID=
+SD_BUNDLE_NFT_TABLE=sd_bundle_gate_$$
+SD_BUNDLE_NFT_CREATED=false
+
+# A hard link avoids a second multi-GB copy and exposes only this filename.
+case "$SD_BUNDLE_NAME" in *.tgz) ;; *) exit 1 ;; esac
+ln -- "$SD_BUNDLE_SOURCE" "$SD_BUNDLE_ROOT/$SD_BUNDLE_NAME"
+test "$(find "$SD_BUNDLE_ROOT" -mindepth 1 -maxdepth 1 -type f | wc -l)" -eq 1
+test -f "$SD_BUNDLE_ROOT/$SD_BUNDLE_NAME"
+test ! -L "$SD_BUNDLE_ROOT/$SD_BUNDLE_NAME"
+if find "$SD_BUNDLE_ROOT" -type f \
+  \( -name 'kvm-env.ini' -o -name '*.xml' -o -name '*.qcow2' \
+     -o -name '*.iso' \) -print -quit | grep -q .; then
+  exit 1
+fi
+find "$SD_BUNDLE_ROOT" -mindepth 1 -maxdepth 1 -printf '%f %s bytes\n'
+stat -c '%n %s bytes inode=%i' \
+  "$SD_BUNDLE_SOURCE" "$SD_BUNDLE_ROOT/$SD_BUNDLE_NAME"
+SD_BUNDLE_SHA256=$(sha256sum "$SD_BUNDLE_SOURCE" | awk '{print $1}')
+printf 'bundle_sha256=%s\n' "$SD_BUNDLE_SHA256"
+```
+
+If hard links are unavailable across filesystems, use a dedicated read-only copy
+with enough storage and verify its checksum before serving. Do not use a symlink
+to an extraction directory.
+
+With explicit approval, create a temporary host-firewall gate. This nftables
+example allows only the proposed SD source to the bound host IP/port and drops
+other sources to that socket; adapt it to the site's existing Proxmox firewall:
+
+```bash
+cleanup_sd_bundle() {
+  if test -n "$SD_BUNDLE_PID" && kill -0 "$SD_BUNDLE_PID" 2>/dev/null; then
+    kill "$SD_BUNDLE_PID"
+    wait "$SD_BUNDLE_PID" || true
+  fi
+  if test "$SD_BUNDLE_NFT_CREATED" = true; then
+    nft delete table inet "$SD_BUNDLE_NFT_TABLE"
+    SD_BUNDLE_NFT_CREATED=false
+  fi
+  if test -f "$SD_BUNDLE_ROOT/$SD_BUNDLE_NAME"; then
+    rm -f -- "$SD_BUNDLE_ROOT/$SD_BUNDLE_NAME"
+  fi
+  if test -d "$SD_BUNDLE_ROOT"; then
+    rmdir -- "$SD_BUNDLE_ROOT"
+  fi
+  if test -f "$SD_BUNDLE_LOG"; then
+    rm -f -- "$SD_BUNDLE_LOG"
+  fi
+}
+trap cleanup_sd_bundle EXIT INT TERM
+
+if nft list table inet "$SD_BUNDLE_NFT_TABLE" >/dev/null 2>&1; then
+  exit 1
+fi
+nft add table inet "$SD_BUNDLE_NFT_TABLE"
+SD_BUNDLE_NFT_CREATED=true
+nft add chain inet "$SD_BUNDLE_NFT_TABLE" input \
+  '{ type filter hook input priority -10; policy accept; }'
+nft add rule inet "$SD_BUNDLE_NFT_TABLE" input ip daddr "$SD_BUNDLE_HOST_IP" \
+  tcp dport "$SD_BUNDLE_PORT" ip saddr "$SD_SOURCE_IP/32" counter accept
+nft add rule inet "$SD_BUNDLE_NFT_TABLE" input ip daddr "$SD_BUNDLE_HOST_IP" \
+  tcp dport "$SD_BUNDLE_PORT" counter drop
+nft list table inet "$SD_BUNDLE_NFT_TABLE"
+
+python3 "$SD_BUNDLE_SERVER" \
+  --root "$SD_BUNDLE_ROOT" --file "$SD_BUNDLE_NAME" \
+  --bind "$SD_BUNDLE_HOST_IP" --port "$SD_BUNDLE_PORT" \
+  --allow-source "$SD_SOURCE_IP" --expected-sha256 "$SD_BUNDLE_SHA256" \
+  >"$SD_BUNDLE_LOG" 2>&1 &
+SD_BUNDLE_PID=$!
+until grep -q '^READY ' "$SD_BUNDLE_LOG"; do
+  if ! kill -0 "$SD_BUNDLE_PID" 2>/dev/null; then
+    wait "$SD_BUNDLE_PID"
+    exit 1
+  fi
+  sleep 1
+done
+grep -m1 '^READY ' "$SD_BUNDLE_LOG"
+ss -ltnp "sport = :$SD_BUNDLE_PORT"
+```
+
+`set -euo pipefail` and the preinstalled cleanup trap make this fail closed: any
+table, chain, rule, server validation, or listener failure exits before an
+unguarded bundle socket can remain available. `serve_bundle.py` independently
+enforces the one-file webroot and exact client IP.
+
+From `sd-preflight`, download the whole object, confirm the received byte count,
+and keep the connection open long enough to capture live flow evidence:
+
+```bash
+SD_EXPECTED_BYTES=$(stat -c %s "$SD_BUNDLE_SOURCE")
+SD_DOWNLOADED_BYTES=$(ip netns exec sd-preflight \
+  curl --fail --silent --show-error --location --output /dev/null \
+  --noproxy '*' \
+  --write-out '%{size_download}' \
+  "http://$SD_BUNDLE_HOST_IP:$SD_BUNDLE_PORT/$SD_BUNDLE_NAME")
+test "${SD_DOWNLOADED_BYTES%.*}" -eq "$SD_EXPECTED_BYTES"
+grep -F "COMPLETE source=$SD_SOURCE_IP " "$SD_BUNDLE_LOG" |
+  grep -F "bytes=$SD_EXPECTED_BYTES"
+```
+
+From one separately approved non-SD test source, the same URL must fail while the
+gate is installed. Record both the allowed counter and dropped counter from
+`nft list table inet "$SD_BUNDLE_NFT_TABLE"`.
+
+If SCP is the selected seed method, use the exact seeded host, port, username,
+and path from the namespace. Fully retrieve it and prove noninteractive
+authentication, readability, expected filename and byte size/checksum,
+gateway/hops, policy, NAT, return path, and bidirectional session counters.
+Never place a password on a command line or in evidence. A host-side file read or
+an HTTP test cannot substitute for the configured SCP path.
+
+Immediately after an HTTP preflight retrieval, stop the server and remove the
+temporary exposure. First copy the relevant access-log lines and nftables
+counters into the approved evidence record, with credentials redacted. Then use
+explicit targets—never recursively delete `<base>`:
+
+```bash
+cleanup_sd_bundle
+trap - EXIT INT TERM
+```
+
+For HTTP, recreate the same restricted, bundle-only window for the appliance's
+one-time first-boot download and close it immediately after the successful
+transfer. For SCP, retain the exact approved service long enough for first boot,
+require its redacted audit record of the completed appliance transfer, then
+revoke any temporary account, credential, rule, or path access. Do not run the
+HTTP cleanup function in the SCP branch.
+
+### 3.4 Prove device and log return paths
+
+Add the proposed device and log VIPs to `sd-preflight`. Bind a TCP listener for
+7804 and a temporary TLS listener for 6514. The TLS handshake is mandatory:
+plain TCP is insufficient, and unavailable TLS tooling means `UNTESTED/STOP`.
+
+```bash
+ip -n sd-preflight address add <device-VIP/prefix> dev sdpf0
+ip -n sd-preflight address add <log-VIP/prefix> dev sdpf0
+SD_TLS_DIR=$(mktemp -d /var/tmp/sd-tls-preflight.XXXXXX)
+SD_7804_PID=
+SD_6514_PID=
+cleanup_sd_tls() {
+  for SD_TEST_PID in "$SD_7804_PID" "$SD_6514_PID"; do
+    if test -n "$SD_TEST_PID" && kill -0 "$SD_TEST_PID" 2>/dev/null; then
+      kill "$SD_TEST_PID"
+      wait "$SD_TEST_PID" || true
+    fi
+  done
+  rm -f -- "$SD_TLS_DIR/key.pem" "$SD_TLS_DIR/cert.pem" \
+    "$SD_TLS_DIR/7804.log" "$SD_TLS_DIR/6514.log"
+  if test -d "$SD_TLS_DIR"; then
+    rmdir -- "$SD_TLS_DIR"
+  fi
+}
+trap cleanup_sd_tls EXIT INT TERM
+
+openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+  -subj '/CN=sd-log-preflight' \
+  -addext 'subjectAltName=DNS:sd-log-preflight' \
+  -keyout "$SD_TLS_DIR/key.pem" -out "$SD_TLS_DIR/cert.pem"
+
+ip netns exec sd-preflight socat \
+  TCP4-LISTEN:7804,bind=<device-VIP>,reuseaddr,fork SYSTEM:'sleep 45' \
+  >"$SD_TLS_DIR/7804.log" 2>&1 &
+SD_7804_PID=$!
+ip netns exec sd-preflight socat \
+  OPENSSL-LISTEN:6514,bind=<log-VIP>,cert="$SD_TLS_DIR/cert.pem",\
+key="$SD_TLS_DIR/key.pem",verify=0,reuseaddr,fork SYSTEM:'sleep 45' \
+  >"$SD_TLS_DIR/6514.log" 2>&1 &
+SD_6514_PID=$!
+ip netns exec sd-preflight ss -ltn 'sport = :7804 or sport = :6514'
+```
+
+From the exact device-management source, keep TCP/7804 open during transit
+inspection:
+
+```bash
+{ printf 'device-preflight\n'; sleep 45; } |
+  nc -s <device-management-source-IP> -w 50 <device-VIP> 7804
+```
+
+From the exact revenue/log source, copy only the temporary public certificate to
+the client and require a verified TLS handshake while holding the connection:
+
+```bash
+{ printf 'log-preflight\n'; sleep 45; } |
+  openssl s_client -connect <log-VIP>:6514 \
+    -bind <revenue-source-IP>:0 -servername sd-log-preflight \
+    -CAfile <copied-cert.pem> -verify_return_error -brief
+```
+
+Use source binding only where the release/client supports it. If the device CLI
+cannot bind the selected source or perform TLS, use an approved disposable Linux
+VM attached to that exact source VLAN/VRF. Assign the exact source only when the
+original address is safely unavailable; otherwise use a separately approved
+source that matches the same route/policy/NAT selectors and record the limitation.
+If equivalence cannot be proved, the row remains `UNTESTED/STOP`.
 
 While each connection is open, inspect every stateful transit firewall:
 
@@ -139,11 +358,20 @@ show security flow session source-prefix <source> \
 
 Pass only when the selected policy/NAT is the expected one and both request and
 reply packet counters are non-zero. `In > 0, Out = 0` is a failed return path.
-Record the output against the matrix row. Obtain explicit approval before any
-route, policy, or NAT write; use commit-check/diff, preserve rollback, commit,
-then repeat the exact-source tests.
+For 6514, also require an `openssl s_client` success with certificate verification
+and a TLS protocol/cipher in its output. Record the output against the matrix
+row. Obtain explicit approval before any route, policy, or NAT write; use
+commit-check/diff, preserve rollback, commit, then repeat the exact-source tests.
 
-### 3.4 Remote-lab regression test
+Stop listeners and delete temporary private-key material:
+
+```bash
+cleanup_sd_tls
+trap - EXIT INT TERM
+rm -f -- <client-path-to-copied-cert.pem>
+```
+
+### 3.5 Remote-lab regression test
 
 The 2026-07-24 remote-lab build passed DNS/NTP checks from Proxmox but seeded:
 
@@ -161,11 +389,15 @@ hop, infra-vsrx zones, security policy, NAT, or return path. The corrected desig
 must therefore prove SD `.19` via gateway `.18` to every firewall, plus every
 firewall's reverse path to `.21:7804` and `.22:6514`, before deployment.
 
-### 3.5 Other pre-flight checks
+### 3.6 Other pre-flight checks
 
 1. **Free IPs** — `arping -I <bridge> <ip>` for all four; outside any DHCP pool.
 2. **Host headroom** — cores, RAM, and thin storage for the complete flavor row.
 3. Save the passed matrix and probe output with the change record.
+4. Delete the disposable namespace after all management, dependency, reverse,
+   TLS, and bundle tests complete: `ip netns delete sd-preflight`.
+
+Any failed or untested matrix, bundle, or TLS row means **STOP**.
 
 ---
 
@@ -192,19 +424,19 @@ extractor. It is interactive; the **26.2.1 prompt order is 22 prompts**:
 | 14 | LOG Collector VIP | `10.88.15.22` |
 | 15 | LOG Collector FQDN (optional) | *(blank)* |
 | 16 | Software Bundle Path | `http://10.88.8.22:8085/<bundle>.tgz` *(HTTP; see note)* |
-| 17 | HTTP Proxy URL (optional, http only) | *(blank)* |
+| 17 | HTTP Proxy URL (optional, http only) | *(blank — required by the direct restricted-server pattern)* |
 | 18 | NTP Server | `10.88.25.1` *(must be reachable)* |
 | 19 | Security Director CIDR (optional) | *(blank → default `10.42.0.0/21`)* |
 | 20 | **Configuration ID / flavor** (1/2/3) | `1` — **easy to miss when scripting; no default, loops on invalid** |
 | 21 | Bridge interface name | `vmbr5` |
 | 22 | Disk provisioning (1 Thin / 2/3 Thick) | `1` — thin sparse qcow2s |
 
-**Bundle delivery = HTTP no-auth** (SCP bakes a password into `kvm-env.ini`).
-Serve it from the host at boot time:
-`python3 -m http.server 8085 --bind <host-mgmt-ip> --directory <base>`
-(the URL is only format-checked at extract time; the server must be up when the VM
-boots and pulls). **Confirm management IP/prefix, gateway, bridge, DNS, NTP, and
-all VIPs in `kvm-env.ini` match the passed §3 evidence before booting.**
+For bundle delivery, prefer the §3.3 restricted HTTP window over SCP credentials
+stored in `kvm-env.ini`. The extractor only format-checks the URL; it does not
+prove retrieval. **Never point `http.server --directory` at `<base>` or the
+extraction output; use the bundled completion-aware `scripts/serve_bundle.py`.**
+Confirm management IP/prefix, gateway, bridge, DNS, NTP, exact bundle URL, and
+all VIPs in `kvm-env.ini` match the passed §3 evidence before booting.
 
 Output in `<base>/<version>/`: `Security-Director-OnPrem-disk-0/1/2.qcow2`,
 `Security-Director-OnPrem-kvm.iso`, `kvm-env.ini`, `sd-onprem.xml`.
@@ -235,12 +467,26 @@ qm set <vmid> --boot order=virtio0     # SEPARATE command — see §9
 
 ## 6. First boot + verify
 
-Start the HTTP bundle server, then `qm start <vmid>`. Sequence:
+For the example HTTP seed, recreate the approved §3.3 bundle-only webroot and
+temporary `/32` host-firewall gate, then start the server bound to the approved
+host IP. If SCP was selected instead, do not substitute this HTTP service:
+revalidate the exact approved account, endpoint, path restriction, and audit
+logging. Then `qm start <vmid>`.
+Sequence:
 - mgmt IP answers ping within ~1–2 min (network seeded);
-- the bundle server logs a `GET` from the mgmt IP (pull started);
+- the configured service records a completed transfer from the observed SD
+  source (HTTP must emit `COMPLETE source=<SD-mgmt-IP> ... bytes=<expected>`);
 - container-stack install runs (**tens of minutes** — OpenSearch, Kafka, etc.);
 - ingress comes up (`https://<ui-vip>` serves the Juniper self-signed cert, may 404);
 - app pods finish → `https://<ui-vip>/login` returns 200.
+
+For HTTP, a normal `200` request line is not completion evidence because it may
+be logged before the body finishes. Wait for the bundled server's exact
+`COMPLETE` byte-count record. Then capture/redact the log and checksum evidence,
+run `cleanup_sd_bundle`, and clear its trap. Do not leave the server, firewall
+table, hard link, or private webroot in place. For SCP, retain redacted transfer
+and session evidence, then revoke any temporary account/rule or other delivery
+window; never retain a plaintext credential as evidence.
 
 Snapshot the VM before onboarding. Assign the **subscription/license** (Admin →
 Subscriptions) — **log analytics / "All Security Events" is gated behind it**,
@@ -360,15 +606,16 @@ gateway-FW zone, so one transit permit + source-NAT covers the pair.
   boot on `DNS address is not connectable`; the VM never pulls the bundle
   (0 requests to the bundle server). Diagnose from the console
   (`qm monitor <vmid>` → `screendump`); it names the dead server.
-- **The default gateway is seeded at first boot.** SD On-Prem 26.2.1's restricted
-  CLI supports changing the management IP but does not expose a supported
-  standalone gateway change. For a wrong gateway, preserve/protect the failed VM
-  and rebuild from corrected seed data with fresh disks. Do not treat a seed-ISO
-  swap on initialized disks as a supported gateway repair.
+- **There is no documented gateway-only CLI command.** Juniper's documented
+  `set ipaddress change <IP>` workflow prompts for management IP, netmask, and
+  gateway. For the verified 26.2.1 wrong-seed incident, preserve/protect the
+  failed VM and rebuild from corrected seed data with fresh disks. That is the
+  conservative verified recovery policy, not a universal vendor requirement.
 - **Log analytics is subscription-gated** — logs can arrive at the collector while
   "All Security Events" stays empty until a subscription is assigned.
-- **Logs are TLS/6514, not UDP/514** — permit tcp/6514 through transit and
-  source-NAT for the return path (§8).
+- **Logs are TLS/6514, not UDP/514** — plain TCP reachability does not pass;
+  complete a verified TLS handshake from every selected revenue source. Permit
+  tcp/6514 through transit and source-NAT for the return path (§8).
 - **Flavor is validated as a WHOLE SET on every boot — you cannot partially
   resize.** CPU + RAM + all three disk sizes must match one flavor row (§2).
   Bumping only CPU/RAM (e.g. 8/64 → 16/80 while leaving flavor-1 disks) yields
@@ -396,10 +643,12 @@ gateway-FW zone, so one transit permit + source-NAT covers the pair.
 ## 11. Rollback
 
 - Before first boot, correct any seed value and regenerate the ISO.
-- After initialization, a wrong default gateway requires a new VM with corrected
+- For the verified 26.2.1 wrong-seed recovery policy, use a new VM with corrected
   seed data and fresh disks. Protect the failed VM as rollback evidence until the
   replacement passes §3 and application health checks.
 - Full rollback: `qm rollback <vmid> <snapshot>` (restores disks **and** the VM
   config, e.g. CPU/RAM, from snapshot time).
 - Remove: `qm stop <vmid> && qm destroy <vmid>` (clear `protection` first; never
   destroy a `protected` guest you didn't create). No libvirt state remains.
+- Stop any bundle server and remove its temporary nftables table, bundle-only
+  hard link/webroot, access log after evidence capture, and TLS private key.

@@ -18,6 +18,7 @@ EXPECTED_FAMILIES = {
         "parsing-srx-configs",
     },
     "srx": {
+        "sd-onprem-proxmox-deploy",
         "srx-advpn",
         "srx-autovpn-full-tunnel",
         "srx-dynamic-ip-feed",
@@ -59,6 +60,16 @@ def installed_names(directory: Path) -> set[str]:
 
 
 def main() -> int:
+    package_names = {
+        path.parent.name
+        for path in (ROOT / "skills").glob("*/SKILL.md")
+    }
+    if EXPECTED_ALL != package_names:
+        raise SystemExit(
+            "package/installer expected inventory mismatch: "
+            f"{sorted(EXPECTED_ALL ^ package_names)}"
+        )
+
     inventory = run("--list").stdout
     listed = {
         line.removeprefix("  - ")
@@ -67,6 +78,10 @@ def main() -> int:
     }
     if listed != EXPECTED_ALL:
         raise SystemExit(f"inventory mismatch: {sorted(listed ^ EXPECTED_ALL)}")
+    if listed != package_names:
+        raise SystemExit(
+            f"installer/package inventory mismatch: {sorted(listed ^ package_names)}"
+        )
 
     for family, expected in EXPECTED_FAMILIES.items():
         with tempfile.TemporaryDirectory(prefix=f"fwskills-{family}-") as temp:
@@ -83,7 +98,7 @@ def main() -> int:
     if unknown.returncode == 0 or "Unknown family" not in unknown.stderr:
         raise SystemExit("unknown installer family was not rejected")
 
-    print("OK: installer lists and installs 21 skills across 4 families")
+    print("OK: installer/package inventories match; 22 skills install across 4 families")
     return 0
 
 
