@@ -231,6 +231,12 @@ For each skill, validate:
   changing length, newline positions, or offsets; direct list-item openers
   allow zero to three spaces before `-`/`+`/`*` or a one-to-nine-digit ordered
   marker ending in `.`/`)` and one to four following spaces;
+- bullet markers may interrupt an open paragraph, but an ordered list-item
+  fence may do so only when its parsed numeric value is `1` (including a
+  leading-zero spelling within the one-to-nine-digit limit); non-`1` ordered
+  markers remain active paragraph continuation unless they occur at document
+  start, after a blank line, or after a recognized ATX-heading block boundary;
+  unfamiliar active syntax conservatively keeps paragraph context open;
 - blank lines remain inside an open list-item fence regardless of indentation;
   a nonblank line lacking the captured list continuation indentation ends the
   containing list item and its fence, then that same physical line is
@@ -250,8 +256,10 @@ For each skill, validate:
   at most three leading spaces;
 - raw HTML block syntax inside fenced code and inline placeholder tags that do
   not meet a block-start rule remain permitted; runtime and following section
-  headings are discovered only in the same active-Markdown mask, then the
-  original section is sliced by the preserved offsets;
+  headings with zero to three leading spaces are discovered only in the same
+  active-Markdown mask, while four-space-indented forms remain code; the sole
+  approved primary `## Runtime intake` heading must still begin at column zero,
+  then the original section is sliced by the preserved offsets;
 - the section-scoped validator normalizes whitespace across that complete
   original section and requires equality to the approved standard template or
   the skill-selected `srx-mnha`/`srx-policy` compact template;
@@ -266,11 +274,12 @@ For each skill, validate:
   comments or any CommonMark raw HTML block family before heading discovery
   and cannot be bypassed with escaped or inline-code comment delimiters;
   active-heading discovery rejects a complete region in a code fence, while a
-  deindented duplicate runtime heading or raw HTML block after an unclosed
-  list-item fence remains active; complete-section equality rejects inactive
-  fence wrappers inside an active section, extra or contradictory prose,
-  missing approved text, and duplicate active runtime sections while
-  permitting whitespace-only variation;
+  one-to-three-space duplicate runtime heading remains active, including after
+  a list-fence deindent; non-`1` ordered markers continuing prose cannot mask
+  an indented duplicate heading or raw HTML block; complete-section equality
+  rejects inactive fence wrappers inside an active section, extra or
+  contradictory prose, missing approved text, and duplicate active runtime
+  sections while permitting whitespace-only variation;
 - the exact section retains secret safety and separate live-change approval
   and links to `references/runtime-intake.md`;
 - the reference contains the required headings and one parseable JSON catalog;

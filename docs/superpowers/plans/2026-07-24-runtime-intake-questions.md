@@ -226,16 +226,23 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = ROOT / "skills"
 CATALOG_RE = re.compile(r"```json\n(?P<payload>.*?)\n```", re.DOTALL)
-RUNTIME_HEADING_RE = re.compile(r"^## Runtime intake[ \t]*$", re.MULTILINE)
-SECTION_HEADING_RE = re.compile(r"^## [^\n]+$", re.MULTILINE)
+RUNTIME_HEADING_RE = re.compile(
+    r"^(?P<indent> {0,3})## Runtime intake[ \t]*\r?$",
+    re.MULTILINE,
+)
+SECTION_HEADING_RE = re.compile(r"^ {0,3}## [^\r\n]+\r?$", re.MULTILINE)
 FENCE_LINE_RE = re.compile(
     r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
     r"(?P<ending>\r\n|\n|\r)?\Z"
 )
 LIST_ITEM_FENCE_LINE_RE = re.compile(
-    r"^(?P<container> {0,3}(?:[-+*]|[0-9]{1,9}[.)]) {1,4})"
+    r"^(?P<container> {0,3}(?:(?P<bullet>[-+*])|"
+    r"(?P<ordered>[0-9]{1,9})[.)]) {1,4})"
     r"(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
     r"(?P<ending>\r\n|\n|\r)?\Z"
+)
+ATX_BLOCK_BOUNDARY_RE = re.compile(
+    r"^ {0,3}#{1,6}(?:[ \t]+|(?=\r?$))"
 )
 COMMONMARK_TYPE6_TAGS = (
     "address",
@@ -479,6 +486,7 @@ def mask_inactive_markdown(text: str) -> str:
     fence_character: str | None = None
     fence_length = 0
     fence_container_indent = 0
+    paragraph_open = False
 
     for line in text.splitlines(keepends=True):
         if fence_character is not None:
@@ -512,7 +520,17 @@ def mask_inactive_markdown(text: str) -> str:
 
         fence_match = FENCE_LINE_RE.fullmatch(line)
         list_fence_match = LIST_ITEM_FENCE_LINE_RE.fullmatch(line)
-        opener_match = fence_match or list_fence_match
+        list_fence_can_open = (
+            list_fence_match is not None
+            and (
+                list_fence_match.group("bullet") is not None
+                or not paragraph_open
+                or int(list_fence_match.group("ordered")) == 1
+            )
+        )
+        opener_match = fence_match or (
+            list_fence_match if list_fence_can_open else None
+        )
         if not in_comment and opener_match is not None:
             fence = opener_match.group("fence")
             info = opener_match.group("rest")
@@ -525,11 +543,20 @@ def mask_inactive_markdown(text: str) -> str:
                     if list_fence_match is not None
                     else 0
                 )
+                paragraph_open = False
                 masked_lines.append(mask_non_newline_characters(line))
                 continue
 
         masked_line, in_comment = mask_html_comments(line, in_comment)
         masked_lines.append(masked_line)
+        if not masked_line.strip(" \t\r\n"):
+            paragraph_open = False
+        elif ATX_BLOCK_BOUNDARY_RE.match(masked_line):
+            paragraph_open = False
+        else:
+            # Conservatively keep unfamiliar active syntax in paragraph
+            # context so it cannot make a later non-1 marker hide content.
+            paragraph_open = True
 
     return "".join(masked_lines)
 
@@ -539,6 +566,10 @@ def extract_runtime_section(path: Path, text: str) -> tuple[str | None, list[str
     matches = list(RUNTIME_HEADING_RE.finditer(active_markdown))
     if len(matches) != 1:
         return None, [f"{path}: expected exactly one '## Runtime intake' section"]
+    if matches[0].group("indent"):
+        return None, [
+            f"{path}: primary '## Runtime intake' heading must start at column zero"
+        ]
 
     start = matches[0].end()
     next_heading = SECTION_HEADING_RE.search(active_markdown, start)
@@ -1083,11 +1114,18 @@ backtick or tilde fenced-code regions, including direct list-item fence
 openers, while preserving length, newline positions, and offsets. The separate
 list-item opener path permits zero to three spaces before `-`/`+`/`*` or an
 ordered marker of one to nine digits plus `.`/`)`, then one to four spaces. It
-captures the resulting continuation indentation. Blank lines remain masked
-inside the list fence without requiring that indentation. A nonblank line
-lacking the captured prefix implicitly ends the list container and its
-unclosed fence, then falls through for processing as an ordinary fence opener,
-comment, or active Markdown on the same iteration. There is no retry loop.
+captures the resulting continuation indentation. The masker tracks whether
+active prose has opened a paragraph: document start, blank lines, accepted
+fences, and zero-to-three-space ATX headings establish block boundaries, while
+unfamiliar active syntax conservatively keeps the paragraph open. Bullet
+markers may interrupt that paragraph. Ordered markers may interrupt it only
+when their parsed numeric value is `1`, including a leading-zero spelling
+within the one-to-nine-digit limit; non-`1` markers open list-item fences only
+at a recognized block boundary. Blank lines remain masked inside the list
+fence without requiring the captured indentation. A nonblank line lacking the
+captured prefix implicitly ends the list container and its unclosed fence,
+then falls through for processing as an ordinary fence opener, comment, or
+active Markdown on the same iteration. There is no retry loop.
 Correctly indented list-item closers are checked by the unchanged ordinary
 fence matcher only after that exact prefix is removed; top-level unclosed
 fences still mask through end of file. Prose with a later fence sequence or
@@ -1100,12 +1138,15 @@ block opener family: case-insensitive type 1 `pre`, `script`, `style`, or
 block tag with the specified tag-name boundary; and complete generic type 7
 opening or closing tag lines, each with at most three leading spaces.
 Raw-looking fenced content and inline placeholders that do not meet a
-block-start rule remain valid. The validator discovers the single runtime
-heading and following section heading only in that same active-Markdown view,
-slices the original section by the preserved offsets, normalizes whitespace,
-selects the approved standard or skill-specific compact template by skill
-path, and requires equality across the complete section. Validator-API
-mutation probes reject discretionary
+block-start rule remain valid. The validator discovers runtime and following
+section headings with zero to three leading spaces only in that same
+active-Markdown view; a four-space-indented form remains code. Discovery
+therefore catches active indented duplicates, but the sole approved primary
+`## Runtime intake` heading must remain at column zero. The validator slices
+the original section by the preserved offsets, normalizes whitespace, selects
+the approved standard or skill-specific compact template by skill path, and
+requires equality across the complete section. Validator-API mutation probes
+reject discretionary
 invocation, open-ended native questions, a one-summary fallback, contract
 clauses outside the runtime section, complete runtime regions hidden in a
 comment, any raw HTML block family, or either fence form, HTML-comment decoys,
@@ -1121,8 +1162,15 @@ near-markers, and unchanged top-level closer behavior. Container-boundary
 probes reject a deindented duplicate runtime section and active raw HTML,
 retain unindented blank lines, keep correctly indented content and closers
 masked, preserve top-level unclosed-fence behavior, and prove that sibling,
-ordinary-fence, and comment transitions are reprocessed. Fenced decoys may
-coexist with one active valid section. A masker probe locks CRLF
+ordinary-fence, and comment transitions are reprocessed. Heading probes cover
+one-to-three-space active duplicates, indented following sections, a
+column-zero approved primary, and four-space code. Paragraph-interruption
+probes keep indented raw HTML and Runtime headings active after `0`, `2`, and
+`9` ordered markers, while accepting value `1`, a nine-digit leading-zero
+value `1`, bullets, and non-`1` markers at document, blank-line, and
+ATX-heading boundaries across both ordered delimiters and both fence
+characters. Fenced decoys may coexist with one active valid section. A masker
+probe locks CRLF
 length/newline/offset preservation, a positive probe permits whitespace-only
 variation, and the real-file test applies the same validator to all 22 skills.
 

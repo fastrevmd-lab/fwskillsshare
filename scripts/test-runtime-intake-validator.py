@@ -306,6 +306,82 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             [],
         )
 
+    def test_rejects_one_space_runtime_heading_after_list_fence_deindent(
+        self,
+    ) -> None:
+        mutant = (
+            f"{VALID_SKILL}\n"
+            "- ```markdown\n"
+            "  hidden list content\n"
+            " ## Runtime intake\n\n"
+            "Runtime intake is optional.\n"
+        )
+        self.assert_skill_error(
+            mutant,
+            "expected exactly one '## Runtime intake' section",
+        )
+
+    def test_rejects_active_indented_duplicate_runtime_headings(self) -> None:
+        for indentation_width in (2, 3):
+            with self.subTest(indentation_width=indentation_width):
+                indentation = " " * indentation_width
+                mutant = (
+                    f"{VALID_SKILL}\n"
+                    f"{indentation}## Runtime intake\n\n"
+                    "Runtime intake is optional.\n"
+                )
+                self.assert_skill_error(
+                    mutant,
+                    "expected exactly one '## Runtime intake' section",
+                )
+
+    def test_accepts_one_to_three_space_following_section_headings(
+        self,
+    ) -> None:
+        for indentation_width in range(1, 4):
+            with self.subTest(indentation_width=indentation_width):
+                indentation = " " * indentation_width
+                mutant = VALID_SKILL.replace(
+                    "## Workflow",
+                    f"{indentation}## Workflow",
+                )
+                self.assertEqual(
+                    VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+                    [],
+                )
+
+    def test_rejects_indented_primary_runtime_heading(self) -> None:
+        for indentation_width in range(1, 4):
+            with self.subTest(indentation_width=indentation_width):
+                indentation = " " * indentation_width
+                mutant = VALID_SKILL.replace(
+                    "## Runtime intake",
+                    f"{indentation}## Runtime intake",
+                    1,
+                )
+                self.assert_skill_error(
+                    mutant,
+                    "primary '## Runtime intake' heading must start at column zero",
+                )
+
+    def test_four_space_runtime_heading_remains_non_heading_code(self) -> None:
+        mutant = VALID_SKILL.replace(
+            "## Runtime intake",
+            "    ## Runtime intake",
+            1,
+        )
+        self.assert_no_active_runtime_section(mutant)
+
+    def test_four_space_following_heading_remains_non_heading_code(self) -> None:
+        mutant = VALID_SKILL.replace(
+            "## Workflow",
+            "    ## Workflow",
+        )
+        self.assert_skill_error(
+            mutant,
+            "runtime intake does not match approved template",
+        )
+
     def test_rejects_html_comment_decoy_before_active_section(self) -> None:
         mutant = (
             "<!--\n"
@@ -488,11 +564,136 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                     [],
                 )
 
+    def test_non_one_ordered_fence_markers_do_not_interrupt_paragraphs(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "0.",
+                "```html",
+                "   <div>",
+                "   ```",
+                "raw HTML block syntax is not allowed",
+            ),
+            (
+                "2)",
+                "~~~markdown",
+                "   ## Runtime intake",
+                "   ~~~",
+                "expected exactly one '## Runtime intake' section",
+            ),
+            (
+                "9.",
+                "```html",
+                "   <runtime-wrapper>",
+                "   ```",
+                "raw HTML block syntax is not allowed",
+            ),
+        )
+        for marker, opener, payload, closer, expected_error in cases:
+            with self.subTest(marker=marker, opener=opener):
+                mutant = (
+                    f"{VALID_SKILL}\n"
+                    "Workflow paragraph.\n"
+                    f"{marker} {opener}\n"
+                    f"{payload}\n"
+                    f"{closer}\n"
+                )
+                self.assert_skill_error(mutant, expected_error)
+
+    def test_keeps_non_one_ordered_fence_continuations_active(self) -> None:
+        source = (
+            "Workflow paragraph.\n"
+            "2. ```markdown\n"
+            "   ## Runtime intake\n"
+            "   ```\n"
+        )
+        masked = VALIDATOR.mask_inactive_markdown(source)
+
+        for active_text in ("2. ```markdown", "   ## Runtime intake"):
+            offset = source.index(active_text)
+            self.assertEqual(
+                masked[offset : offset + len(active_text)],
+                active_text,
+            )
+
+    def test_value_one_ordered_fence_markers_interrupt_paragraphs(
+        self,
+    ) -> None:
+        cases = (
+            ("1.", "`", "<div>"),
+            ("000000001)", "~", "<runtime-wrapper>"),
+        )
+        for marker, fence_character, raw_html in cases:
+            with self.subTest(marker=marker, fence=fence_character):
+                fence = fence_character * 3
+                continuation = " " * (len(marker) + 1)
+                mutant = (
+                    f"{VALID_SKILL}\n"
+                    "Workflow paragraph.\n"
+                    f"{marker} {fence}html\n"
+                    f"{continuation}{raw_html}\n"
+                    f"{continuation}{fence}\n"
+                )
+                self.assertEqual(
+                    VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+                    [],
+                )
+
+    def test_non_one_ordered_fence_markers_open_at_block_boundaries(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "document start",
+                "2. ```html\n"
+                "   <div>\n"
+                "   ```\n"
+                f"{VALID_SKILL}",
+            ),
+            (
+                "blank line",
+                f"{VALID_SKILL}\n"
+                "Workflow paragraph.\n"
+                "\n"
+                "9) ~~~html\n"
+                "   <div>\n"
+                "   ~~~\n",
+            ),
+            (
+                "ATX heading",
+                "## Example\n"
+                "2) ~~~html\n"
+                "   <div>\n"
+                "   ~~~\n"
+                f"{VALID_SKILL}",
+            ),
+        )
+        for boundary, mutant in cases:
+            with self.subTest(boundary=boundary):
+                self.assertEqual(
+                    VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+                    [],
+                )
+
+    def test_bullet_fence_marker_still_interrupts_paragraph(self) -> None:
+        mutant = (
+            f"{VALID_SKILL}\n"
+            "Workflow paragraph.\n"
+            "- ```html\n"
+            "  <div>\n"
+            "  ```\n"
+        )
+        self.assertEqual(
+            VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+            [],
+        )
+
     def test_masks_list_item_fence_boundaries_and_preserves_offsets(self) -> None:
         marker_prefix = "   123456789)    "
         continuation = " " * len(marker_prefix)
         source = (
-            "Lead\r\n"
+            "Lead\r\n\r\n"
             f"{marker_prefix}~~~~html\r\n"
             f"{continuation}<runtime-wrapper>\r\n"
             f"{continuation}   ~~~~\r\n"
