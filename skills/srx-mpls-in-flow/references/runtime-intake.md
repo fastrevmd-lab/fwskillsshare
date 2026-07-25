@@ -167,19 +167,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mpls_service",
       "ask_when": "Inspection services are absent.",
       "header": "Services",
-      "question": "Which security-service bundle should apply to MPLS traffic?",
+      "question": "How should unspecified security-service scope be handled?",
       "options": [
         {
-          "label": "Base policy only (Recommended)",
-          "description": "Apply stateful policy and logging without added services."
+          "label": "Confirm services first (Recommended)",
+          "description": "Inventory application, NAT, inspection, license, and capacity requirements before selecting a bundle."
         },
         {
-          "label": "Base plus app/NAT",
-          "description": "Add supplied application or NAT requirements."
+          "label": "Use supplied base-only bundle",
+          "description": "Apply supplied stateful policy and logging without added services."
         },
         {
-          "label": "Full inspection stack",
-          "description": "Include supplied IPS or advanced services with capacity validation."
+          "label": "Use supplied enhanced bundle",
+          "description": "Use a complete supplied application, NAT, and inspection list after license and capacity validation."
         }
       ]
     }

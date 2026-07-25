@@ -111,15 +111,15 @@ platform or framework basis, evidence quality, then output preference.
       "options": [
         {
           "label": "Inventory vendors first (Recommended)",
-          "description": "Identify subservice organizations and governance decisions before assessment."
+          "description": "Identify subservice organizations and per-vendor governance decisions before assessment."
         },
         {
-          "label": "Use supplied carve-out",
-          "description": "Apply a supplied carve-out method and identify complementary controls."
+          "label": "Use supplied uniform treatment",
+          "description": "Apply one supplied carve-out or inclusive method consistently across all vendors."
         },
         {
-          "label": "Use supplied inclusive",
-          "description": "Apply a supplied inclusive method and include provider evidence."
+          "label": "Use supplied mixed treatment",
+          "description": "Apply supplied per-vendor carve-out and inclusive treatments and document each boundary."
         }
       ]
     },

@@ -110,16 +110,16 @@ platform or framework basis, evidence quality, then output preference.
       "question": "How should uncertain traffic classification be handled?",
       "options": [
         {
-          "label": "Inspect context first (Recommended)",
-          "description": "Trace ingress, egress, zones, interfaces, and routing instances before rule selection."
+          "label": "Inspect full context first (Recommended)",
+          "description": "Inspect complementary zone, interface, and routing-instance facts before rule selection."
         },
         {
-          "label": "Use supplied zone context",
-          "description": "Apply supplied zone and interface classification."
+          "label": "Use supplied complete context",
+          "description": "Apply the supplied complete zone, interface, and routing-instance classification."
         },
         {
-          "label": "Use supplied routing context",
-          "description": "Apply supplied routing-instance classification."
+          "label": "Stop pending context",
+          "description": "Stop rule conclusions until all complementary classification facts are supplied."
         }
       ]
     },

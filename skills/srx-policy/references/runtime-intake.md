@@ -127,19 +127,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "policy_service",
       "ask_when": "Inspection services are absent.",
       "header": "Services",
-      "question": "Which security-service bundle should policy apply?",
+      "question": "How should unspecified security-service scope be handled?",
       "options": [
         {
-          "label": "Base policy only (Recommended)",
-          "description": "Apply least privilege and logging without added services."
+          "label": "Confirm services first (Recommended)",
+          "description": "Inventory application, NAT, inspection, license, and capacity requirements before selecting a bundle."
         },
         {
-          "label": "Base plus app/NAT",
-          "description": "Add supplied application or NAT requirements."
+          "label": "Use supplied base-only bundle",
+          "description": "Apply supplied least privilege and logging without added services."
         },
         {
-          "label": "Full inspection stack",
-          "description": "Include supplied licensed UTM, NGFW, ATP, or IPS requirements."
+          "label": "Use supplied enhanced bundle",
+          "description": "Use a complete supplied application, NAT, and inspection list after license and capacity validation."
         }
       ]
     },
@@ -147,19 +147,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "policy_ip",
       "ask_when": "Address-family scope is absent.",
       "header": "IP Family",
-      "question": "Which traffic-scope bundle should policy cover?",
+      "question": "Which address families should policy cover?",
       "options": [
         {
-          "label": "Dual-stack unicast (Recommended)",
-          "description": "Evaluate IPv4 and IPv6 unicast controls."
+          "label": "Dual-stack (Recommended)",
+          "description": "Cover IPv4 and IPv6 unicast and specify multicast or control-plane scope through Other."
         },
         {
-          "label": "IPv4-only unicast",
-          "description": "Limit policy to IPv4 unicast and report IPv6 exposure."
+          "label": "IPv4 only",
+          "description": "Cover only IPv4 unicast and specify special traffic scope through Other."
         },
         {
-          "label": "Unicast plus special",
-          "description": "Add supplied multicast, discovery, or control-plane requirements to unicast scope."
+          "label": "IPv6 only",
+          "description": "Cover only IPv6 unicast and specify special traffic scope through Other."
         }
       ]
     },

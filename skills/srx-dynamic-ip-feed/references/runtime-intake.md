@@ -111,15 +111,15 @@ platform or framework basis, evidence quality, then output preference.
       "options": [
         {
           "label": "Verify endpoint first (Recommended)",
-          "description": "Inspect endpoint requirements and certificate behavior before selecting authentication."
+          "description": "Verify endpoint requirements before selecting authentication and risk-classify explicit no-extra-auth requests supplied through Other."
         },
         {
-          "label": "Mutual TLS",
-          "description": "Use client certificates through approved secret delivery."
+          "label": "Use supplied mutual TLS",
+          "description": "Use supplied client-certificate requirements through approved secret delivery."
         },
         {
-          "label": "Basic or none",
-          "description": "Apply a supplied basic-auth or no-extra-auth requirement while keeping credentials outside chat."
+          "label": "Use supplied basic auth",
+          "description": "Use supplied basic-auth requirements while keeping credentials outside chat."
         }
       ]
     },

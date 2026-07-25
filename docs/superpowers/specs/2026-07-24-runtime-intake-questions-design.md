@@ -190,10 +190,27 @@ validates all skills when no name is supplied.
 
 Add `scripts/check-runtime-intake-safety.py` after structural validation. It
 parses all 22 Appendix A catalogs and all 22 package catalogs, requires exact
-ordered question-object equality for every skill, resolves each semantic
-regression key exactly once, and checks the exact safe first labels and
-single-axis option tuples identified by final review. It also accepts an
-optional skill name for focused package validation.
+ordered question-object equality for every skill, rejects duplicate Appendix
+sections and incorrect A.1 through A.22 number/name pairings, rejects duplicate
+package JSON members, and preserves same-line whitespace so noncanonical tabs
+or doubled spaces cannot be normalized away. It resolves each semantic
+regression key exactly once and checks the exact 62 safe first labels and 18
+single-axis option tuples identified by final review.
+
+The safety checker also locks the complete content and question order of all
+22 catalogs with canonical SHA-256 digests. Its optional skill argument limits
+equality, digest, safe-default, and option-tuple assertions to the selected
+catalog, but every focused run still parses all 22 plan and package catalogs
+and resolves every manifest key. Focused success output reports selected
+assertion counts separately from that whole-corpus work.
+
+Add `scripts/test-runtime-intake-safety.py` immediately after the safety
+checker in `just lint`. Its standard-library temporary-file tests must exercise
+the ten audited semantic IDs, duplicate Appendix sections, incorrect Appendix
+number/name pairing, duplicate package JSON members, same-line doubled
+whitespace in Appendix questions, labels, and descriptions, exact focused
+output counts, complete digest-manifest coverage, and synchronized content and
+order mutations that equality alone would miss.
 
 For each skill, validate:
 
@@ -208,6 +225,10 @@ For each skill, validate:
 - the reference contains the exact Claude projection, Codex projection, and
   plain-text fallback with free-text `Other` language;
 - raw JSON objects contain no duplicate member names;
+- Appendix A contains exactly one correctly numbered section for each expected
+  skill;
+- Appendix prose preserves canonical same-line whitespace without tabs or
+  doubled spaces in catalog fields;
 - the neutral catalog, question objects, and option objects contain exactly
   their documented keys and no tool-specific or unknown keys;
 - every question has a unique `id`, nonblank stripped `ask_when`, nonblank
@@ -221,6 +242,8 @@ For each skill, validate:
 - the first label ends with `(Recommended)`;
 - standard-library negative contract tests exercise rejected keys, whitespace,
   sentence boundaries, and stale adaptation language;
+- standard-library safety tests exercise the complete semantic and canonical
+  catalog lock, including synchronized plan/package mutations;
 - all other package and line-limit checks continue to pass.
 
 Follow a sequential test-first cycle:

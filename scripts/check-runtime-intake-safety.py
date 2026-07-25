@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -20,7 +21,10 @@ PLAN_PATH = (
 )
 SKILLS_DIR = ROOT / "skills"
 APPENDIX_MARKER = "## Appendix A: Exact question catalogs"
-PLAN_SECTION_RE = re.compile(r"^### A\.\d+ `(?P<skill>[^`]+)`$", re.MULTILINE)
+PLAN_SECTION_RE = re.compile(
+    r"^### A\.(?P<number>\d+) `(?P<skill>[^`]+)`$",
+    re.MULTILINE,
+)
 PLAN_ROW_RE = re.compile(r"^- `(?P<id>[a-z][a-z0-9_]*)`; ", re.MULTILINE)
 PLAN_ROW_CONTENT_RE = re.compile(
     r"header `(?P<header>[^`]+)`; "
@@ -60,6 +64,52 @@ EXPECTED_SKILLS = (
     "srx-nat",
     "srx-policy",
 )
+EXPECTED_CATALOG_SHA256 = {
+    "cis-controls-ngfw-compliance":
+        "42bff3b56ac9b8a593826a1e7673a9ec97f9aab523e472935c6f675d30868f85",
+    "cmmc-nist-800-171-ngfw-compliance":
+        "5ac9968fed3b785859577350a17bb3e80a11ec71deb11b570ad88ad52f37b85f",
+    "firewall-best-practices-audit":
+        "03e0a7b24132a62065b1ce119b2b1974bc97ab477e0ee6ede4e039196a25a030",
+    "firewall-config-conversion":
+        "7e23567bfc9642f7b9ba7ee7eaba81794bec82932eabf287c315b76c16a90051",
+    "firewall-config-diff":
+        "a1f06040f76047b900909b795efb5613a9c8a9a913a2495d3b746bbdcc04b147",
+    "hipaa-ngfw-compliance":
+        "1f7231049a8c2fd65f46e9752c2fdf9a171a14cfcbe5f77520e490acbb2301e9",
+    "iso27001-ngfw-compliance":
+        "0fb97b6ad0948a71824d9dcb198ca1e18230d6a7d8de7242a7068866b5c2ceaf",
+    "parsing-cisco-configs":
+        "283c9ca9051c2a9419141bac6260594cf796e5b2737745baba6dadcae5afeb86",
+    "parsing-fortinet-configs":
+        "82056070828ee11544364e630ab84f4f8c92073d43e4ea3d80eab573dd08bc08",
+    "parsing-palo-configs":
+        "31bd9c1e32c3b8eac0207033f5c66a9ae995a1d471174386287b2d146633b1b3",
+    "parsing-srx-configs":
+        "40807f50fb6022be44357a91a3b3b06a43ec774b302ac088a0afa5a7203b7236",
+    "pci-ngfw-compliance":
+        "43a09a1962acebfc3720a97e5f4a288d0f4a9341aedf5c336b892f6c136cf09b",
+    "sd-onprem-proxmox-deploy":
+        "82b55fc4e5f96a9b9fee01dca2533f95109cfcb3b98b88b0839524eec78c4629",
+    "soc2-ngfw-compliance":
+        "2d7c045877c37220a6447234844512d594e16b41f0b905c9aa725b10291fceea",
+    "srx-advpn":
+        "f4f36efedd495e6866cd0d4812aa2876e58a7cc2018c3fcbceb904f7d4847837",
+    "srx-autovpn-full-tunnel":
+        "5fc2245ccf43ca81f36094e397531f09be9a70ee18d4c3ab711df92b36e18ff6",
+    "srx-dynamic-ip-feed":
+        "3936a0b697b471ce07db4f245c713345137ea5b839b631ce695c3211bb4f3a77",
+    "srx-ipsec-hub-spoke":
+        "3e4e0a5f725b58c2d287835690a4d554242ceb7bea3d0e9eb52e6ecbf6129156",
+    "srx-mnha":
+        "fc6211bafd7849792651d77ae7616dab7a025481514eefe288ad35072bf671d9",
+    "srx-mpls-in-flow":
+        "786dcf2196762dd1c2fb463dca1492ebf264ef671a352f6b8b74aa4c8b03c240",
+    "srx-nat":
+        "b656fabb08f40dcbb609cc04f549dc7682a7ce527bd5b9858d7f085fef5b1601",
+    "srx-policy":
+        "bd080b00c35715d741793dc364fcb682f14f70fedcb294f22e802f7f9b1a288e",
+}
 
 # Appendix A intentionally uses compact "ask when ..." fragments for these
 # rows while their exact serialized catalog sentences include the article.
@@ -151,7 +201,7 @@ SAFE_FIRST_LABELS = {
     ("sd-onprem-proxmox-deploy", "sd_media"):
         "Verify media first (Recommended)",
     ("sd-onprem-proxmox-deploy", "sd_proxmox"):
-        "Inspect/select values (Recommended)",
+        "Inspect state first (Recommended)",
     ("sd-onprem-proxmox-deploy", "sd_network"):
         "Map network first (Recommended)",
     ("sd-onprem-proxmox-deploy", "sd_services"):
@@ -215,7 +265,7 @@ SAFE_FIRST_LABELS = {
     ("srx-nat", "nat_tuple"):
         "Trace tuple first (Recommended)",
     ("srx-nat", "nat_context"):
-        "Inspect context first (Recommended)",
+        "Inspect full context first (Recommended)",
     ("srx-nat", "nat_reach"):
         "Trace reachability first (Recommended)",
     ("srx-nat", "nat_return"):
@@ -239,14 +289,14 @@ EXACT_OPTION_LABELS = {
         "Approved live collection",
     ),
     ("sd-onprem-proxmox-deploy", "sd_stage"): (
-        "Plan/dry-run (Recommended)",
-        "Prepare fresh deployment",
-        "Troubleshoot existing",
+        "Inspect stage first (Recommended)",
+        "Plan supplied fresh deployment",
+        "Troubleshoot supplied deployment",
     ),
     ("sd-onprem-proxmox-deploy", "sd_proxmox"): (
-        "Inspect/select values (Recommended)",
-        "Use supplied new-VM values",
-        "Validate existing VM",
+        "Inspect state first (Recommended)",
+        "Plan supplied new VM",
+        "Assess supplied existing VM",
     ),
     ("srx-advpn", "advpn_evidence"): (
         "Inventory evidence (Recommended)",
@@ -263,20 +313,25 @@ EXACT_OPTION_LABELS = {
         "Use supplied endpoint",
         "Design new endpoint",
     ),
+    ("srx-dynamic-ip-feed", "dif_auth"): (
+        "Verify endpoint first (Recommended)",
+        "Use supplied mutual TLS",
+        "Use supplied basic auth",
+    ),
     ("srx-ipsec-hub-spoke", "hsvpn_evidence"): (
         "Inventory evidence (Recommended)",
         "Use supplied artifacts",
         "Approved live collection",
     ),
     ("srx-mnha", "mnha_service"): (
-        "Firewall/NAT only (Recommended)",
-        "Firewall/NAT plus IPsec",
-        "Advanced/mixed bundle",
+        "Inventory services first (Recommended)",
+        "Use supplied core-only bundle",
+        "Use supplied core-plus-IPsec",
     ),
     ("srx-mpls-in-flow", "mpls_service"): (
-        "Base policy only (Recommended)",
-        "Base plus app/NAT",
-        "Full inspection stack",
+        "Confirm services first (Recommended)",
+        "Use supplied base-only bundle",
+        "Use supplied enhanced bundle",
     ),
     ("srx-nat", "nat_family"): (
         "Identify family first (Recommended)",
@@ -288,22 +343,56 @@ EXACT_OPTION_LABELS = {
         "Use supplied artifacts",
         "Approved live collection",
     ),
+    ("srx-nat", "nat_context"): (
+        "Inspect full context first (Recommended)",
+        "Use supplied complete context",
+        "Stop pending context",
+    ),
     ("srx-policy", "policy_service"): (
-        "Base policy only (Recommended)",
-        "Base plus app/NAT",
-        "Full inspection stack",
+        "Confirm services first (Recommended)",
+        "Use supplied base-only bundle",
+        "Use supplied enhanced bundle",
     ),
     ("srx-policy", "policy_ip"): (
-        "Dual-stack unicast (Recommended)",
-        "IPv4-only unicast",
-        "Unicast plus special",
+        "Dual-stack (Recommended)",
+        "IPv4 only",
+        "IPv6 only",
     ),
     ("srx-policy", "policy_session"): (
         "Leave existing sessions (Recommended)",
         "Clear targeted sessions",
         "Maintenance-window reset",
     ),
+    ("hipaa-ngfw-compliance", "hipaa_role"): (
+        "Confirm responsibility (Recommended)",
+        "Use supplied single-role scope",
+        "Use supplied combined scope",
+    ),
+    ("soc2-ngfw-compliance", "soc2_vendor"): (
+        "Inventory vendors first (Recommended)",
+        "Use supplied uniform treatment",
+        "Use supplied mixed treatment",
+    ),
 }
+
+
+class DuplicateJSONKeyError(ValueError):
+    """Raised when a package catalog repeats a JSON member name."""
+
+    def __init__(self, key: str) -> None:
+        super().__init__(key)
+        self.key = key
+
+
+def object_with_unique_keys(
+    pairs: list[tuple[str, object]],
+) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise DuplicateJSONKeyError(key)
+        result[key] = value
+    return result
 
 
 def sentence(value: str) -> str:
@@ -312,8 +401,26 @@ def sentence(value: str) -> str:
     return value[:1].upper() + value[1:] + "."
 
 
+def normalize_markdown_row(raw_row: str) -> str:
+    """Join Markdown-wrapped lines without collapsing same-line whitespace."""
+    return " ".join(line.strip() for line in raw_row.splitlines())
+
+
+def reject_noncanonical_whitespace(
+    skill: str,
+    question_id: str,
+    field_name: str,
+    value: str,
+) -> None:
+    if "\t" in value or "  " in value:
+        raise ValueError(
+            f"{PLAN_PATH}: {skill}/{question_id} noncanonical whitespace "
+            f"in {field_name}"
+        )
+
+
 def parse_plan_row(skill: str, question_id: str, raw_row: str) -> dict[str, object]:
-    flat_row = " ".join(raw_row.split())
+    flat_row = normalize_markdown_row(raw_row)
     match = PLAN_ROW_CONTENT_RE.fullmatch(flat_row)
     if not match:
         raise ValueError(
@@ -328,6 +435,26 @@ def parse_plan_row(skill: str, question_id: str, raw_row: str) -> dict[str, obje
         )
 
     ask_when = match.group("ask_when")
+    for field_name in ("ask_when", "header", "question"):
+        reject_noncanonical_whitespace(
+            skill,
+            question_id,
+            field_name,
+            match.group(field_name),
+        )
+    for option in option_matches:
+        reject_noncanonical_whitespace(
+            skill,
+            question_id,
+            "label",
+            option.group("label"),
+        )
+        reject_noncanonical_whitespace(
+            skill,
+            question_id,
+            "description",
+            option.group("description"),
+        )
     if (skill, question_id) in PLAN_ASK_WHEN_THE_IDS:
         ask_when = f"the {ask_when}"
 
@@ -354,8 +481,31 @@ def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
     sections = list(PLAN_SECTION_RE.finditer(appendix))
     catalogs: dict[str, list[dict[str, object]]] = {}
 
+    seen_skills: set[str] = set()
+    for section in sections:
+        skill = section.group("skill")
+        if skill in seen_skills:
+            raise ValueError(
+                f"{PLAN_PATH}: duplicate Appendix A skill section {skill!r}"
+            )
+        seen_skills.add(skill)
+    if len(sections) != len(EXPECTED_SKILLS):
+        raise ValueError(
+            f"{PLAN_PATH}: expected exactly {len(EXPECTED_SKILLS)} Appendix A "
+            f"sections, found {len(sections)}"
+        )
+
     for index, section in enumerate(sections):
         skill = section.group("skill")
+        section_number = int(section.group("number"))
+        expected_number = index + 1
+        expected_skill = EXPECTED_SKILLS[index]
+        if section_number != expected_number or skill != expected_skill:
+            raise ValueError(
+                f"{PLAN_PATH}: expected Appendix A.{expected_number} "
+                f"`{expected_skill}`, found Appendix A.{section_number} "
+                f"`{skill}`"
+            )
         body_end = (
             sections[index + 1].start() if index + 1 < len(sections) else len(appendix)
         )
@@ -373,11 +523,6 @@ def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
                 parse_plan_row(skill, row.group("id"), raw_row)
             )
 
-    if tuple(catalogs) != EXPECTED_SKILLS:
-        raise ValueError(
-            f"{PLAN_PATH}: expected Appendix A skills {EXPECTED_SKILLS!r}, "
-            f"found {tuple(catalogs)!r}"
-        )
     return catalogs
 
 
@@ -390,7 +535,14 @@ def parse_reference_catalogs() -> dict[str, list[dict[str, object]]]:
         if len(matches) != 1:
             raise ValueError(f"{path}: expected exactly one JSON catalog")
         try:
-            payload = json.loads(matches[0].group("payload"))
+            payload = json.loads(
+                matches[0].group("payload"),
+                object_pairs_hook=object_with_unique_keys,
+            )
+        except DuplicateJSONKeyError as exc:
+            raise ValueError(
+                f"{path}: duplicate JSON object key {exc.key!r}"
+            ) from exc
         except json.JSONDecodeError as exc:
             raise ValueError(f"{path}: invalid JSON catalog: {exc}") from exc
         questions = payload.get("questions") if isinstance(payload, dict) else None
@@ -410,6 +562,22 @@ def build_question_index(
             if isinstance(question_id, str):
                 index.setdefault((skill, question_id), []).append(question)
     return index
+
+
+def catalog_sha256(questions: list[dict[str, object]]) -> str:
+    canonical = json.dumps(
+        questions,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def plural(count: int, singular: str, plural_form: str | None = None) -> str:
+    if count == 1:
+        return singular
+    return plural_form or f"{singular}s"
 
 
 def equality_error(
@@ -468,6 +636,13 @@ def main() -> int:
         reference_questions = reference_catalogs[skill]
         if plan_questions != reference_questions:
             errors.append(equality_error(skill, plan_questions, reference_questions))
+        actual_digest = catalog_sha256(reference_questions)
+        expected_digest = EXPECTED_CATALOG_SHA256[skill]
+        if actual_digest != expected_digest:
+            errors.append(
+                f"{skill}: canonical catalog digest mismatch "
+                f"{actual_digest!r}; expected {expected_digest!r}"
+            )
 
     for (skill, question_id), expected_label in SAFE_FIRST_LABELS.items():
         if skill not in selected_skills:
@@ -515,11 +690,19 @@ def main() -> int:
     if errors:
         return 1
 
-    scoped = f" for {args.skill}" if args.skill else ""
+    selected_count = len(selected_skills)
+    safe_count = sum(
+        skill in selected_skills for skill, _question_id in SAFE_FIRST_LABELS
+    )
+    tuple_count = sum(
+        skill in selected_skills for skill, _question_id in EXACT_OPTION_LABELS
+    )
     print(
-        f"OK: {len(EXPECTED_SKILLS)} plan/reference catalogs{scoped}; "
-        f"{len(SAFE_FIRST_LABELS)} safe defaults; "
-        f"{len(EXACT_OPTION_LABELS)} exact option tuples"
+        f"OK: {selected_count} selected plan/reference "
+        f"{plural(selected_count, 'catalog')}; parsed all "
+        f"{len(EXPECTED_SKILLS)} catalogs and resolved all manifest keys; "
+        f"{safe_count} {plural(safe_count, 'safe default')}; "
+        f"{tuple_count} exact {plural(tuple_count, 'option tuple')}"
     )
     return 0
 

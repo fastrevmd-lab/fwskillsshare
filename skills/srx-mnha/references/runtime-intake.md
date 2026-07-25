@@ -127,19 +127,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mnha_service",
       "ask_when": "Stateful service scope is absent.",
       "header": "Services",
-      "question": "Which stateful service bundle must survive failover?",
+      "question": "How should unspecified failover-service scope be resolved?",
       "options": [
         {
-          "label": "Firewall/NAT only (Recommended)",
-          "description": "Preserve core firewall sessions and NAT state."
+          "label": "Inventory services first (Recommended)",
+          "description": "Identify every required failover service before selecting a bundle."
         },
         {
-          "label": "Firewall/NAT plus IPsec",
-          "description": "Also preserve tunnel ownership and rekey behavior."
+          "label": "Use supplied core-only bundle",
+          "description": "Use the supplied firewall and NAT failover scope without IPsec or advanced services."
         },
         {
-          "label": "Advanced/mixed bundle",
-          "description": "Include supplied DHCP or advanced security-service requirements."
+          "label": "Use supplied core-plus-IPsec",
+          "description": "Use firewall and NAT plus the complete supplied IPsec failover scope and specify advanced combinations through Other."
         }
       ]
     },

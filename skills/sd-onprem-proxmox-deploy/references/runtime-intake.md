@@ -27,11 +27,11 @@ platform or framework basis, evidence quality, then output preference.
       "id": "sd_stage",
       "ask_when": "The deployment stage is absent.",
       "header": "Stage",
-      "question": "What deployment workflow should be used?",
+      "question": "How should an unspecified deployment stage be resolved?",
       "options": [
-        {"label": "Plan/dry-run (Recommended)", "description": "Validate prerequisites and produce a non-executing plan."},
-        {"label": "Prepare fresh deployment", "description": "Prepare candidate commands for a new appliance."},
-        {"label": "Troubleshoot existing", "description": "Diagnose an existing deployment."}
+        {"label": "Inspect stage first (Recommended)", "description": "Inspect deployment evidence to distinguish planning, fresh deployment, and troubleshooting before choosing a workflow."},
+        {"label": "Plan supplied fresh deployment", "description": "Plan from a supplied fresh-deployment stage without executing changes."},
+        {"label": "Troubleshoot supplied deployment", "description": "Diagnose a supplied existing deployment without assuming a fresh state."}
       ]
     },
     {
@@ -71,11 +71,11 @@ platform or framework basis, evidence quality, then output preference.
       "id": "sd_proxmox",
       "ask_when": "VM placement values are incomplete.",
       "header": "Proxmox",
-      "question": "How should incomplete Proxmox placement values be handled?",
+      "question": "How should incomplete Proxmox VM state be resolved?",
       "options": [
-        {"label": "Inspect/select values (Recommended)", "description": "Inspect capacity read-only and select missing VM placement values."},
-        {"label": "Use supplied new-VM values", "description": "Use supplied VMID, node, storage, bridge, and resources."},
-        {"label": "Validate existing VM", "description": "Inspect a supplied existing VM against deployment requirements."}
+        {"label": "Inspect state first (Recommended)", "description": "Inspect Proxmox and VM evidence read-only before choosing a new-VM or existing-VM workflow."},
+        {"label": "Plan supplied new VM", "description": "Plan with supplied VMID, node, storage, bridge, and resource values for a new VM."},
+        {"label": "Assess supplied existing VM", "description": "Assess a supplied existing VM against deployment requirements."}
       ]
     },
     {

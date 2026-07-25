@@ -641,6 +641,8 @@ lint:
     python3 scripts/check-skill-packages.py
     python3 scripts/test-runtime-intake-validator.py
     python3 scripts/check-runtime-intake.py
+    python3 scripts/check-runtime-intake-safety.py
+    python3 scripts/test-runtime-intake-safety.py
     python3 scripts/check-readme-branding.py
 ```
 
@@ -739,11 +741,27 @@ traffic. Use the free-text `Other` path for exact values. End every serialized
 description with a period.
 
 **Task 28 final-review audit:** `scripts/check-runtime-intake-safety.py` parses
-all Appendix A rows and all package JSON catalogs, requires exact per-skill
-question-object content and order, and locks the audited safe first labels and
-single-axis option tuples. Update each Appendix row and its package JSON object
-together, then require both focused validators to pass before moving to the
-next independently installable skill.
+all Appendix A rows and all package JSON catalogs. It rejects duplicate
+Appendix sections, incorrect A.1 through A.22 number/name pairings, duplicate
+package JSON members, and noncanonical same-line tabs or doubled spaces in
+Appendix question fields. It requires exact per-skill question-object equality
+and locks all 22 complete catalog contents and question order with canonical
+SHA-256 digests, in addition to the audited 62 safe first labels and 18
+single-axis option tuples.
+
+The optional skill argument limits equality, digest, safe-default, and
+option-tuple assertions to the selected package, while every focused run still
+parses all 22 plan and package catalogs and resolves all manifest keys.
+Focused output must distinguish those whole-corpus checks from selected
+assertion counts. `scripts/test-runtime-intake-safety.py`, run immediately
+after the checker in `just lint`, uses temporary files and the real parser to
+cover the ten audited semantic IDs, duplicate and numbering failures,
+same-line question/label/description whitespace, focused output counts,
+complete digest coverage, and synchronized content and order mutation.
+
+Update each Appendix row and its package JSON object together, then require
+both focused validators to pass before moving to the next independently
+installable skill.
 
 ### A.1 `cis-controls-ngfw-compliance`
 
@@ -930,9 +948,10 @@ next independently installable skill.
 - `hipaa_role`; header `Org Role`; ask when HIPAA organizational role is
   absent; question `How should an unspecified HIPAA responsibility be
   handled?`; options: `Confirm responsibility (Recommended)` — Establish the
-  organization's HIPAA responsibility before assigning safeguards; `Assess
-  covered entity` — Use a supplied covered-entity responsibility; `Assess
-  business associate` — Use a supplied business-associate responsibility.
+  organization's HIPAA responsibility before assigning safeguards; `Use
+  supplied single-role scope` — Use one exact supplied covered-entity or
+  business-associate role from Other; `Use supplied combined scope` — Assess the
+  supplied combined covered-entity and business-associate scope.
 - `hipaa_goal`; header `Goal`; ask when review purpose is absent; question `What
   is the purpose of this HIPAA review?`; options: `Risk assessment
   (Recommended)` — Identify ePHI risks and remediation; `Audit evidence` —
@@ -1147,10 +1166,12 @@ next independently installable skill.
 ### A.13 `sd-onprem-proxmox-deploy`
 
 - `sd_stage`; header `Stage`; ask when deployment stage is absent; question
-  `What deployment workflow should be used?`; options: `Plan/dry-run
-  (Recommended)` — Validate prerequisites and produce a non-executing plan;
-  `Prepare fresh deployment` — Prepare candidate commands for a new appliance;
-  `Troubleshoot existing` — Diagnose an existing deployment.
+  `How should an unspecified deployment stage be resolved?`; options: `Inspect
+  stage first (Recommended)` — Inspect deployment evidence to distinguish
+  planning, fresh deployment, and troubleshooting before choosing a workflow;
+  `Plan supplied fresh deployment` — Plan from a supplied fresh-deployment stage
+  without executing changes; `Troubleshoot supplied deployment` — Diagnose a
+  supplied existing deployment without assuming a fresh state.
 - `sd_release`; header `Release`; ask when exact SD On-Prem release is absent;
   question `How should missing Security Director release details be handled?`;
   options: `Discover first (Recommended)` — Identify the exact release and
@@ -1169,11 +1190,12 @@ next independently installable skill.
   `Known flavor` — Use a flavor supplied through Other; `Need sizing` — Collect
   device, log, retention, and growth requirements.
 - `sd_proxmox`; header `Proxmox`; ask when VM placement values are incomplete;
-  question `How should incomplete Proxmox placement values be handled?`;
-  options: `Inspect/select values (Recommended)` — Inspect capacity read-only
-  and select missing VM placement values; `Use supplied new-VM values` — Use
-  supplied VMID, node, storage, bridge, and resources; `Validate existing VM` —
-  Inspect a supplied existing VM against deployment requirements.
+  question `How should incomplete Proxmox VM state be resolved?`; options:
+  `Inspect state first (Recommended)` — Inspect Proxmox and VM evidence
+  read-only before choosing a new-VM or existing-VM workflow; `Plan supplied new
+  VM` — Plan with supplied VMID, node, storage, bridge, and resource values for
+  a new VM; `Assess supplied existing VM` — Assess a supplied existing VM
+  against deployment requirements.
 - `sd_network`; header `Network`; ask when IP, route, or internal CIDR values are
   incomplete; question `How should incomplete IP and routing values be
   handled?`; options: `Map network first (Recommended)` — Identify required
@@ -1229,10 +1251,11 @@ next independently installable skill.
 - `soc2_vendor`; header `Providers`; ask when subservice organization treatment
   is unclear; question `How should uncertain subservice-organization treatment
   be handled?`; options: `Inventory vendors first (Recommended)` — Identify
-  subservice organizations and governance decisions before assessment; `Use
-  supplied carve-out` — Apply a supplied carve-out method and identify
-  complementary controls; `Use supplied inclusive` — Apply a supplied inclusive
-  method and include provider evidence.
+  subservice organizations and per-vendor governance decisions before
+  assessment; `Use supplied uniform treatment` — Apply one supplied carve-out or
+  inclusive method consistently across all vendors; `Use supplied mixed
+  treatment` — Apply supplied per-vendor carve-out and inclusive treatments and
+  document each boundary.
 - `soc2_output`; header `Output`; ask when deliverable is absent; question `What
   deliverable should be emphasized?`; options: `Control matrix (Recommended)` —
   Provide criteria mapping, evidence, gaps, and remediation; `Evidence request`
@@ -1362,11 +1385,12 @@ next independently installable skill.
   non-production.
 - `dif_auth`; header `Feed Auth`; ask when feed authentication method is absent
   or unclear; question `How should uncertain feed authentication be handled?`;
-  options: `Verify endpoint first (Recommended)` — Inspect endpoint
-  requirements and certificate behavior before selecting authentication;
-  `Mutual TLS` — Use client certificates through approved secret delivery;
-  `Basic or none` — Apply a supplied basic-auth or no-extra-auth requirement
-  while keeping credentials outside chat.
+  options: `Verify endpoint first (Recommended)` — Verify endpoint requirements
+  before selecting authentication and risk-classify explicit no-extra-auth
+  requests supplied through Other; `Use supplied mutual TLS` — Use supplied
+  client-certificate requirements through approved secret delivery; `Use
+  supplied basic auth` — Use supplied basic-auth requirements while keeping
+  credentials outside chat.
 - `dif_route`; header `Routing`; ask when feed-server routing context is absent;
   question `How should an unknown feed-server route be handled?`; options:
   `Trace route first (Recommended)` — Collect route, DNS, source, and connection
@@ -1462,11 +1486,13 @@ next independently installable skill.
   matched interfaces and direct links; `Assess supplied asymmetric map` —
   Include supplied inter-cluster data paths and asymmetry.
 - `mnha_service`; header `Services`; ask when stateful service scope is absent;
-  question `Which stateful service bundle must survive failover?`; options:
-  `Firewall/NAT only (Recommended)` — Preserve core firewall sessions and NAT
-  state; `Firewall/NAT plus IPsec` — Also preserve tunnel ownership and rekey
-  behavior; `Advanced/mixed bundle` — Include supplied DHCP or advanced
-  security-service requirements.
+  question `How should unspecified failover-service scope be resolved?`;
+  options: `Inventory services first (Recommended)` — Identify every required
+  failover service before selecting a bundle; `Use supplied core-only bundle` —
+  Use the supplied firewall and NAT failover scope without IPsec or advanced
+  services; `Use supplied core-plus-IPsec` — Use firewall and NAT plus the
+  complete supplied IPsec failover scope and specify advanced combinations
+  through Other.
 - `mnha_route`; header `Routing`; ask when upstream failover signaling is
   absent; question `How will upstream failover be signaled?`; options: `Dynamic
   routing (Recommended)` — Use supported routing and fast detection; `Static or
@@ -1524,11 +1550,13 @@ next independently installable skill.
   zone` — Preserve existing zone design where supported; `Need validation` —
   Select after release checks.
 - `mpls_service`; header `Services`; ask when inspection services are absent;
-  question `Which security-service bundle should apply to MPLS traffic?`;
-  options: `Base policy only (Recommended)` — Apply stateful policy and logging
-  without added services; `Base plus app/NAT` — Add supplied application or NAT
-  requirements; `Full inspection stack` — Include supplied IPS or advanced
-  services with capacity validation.
+  question `How should unspecified security-service scope be handled?`;
+  options: `Confirm services first (Recommended)` — Inventory application, NAT,
+  inspection, license, and capacity requirements before selecting a bundle;
+  `Use supplied base-only bundle` — Apply supplied stateful policy and logging
+  without added services; `Use supplied enhanced bundle` — Use a complete
+  supplied application, NAT, and inspection list after license and capacity
+  validation.
 
 ### A.21 `srx-nat`
 
@@ -1559,11 +1587,12 @@ next independently installable skill.
   fields.
 - `nat_context`; header `Context`; ask when zone, interface, or routing-instance
   classification is unclear; question `How should uncertain traffic
-  classification be handled?`; options: `Inspect context first (Recommended)` —
-  Trace ingress, egress, zones, interfaces, and routing instances before rule
-  selection; `Use supplied zone context` — Apply supplied zone and interface
-  classification; `Use supplied routing context` — Apply supplied
-  routing-instance classification.
+  classification be handled?`; options: `Inspect full context first
+  (Recommended)` — Inspect complementary zone, interface, and routing-instance
+  facts before rule selection; `Use supplied complete context` — Apply the
+  supplied complete zone, interface, and routing-instance classification; `Stop
+  pending context` — Stop rule conclusions until all complementary
+  classification facts are supplied.
 - `nat_reach`; header `Reachability`; ask when translated-address reachability
   is unclear; question `How should uncertain translated-address reachability be
   handled?`; options: `Trace reachability first (Recommended)` — Validate
@@ -1616,17 +1645,19 @@ next independently installable skill.
   `Model supplied no-NAT` — Use supplied original addresses and routing without
   translation.
 - `policy_service`; header `Services`; ask when inspection services are absent;
-  question `Which security-service bundle should policy apply?`; options: `Base
-  policy only (Recommended)` — Apply least privilege and logging without added
-  services; `Base plus app/NAT` — Add supplied application or NAT requirements;
-  `Full inspection stack` — Include supplied licensed UTM, NGFW, ATP, or IPS
-  requirements.
+  question `How should unspecified security-service scope be handled?`;
+  options: `Confirm services first (Recommended)` — Inventory application, NAT,
+  inspection, license, and capacity requirements before selecting a bundle;
+  `Use supplied base-only bundle` — Apply supplied least privilege and logging
+  without added services; `Use supplied enhanced bundle` — Use a complete
+  supplied application, NAT, and inspection list after license and capacity
+  validation.
 - `policy_ip`; header `IP Family`; ask when address-family scope is absent;
-  question `Which traffic-scope bundle should policy cover?`; options:
-  `Dual-stack unicast (Recommended)` — Evaluate IPv4 and IPv6 unicast controls;
-  `IPv4-only unicast` — Limit policy to IPv4 unicast and report IPv6 exposure;
-  `Unicast plus special` — Add supplied multicast, discovery, or control-plane
-  requirements to unicast scope.
+  question `Which address families should policy cover?`; options: `Dual-stack
+  (Recommended)` — Cover IPv4 and IPv6 unicast and specify multicast or
+  control-plane scope through Other; `IPv4 only` — Cover only IPv4 unicast and
+  specify special traffic scope through Other; `IPv6 only` — Cover only IPv6
+  unicast and specify special traffic scope through Other.
 - `policy_session`; header `Sessions`; ask when existing-session behavior
   matters and is absent; question `How should existing sessions be treated
   after a policy change?`; options: `Leave existing sessions (Recommended)` —

@@ -34,12 +34,12 @@ platform or framework basis, evidence quality, then output preference.
           "description": "Establish the organization's HIPAA responsibility before assigning safeguards."
         },
         {
-          "label": "Assess covered entity",
-          "description": "Use a supplied covered-entity responsibility."
+          "label": "Use supplied single-role scope",
+          "description": "Use one exact supplied covered-entity or business-associate role from Other."
         },
         {
-          "label": "Assess business associate",
-          "description": "Use a supplied business-associate responsibility."
+          "label": "Use supplied combined scope",
+          "description": "Assess the supplied combined covered-entity and business-associate scope."
         }
       ]
     },
