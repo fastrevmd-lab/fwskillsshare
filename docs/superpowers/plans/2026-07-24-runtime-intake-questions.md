@@ -482,23 +482,33 @@ def mask_inactive_markdown(text: str) -> str:
 
     for line in text.splitlines(keepends=True):
         if fence_character is not None:
-            closing_candidate = (
-                line[fence_container_indent:]
-                if line.startswith(" " * fence_container_indent)
-                else ""
+            list_container_ended = (
+                fence_container_indent > 0
+                and bool(line.strip(" \t\r\n"))
+                and not line.startswith(" " * fence_container_indent)
             )
-            fence_match = FENCE_LINE_RE.fullmatch(closing_candidate)
-            masked_lines.append(mask_non_newline_characters(line))
-            if (
-                fence_match is not None
-                and fence_match.group("fence")[0] == fence_character
-                and len(fence_match.group("fence")) >= fence_length
-                and not fence_match.group("rest").strip(" \t")
-            ):
+            if list_container_ended:
                 fence_character = None
                 fence_length = 0
                 fence_container_indent = 0
-            continue
+            else:
+                closing_candidate = (
+                    line[fence_container_indent:]
+                    if line.startswith(" " * fence_container_indent)
+                    else ""
+                )
+                fence_match = FENCE_LINE_RE.fullmatch(closing_candidate)
+                masked_lines.append(mask_non_newline_characters(line))
+                if (
+                    fence_match is not None
+                    and fence_match.group("fence")[0] == fence_character
+                    and len(fence_match.group("fence")) >= fence_length
+                    and not fence_match.group("rest").strip(" \t")
+                ):
+                    fence_character = None
+                    fence_length = 0
+                    fence_container_indent = 0
+                continue
 
         fence_match = FENCE_LINE_RE.fullmatch(line)
         list_fence_match = LIST_ITEM_FENCE_LINE_RE.fullmatch(line)
@@ -1073,12 +1083,18 @@ backtick or tilde fenced-code regions, including direct list-item fence
 openers, while preserving length, newline positions, and offsets. The separate
 list-item opener path permits zero to three spaces before `-`/`+`/`*` or an
 ordered marker of one to nine digits plus `.`/`)`, then one to four spaces. It
-captures the resulting continuation indentation so a list-item closer is
-checked by the unchanged ordinary fence matcher only after that exact prefix
-is removed. Prose with a later fence sequence, ten-digit ordered markers,
-four-space-indented markers, invalid marker spacing, and backtick info strings
-containing a backtick remain active rather than becoming fences. In that
-active-Markdown view the validator rejects every CommonMark 0.31.2 raw HTML
+captures the resulting continuation indentation. Blank lines remain masked
+inside the list fence without requiring that indentation. A nonblank line
+lacking the captured prefix implicitly ends the list container and its
+unclosed fence, then falls through for processing as an ordinary fence opener,
+comment, or active Markdown on the same iteration. There is no retry loop.
+Correctly indented list-item closers are checked by the unchanged ordinary
+fence matcher only after that exact prefix is removed; top-level unclosed
+fences still mask through end of file. Prose with a later fence sequence or
+ten-digit ordered marker, four-space-indented marker, invalid marker spacing,
+and backtick info strings containing a backtick remain active rather than
+becoming fences. In that active-Markdown view the validator rejects every
+CommonMark 0.31.2 raw HTML
 block opener family: case-insensitive type 1 `pre`, `script`, `style`, or
 `textarea` tags; processing instructions; declarations; CDATA; every type 6
 block tag with the specified tag-name boundary; and complete generic type 7
@@ -1101,7 +1117,11 @@ case, indentation, fenced raw syntax, and inline placeholders. List-container
 probes cover all bullet markers, both ordered delimiters, one- and nine-digit
 boundaries, one-to-four-space marker padding, correctly indented continuations
 and closers, all non-comment raw HTML families, offset preservation, invalid
-near-markers, and unchanged top-level closer behavior. Fenced decoys may
+near-markers, and unchanged top-level closer behavior. Container-boundary
+probes reject a deindented duplicate runtime section and active raw HTML,
+retain unindented blank lines, keep correctly indented content and closers
+masked, preserve top-level unclosed-fence behavior, and prove that sibling,
+ordinary-fence, and comment transitions are reprocessed. Fenced decoys may
 coexist with one active valid section. A masker probe locks CRLF
 length/newline/offset preservation, a positive probe permits whitespace-only
 variation, and the real-file test applies the same validator to all 22 skills.

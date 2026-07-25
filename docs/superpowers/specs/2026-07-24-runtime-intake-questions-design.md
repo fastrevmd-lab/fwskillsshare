@@ -229,9 +229,15 @@ For each skill, validate:
 - the validator then masks standard backtick or tilde fenced-code regions,
   including fences opened directly after a CommonMark list marker, without
   changing length, newline positions, or offsets; direct list-item openers
-  allow zero to three spaces before `-`/`+`/`*` or a one-to-nine-digit
-  `.`/`)` marker and one to four following spaces, and closing candidates are
-  evaluated only after removing that captured list continuation indentation;
+  allow zero to three spaces before `-`/`+`/`*` or a one-to-nine-digit ordered
+  marker ending in `.`/`)` and one to four following spaces;
+- blank lines remain inside an open list-item fence regardless of indentation;
+  a nonblank line lacking the captured list continuation indentation ends the
+  containing list item and its fence, then that same physical line is
+  reprocessed by the ordinary fence, comment, and active-Markdown path;
+- correctly indented list-fence closing candidates are evaluated only after
+  removing the captured continuation indentation; ordinary and top-level
+  unclosed-fence behavior remains unchanged;
 - ordinary fence closer recognition remains unchanged, invalid backtick info
   strings remain active, and prose with a later fence sequence, ten-digit
   ordered markers, four-space-indented markers, and invalid marker spacing do
@@ -259,10 +265,12 @@ For each skill, validate:
 - conservative ambiguity checks reject complete runtime regions hidden in HTML
   comments or any CommonMark raw HTML block family before heading discovery
   and cannot be bypassed with escaped or inline-code comment delimiters;
-  active-heading discovery rejects a complete region in a code fence, while
-  complete-section equality rejects inactive fence wrappers inside an active
-  section, extra or contradictory prose, missing approved text, and duplicate
-  active runtime sections while permitting whitespace-only variation;
+  active-heading discovery rejects a complete region in a code fence, while a
+  deindented duplicate runtime heading or raw HTML block after an unclosed
+  list-item fence remains active; complete-section equality rejects inactive
+  fence wrappers inside an active section, extra or contradictory prose,
+  missing approved text, and duplicate active runtime sections while
+  permitting whitespace-only variation;
 - the exact section retains secret safety and separate live-change approval
   and links to `references/runtime-intake.md`;
 - the reference contains the required headings and one parseable JSON catalog;

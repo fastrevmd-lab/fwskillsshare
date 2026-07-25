@@ -565,6 +565,125 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             [],
         )
 
+    def test_rejects_duplicate_runtime_section_after_list_fence_deindent(
+        self,
+    ) -> None:
+        mutant = (
+            f"{VALID_SKILL}\n"
+            "- ```markdown\n"
+            "  hidden list content\n"
+            "## Runtime intake\n\n"
+            "Runtime intake is optional.\n"
+        )
+        self.assert_skill_error(
+            mutant,
+            "expected exactly one '## Runtime intake' section",
+        )
+
+    def test_rejects_raw_html_after_list_fence_deindent(self) -> None:
+        mutant = (
+            f"{VALID_SKILL}\n"
+            "- ```html\n"
+            "  <pre>hidden list content</pre>\n"
+            "<div>active after list\n"
+        )
+        self.assert_skill_error(
+            mutant,
+            "raw HTML block syntax is not allowed",
+        )
+
+    def test_keeps_unindented_blank_lines_inside_list_fence(self) -> None:
+        source = (
+            "- ```html\r\n"
+            "  <div>\r\n"
+            "\r\n"
+            " \t\r\n"
+            "  </div>\r\n"
+            "  ```\r\n"
+            "Tail\r\n"
+        )
+        masked = VALIDATOR.mask_inactive_markdown(source)
+
+        self.assertEqual(len(masked), len(source))
+        self.assertEqual(
+            [index for index, char in enumerate(masked) if char in "\r\n"],
+            [index for index, char in enumerate(source) if char in "\r\n"],
+        )
+        self.assertNotIn("<div>", masked)
+        tail_offset = source.index("Tail")
+        self.assertEqual(masked[tail_offset : tail_offset + 4], "Tail")
+
+    def test_keeps_indented_list_fence_content_and_closer_masked(self) -> None:
+        source = (
+            "1. ~~~~html\n"
+            "   <runtime-wrapper>\n"
+            "      ~~~~\n"
+            "Tail\n"
+        )
+        masked = VALIDATOR.mask_inactive_markdown(source)
+
+        self.assertNotIn("<runtime-wrapper>", masked)
+        self.assertNotIn("~~~~html", masked)
+        tail_offset = source.index("Tail")
+        self.assertEqual(masked[tail_offset : tail_offset + 4], "Tail")
+
+    def test_top_level_unclosed_fence_still_masks_the_rest(self) -> None:
+        source = (
+            "```html\n"
+            "<div>\n"
+            "## Runtime intake\n"
+        )
+        masked = VALIDATOR.mask_inactive_markdown(source)
+
+        self.assertNotIn("<div>", masked)
+        self.assertNotIn("## Runtime intake", masked)
+
+    def test_reprocesses_sibling_line_after_list_fence_deindent(self) -> None:
+        source = (
+            "- ```text\n"
+            "  hidden\n"
+            "- sibling item\n"
+            "Tail\n"
+        )
+        masked = VALIDATOR.mask_inactive_markdown(source)
+
+        for active_text in ("- sibling item", "Tail"):
+            offset = source.index(active_text)
+            self.assertEqual(
+                masked[offset : offset + len(active_text)],
+                active_text,
+            )
+
+    def test_reprocesses_top_level_fence_after_list_fence_deindent(self) -> None:
+        source = (
+            "- ```text\n"
+            "  first fence\n"
+            "~~~html\n"
+            "<div>\n"
+            "~~~\n"
+            "Tail\n"
+        )
+        masked = VALIDATOR.mask_inactive_markdown(source)
+
+        self.assertNotIn("<div>", masked)
+        tail_offset = source.index("Tail")
+        self.assertEqual(masked[tail_offset : tail_offset + 4], "Tail")
+
+    def test_reprocesses_comment_after_list_fence_deindent(self) -> None:
+        source = (
+            "- ```text\n"
+            "  first fence\n"
+            "<!--\n"
+            "## hidden comment heading\n"
+            "-->\n"
+            "Tail\n"
+        )
+        masked = VALIDATOR.mask_inactive_markdown(source)
+
+        self.assertNotIn("## hidden comment heading", masked)
+        tail_offset = source.index("Tail")
+        self.assertEqual(masked[tail_offset : tail_offset + 4], "Tail")
+
     def test_allows_inline_placeholder_tags_in_prose(self) -> None:
         mutant = (
             f"{VALID_SKILL}\n"

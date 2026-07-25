@@ -323,23 +323,33 @@ def mask_inactive_markdown(text: str) -> str:
 
     for line in text.splitlines(keepends=True):
         if fence_character is not None:
-            closing_candidate = (
-                line[fence_container_indent:]
-                if line.startswith(" " * fence_container_indent)
-                else ""
+            list_container_ended = (
+                fence_container_indent > 0
+                and bool(line.strip(" \t\r\n"))
+                and not line.startswith(" " * fence_container_indent)
             )
-            fence_match = FENCE_LINE_RE.fullmatch(closing_candidate)
-            masked_lines.append(mask_non_newline_characters(line))
-            if (
-                fence_match is not None
-                and fence_match.group("fence")[0] == fence_character
-                and len(fence_match.group("fence")) >= fence_length
-                and not fence_match.group("rest").strip(" \t")
-            ):
+            if list_container_ended:
                 fence_character = None
                 fence_length = 0
                 fence_container_indent = 0
-            continue
+            else:
+                closing_candidate = (
+                    line[fence_container_indent:]
+                    if line.startswith(" " * fence_container_indent)
+                    else ""
+                )
+                fence_match = FENCE_LINE_RE.fullmatch(closing_candidate)
+                masked_lines.append(mask_non_newline_characters(line))
+                if (
+                    fence_match is not None
+                    and fence_match.group("fence")[0] == fence_character
+                    and len(fence_match.group("fence")) >= fence_length
+                    and not fence_match.group("rest").strip(" \t")
+                ):
+                    fence_character = None
+                    fence_length = 0
+                    fence_container_indent = 0
+                continue
 
         fence_match = FENCE_LINE_RE.fullmatch(line)
         list_fence_match = LIST_ITEM_FENCE_LINE_RE.fullmatch(line)
