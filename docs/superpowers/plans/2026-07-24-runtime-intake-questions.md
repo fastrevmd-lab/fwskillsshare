@@ -232,6 +232,10 @@ FENCE_LINE_RE = re.compile(
     r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
     r"(?P<ending>\r\n|\n|\r)?\Z"
 )
+RAW_HTML_TYPE1_LINE_RE = re.compile(
+    r"^ {0,3}</?(?:pre|script|style|textarea)(?=[ \t>]|\r?$)",
+    re.IGNORECASE | re.MULTILINE,
+)
 INVOCATION_CLAUSE = (
     "For each unresolved material fact whose catalog condition is true, invoke "
     "Claude `AskUserQuestion` or Codex `request_user_input` before continuing "
@@ -409,7 +413,20 @@ def extract_runtime_section(path: Path, text: str) -> tuple[str | None, list[str
     return text[start:end], []
 
 
+def validate_ambiguous_markup(path: Path, text: str) -> list[str]:
+    errors: list[str] = []
+    if "<!--" in text or "-->" in text:
+        errors.append(f"{path}: HTML comment delimiters are not allowed")
+    if RAW_HTML_TYPE1_LINE_RE.search(text):
+        errors.append(f"{path}: raw HTML type-1 block tags are not allowed")
+    return errors
+
+
 def validate_skill(path: Path, text: str) -> list[str]:
+    markup_errors = validate_ambiguous_markup(path, text)
+    if markup_errors:
+        return markup_errors
+
     runtime_section, errors = extract_runtime_section(path, text)
     if runtime_section is None:
         return errors
@@ -924,21 +941,26 @@ most three single-select catalog questions. After every response, another round
 is required whenever any unresolved material catalog condition remains true;
 the workflow continues only when none remain. A plain-text fallback preserves
 each selected question's 2-3 labeled choices and free-text `Other` path and
-must not substitute a generic checklist. The structural validator first masks
-HTML comments and standard backtick or tilde fenced-code regions while
-preserving length, newline positions, and offsets. It discovers the single
-runtime heading and following section heading only in that active-Markdown
-view, slices the original section by the preserved offsets, normalizes
-whitespace, selects the approved standard or skill-specific compact template by
-skill path, and requires equality across the complete section. Validator-API
-mutation probes reject discretionary invocation, open-ended native questions, a
-one-summary fallback, contract clauses outside the runtime section, a complete
-runtime region hidden in a multiline comment or either fence form, inactive
-decoy headings, inactive wrappers inside an active section, contradictory
-trailing prose, missing approved text, and duplicate active runtime sections.
-A masker probe locks CRLF length/newline/offset preservation, a positive probe
-permits whitespace-only variation, and the real-file test applies the same
-validator to all 22 skills.
+must not substitute a generic checklist. Before heading extraction, the
+structural validator conservatively rejects either literal HTML comment
+delimiter anywhere in `SKILL.md`, including escaped and inline-code forms, and
+rejects case-insensitive raw HTML type-1 `pre`, `script`, `style`, or `textarea`
+opener/closer lines indented by up to three spaces. It then masks standard
+backtick or tilde fenced-code regions while preserving length, newline
+positions, and offsets. It discovers the single runtime heading and following
+section heading only in that active-Markdown view, slices the original section
+by the preserved offsets, normalizes whitespace, selects the approved standard
+or skill-specific compact template by skill path, and requires equality across
+the complete section. Validator-API mutation probes reject discretionary
+invocation, open-ended native questions, a one-summary fallback, contract
+clauses outside the runtime section, complete runtime regions hidden in a
+comment, raw HTML type-1 block, or either fence form, HTML-comment decoys,
+escaped and inline-code comment delimiters, fence wrappers around a complete
+region, inactive wrappers inside an active section, contradictory trailing
+prose, missing approved text, and duplicate active runtime sections. Fenced
+decoys may coexist with one active valid section. A masker probe locks CRLF
+length/newline/offset preservation, a positive probe permits whitespace-only
+variation, and the real-file test applies the same validator to all 22 skills.
 
 The optional skill argument limits equality, digest, safe-default, and
 option-tuple assertions to the selected package, while every focused run still

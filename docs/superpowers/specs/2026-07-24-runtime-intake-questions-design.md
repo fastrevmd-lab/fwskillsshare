@@ -223,11 +223,16 @@ For each skill, validate:
 - `SKILL.md` contains a `## Runtime intake` section;
 - the section names Claude `AskUserQuestion` and Codex
   `request_user_input`;
-- before section extraction, the validator masks HTML comments and standard
-  backtick or tilde fenced-code regions without changing length, newline
-  positions, or offsets; runtime and following section headings are discovered
-  only in that active-Markdown mask, then the original section is sliced by the
-  preserved offsets;
+- before section extraction, the validator conservatively rejects either HTML
+  comment delimiter (`<!--` or `-->`) anywhere in `SKILL.md`, including escaped
+  text and inline code, and rejects case-insensitive raw HTML type-1
+  `pre`/`script`/`style`/`textarea` opener or closer lines indented by zero to
+  three spaces;
+- only after those ambiguity checks, the validator masks standard backtick or
+  tilde fenced-code regions without changing length, newline positions, or
+  offsets; runtime and following section headings are discovered only in that
+  active-Markdown mask, then the original section is sliced by the preserved
+  offsets;
 - the section-scoped validator normalizes whitespace across that complete
   original section and requires equality to the approved standard template or
   the skill-selected `srx-mnha`/`srx-policy` compact template;
@@ -238,11 +243,13 @@ For each skill, validate:
   and no-full-catalog behavior, preserves each selected question's 2-3 labeled
   choices and free-text `Other` in plain-text fallback, and forbids
   generic-checklist substitution;
-- active-heading discovery rejects a complete runtime section, including its
-  heading and following section heading, when hidden in an HTML comment or code
-  fence; complete-section equality also rejects inactive wrappers inside an
-  active section, extra or contradictory prose, missing approved text, and
-  duplicate active runtime sections while permitting whitespace-only variation;
+- conservative ambiguity checks reject complete runtime regions hidden in HTML
+  comments or raw HTML type-1 blocks before heading discovery and cannot be
+  bypassed with escaped or inline-code comment delimiters; active-heading
+  discovery rejects a complete region in a code fence, while complete-section
+  equality rejects inactive fence wrappers inside an active section, extra or
+  contradictory prose, missing approved text, and duplicate active runtime
+  sections while permitting whitespace-only variation;
 - the exact section retains secret safety and separate live-change approval
   and links to `references/runtime-intake.md`;
 - the reference contains the required headings and one parseable JSON catalog;

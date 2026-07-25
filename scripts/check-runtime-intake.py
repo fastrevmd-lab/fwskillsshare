@@ -18,6 +18,10 @@ FENCE_LINE_RE = re.compile(
     r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<rest>[^\r\n]*)"
     r"(?P<ending>\r\n|\n|\r)?\Z"
 )
+RAW_HTML_TYPE1_LINE_RE = re.compile(
+    r"^ {0,3}</?(?:pre|script|style|textarea)(?=[ \t>]|\r?$)",
+    re.IGNORECASE | re.MULTILINE,
+)
 SENTENCE_BOUNDARY_RE = re.compile(r"[.!?](?=\s|$)")
 INITIALISM_END_RE = re.compile(r"(?:\b[A-Za-z]\.){2,}$")
 CATALOG_KEYS = frozenset({"questions"})
@@ -250,7 +254,20 @@ def extract_runtime_section(path: Path, text: str) -> tuple[str | None, list[str
     return text[start:end], []
 
 
+def validate_ambiguous_markup(path: Path, text: str) -> list[str]:
+    errors: list[str] = []
+    if "<!--" in text or "-->" in text:
+        errors.append(f"{path}: HTML comment delimiters are not allowed")
+    if RAW_HTML_TYPE1_LINE_RE.search(text):
+        errors.append(f"{path}: raw HTML type-1 block tags are not allowed")
+    return errors
+
+
 def validate_skill(path: Path, text: str) -> list[str]:
+    markup_errors = validate_ambiguous_markup(path, text)
+    if markup_errors:
+        return markup_errors
+
     runtime_section, errors = extract_runtime_section(path, text)
     if runtime_section is None:
         return errors

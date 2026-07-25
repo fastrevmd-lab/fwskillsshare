@@ -165,6 +165,12 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             ],
         )
 
+    def assert_skill_error(self, skill_text: str, message: str) -> None:
+        self.assertEqual(
+            VALIDATOR.validate_skill(STANDARD_PROBE_PATH, skill_text),
+            [f"{STANDARD_PROBE_PATH}: {message}"],
+        )
+
     def test_accepts_exact_neutral_contract(self) -> None:
         self.assertEqual(
             VALIDATOR.validate_catalog(
@@ -223,18 +229,79 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         ):
             self.assertNotIn(inactive_text, masked)
 
-    def test_ignores_inactive_decoy_headings_before_active_section(self) -> None:
+    def test_ignores_fenced_decoy_headings_before_active_section(self) -> None:
         mutant = (
-            "<!--\n"
-            "## Runtime intake\n"
-            "## Commented next section\n"
-            "-->\n"
             "```markdown\n"
             "## Runtime intake\n"
             "## Fenced next section\n"
             "```\n"
             f"{VALID_SKILL}"
         )
+        self.assertEqual(
+            VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+            [],
+        )
+
+    def test_rejects_html_comment_decoy_before_active_section(self) -> None:
+        mutant = (
+            "<!--\n"
+            "## Runtime intake\n"
+            "## Commented next section\n"
+            "-->\n"
+            f"{VALID_SKILL}"
+        )
+        self.assert_skill_error(
+            mutant,
+            "HTML comment delimiters are not allowed",
+        )
+
+    def test_rejects_inline_comment_opener_before_duplicate_section(self) -> None:
+        mutant = (
+            f"{VALID_SKILL}\n"
+            "The literal `<!--` must not hide later headings.\n\n"
+            "## Runtime intake\n\n"
+            "Runtime intake is optional.\n"
+        )
+        self.assert_skill_error(
+            mutant,
+            "HTML comment delimiters are not allowed",
+        )
+
+    def test_rejects_escaped_comment_opener_before_duplicate_section(self) -> None:
+        mutant = (
+            f"{VALID_SKILL}\n"
+            "The escaped form \\<!-- must not hide later headings.\n\n"
+            "## Runtime intake\n\n"
+            "Runtime intake is optional.\n"
+        )
+        self.assert_skill_error(
+            mutant,
+            "HTML comment delimiters are not allowed",
+        )
+
+    def test_rejects_comment_closer_delimiter(self) -> None:
+        mutant = f"{VALID_SKILL}\nThe literal `-->` is forbidden.\n"
+        self.assert_skill_error(
+            mutant,
+            "HTML comment delimiters are not allowed",
+        )
+
+    def test_rejects_raw_html_type1_closer_line(self) -> None:
+        mutant = f"{VALID_SKILL}\n   </PrE>\n"
+        self.assert_skill_error(
+            mutant,
+            "raw HTML type-1 block tags are not allowed",
+        )
+
+    def test_rejects_bare_type1_opener_at_crlf_line_end(self) -> None:
+        mutant = f"{VALID_SKILL}\r\n  <StYlE\r\n"
+        self.assert_skill_error(
+            mutant,
+            "raw HTML type-1 block tags are not allowed",
+        )
+
+    def test_allows_four_space_indented_html_like_line(self) -> None:
+        mutant = f"{VALID_SKILL}\n    <pre>\n"
         self.assertEqual(
             VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
             [],
@@ -274,7 +341,10 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
 
     def test_rejects_complete_runtime_region_inside_html_comment(self) -> None:
         mutant = wrap_complete_runtime_region("<!--", "-->")
-        self.assert_no_active_runtime_section(mutant)
+        self.assert_skill_error(
+            mutant,
+            "HTML comment delimiters are not allowed",
+        )
 
     def test_rejects_complete_runtime_region_inside_code_fence(self) -> None:
         mutant = wrap_complete_runtime_region("```markdown", "```")
@@ -284,6 +354,43 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         mutant = wrap_complete_runtime_region("  ~~~~markdown", " ~~~~~")
         self.assert_no_active_runtime_section(mutant)
 
+    def test_rejects_complete_runtime_region_inside_pre_block(self) -> None:
+        mutant = wrap_complete_runtime_region("<pre>", "</pre>")
+        self.assert_skill_error(
+            mutant,
+            "raw HTML type-1 block tags are not allowed",
+        )
+
+    def test_rejects_complete_runtime_region_inside_script_block(self) -> None:
+        mutant = wrap_complete_runtime_region(
+            '<SCRIPT type="text/plain">',
+            "</ScRiPt>",
+        )
+        self.assert_skill_error(
+            mutant,
+            "raw HTML type-1 block tags are not allowed",
+        )
+
+    def test_rejects_complete_runtime_region_inside_style_block(self) -> None:
+        mutant = wrap_complete_runtime_region(
+            '   <style type="text/css">',
+            "  </STYLE>",
+        )
+        self.assert_skill_error(
+            mutant,
+            "raw HTML type-1 block tags are not allowed",
+        )
+
+    def test_rejects_complete_runtime_region_inside_textarea_block(self) -> None:
+        mutant = wrap_complete_runtime_region(
+            ' <TeXtArEa rows="4">',
+            "   </textarea>",
+        )
+        self.assert_skill_error(
+            mutant,
+            "raw HTML type-1 block tags are not allowed",
+        )
+
     def test_rejects_runtime_contract_inside_html_comment(self) -> None:
         contract = "\n".join(
             (INVOCATION_CLAUSE, ROUNDS_CLAUSE, FALLBACK_CLAUSE)
@@ -292,7 +399,10 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             contract,
             f"<!--\n{contract}\n-->",
         )
-        self.assert_skill_rejected(mutant)
+        self.assert_skill_error(
+            mutant,
+            "HTML comment delimiters are not allowed",
+        )
 
     def test_rejects_runtime_contract_inside_code_fence(self) -> None:
         contract = "\n".join(
