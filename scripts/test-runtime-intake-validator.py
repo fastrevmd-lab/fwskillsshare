@@ -243,6 +243,43 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             [],
         )
 
+    def test_rejects_reference_wrapped_in_inactive_markdown(self) -> None:
+        reference = render_reference()
+        cases = (
+            f"````markdown\n{reference}````\n",
+            f"<!--\n{reference}-->\n",
+        )
+        for mutant in cases:
+            with self.subTest(opener=mutant.splitlines()[0]):
+                errors = VALIDATOR.validate_catalog(
+                    Path("runtime-intake.md"),
+                    mutant,
+                )
+                self.assertTrue(errors)
+                for heading in VALIDATOR.REQUIRED_REFERENCE_HEADINGS:
+                    self.assertTrue(
+                        any(f"missing {heading!r}" in error for error in errors),
+                        errors,
+                    )
+
+    def test_rejects_inactive_exact_adaptation_clauses(self) -> None:
+        cases = (
+            ("Claude projection", CLAUDE_ADAPTATION),
+            ("Codex projection", CODEX_ADAPTATION),
+            ("fallback and free-text Other", FALLBACK_ADAPTATION),
+        )
+        for expected_name, clause in cases:
+            with self.subTest(adaptation=expected_name):
+                mutant = render_reference().replace(
+                    clause,
+                    f"~~~~markdown\n{clause}\n~~~~",
+                    1,
+                )
+                self.assert_has_error(
+                    mutant,
+                    f"missing exact {expected_name} language",
+                )
+
     def test_all_skill_runtime_sections_satisfy_connected_contract(self) -> None:
         skill_files = VALIDATOR.selected_skill_files(None)
         self.assertEqual(len(skill_files), 22)
@@ -299,6 +336,110 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             "## Runtime intake\n"
             "## Fenced next section\n"
             "```\n"
+            f"{VALID_SKILL}"
+        )
+        self.assertEqual(
+            VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+            [],
+        )
+
+    def test_rejects_closing_hash_runtime_duplicates_before_and_after(
+        self,
+    ) -> None:
+        decoy = "## Runtime intake ##\n\nRuntime intake is optional.\n"
+        cases = (
+            decoy + VALID_SKILL,
+            f"{VALID_SKILL}\n{decoy}",
+        )
+        for position, mutant in zip(("before", "after"), cases):
+            with self.subTest(position=position):
+                self.assert_skill_error(
+                    mutant,
+                    "expected exactly one '## Runtime intake' section",
+                )
+
+    def test_rejects_noncanonical_closing_hash_primary_runtime_heading(
+        self,
+    ) -> None:
+        mutant = VALID_SKILL.replace(
+            "## Runtime intake",
+            "## Runtime intake ##",
+            1,
+        )
+        self.assert_skill_error(
+            mutant,
+            "primary '## Runtime intake' heading must use canonical "
+            "column-zero ATX form",
+        )
+
+    def test_rejects_setext_runtime_duplicates_before_and_after(self) -> None:
+        for underline in ("---", "==="):
+            decoy = f"Runtime intake\n{underline}\n\nRuntime intake is optional.\n"
+            cases = (
+                decoy + VALID_SKILL,
+                f"{VALID_SKILL}\n{decoy}",
+            )
+            for position, mutant in zip(("before", "after"), cases):
+                with self.subTest(underline=underline, position=position):
+                    self.assert_skill_error(
+                        mutant,
+                        "expected exactly one '## Runtime intake' section",
+                    )
+
+    def test_rejects_noncanonical_setext_primary_runtime_heading(self) -> None:
+        for underline in ("---", "==="):
+            with self.subTest(underline=underline):
+                mutant = VALID_SKILL.replace(
+                    "## Runtime intake",
+                    f"Runtime intake\n{underline}",
+                    1,
+                )
+                self.assert_skill_error(
+                    mutant,
+                    "primary '## Runtime intake' heading must use canonical "
+                    "column-zero ATX form",
+                )
+
+    def test_ignores_fenced_closing_hash_and_setext_runtime_decoys(self) -> None:
+        decoys = (
+            "## Runtime intake ##\n\nRuntime intake is optional.",
+            "Runtime intake\n---\n\nRuntime intake is optional.",
+            "Runtime intake\n===\n\nRuntime intake is optional.",
+        )
+        for decoy in decoys:
+            for position in ("before", "after"):
+                with self.subTest(decoy=decoy.splitlines()[0], position=position):
+                    fenced = f"````markdown\n{decoy}\n````\n"
+                    mutant = (
+                        fenced + VALID_SKILL
+                        if position == "before"
+                        else f"{VALID_SKILL}\n{fenced}"
+                    )
+                    self.assertEqual(
+                        VALIDATOR.validate_skill(STANDARD_PROBE_PATH, mutant),
+                        [],
+                    )
+
+    def test_comment_wrapped_heading_equivalents_are_inactive(self) -> None:
+        decoys = (
+            "## Runtime intake ##\n\nRuntime intake is optional.",
+            "Runtime intake\n---\n\nRuntime intake is optional.",
+        )
+        for decoy in decoys:
+            with self.subTest(decoy=decoy.splitlines()[0]):
+                mutant = f"<!--\n{decoy}\n-->\n{VALID_SKILL}"
+                section, errors = VALIDATOR.extract_runtime_section(
+                    STANDARD_PROBE_PATH,
+                    mutant,
+                )
+                self.assertEqual(errors, [])
+                self.assertIsNotNone(section)
+
+    def test_four_space_heading_equivalents_remain_code(self) -> None:
+        mutant = (
+            "    ## Runtime intake ##\n"
+            "    Runtime intake\n"
+            "    ---\n"
             f"{VALID_SKILL}"
         )
         self.assertEqual(

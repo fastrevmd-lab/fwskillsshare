@@ -12,8 +12,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = ROOT / "skills"
 CATALOG_RE = re.compile(r"```json\n(?P<payload>.*?)\n```", re.DOTALL)
-RUNTIME_HEADING_RE = re.compile(
-    r"^(?P<indent> {0,3})## Runtime intake[ \t]*\r?$",
+RUNTIME_ATX_HEADING_RE = re.compile(
+    r"^(?P<indent> {0,3})##(?P<spacing>[ \t]+)Runtime intake"
+    r"(?P<closing>[ \t]+#+)?[ \t]*\r?$",
+    re.MULTILINE,
+)
+RUNTIME_SETEXT_HEADING_RE = re.compile(
+    r"^ {0,3}Runtime intake[ \t]*\r?\n"
+    r" {0,3}(?:=+|-+)[ \t]*\r?$",
     re.MULTILINE,
 )
 SECTION_HEADING_RE = re.compile(r"^ {0,3}## [^\r\n]+\r?$", re.MULTILINE)
@@ -404,15 +410,34 @@ def mask_inactive_markdown(text: str) -> str:
 
 def extract_runtime_section(path: Path, text: str) -> tuple[str | None, list[str]]:
     active_markdown = mask_inactive_markdown(text)
-    matches = list(RUNTIME_HEADING_RE.finditer(active_markdown))
-    if len(matches) != 1:
+    runtime_headings = [
+        ("atx", match)
+        for match in RUNTIME_ATX_HEADING_RE.finditer(active_markdown)
+    ]
+    runtime_headings.extend(
+        ("setext", match)
+        for match in RUNTIME_SETEXT_HEADING_RE.finditer(active_markdown)
+    )
+    runtime_headings.sort(key=lambda item: item[1].start())
+    if len(runtime_headings) != 1:
         return None, [f"{path}: expected exactly one '## Runtime intake' section"]
-    if matches[0].group("indent"):
+
+    heading_kind, heading_match = runtime_headings[0]
+    if heading_kind == "atx" and heading_match.group("indent"):
         return None, [
             f"{path}: primary '## Runtime intake' heading must start at column zero"
         ]
+    if (
+        heading_kind != "atx"
+        or heading_match.group("spacing") != " "
+        or heading_match.group("closing") is not None
+    ):
+        return None, [
+            f"{path}: primary '## Runtime intake' heading must use canonical "
+            "column-zero ATX form"
+        ]
 
-    start = matches[0].end()
+    start = heading_match.end()
     next_heading = SECTION_HEADING_RE.search(active_markdown, start)
     end = next_heading.start() if next_heading else len(text)
     return text[start:end], []
@@ -445,8 +470,9 @@ def validate_skill(path: Path, text: str) -> list[str]:
 
 def validate_catalog(path: Path, text: str) -> list[str]:
     errors: list[str] = []
+    active_markdown = mask_inactive_markdown(text)
     for heading in REQUIRED_REFERENCE_HEADINGS:
-        if heading not in text:
+        if heading not in active_markdown:
             errors.append(f"{path}: missing {heading!r}")
     required_adaptation = (
         ("Claude projection", CLAUDE_ADAPTATION),
@@ -454,7 +480,7 @@ def validate_catalog(path: Path, text: str) -> list[str]:
         ("fallback and free-text Other", FALLBACK_ADAPTATION),
     )
     for name, required_text in required_adaptation:
-        if required_text not in text:
+        if required_text not in active_markdown:
             errors.append(f"{path}: missing exact {name} language")
 
     matches = list(CATALOG_RE.finditer(text))
