@@ -827,6 +827,62 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 self.tearDown()
                 self.setUp()
 
+    def test_inline_comment_openers_do_not_hide_appendix_structure(
+        self,
+    ) -> None:
+        containers = ("top-level", "quote", "list")
+        probes = {
+            "marker": SAFETY.APPENDIX_MARKER,
+            "section": "### A.1 `cis-controls-ngfw-compliance`",
+            "row": (
+                "- `inline_comment_probe`; header `Probe`; ask when a probe is "
+                "needed; question `Run the probe?`; options: "
+                "`Run probe (Recommended)` — Run the probe; "
+                "`Skip probe` — Skip the probe."
+            ),
+        }
+
+        def wrap(lines: tuple[str, ...], container: str) -> str:
+            if container == "quote":
+                return "".join(f"> {line}\n" for line in lines)
+            if container == "list":
+                return (
+                    f"- {lines[0]}\n"
+                    + "".join(f"  {line}\n" for line in lines[1:])
+                )
+            return "".join(f"{line}\n" for line in lines)
+
+        for probe, active_line in probes.items():
+            for container in containers:
+                with self.subTest(probe=probe, container=container):
+                    self.use_temp_catalogs()
+                    text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                    insertion = wrap(
+                        (
+                            "A paragraph <!--",
+                            active_line,
+                            "-->",
+                        ),
+                        container,
+                    )
+                    anchor = (
+                        SAFETY.APPENDIX_MARKER
+                        if probe == "marker"
+                        else "### A.1 `cis-controls-ngfw-compliance`"
+                    )
+                    SAFETY.PLAN_PATH.write_text(
+                        text.replace(
+                            anchor,
+                            insertion + anchor,
+                            1,
+                        ),
+                        encoding="utf-8",
+                    )
+                    with self.assertRaises(ValueError):
+                        SAFETY.parse_plan_catalogs()
+                    self.tearDown()
+                    self.setUp()
+
     def test_container_nested_appendix_headings_are_rejected(self) -> None:
         prefixes = (
             "- ",

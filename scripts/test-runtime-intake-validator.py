@@ -1835,6 +1835,33 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             "HTML comment delimiters are not allowed",
         )
 
+    def test_inline_comment_openers_do_not_hide_following_blocks(self) -> None:
+        containers = {
+            "top-level": (
+                "A paragraph <!--\n"
+                "## Runtime intake\n"
+                "-->\n"
+            ),
+            "quote": (
+                "> A paragraph <!--\n"
+                "> ## Runtime intake\n"
+                "> -->\n"
+            ),
+            "list": (
+                "- A paragraph <!--\n"
+                "  ## Runtime intake\n"
+                "  -->\n"
+            ),
+        }
+        for container, text in containers.items():
+            with self.subTest(container=container):
+                analysis = VALIDATOR.analyze_markdown(text)
+                self.assertEqual(
+                    [heading.content for heading in analysis.headings],
+                    ["Runtime intake"],
+                )
+                self.assertIn("## Runtime intake", analysis.active_text)
+
     def test_rejects_escaped_comment_opener_before_duplicate_section(self) -> None:
         mutant = (
             f"{VALID_SKILL}\n"
