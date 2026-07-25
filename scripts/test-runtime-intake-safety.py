@@ -1375,6 +1375,106 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 self.tearDown()
                 self.setUp()
 
+    def test_pending_link_reference_interrupts_are_active_in_appendix(
+        self,
+    ) -> None:
+        pending_states = {
+            "label": ("[foo",),
+            "destination": ("[foo]:",),
+            "same-line-title": ('[foo]: /url "',),
+            "next-line-title": ("[foo]: /url", '"'),
+        }
+
+        def wrap(lines: tuple[str, ...], container: str) -> str:
+            if container == "quote":
+                return "".join(f"> {line}\n" for line in lines)
+            if container == "list":
+                return (
+                    f"- {lines[0]}\n"
+                    + "".join(f"  {line}\n" for line in lines[1:])
+                )
+            return "".join(f"{line}\n" for line in lines)
+
+        def replace_marker(insertion: str) -> None:
+            self.use_temp_catalogs()
+            text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+            SAFETY.PLAN_PATH.write_text(
+                text.replace(
+                    SAFETY.APPENDIX_MARKER,
+                    insertion + "\n" + SAFETY.APPENDIX_MARKER,
+                    1,
+                ),
+                encoding="utf-8",
+            )
+
+        for state, pending in pending_states.items():
+            for breaker in ("***", "---"):
+                for container in ("top-level", "quote", "list"):
+                    with self.subTest(
+                        state=state,
+                        breaker=breaker,
+                        container=container,
+                    ):
+                        insertion = wrap(
+                            pending
+                            + (
+                                breaker,
+                                "Appendix A: Exact question catalogs",
+                                "---",
+                            ),
+                            container,
+                        )
+                        replace_marker(insertion)
+                        with self.assertRaisesRegex(
+                            ValueError,
+                            "expected exactly one active Appendix A marker",
+                        ):
+                            SAFETY.parse_plan_catalogs()
+                        self.tearDown()
+                        self.setUp()
+
+            for opener in (
+                "<script>",
+                "<?runtime?>",
+                "<!RUNTIME>",
+                "<![CDATA[runtime]]>",
+                "<div>",
+            ):
+                for container in ("top-level", "quote", "list"):
+                    with self.subTest(
+                        state=state,
+                        opener=opener,
+                        container=container,
+                    ):
+                        insertion = wrap(pending + (opener,), container)
+                        replace_marker(insertion)
+                        with self.assertRaisesRegex(
+                            ValueError,
+                            "raw HTML block syntax is not allowed",
+                        ):
+                            SAFETY.parse_plan_catalogs()
+                        self.tearDown()
+                        self.setUp()
+
+            for container in ("top-level", "quote", "list"):
+                with self.subTest(
+                    state=state,
+                    opener="type-7-control",
+                    container=container,
+                ):
+                    insertion = wrap(
+                        pending + ("<runtime-wrapper>",),
+                        container,
+                    )
+                    replace_marker(insertion)
+                    catalogs = SAFETY.parse_plan_catalogs()
+                    self.assertEqual(
+                        tuple(catalogs),
+                        SAFETY.EXPECTED_SKILLS,
+                    )
+                    self.tearDown()
+                    self.setUp()
+
     def test_container_comments_do_not_pollute_appendix_rows(self) -> None:
         decoys = (
             "> <!--\n"

@@ -432,6 +432,247 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                     [],
                 )
 
+    def test_pending_link_references_yield_to_interrupting_blocks(self) -> None:
+        pending_states = {
+            "label": ("[foo",),
+            "destination": ("[foo]:",),
+            "same-line-title": ('[foo]: /url "',),
+            "next-line-title": ("[foo]: /url", '"'),
+        }
+        interrupting_blocks = {
+            "thematic-break": ("***", "thematic-break"),
+            "setext-underline": ("---", "setext-underline"),
+            "atx": ("## Runtime intake", "atx"),
+            "raw-html-1": ("<script>", "raw-html-1"),
+            "raw-html-3": ("<?runtime?>", "raw-html-3"),
+            "raw-html-4": ("<!RUNTIME>", "raw-html-4"),
+            "raw-html-5": ("<![CDATA[runtime]]>", "raw-html-5"),
+            "raw-html-6": ("<div>", "raw-html-6"),
+        }
+
+        def wrap(
+            lines: tuple[str, ...],
+            container: str,
+            ending: str = "\n",
+        ) -> str:
+            if container == "quote":
+                physical = [f"> {line}" for line in lines]
+            elif container == "list":
+                physical = [
+                    f"- {lines[0]}",
+                    *(f"  {line}" for line in lines[1:]),
+                ]
+            else:
+                physical = list(lines)
+            return ending.join(physical) + ending
+
+        for state, pending in pending_states.items():
+            for block, (indicator, expected_kind) in interrupting_blocks.items():
+                for container in ("top-level", "quote", "list"):
+                    with self.subTest(
+                        state=state,
+                        block=block,
+                        container=container,
+                    ):
+                        text = wrap(pending + (indicator,), container)
+                        analysis = VALIDATOR.analyze_markdown(text)
+                        current = analysis.lines[-1]
+                        self.assertEqual(current.block_kind, expected_kind)
+                        self.assertEqual(current.content, indicator)
+                        self.assertEqual(
+                            current.content_start,
+                            text.rfind(indicator),
+                        )
+                        self.assertEqual(current.source_end, len(text))
+                        self.assertEqual(
+                            current.normalized,
+                            indicator + "\n",
+                        )
+                        if expected_kind == "setext-underline":
+                            self.assertEqual(
+                                analysis.headings[-1].style,
+                                "setext",
+                            )
+                        elif expected_kind.startswith("raw-html-"):
+                            self.assertEqual(
+                                analysis.raw_html_lines,
+                                [current],
+                            )
+
+        adjacency_cases = (
+            ("[foo\n> ## Runtime intake\n", "quote"),
+            ("[foo\n- ## Runtime intake\n", "list"),
+            ("> [foo\n> ## Runtime intake\n", "quote"),
+            ("- [foo\n  ## Runtime intake\n", "list"),
+        )
+        for text, container_kind in adjacency_cases:
+            with self.subTest(adjacency=container_kind, text=text):
+                analysis = VALIDATOR.analyze_markdown(text)
+                self.assertEqual(analysis.lines[-1].block_kind, "atx")
+                self.assertEqual(
+                    analysis.lines[-1].containers[-1].kind,
+                    container_kind,
+                )
+                self.assertEqual(
+                    analysis.headings[-1].content,
+                    "Runtime intake",
+                )
+
+    def test_pending_link_reference_interrupts_preserve_source_mapping(
+        self,
+    ) -> None:
+        raw_text = (
+            '> [foo]: /url\r\n'
+            '> "\r\n'
+            '> <div>\r\n'
+        )
+        analysis = VALIDATOR.analyze_markdown(raw_text)
+        self.assertEqual(len(analysis.raw_html_lines), 1)
+        raw_html = analysis.raw_html_lines[-1]
+        raw_html_source_start = raw_text.index("> <div>")
+        self.assertEqual(raw_html.block_kind, "raw-html-6")
+        self.assertEqual(raw_html.source_start, raw_html_source_start)
+        self.assertEqual(
+            raw_html.source_end,
+            raw_html_source_start + len("> <div>\r\n"),
+        )
+        self.assertEqual(raw_html.content_start, raw_text.index("<div>"))
+        self.assertEqual(raw_html.content, "<div>")
+        self.assertEqual(raw_html.normalized, "<div>\r\n")
+        self.assertEqual(analysis.active_text, raw_text)
+
+        heading_text = (
+            "- [foo\r\n"
+            "  ***\r\n"
+            "  Runtime intake\r\n"
+            "  ---\r\n"
+        )
+        heading_analysis = VALIDATOR.analyze_markdown(heading_text)
+        heading = heading_analysis.headings[-1]
+        self.assertEqual(heading.content, "Runtime intake")
+        self.assertEqual(
+            heading.source_start,
+            heading_text.index("Runtime intake"),
+        )
+        self.assertEqual(heading.source_end, len(heading_text))
+        self.assertEqual(
+            heading_analysis.lines[-1].normalized,
+            "---\r\n",
+        )
+
+    def test_pending_link_reference_interrupts_are_active_in_documents(
+        self,
+    ) -> None:
+        pending_states = {
+            "label": ("[foo",),
+            "destination": ("[foo]:",),
+            "same-line-title": ('[foo]: /url "',),
+            "next-line-title": ("[foo]: /url", '"'),
+        }
+
+        def wrap(lines: tuple[str, ...], container: str) -> str:
+            if container == "quote":
+                return "".join(f"> {line}\n" for line in lines)
+            if container == "list":
+                return (
+                    f"- {lines[0]}\n"
+                    + "".join(f"  {line}\n" for line in lines[1:])
+                )
+            return "".join(f"{line}\n" for line in lines)
+
+        documents = (
+            (
+                "skill",
+                VALID_SKILL,
+                "Runtime intake",
+                lambda mutant: self.assert_skill_error(
+                    mutant,
+                    "expected exactly one '## Runtime intake' section",
+                ),
+            ),
+            (
+                "reference",
+                render_reference(),
+                "When to ask",
+                lambda mutant: self.assert_has_error(
+                    mutant,
+                    "expected exactly one active '## When to ask' heading",
+                ),
+            ),
+        )
+        for document, original, heading, assert_rejected in documents:
+            for state, pending in pending_states.items():
+                for breaker in ("***", "---"):
+                    for container in ("top-level", "quote", "list"):
+                        with self.subTest(
+                            document=document,
+                            state=state,
+                            breaker=breaker,
+                            container=container,
+                        ):
+                            insertion = wrap(
+                                pending + (breaker, heading, "---"),
+                                container,
+                            )
+                            assert_rejected(original + "\n" + insertion)
+
+                for opener in (
+                    "<script>",
+                    "<?runtime?>",
+                    "<!RUNTIME>",
+                    "<![CDATA[runtime]]>",
+                    "<div>",
+                ):
+                    for container in ("top-level", "quote", "list"):
+                        with self.subTest(
+                            document=document,
+                            state=state,
+                            opener=opener,
+                            container=container,
+                        ):
+                            insertion = wrap(
+                                pending + (opener,),
+                                container,
+                            )
+                            if document == "skill":
+                                self.assert_skill_error(
+                                    original + "\n" + insertion,
+                                    "raw HTML block syntax is not allowed",
+                                )
+                            else:
+                                self.assert_has_error(
+                                    original + "\n" + insertion,
+                                    "raw HTML block syntax is not allowed",
+                                )
+
+                for container in ("top-level", "quote", "list"):
+                    with self.subTest(
+                        document=document,
+                        state=state,
+                        opener="type-7-control",
+                        container=container,
+                    ):
+                        insertion = wrap(
+                            pending + ("<runtime-wrapper>",),
+                            container,
+                        )
+                        if document == "skill":
+                            self.assertEqual(
+                                VALIDATOR.validate_skill(
+                                    STANDARD_PROBE_PATH,
+                                    original + "\n" + insertion,
+                                ),
+                                [],
+                            )
+                        else:
+                            self.assertEqual(
+                                VALIDATOR.validate_catalog(
+                                    Path("runtime-intake.md"),
+                                    original + "\n" + insertion,
+                                ),
+                                [],
+                            )
+
     def test_rejects_raw_html_wrapped_reference(self) -> None:
         mutant = f"<div>\n{render_reference()}</div>\n"
         self.assert_has_error(
