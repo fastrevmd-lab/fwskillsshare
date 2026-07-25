@@ -1237,13 +1237,14 @@ parses all 22 plan and package catalogs and resolves all manifest keys.
 Focused output must distinguish those whole-corpus checks from selected
 assertion counts.
 
-**Task 30 whole-branch audit:** the safety manifests now cover 76 safe first
-labels and 32 exact single-axis option tuples. Twenty-four explicit semantic
-contracts include the separated scope, framework/overlay, asset, allowlist,
-third-party-path, parsing-depth, version/overlay, transfer-method, and CA-source
-decisions. The two additive-overlay decisions are independent catalog
-questions, and every Task 30 rewrite or addition has exact question/option
-tuple coverage plus a locked catalog digest.
+**Task 30 whole-branch audit:** at that checkpoint, the safety manifests
+covered 76 safe first labels and 32 exact single-axis option tuples.
+Twenty-four explicit semantic contracts included the separated scope,
+framework/overlay, asset, allowlist, third-party-path, parsing-depth,
+version/overlay, transfer-method, and CA-source decisions. The two
+additive-overlay decisions were independent catalog questions, and every Task
+30 rewrite or addition had exact question/option tuple coverage plus a locked
+catalog digest.
 
 Structural heading discovery treats optional-closing-hash ATX and Setext
 `Runtime intake` headings as equivalents for duplicate detection, while only
@@ -1268,6 +1269,37 @@ contracts, inactive and noncanonical Appendix headings, duplicate,
 number/name-pairing, lexical-numbering, raw-wrapper, same-line
 question/label/description whitespace, focused-output, complete-digest, and
 synchronized content/order mutations.
+
+**Task 31 final-review audit:** the 12 named legacy questions now isolate only
+their lifecycle, detail, sizing workflow, routing/traffic model, session,
+cadence, signaling-workflow, or policy-architecture axis. The new
+`diff_format` question preserves the independent result-format decision. All
+13 Task 31 objects have exact question/option contracts, safe recommended
+discovery or confirmation choices, mutually exclusive supplied-state choices,
+and synchronized Appendix/package content plus locked digests. The complete
+manifests contain 89 safe first labels and 45 exact option tuples; the semantic
+test inventory pins 37 IDs, including all 13 Task 31 objects.
+
+Task 31 structural RED added container, ordering, section-bound, inactive JSON,
+and complete-Setext-paragraph probes: 105 tests ran with 46 failures before the
+parser change. GREEN passes all 105. Active list and blockquote prefixes are
+normalized only after fenced/commented content is masked, so Runtime-heading
+equivalents and every raw-HTML block family remain visible without changing
+the canonical column-zero primary requirement. Setext duplicate detection
+evaluates the complete paragraph, reference headings must be unique and
+canonically ordered, adaptation clauses must be inside Tool adaptation, and
+the sole line-anchored catalog opener must be active, top-level, and inside
+Question catalog.
+
+The safety RED ran 22 tests with eight failures and two errors before Appendix
+and package-parser changes. GREEN passes all 22: container-nested Appendix
+headings/lookalikes and raw HTML are rejected, inactive fenced/commented decoy
+rows cannot contaminate active row slices, and standalone package parsing
+reuses structural validation plus active top-level catalog extraction. The
+installer RED ran two tests with three artifact-mutation failures; GREEN passes
+both mutation tests and verifies byte-identical `SKILL.md`,
+`references/runtime-intake.md`, and source-present `agents/openai.yaml` files
+across all five family installs and all 22 explicit installs.
 
 Update each Appendix row and its package JSON object together, then require
 both focused validators to pass before moving to the next independently

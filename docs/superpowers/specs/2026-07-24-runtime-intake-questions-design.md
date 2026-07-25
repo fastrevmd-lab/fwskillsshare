@@ -200,7 +200,7 @@ sections, rejects noncanonical lexical numbering such as `A.01` and incorrect
 A.1 through A.22 number/name pairings, rejects duplicate package JSON members,
 and preserves same-line whitespace so noncanonical tabs or doubled spaces
 cannot be normalized away. It resolves each semantic regression key exactly
-once and checks the exact 62 safe first labels and 18 single-axis option tuples
+once and checks the exact 89 safe first labels and 45 single-axis option tuples
 identified by final review.
 
 The safety checker also locks the complete content and question order of all
@@ -212,11 +212,13 @@ assertion counts separately from that whole-corpus work.
 
 Add `scripts/test-runtime-intake-safety.py` immediately after the safety
 checker in `just lint`. Its standard-library temporary-file tests must exercise
-the ten audited semantic IDs, duplicate Appendix sections, incorrect Appendix
-number/name pairing, noncanonical lexical numbering, duplicate package JSON
-members, same-line doubled whitespace in Appendix questions, labels, and
-descriptions, exact focused output counts, complete digest-manifest coverage,
-and synchronized content and order mutations that equality alone would miss.
+all 37 explicitly pinned semantic IDs, duplicate or container-nested Appendix
+sections and lookalikes, incorrect Appendix number/name pairing, noncanonical
+lexical numbering, duplicate package JSON members, inactive package catalogs,
+inactive Appendix decoy rows, same-line doubled whitespace in Appendix
+questions, labels, and descriptions, exact focused output counts, complete
+digest-manifest coverage, and synchronized content and order mutations that
+equality alone would miss.
 
 For each skill, validate:
 
@@ -249,17 +251,21 @@ For each skill, validate:
   ordered markers, four-space-indented markers, and invalid marker spacing do
   not become fence openers;
 - the validator rejects every CommonMark 0.31.2 raw HTML block opener family
-  in the resulting active Markdown: case-insensitive type 1
+  in the resulting active Markdown, including blocks nested in list or
+  blockquote containers: case-insensitive type 1
   `pre`/`script`/`style`/`textarea` tags, processing instructions,
   declarations, CDATA, the complete type 6 block-tag list with its specified
   boundary, and complete generic type 7 opening or closing tag lines, all with
   at most three leading spaces;
 - raw HTML block syntax inside fenced code and inline placeholder tags that do
-  not meet a block-start rule remain permitted; runtime and following section
-  headings with zero to three leading spaces are discovered only in the same
-  active-Markdown mask, while four-space-indented forms remain code; the sole
-  approved primary `## Runtime intake` heading must still begin at column zero,
-  then the original section is sliced by the preserved offsets;
+  not meet a block-start rule remain permitted; runtime headings with zero to
+  three leading spaces or active list/blockquote container prefixes are
+  discovered only in the same active-Markdown mask, while four-space-indented
+  forms remain code; Setext equivalence is evaluated from the complete heading
+  paragraph so a multiline heading ending in `Runtime intake` is not an exact
+  duplicate; the sole approved primary `## Runtime intake` heading must still
+  begin at column zero, then the original section is sliced by the preserved
+  offsets;
 - the section-scoped validator normalizes whitespace across that complete
   original section and requires equality to the approved standard template or
   the skill-selected `srx-mnha`/`srx-policy` compact template;
@@ -282,12 +288,18 @@ For each skill, validate:
   sections while permitting whitespace-only variation;
 - the exact section retains secret safety and separate live-change approval
   and links to `references/runtime-intake.md`;
-- the reference contains the required headings and one parseable JSON catalog;
-- the reference contains the exact Claude projection, Codex projection, and
-  plain-text fallback with free-text `Other` language;
+- the reference contains the four exact active headings in canonical order,
+  rejects active list/blockquote duplicates, and contains one active,
+  column-zero, line-anchored JSON catalog fence inside the Question catalog
+  section;
+- the exact Claude projection, Codex projection, and plain-text fallback with
+  free-text `Other` language remain inside the Tool adaptation section;
 - raw JSON objects contain no duplicate member names;
 - Appendix A contains exactly one section for each expected skill, numbered
   lexically and canonically from A.1 through A.22 without leading zeros;
+  container-nested headings/lookalikes and raw HTML remain active and cannot
+  bypass detection, while fenced or commented decoy rows remain inactive and
+  cannot pollute adjacent active rows;
 - Appendix prose preserves canonical same-line whitespace without tabs or
   doubled spaces in catalog fields;
 - the neutral catalog, question objects, and option objects contain exactly
@@ -305,6 +317,9 @@ For each skill, validate:
   sentence boundaries, and stale adaptation language;
 - standard-library safety tests exercise the complete semantic and canonical
   catalog lock, including synchronized plan/package mutations;
+- installer tests require byte-identical `SKILL.md`,
+  `references/runtime-intake.md`, and source-present `agents/openai.yaml`
+  artifacts for every family and explicit installation;
 - all other package and line-limit checks continue to pass.
 
 Follow a sequential test-first cycle:
