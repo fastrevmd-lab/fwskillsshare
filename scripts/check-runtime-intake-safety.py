@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import hashlib
+import importlib.util
 import json
 import re
 from pathlib import Path
@@ -21,8 +22,9 @@ PLAN_PATH = (
 )
 SKILLS_DIR = ROOT / "skills"
 APPENDIX_MARKER = "## Appendix A: Exact question catalogs"
-PLAN_SECTION_RE = re.compile(
-    r"^### A\.(?P<number>\d+) `(?P<skill>[^`]+)`$",
+PLAN_SECTION_CANDIDATE_RE = re.compile(
+    r"^(?P<heading> {0,3}###[ \t]+A\.(?P<number>\d+)[ \t]+"
+    r"`(?P<skill>[^`\r\n]+)`(?:[ \t]+#+)?[ \t]*\r?)$",
     re.MULTILINE,
 )
 PLAN_ROW_RE = re.compile(r"^- `(?P<id>[a-z][a-z0-9_]*)`; ", re.MULTILINE)
@@ -64,6 +66,15 @@ EXPECTED_SKILLS = (
     "srx-nat",
     "srx-policy",
 )
+STRUCTURAL_VALIDATOR_PATH = ROOT / "scripts" / "check-runtime-intake.py"
+STRUCTURAL_SPEC = importlib.util.spec_from_file_location(
+    "runtime_intake_structural_for_safety",
+    STRUCTURAL_VALIDATOR_PATH,
+)
+if STRUCTURAL_SPEC is None or STRUCTURAL_SPEC.loader is None:
+    raise RuntimeError(f"cannot import validator from {STRUCTURAL_VALIDATOR_PATH}")
+STRUCTURAL_VALIDATOR = importlib.util.module_from_spec(STRUCTURAL_SPEC)
+STRUCTURAL_SPEC.loader.exec_module(STRUCTURAL_VALIDATOR)
 EXPECTED_CATALOG_SHA256 = {
     "cis-controls-ngfw-compliance":
         "36e3bf588d757c5d4e4eb554383891c68f813cbca8dc0768081afdff0432b9ec",
@@ -573,10 +584,20 @@ def parse_plan_row(skill: str, question_id: str, raw_row: str) -> dict[str, obje
 
 def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
     text = PLAN_PATH.read_text(encoding="utf-8")
-    if APPENDIX_MARKER not in text:
+    active_markdown = STRUCTURAL_VALIDATOR.mask_inactive_markdown(text)
+    marker_matches = list(
+        re.finditer(
+            rf"^{re.escape(APPENDIX_MARKER)}[ \t]*\r?$",
+            active_markdown,
+            re.MULTILINE,
+        )
+    )
+    if len(marker_matches) != 1:
         raise ValueError(f"{PLAN_PATH}: missing {APPENDIX_MARKER!r}")
-    appendix = text[text.index(APPENDIX_MARKER) :]
-    sections = list(PLAN_SECTION_RE.finditer(appendix))
+    appendix_start = marker_matches[0].start()
+    appendix = text[appendix_start:]
+    active_appendix = active_markdown[appendix_start:]
+    sections = list(PLAN_SECTION_CANDIDATE_RE.finditer(active_appendix))
     catalogs: dict[str, list[dict[str, object]]] = {}
 
     seen_skills: set[str] = set()
@@ -587,6 +608,15 @@ def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
                 f"{PLAN_PATH}: duplicate Appendix A skill section {skill!r}"
             )
         seen_skills.add(skill)
+    for section in sections:
+        canonical_heading = (
+            f"### A.{section.group('number')} `{section.group('skill')}`"
+        )
+        if section.group("heading").rstrip("\r") != canonical_heading:
+            raise ValueError(
+                f"{PLAN_PATH}: noncanonical Appendix A heading "
+                f"{section.group('heading').rstrip()!r}"
+            )
     if len(sections) != len(EXPECTED_SKILLS):
         raise ValueError(
             f"{PLAN_PATH}: expected exactly {len(EXPECTED_SKILLS)} Appendix A "
@@ -605,10 +635,13 @@ def parse_plan_catalogs() -> dict[str, list[dict[str, object]]]:
                 f"`{skill}`"
             )
         body_end = (
-            sections[index + 1].start() if index + 1 < len(sections) else len(appendix)
+            sections[index + 1].start()
+            if index + 1 < len(sections)
+            else len(active_appendix)
         )
         body = appendix[section.end() : body_end]
-        rows = list(PLAN_ROW_RE.finditer(body))
+        active_body = active_appendix[section.end() : body_end]
+        rows = list(PLAN_ROW_RE.finditer(active_body))
         catalogs[skill] = []
         for row_index, row in enumerate(rows):
             row_end = (

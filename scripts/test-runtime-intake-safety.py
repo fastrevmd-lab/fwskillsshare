@@ -333,6 +333,82 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate Appendix A skill section"):
             SAFETY.parse_plan_catalogs()
 
+    def test_unclosed_four_backtick_fence_hides_appendix_sections(self) -> None:
+        self.use_temp_catalogs()
+        text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+        text = text.replace(
+            "### A.1 `cis-controls-ngfw-compliance`",
+            "````markdown\n### A.1 `cis-controls-ngfw-compliance`",
+            1,
+        )
+        SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+        with self.assertRaisesRegex(
+            ValueError,
+            "expected exactly 22 Appendix A sections, found 0",
+        ):
+            SAFETY.parse_plan_catalogs()
+
+    def test_noncanonical_appendix_heading_is_detected(self) -> None:
+        cases = (
+            "### A.01 `cis-controls-ngfw-compliance` ###",
+            "### A.1 `cis-controls-ngfw-compliance` ###",
+        )
+        for replacement in cases:
+            with self.subTest(heading=replacement):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    replacement,
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "noncanonical Appendix A heading",
+                ):
+                    SAFETY.parse_plan_catalogs()
+                self.tearDown()
+                self.setUp()
+
+    def test_closing_hash_appendix_duplicate_is_rejected(self) -> None:
+        self.use_temp_catalogs()
+        text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+        duplicate = "### A.1 `cis-controls-ngfw-compliance` ###"
+        SAFETY.PLAN_PATH.write_text(
+            text.rstrip() + f"\n\n{duplicate}\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(
+            ValueError,
+            "duplicate Appendix A skill section",
+        ):
+            SAFETY.parse_plan_catalogs()
+
+    def test_fenced_and_commented_appendix_decoys_are_inactive(self) -> None:
+        decoys = (
+            "````markdown\n"
+            "### A.1 `cis-controls-ngfw-compliance`\n"
+            "````\n",
+            "<!--\n"
+            "### A.1 `cis-controls-ngfw-compliance`\n"
+            "-->\n",
+        )
+        for decoy in decoys:
+            with self.subTest(opener=decoy.splitlines()[0]):
+                self.use_temp_catalogs()
+                text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
+                text = text.replace(
+                    "### A.1 `cis-controls-ngfw-compliance`",
+                    decoy + "### A.1 `cis-controls-ngfw-compliance`",
+                    1,
+                )
+                SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
+                catalogs = SAFETY.parse_plan_catalogs()
+                self.assertEqual(tuple(catalogs), SAFETY.EXPECTED_SKILLS)
+                self.tearDown()
+                self.setUp()
+
     def test_appendix_number_name_pairing_is_rejected(self) -> None:
         self.use_temp_catalogs()
         text = SAFETY.PLAN_PATH.read_text(encoding="utf-8")
