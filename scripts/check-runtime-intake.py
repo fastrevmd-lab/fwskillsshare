@@ -922,6 +922,28 @@ class MarkdownAnalysis:
         if not same_paragraph:
             self._close_paragraph()
 
+        # CommonMark block indicators take precedence over speculative
+        # multiline reference parsing. Restore the buffered lines as the
+        # paragraph they form before classifying the interrupting line.
+        pending_reference = self._link_reference
+        if (
+            pending_reference is not None
+            and pending_reference.pending_lines
+            and pending_reference.containers == path
+            and self._line_interrupts_paragraph(
+                block_content,
+                parsed.cursor,
+            )
+        ):
+            assert pending_reference.pending_source_start is not None
+            self._paragraph = MarkdownParagraph(
+                pending_reference.pending_source_start,
+                path,
+                list(pending_reference.pending_lines),
+            )
+            self._link_reference = None
+            same_paragraph = True
+
         if self._link_reference is not None:
             link_reference = self._link_reference
             pending_lines = link_reference.pending_lines + (logical,)
