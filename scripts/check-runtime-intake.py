@@ -915,6 +915,7 @@ class MarkdownAnalysis:
     ) -> None:
         logical = block_content[parsed.cursor:]
         path = parsed.containers
+        after_completed_reference = False
 
         if not logical.strip(" \t"):
             self._link_reference = None
@@ -1129,17 +1130,7 @@ class MarkdownAnalysis:
                 link_reference.phase == "optional-title"
                 and link_reference.containers == path
             ):
-                source_content = self._split_ending(masked_line)[0]
-                self._paragraph = MarkdownParagraph(
-                    source_start
-                    + self._source_index_for_column(
-                        source_content,
-                        parsed.cursor,
-                    ),
-                    path,
-                    [],
-                )
-                same_paragraph = True
+                after_completed_reference = True
             self._link_reference = None
 
         if not same_paragraph and logical.startswith("    "):
@@ -1212,6 +1203,19 @@ class MarkdownAnalysis:
                     self._close_paragraph()
                     return
 
+        if after_completed_reference:
+            source_content = self._split_ending(masked_line)[0]
+            self._paragraph = MarkdownParagraph(
+                source_start
+                + self._source_index_for_column(
+                    source_content,
+                    parsed.cursor,
+                ),
+                path,
+                [],
+            )
+            same_paragraph = True
+
         atx_match = ATX_HEADING_RE.match(logical)
         if atx_match is not None:
             level = len(atx_match.group("marker"))
@@ -1240,9 +1244,19 @@ class MarkdownAnalysis:
         if (
             same_paragraph
             and self._paragraph is not None
-            and self._paragraph.lines
             and SETEXT_UNDERLINE_RE.fullmatch(logical) is not None
         ):
+            if not self._paragraph.lines:
+                line = self._append_logical_line(
+                    source_start=source_start,
+                    raw_line=raw_line,
+                    masked_line=masked_line,
+                    block_content=block_content,
+                    parsed=parsed,
+                    block_kind="paragraph",
+                )
+                self._paragraph.lines.append(line.content)
+                return
             level = 1 if logical.lstrip().startswith("=") else 2
             line = self._append_logical_line(
                 source_start=source_start,
@@ -1370,6 +1384,9 @@ class MarkdownAnalysis:
         else:
             parsed = self._parse_containers(block_content, allow_lazy=True)
             logical = block_content[parsed.cursor:]
+            comment_block_opener = (
+                re.match(r"^ {0,3}<!--", logical) is not None
+            )
             opener = self._valid_fence_opener(logical)
             if opener is not None:
                 fence = opener.group("fence")
@@ -1396,7 +1413,7 @@ class MarkdownAnalysis:
                     block_content,
                     allow_lazy=True,
                 )
-            if in_comment:
+            if in_comment and comment_block_opener:
                 self._comment_containers = parsed.containers
 
         self._containers = parsed.containers

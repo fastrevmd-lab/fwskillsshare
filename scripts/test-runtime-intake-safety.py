@@ -870,10 +870,15 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                         if probe == "marker"
                         else "### A.1 `cis-controls-ngfw-compliance`"
                     )
+                    replacement = (
+                        anchor + "\n" + insertion
+                        if probe == "row"
+                        else insertion + anchor
+                    )
                     SAFETY.PLAN_PATH.write_text(
                         text.replace(
                             anchor,
-                            insertion + anchor,
+                            replacement,
                             1,
                         ),
                         encoding="utf-8",

@@ -755,8 +755,111 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                             Path("runtime-intake.md"),
                             render_reference() + "\n" + text,
                         ),
+                            [],
+                        )
+
+    def test_completed_reference_setext_opportunity_becomes_paragraph(
+        self,
+    ) -> None:
+        markers = ("-", "--", "---", "---  ", "---\t")
+
+        def wrap(lines: tuple[str, ...], container: str) -> str:
+            if container == "quote":
+                return "".join(f"> {line}\n" for line in lines)
+            if container == "list":
+                return (
+                    f"- {lines[0]}\n"
+                    + "".join(f"  {line}\n" for line in lines[1:])
+                )
+            return "".join(f"{line}\n" for line in lines)
+
+        for marker in markers:
+            for container in ("top-level", "quote", "list"):
+                with self.subTest(marker=repr(marker), container=container):
+                    text = wrap(
+                        (
+                            "[foo]: /url",
+                            marker,
+                            "2. ## Runtime intake",
+                        ),
+                        container,
+                    )
+                    analysis = VALIDATOR.analyze_markdown(text)
+                    self.assertEqual(analysis.headings, [])
+                    marker_line = analysis.lines[1]
+                    self.assertEqual(marker_line.block_kind, "paragraph")
+                    self.assertEqual(
+                        VALIDATOR.validate_skill(
+                            STANDARD_PROBE_PATH,
+                            VALID_SKILL + "\n" + text,
+                        ),
                         [],
                     )
+
+    def test_adjacent_completed_reference_definitions_are_stripped(
+        self,
+    ) -> None:
+        second_definitions = {
+            "single-line": ("[bar]: /bar",),
+            "multiline-label": ("[bar", "baz]: /bar"),
+            "multiline-destination": ("[bar]:", "/bar"),
+            "multiline-same-line-title": (
+                '[bar]: /bar "',
+                'title"',
+            ),
+            "next-line-title": ("[bar]: /bar", '"title"'),
+        }
+
+        def wrap(
+            lines: tuple[str, ...],
+            container: str,
+            ending: str,
+        ) -> str:
+            if container == "quote":
+                return ending.join(f"> {line}" for line in lines) + ending
+            if container == "list":
+                return (
+                    f"- {lines[0]}{ending}"
+                    + ending.join(f"  {line}" for line in lines[1:])
+                    + ending
+                )
+            return ending.join(lines) + ending
+
+        for definition, second in second_definitions.items():
+            for container in ("top-level", "quote", "list"):
+                for ending in ("\n", "\r\n"):
+                    with self.subTest(
+                        definition=definition,
+                        container=container,
+                        ending=repr(ending),
+                    ):
+                        text = wrap(
+                            (
+                                "[foo]: /foo",
+                                *second,
+                                "Runtime intake",
+                                "---",
+                            ),
+                            container,
+                            ending,
+                        )
+                        analysis = VALIDATOR.analyze_markdown(text)
+                        heading = analysis.headings[-1]
+                        self.assertEqual(
+                            (heading.level, heading.content, heading.style),
+                            (2, "Runtime intake", "setext"),
+                        )
+                        self.assert_skill_error(
+                            VALID_SKILL + "\n" + text,
+                            "expected exactly one '## Runtime intake' section",
+                        )
+                        self.assert_has_error(
+                            render_reference() + "\n" + text.replace(
+                                "Runtime intake",
+                                "When to ask",
+                            ),
+                            "expected exactly one active '## When to ask' heading",
+                        )
 
     def test_pending_link_reference_interrupts_preserve_source_mapping(
         self,
@@ -1497,9 +1600,10 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
     def test_mask_preserves_length_newlines_and_active_offsets(self) -> None:
         source = (
             "# Active\r\n"
-            "prefix <!--\r\n"
+            "prefix <!-- inline --> suffix\r\n"
+            "<!--\r\n"
             "## Commented\r\n"
-            "--> suffix\r\n"
+            "-->\r\n"
             "```markdown\r\n"
             "## Backtick fence\r\n"
             "```\r\n"
@@ -1523,6 +1627,7 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
             offset = source.index(active_text)
             self.assertEqual(masked[offset : offset + len(active_text)], active_text)
         for inactive_text in (
+            " inline ",
             "## Commented",
             "## Backtick fence",
             "## Tilde fence",
