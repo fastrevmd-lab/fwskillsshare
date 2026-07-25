@@ -25,21 +25,21 @@ platform or framework basis, evidence quality, then output preference.
   "questions": [
     {
       "id": "cisco_goal",
-      "ask_when": "The downstream purpose is absent and affects parsing depth.",
-      "header": "Goal",
-      "question": "What will the parsed result be used for?",
+      "ask_when": "The required parsing depth is absent.",
+      "header": "Parse Depth",
+      "question": "How should unspecified parsing depth be resolved?",
       "options": [
         {
-          "label": "Full normalization (Recommended)",
-          "description": "Populate the shared schema and all quality gates."
+          "label": "Confirm depth first (Recommended)",
+          "description": "Confirm whether full normalization or focused extraction is required."
         },
         {
-          "label": "Focused analysis",
-          "description": "Parse sections relevant to the investigation."
+          "label": "Use full normalization",
+          "description": "Populate the complete shared schema and run all quality gates."
         },
         {
-          "label": "Downstream task",
-          "description": "Prepare for conversion, diff, audit, or compliance."
+          "label": "Use focused extraction",
+          "description": "Extract only the sections required for the supplied investigation."
         }
       ]
     },

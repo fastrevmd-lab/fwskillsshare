@@ -105,21 +105,21 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "diff_ignore",
-      "ask_when": "Intentional local differences may exist.",
+      "ask_when": "Difference allowlist is absent.",
       "header": "Exceptions",
-      "question": "Are any differences expected and approved?",
+      "question": "How should an unspecified difference allowlist be handled?",
       "options": [
         {
-          "label": "No allowlist (Recommended)",
-          "description": "Report all material differences."
+          "label": "Stop pending allowlist (Recommended)",
+          "description": "Stop filtering decisions until intentional and generated exceptions are confirmed."
         },
         {
-          "label": "Known local deltas",
-          "description": "Exclude a supplied allowlist."
+          "label": "Use supplied complete allowlist",
+          "description": "Exclude every intentional or generated exception in the supplied complete allowlist."
         },
         {
-          "label": "Generated noise",
-          "description": "Ignore known non-semantic ordering or metadata."
+          "label": "Use no exclusions",
+          "description": "Report all material differences without an allowlist."
         }
       ]
     },

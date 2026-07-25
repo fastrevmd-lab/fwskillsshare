@@ -27,19 +27,39 @@ platform or framework basis, evidence quality, then output preference.
       "id": "cmmc_basis",
       "ask_when": "The governing framework or revision is absent.",
       "header": "Basis",
-      "question": "Which assessment basis should be used?",
+      "question": "How should an unspecified assessment framework be resolved?",
       "options": [
         {
-          "label": "CMMC Level 2 (Recommended)",
-          "description": "Assess CMMC Level 2 readiness."
+          "label": "Confirm framework first (Recommended)",
+          "description": "Confirm the governing framework and revision before mapping controls."
         },
         {
-          "label": "NIST 800-171",
-          "description": "Map to the specified NIST revision."
+          "label": "Use supplied CMMC Level 2",
+          "description": "Assess against the supplied CMMC Level 2 requirements."
         },
         {
-          "label": "Contract overlay",
-          "description": "Include supplied DFARS or customer requirements."
+          "label": "Use supplied NIST revision",
+          "description": "Assess against the supplied NIST SP 800-171 revision."
+        }
+      ]
+    },
+    {
+      "id": "cmmc_overlay",
+      "ask_when": "Applicable DFARS or customer overlays are unclear.",
+      "header": "Overlay",
+      "question": "How should an unspecified contractual overlay be handled?",
+      "options": [
+        {
+          "label": "Inventory overlays first (Recommended)",
+          "description": "Confirm applicable DFARS and customer requirements before adding controls."
+        },
+        {
+          "label": "Use supplied overlay",
+          "description": "Apply the complete supplied DFARS or customer overlay."
+        },
+        {
+          "label": "Standard only",
+          "description": "Use the selected standard without an additive contractual overlay."
         }
       ]
     },
@@ -87,19 +107,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "cmmc_assets",
       "ask_when": "Asset classes in scope are unclear.",
       "header": "Assets",
-      "question": "Which assets should be assessed?",
+      "question": "How should an unspecified CUI asset scope be resolved?",
       "options": [
         {
-          "label": "CUI and SPA (Recommended)",
-          "description": "Include CUI assets and security protection assets."
+          "label": "Inventory assets first (Recommended)",
+          "description": "Identify CUI assets, security protection assets, and adjacent dependencies before selecting scope."
         },
         {
-          "label": "Named controls",
-          "description": "Limit review to specified requirements or devices."
+          "label": "Use supplied CUI boundary",
+          "description": "Assess the supplied complete set of CUI and security protection assets."
         },
         {
-          "label": "Full environment",
-          "description": "Include adjacent systems that affect CUI protection."
+          "label": "Use supplied enterprise scope",
+          "description": "Assess the supplied complete environment including systems that affect CUI protection."
         }
       ]
     },

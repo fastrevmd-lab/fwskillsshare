@@ -85,21 +85,21 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "cis_scope",
-      "ask_when": "Device or boundary scope is absent.",
+      "ask_when": "Firewall estate scope is absent.",
       "header": "Scope",
-      "question": "What firewall scope should be included?",
+      "question": "How should an unspecified firewall estate scope be resolved?",
       "options": [
         {
-          "label": "Full estate (Recommended)",
-          "description": "Assess all supplied devices and boundaries."
+          "label": "Inventory estate first (Recommended)",
+          "description": "Inventory relevant devices and boundaries before selecting assessment scope."
         },
         {
-          "label": "Named boundary",
-          "description": "Limit the assessment to a specified system or segment."
+          "label": "Use supplied full estate",
+          "description": "Assess the supplied complete firewall estate and all its boundaries."
         },
         {
-          "label": "Evidence only",
-          "description": "Assess only controls directly supported by supplied evidence."
+          "label": "Use supplied named boundary",
+          "description": "Limit assessment to the supplied named system or segment."
         }
       ]
     },

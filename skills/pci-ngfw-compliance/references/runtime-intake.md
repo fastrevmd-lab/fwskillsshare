@@ -27,11 +27,22 @@ platform or framework basis, evidence quality, then output preference.
       "id": "pci_version",
       "ask_when": "The governing PCI version is absent.",
       "header": "PCI Version",
-      "question": "Which PCI DSS version should govern the assessment?",
+      "question": "How should an unspecified PCI DSS version be resolved?",
       "options": [
-        {"label": "PCI DSS 4.0.1 (Recommended)", "description": "Use PCI DSS 4.0.1."},
-        {"label": "Specified version", "description": "Use a version supplied through Other."},
-        {"label": "Custom overlay", "description": "Include QSA or customer interpretations."}
+        {"label": "Confirm version first (Recommended)", "description": "Confirm the governing PCI DSS version before mapping requirements."},
+        {"label": "Use supplied PCI DSS 4.0.1", "description": "Assess against the supplied PCI DSS 4.0.1 requirements."},
+        {"label": "Use supplied other version", "description": "Assess against the other version supplied through Other."}
+      ]
+    },
+    {
+      "id": "pci_overlay",
+      "ask_when": "Applicable QSA or customer overlays are unclear.",
+      "header": "Overlay",
+      "question": "How should an unspecified assessment overlay be handled?",
+      "options": [
+        {"label": "Inventory overlays first (Recommended)", "description": "Confirm applicable QSA and customer requirements before adding interpretations."},
+        {"label": "Use supplied overlay", "description": "Apply the complete supplied QSA or customer overlay."},
+        {"label": "Standard only", "description": "Use the selected PCI DSS version without an additive assessment overlay."}
       ]
     },
     {

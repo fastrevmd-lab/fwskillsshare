@@ -798,8 +798,8 @@ Each task follows this complete cycle:
 **Files:** Modify `skills/cmmc-nist-800-171-ngfw-compliance/SKILL.md`; create
 `skills/cmmc-nist-800-171-ngfw-compliance/references/runtime-intake.md`.
 
-**Catalog:** Appendix A.2 (`cmmc_basis`, `cmmc_stage`, `cmmc_boundary`,
-`cmmc_assets`, `cmmc_evidence`, `cmmc_output`).
+**Catalog:** Appendix A.2 (`cmmc_basis`, `cmmc_overlay`, `cmmc_stage`,
+`cmmc_boundary`, `cmmc_assets`, `cmmc_evidence`, `cmmc_output`).
 
 ### Task 5: `firewall-best-practices-audit`
 
@@ -879,8 +879,8 @@ Each task follows this complete cycle:
 **Files:** Modify `skills/pci-ngfw-compliance/SKILL.md`; create
 `skills/pci-ngfw-compliance/references/runtime-intake.md`.
 
-**Catalog:** Appendix A.12 (`pci_version`, `pci_stage`, `pci_scope`,
-`pci_segment`, `pci_evidence`, `pci_output`).
+**Catalog:** Appendix A.12 (`pci_version`, `pci_overlay`, `pci_stage`,
+`pci_scope`, `pci_segment`, `pci_evidence`, `pci_output`).
 
 ### Task 15: `sd-onprem-proxmox-deploy`
 
@@ -1207,11 +1207,13 @@ installable skill.
   assessed?`; options: `IG2 (Recommended)` — Assess IG1 and IG2 for a typical
   enterprise; `IG1` — Limit scope to essential cyber hygiene; `IG3` — Include
   all three groups.
-- `cis_scope`; header `Scope`; ask when device or boundary scope is absent;
-  question `What firewall scope should be included?`; options: `Full estate
-  (Recommended)` — Assess all supplied devices and boundaries; `Named boundary`
-  — Limit the assessment to a specified system or segment; `Evidence only` —
-  Assess only controls directly supported by supplied evidence.
+- `cis_scope`; header `Scope`; ask when firewall estate scope is absent;
+  question `How should an unspecified firewall estate scope be resolved?`;
+  options: `Inventory estate first (Recommended)` — Inventory relevant devices
+  and boundaries before selecting assessment scope; `Use supplied full estate`
+  — Assess the supplied complete firewall estate and all its boundaries; `Use
+  supplied named boundary` — Limit assessment to the supplied named system or
+  segment.
 - `cis_evidence`; header `Evidence`; ask when evidence completeness is unclear;
   question `How should uncertain evidence completeness be handled?`; options:
   `Inventory evidence (Recommended)` — Identify configurations, logs, reviews,
@@ -1227,10 +1229,19 @@ installable skill.
 ### A.2 `cmmc-nist-800-171-ngfw-compliance`
 
 - `cmmc_basis`; header `Basis`; ask when the governing framework or revision is
-  absent; question `Which assessment basis should be used?`; options: `CMMC
-  Level 2 (Recommended)` — Assess CMMC Level 2 readiness; `NIST 800-171` — Map
-  to the specified NIST revision; `Contract overlay` — Include supplied DFARS
-  or customer requirements.
+  absent; question `How should an unspecified assessment framework be
+  resolved?`; options: `Confirm framework first (Recommended)` — Confirm the
+  governing framework and revision before mapping controls; `Use supplied CMMC
+  Level 2` — Assess against the supplied CMMC Level 2 requirements; `Use
+  supplied NIST revision` — Assess against the supplied NIST SP 800-171
+  revision.
+- `cmmc_overlay`; header `Overlay`; ask when applicable DFARS or customer
+  overlays are unclear; question `How should an unspecified contractual
+  overlay be handled?`; options: `Inventory overlays first (Recommended)` —
+  Confirm applicable DFARS and customer requirements before adding controls;
+  `Use supplied overlay` — Apply the complete supplied DFARS or customer
+  overlay; `Standard only` — Use the selected standard without an additive
+  contractual overlay.
 - `cmmc_stage`; header `Stage`; ask when assessment stage is absent; question
   `What is the assessment being prepared for?`; options: `Readiness review
   (Recommended)` — Identify gaps before formal assessment; `SSP and POAM` —
@@ -1243,10 +1254,12 @@ installable skill.
   supplied final boundary and disclose unverified assumptions; `Validate
   supplied draft` — Test a supplied draft and mark unresolved scope.
 - `cmmc_assets`; header `Assets`; ask when asset classes in scope are unclear;
-  question `Which assets should be assessed?`; options: `CUI and SPA
-  (Recommended)` — Include CUI assets and security protection assets; `Named
-  controls` — Limit review to specified requirements or devices; `Full
-  environment` — Include adjacent systems that affect CUI protection.
+  question `How should an unspecified CUI asset scope be resolved?`; options:
+  `Inventory assets first (Recommended)` — Identify CUI assets, security
+  protection assets, and adjacent dependencies before selecting scope; `Use
+  supplied CUI boundary` — Assess the supplied complete set of CUI and security
+  protection assets; `Use supplied enterprise scope` — Assess the supplied
+  complete environment including systems that affect CUI protection.
 - `cmmc_evidence`; header `Evidence`; ask when evidence completeness is unclear;
   question `How should uncertain evidence completeness be handled?`; options:
   `Inventory evidence (Recommended)` — Identify configurations, logs,
@@ -1358,11 +1371,13 @@ installable skill.
   `Semantic matching (Recommended)` — Match resolved meaning before names;
   `Stable names` — Use names as primary identity; `Strict values` — Report every
   name or value difference.
-- `diff_ignore`; header `Exceptions`; ask when intentional local differences
-  may exist; question `Are any differences expected and approved?`; options:
-  `No allowlist (Recommended)` — Report all material differences; `Known local
-  deltas` — Exclude a supplied allowlist; `Generated noise` — Ignore known
-  non-semantic ordering or metadata.
+- `diff_ignore`; header `Exceptions`; ask when difference allowlist is absent;
+  question `How should an unspecified difference allowlist be handled?`;
+  options: `Stop pending allowlist (Recommended)` — Stop filtering decisions
+  until intentional and generated exceptions are confirmed; `Use supplied
+  complete allowlist` — Exclude every intentional or generated exception in
+  the supplied complete allowlist; `Use no exclusions` — Report all material
+  differences without an allowlist.
 - `diff_output`; header `Output`; ask when result detail is absent; question
   `How detailed should the result be?`; options: `Full diff report
   (Recommended)` — Include equivalence, additions, removals, impact, and
@@ -1389,11 +1404,13 @@ installable skill.
   assessing; `Assess supplied boundary` — Use a supplied final boundary and
   disclose unverified assumptions; `Validate supplied draft` — Test a supplied
   preliminary boundary and mark unresolved scope.
-- `hipaa_vendor`; header `Vendors`; ask when third-party ePHI paths are unclear;
-  question `How should third-party ePHI paths be handled?`; options: `Include
-  all paths (Recommended)` — Assess vendors, remote access, cloud, and
-  transmission; `Named vendors` — Limit review to identified parties;
-  `Technical only` — Exclude contract conclusions and note BAA needs.
+- `hipaa_vendor`; header `Vendors`; ask when third-party ePHI path scope is
+  unclear; question `How should unresolved third-party ePHI path scope be
+  handled?`; options: `Inventory paths first (Recommended)` — Identify vendor,
+  remote-access, cloud, and transmission paths before selecting scope; `Use
+  supplied all paths` — Assess the supplied complete set of third-party ePHI
+  paths; `Use supplied named paths` — Limit assessment to the supplied named
+  third-party paths.
 - `hipaa_evidence`; header `Evidence`; ask when evidence period is unclear;
   question `How should an uncertain evidence period be handled?`; options:
   `Inventory evidence (Recommended)` — Identify dated records and current
@@ -1446,12 +1463,12 @@ installable skill.
 
 ### A.8 `parsing-cisco-configs`
 
-- `cisco_goal`; header `Goal`; ask when downstream purpose is absent and affects
-  parsing depth; question `What will the parsed result be used for?`; options:
-  `Full normalization (Recommended)` — Populate the shared schema and all
-  quality gates; `Focused analysis` — Parse sections relevant to the
-  investigation; `Downstream task` — Prepare for conversion, diff, audit, or
-  compliance.
+- `cisco_goal`; header `Parse Depth`; ask when required parsing depth is absent;
+  question `How should unspecified parsing depth be resolved?`; options:
+  `Confirm depth first (Recommended)` — Confirm whether full normalization or
+  focused extraction is required; `Use full normalization` — Populate the
+  complete shared schema and run all quality gates; `Use focused extraction` —
+  Extract only the sections required for the supplied investigation.
 - `cisco_platform`; header `Platform`; ask when ASA versus FTD cannot be
   established from the artifact; question `Which Cisco platform produced the
   configuration?`; options: `Auto-detect (Recommended)` — Infer ASA versus FTD
@@ -1475,11 +1492,12 @@ installable skill.
 
 ### A.9 `parsing-fortinet-configs`
 
-- `forti_goal`; header `Goal`; ask when downstream purpose is absent and affects
-  parsing depth; question `What will the parsed result be used for?`; options:
-  `Full normalization (Recommended)` — Populate the schema and quality gates;
-  `Focused analysis` — Parse relevant sections only; `Downstream task` —
-  Prepare for conversion, diff, audit, or compliance.
+- `forti_goal`; header `Parse Depth`; ask when required parsing depth is absent;
+  question `How should unspecified parsing depth be resolved?`; options:
+  `Confirm depth first (Recommended)` — Confirm whether full normalization or
+  focused extraction is required; `Use full normalization` — Populate the
+  complete shared schema and run all quality gates; `Use focused extraction` —
+  Extract only the sections required for the supplied investigation.
 - `forti_coverage`; header `Coverage`; ask when export completeness is unclear;
   question `How should uncertain FortiGate export completeness be handled?`;
   options: `Verify first (Recommended)` — Check expected tables, defaults, and
@@ -1502,11 +1520,12 @@ installable skill.
 
 ### A.10 `parsing-palo-configs`
 
-- `palo_goal`; header `Goal`; ask when downstream purpose is absent and affects
-  parsing depth; question `What will the parsed result be used for?`; options:
-  `Full normalization (Recommended)` — Populate the schema and quality gates;
-  `Focused analysis` — Parse relevant sections only; `Downstream task` —
-  Prepare for conversion, diff, audit, or compliance.
+- `palo_goal`; header `Parse Depth`; ask when required parsing depth is absent;
+  question `How should unspecified parsing depth be resolved?`; options:
+  `Confirm depth first (Recommended)` — Confirm whether full normalization or
+  focused extraction is required; `Use full normalization` — Populate the
+  complete shared schema and run all quality gates; `Use focused extraction` —
+  Extract only the sections required for the supplied investigation.
 - `palo_format`; header `Format`; ask when XML versus set format or management
   context is ambiguous; question `What type of PAN-OS configuration was
   supplied?`; options: `Auto-detect (Recommended)` — Detect format and
@@ -1530,11 +1549,12 @@ installable skill.
 
 ### A.11 `parsing-srx-configs`
 
-- `srxp_goal`; header `Goal`; ask when downstream purpose is absent and affects
-  parsing depth; question `What will the parsed result be used for?`; options:
-  `Full normalization (Recommended)` — Populate the schema and quality gates;
-  `Focused analysis` — Parse relevant sections only; `Downstream task` —
-  Prepare for conversion, diff, audit, or compliance.
+- `srxp_goal`; header `Parse Depth`; ask when required parsing depth is absent;
+  question `How should unspecified parsing depth be resolved?`; options:
+  `Confirm depth first (Recommended)` — Confirm whether full normalization or
+  focused extraction is required; `Use full normalization` — Populate the
+  complete shared schema and run all quality gates; `Use focused extraction` —
+  Extract only the sections required for the supplied investigation.
 - `srxp_format`; header `Format`; ask when display-set versus hierarchical
   syntax is ambiguous; question `Which Junos configuration format was
   supplied?`; options: `Auto-detect (Recommended)` — Detect the syntax form;
@@ -1558,10 +1578,18 @@ installable skill.
 ### A.12 `pci-ngfw-compliance`
 
 - `pci_version`; header `PCI Version`; ask when the governing PCI version is
-  absent; question `Which PCI DSS version should govern the assessment?`;
-  options: `PCI DSS 4.0.1 (Recommended)` — Use PCI DSS 4.0.1; `Specified
-  version` — Use a version supplied through Other; `Custom overlay` — Include
-  QSA or customer interpretations.
+  absent; question `How should an unspecified PCI DSS version be resolved?`;
+  options: `Confirm version first (Recommended)` — Confirm the governing PCI
+  DSS version before mapping requirements; `Use supplied PCI DSS 4.0.1` —
+  Assess against the supplied PCI DSS 4.0.1 requirements; `Use supplied other
+  version` — Assess against the other version supplied through Other.
+- `pci_overlay`; header `Overlay`; ask when applicable QSA or customer overlays
+  are unclear; question `How should an unspecified assessment overlay be
+  handled?`; options: `Inventory overlays first (Recommended)` — Confirm
+  applicable QSA and customer requirements before adding interpretations; `Use
+  supplied overlay` — Apply the complete supplied QSA or customer overlay;
+  `Standard only` — Use the selected PCI DSS version without an additive
+  assessment overlay.
 - `pci_stage`; header `Assess Type`; ask when assessment type is absent;
   question `What kind of PCI assessment is this?`; options: `Readiness review
   (Recommended)` — Identify gaps before formal assessment; `ROC support` —
@@ -1634,11 +1662,13 @@ installable skill.
   and NTP reachability checks before deployment; `Use supplied test results` —
   Rely on supplied current DNS and NTP validation evidence; `Stop pending
   readiness` — Treat unverified service reachability as a blocker.
-- `sd_transfer`; header `Transfer`; ask when bundle delivery method is absent;
-  question `How will the installer bundle reach the appliance?`; options:
-  `Approved HTTPS (Recommended)` — Use controlled HTTPS and checksums; `SCP
-  transfer` — Use approved SCP without exposing credentials; `Existing method`
-  — Validate the supplied mechanism.
+- `sd_transfer`; header `Transfer`; ask when bundle transfer method is absent;
+  question `How should an unspecified bundle transfer method be resolved?`;
+  options: `Confirm method first (Recommended)` — Confirm the approved transfer
+  method before moving the bundle; `Use supplied HTTPS` — Transfer the bundle
+  with the supplied approved HTTPS method and checksums; `Use supplied SCP` —
+  Transfer the bundle with the supplied approved SCP method without exposing
+  credentials.
 - `sd_secrets`; header `Secrets`; ask when secret delivery is needed for a later
   step; question `How will deployment secrets be supplied?`; options:
   `Interactive entry (Recommended)` — Enter secrets at a trusted console;
@@ -1804,11 +1834,13 @@ installable skill.
   supplied endpoint` — Integrate the supplied endpoint and archive layout;
   `Design new endpoint` — Define a new supported HTTPS feed and publishing
   workflow.
-- `dif_tls`; header `TLS`; ask when publisher trust method is absent; question
-  `How should the HTTPS publisher be authenticated?`; options: `Trusted CA
-  (Recommended)` — Validate an approved CA chain; `Private CA` — Include
-  controlled CA import and rotation; `Lab unverified` — Classify bypass as
-  non-production.
+- `dif_tls`; header `CA Source`; ask when publisher CA source or trust anchor is
+  absent; question `How should an unspecified publisher CA source be
+  resolved?`; options: `Verify chain first (Recommended)` — Verify the
+  publisher chain and required trust anchor before configuration; `Use supplied
+  public CA` — Validate the publisher with the supplied public CA chain; `Use
+  supplied private CA` — Import the supplied private CA as a controlled trust
+  anchor before validation.
 - `dif_auth`; header `Feed Auth`; ask when feed authentication method is absent
   or unclear; question `How should uncertain feed authentication be handled?`;
   options: `Verify endpoint first (Recommended)` — Verify endpoint requirements

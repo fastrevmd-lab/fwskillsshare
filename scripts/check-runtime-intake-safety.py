@@ -66,31 +66,31 @@ EXPECTED_SKILLS = (
 )
 EXPECTED_CATALOG_SHA256 = {
     "cis-controls-ngfw-compliance":
-        "42bff3b56ac9b8a593826a1e7673a9ec97f9aab523e472935c6f675d30868f85",
+        "36e3bf588d757c5d4e4eb554383891c68f813cbca8dc0768081afdff0432b9ec",
     "cmmc-nist-800-171-ngfw-compliance":
-        "5ac9968fed3b785859577350a17bb3e80a11ec71deb11b570ad88ad52f37b85f",
+        "9addc8cdcfc970ea5087d95d640d86b8695837f74ca7afba84a321ce20054fe5",
     "firewall-best-practices-audit":
         "03e0a7b24132a62065b1ce119b2b1974bc97ab477e0ee6ede4e039196a25a030",
     "firewall-config-conversion":
         "7e23567bfc9642f7b9ba7ee7eaba81794bec82932eabf287c315b76c16a90051",
     "firewall-config-diff":
-        "a1f06040f76047b900909b795efb5613a9c8a9a913a2495d3b746bbdcc04b147",
+        "7b56f4b51693140bde7ef1d86024563d18285293b6f419238fb45fcb94cc47f9",
     "hipaa-ngfw-compliance":
-        "1f7231049a8c2fd65f46e9752c2fdf9a171a14cfcbe5f77520e490acbb2301e9",
+        "8d55b564d3dc9c3838c0184124d2937e7778c99cf461b65aaab0fdecff25d390",
     "iso27001-ngfw-compliance":
         "0fb97b6ad0948a71824d9dcb198ca1e18230d6a7d8de7242a7068866b5c2ceaf",
     "parsing-cisco-configs":
-        "283c9ca9051c2a9419141bac6260594cf796e5b2737745baba6dadcae5afeb86",
+        "84b72ab585131ffbd2d760728f726dd8516af80f4a73cc3d059169460d28d614",
     "parsing-fortinet-configs":
-        "82056070828ee11544364e630ab84f4f8c92073d43e4ea3d80eab573dd08bc08",
+        "ce7b8f2984a1e41ecf6d8d49251c4c720a6903ff2a80a6d173d550917b0ee549",
     "parsing-palo-configs":
-        "31bd9c1e32c3b8eac0207033f5c66a9ae995a1d471174386287b2d146633b1b3",
+        "699189bdffe2698134b31bf9538b9f82a1a683dd122a0fd7f7fb0d4bb7e8f2eb",
     "parsing-srx-configs":
-        "40807f50fb6022be44357a91a3b3b06a43ec774b302ac088a0afa5a7203b7236",
+        "40cd3dffb4a81490c7f4c8d92a22b710f902f1adc76dac0a53c593ceabbece61",
     "pci-ngfw-compliance":
-        "43a09a1962acebfc3720a97e5f4a288d0f4a9341aedf5c336b892f6c136cf09b",
+        "be8aa6f3d7d9f9cc0b2bd83df41d8fe085bf82ca1f8b26a05b2a973408a1b3ff",
     "sd-onprem-proxmox-deploy":
-        "82b55fc4e5f96a9b9fee01dca2533f95109cfcb3b98b88b0839524eec78c4629",
+        "75add48ae585220170c3386bb464a122a12eca59892d5a7c4c405c33b9d0d5d2",
     "soc2-ngfw-compliance":
         "2d7c045877c37220a6447234844512d594e16b41f0b905c9aa725b10291fceea",
     "srx-advpn":
@@ -98,7 +98,7 @@ EXPECTED_CATALOG_SHA256 = {
     "srx-autovpn-full-tunnel":
         "5fc2245ccf43ca81f36094e397531f09be9a70ee18d4c3ab711df92b36e18ff6",
     "srx-dynamic-ip-feed":
-        "1e583e93da2dea6d2633c88a8e0fb362c26dd18bda19aba1fd60b5cad7f5641e",
+        "0c7719121c78336c965f515f2c7ecb171a83df9c4e127fbdbcd87ec096c6abca",
     "srx-ipsec-hub-spoke":
         "3e4e0a5f725b58c2d287835690a4d554242ceb7bea3d0e9eb52e6ecbf6129156",
     "srx-mnha":
@@ -154,8 +154,16 @@ PLAN_ASK_WHEN_THE_IDS = {
 # Final-review regression inventory. Each key is an independently unsafe
 # recommended default, and each value is the exact safe first label.
 SAFE_FIRST_LABELS = {
+    ("cis-controls-ngfw-compliance", "cis_scope"):
+        "Inventory estate first (Recommended)",
     ("cis-controls-ngfw-compliance", "cis_evidence"):
         "Inventory evidence (Recommended)",
+    ("cmmc-nist-800-171-ngfw-compliance", "cmmc_basis"):
+        "Confirm framework first (Recommended)",
+    ("cmmc-nist-800-171-ngfw-compliance", "cmmc_overlay"):
+        "Inventory overlays first (Recommended)",
+    ("cmmc-nist-800-171-ngfw-compliance", "cmmc_assets"):
+        "Inventory assets first (Recommended)",
     ("cmmc-nist-800-171-ngfw-compliance", "cmmc_boundary"):
         "Map boundary first (Recommended)",
     ("cmmc-nist-800-171-ngfw-compliance", "cmmc_evidence"):
@@ -168,10 +176,14 @@ SAFE_FIRST_LABELS = {
         "Inspect target first (Recommended)",
     ("firewall-config-diff", "diff_direction"):
         "Establish baseline first (Recommended)",
+    ("firewall-config-diff", "diff_ignore"):
+        "Stop pending allowlist (Recommended)",
     ("hipaa-ngfw-compliance", "hipaa_role"):
         "Confirm responsibility (Recommended)",
     ("hipaa-ngfw-compliance", "hipaa_scope"):
         "Map ePHI scope (Recommended)",
+    ("hipaa-ngfw-compliance", "hipaa_vendor"):
+        "Inventory paths first (Recommended)",
     ("hipaa-ngfw-compliance", "hipaa_evidence"):
         "Inventory evidence (Recommended)",
     ("iso27001-ngfw-compliance", "iso_scope"):
@@ -182,14 +194,26 @@ SAFE_FIRST_LABELS = {
         "Confirm basis first (Recommended)",
     ("iso27001-ngfw-compliance", "iso_period"):
         "Confirm period first (Recommended)",
+    ("parsing-cisco-configs", "cisco_goal"):
+        "Confirm depth first (Recommended)",
     ("parsing-cisco-configs", "cisco_coverage"):
         "Verify first (Recommended)",
+    ("parsing-fortinet-configs", "forti_goal"):
+        "Confirm depth first (Recommended)",
     ("parsing-fortinet-configs", "forti_coverage"):
         "Verify first (Recommended)",
+    ("parsing-palo-configs", "palo_goal"):
+        "Confirm depth first (Recommended)",
     ("parsing-palo-configs", "palo_coverage"):
         "Verify first (Recommended)",
+    ("parsing-srx-configs", "srxp_goal"):
+        "Confirm depth first (Recommended)",
     ("parsing-srx-configs", "srxp_coverage"):
         "Verify first (Recommended)",
+    ("pci-ngfw-compliance", "pci_version"):
+        "Confirm version first (Recommended)",
+    ("pci-ngfw-compliance", "pci_overlay"):
+        "Inventory overlays first (Recommended)",
     ("pci-ngfw-compliance", "pci_scope"):
         "Map CDE scope (Recommended)",
     ("pci-ngfw-compliance", "pci_segment"):
@@ -206,6 +230,8 @@ SAFE_FIRST_LABELS = {
         "Map network first (Recommended)",
     ("sd-onprem-proxmox-deploy", "sd_services"):
         "Verify services first (Recommended)",
+    ("sd-onprem-proxmox-deploy", "sd_transfer"):
+        "Confirm method first (Recommended)",
     ("soc2-ngfw-compliance", "soc2_period"):
         "Confirm period first (Recommended)",
     ("soc2-ngfw-compliance", "soc2_system"):
@@ -234,6 +260,8 @@ SAFE_FIRST_LABELS = {
         "Discover first (Recommended)",
     ("srx-dynamic-ip-feed", "dif_source"):
         "Inspect source first (Recommended)",
+    ("srx-dynamic-ip-feed", "dif_tls"):
+        "Verify chain first (Recommended)",
     ("srx-dynamic-ip-feed", "dif_auth"):
         "Verify endpoint first (Recommended)",
     ("srx-dynamic-ip-feed", "dif_route"):
@@ -283,10 +311,70 @@ SAFE_FIRST_LABELS = {
 # These final-review findings require exact, single-axis option sets, not only a
 # safe first label.
 EXACT_OPTION_LABELS = {
+    ("cis-controls-ngfw-compliance", "cis_scope"): (
+        "Inventory estate first (Recommended)",
+        "Use supplied full estate",
+        "Use supplied named boundary",
+    ),
+    ("cmmc-nist-800-171-ngfw-compliance", "cmmc_basis"): (
+        "Confirm framework first (Recommended)",
+        "Use supplied CMMC Level 2",
+        "Use supplied NIST revision",
+    ),
+    ("cmmc-nist-800-171-ngfw-compliance", "cmmc_overlay"): (
+        "Inventory overlays first (Recommended)",
+        "Use supplied overlay",
+        "Standard only",
+    ),
+    ("cmmc-nist-800-171-ngfw-compliance", "cmmc_assets"): (
+        "Inventory assets first (Recommended)",
+        "Use supplied CUI boundary",
+        "Use supplied enterprise scope",
+    ),
     ("firewall-best-practices-audit", "audit_evidence"): (
         "Inventory evidence (Recommended)",
         "Use supplied artifacts",
         "Approved live collection",
+    ),
+    ("firewall-config-diff", "diff_ignore"): (
+        "Stop pending allowlist (Recommended)",
+        "Use supplied complete allowlist",
+        "Use no exclusions",
+    ),
+    ("hipaa-ngfw-compliance", "hipaa_vendor"): (
+        "Inventory paths first (Recommended)",
+        "Use supplied all paths",
+        "Use supplied named paths",
+    ),
+    ("parsing-cisco-configs", "cisco_goal"): (
+        "Confirm depth first (Recommended)",
+        "Use full normalization",
+        "Use focused extraction",
+    ),
+    ("parsing-fortinet-configs", "forti_goal"): (
+        "Confirm depth first (Recommended)",
+        "Use full normalization",
+        "Use focused extraction",
+    ),
+    ("parsing-palo-configs", "palo_goal"): (
+        "Confirm depth first (Recommended)",
+        "Use full normalization",
+        "Use focused extraction",
+    ),
+    ("parsing-srx-configs", "srxp_goal"): (
+        "Confirm depth first (Recommended)",
+        "Use full normalization",
+        "Use focused extraction",
+    ),
+    ("pci-ngfw-compliance", "pci_version"): (
+        "Confirm version first (Recommended)",
+        "Use supplied PCI DSS 4.0.1",
+        "Use supplied other version",
+    ),
+    ("pci-ngfw-compliance", "pci_overlay"): (
+        "Inventory overlays first (Recommended)",
+        "Use supplied overlay",
+        "Standard only",
     ),
     ("sd-onprem-proxmox-deploy", "sd_stage"): (
         "Inspect stage first (Recommended)",
@@ -297,6 +385,11 @@ EXACT_OPTION_LABELS = {
         "Inspect state first (Recommended)",
         "Plan supplied new VM",
         "Assess supplied existing VM",
+    ),
+    ("sd-onprem-proxmox-deploy", "sd_transfer"): (
+        "Confirm method first (Recommended)",
+        "Use supplied HTTPS",
+        "Use supplied SCP",
     ),
     ("srx-advpn", "advpn_evidence"): (
         "Inventory evidence (Recommended)",
@@ -312,6 +405,11 @@ EXACT_OPTION_LABELS = {
         "Inspect source first (Recommended)",
         "Use supplied endpoint",
         "Design new endpoint",
+    ),
+    ("srx-dynamic-ip-feed", "dif_tls"): (
+        "Verify chain first (Recommended)",
+        "Use supplied public CA",
+        "Use supplied private CA",
     ),
     ("srx-dynamic-ip-feed", "dif_auth"): (
         "Verify endpoint first (Recommended)",

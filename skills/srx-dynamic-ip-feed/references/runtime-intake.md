@@ -85,21 +85,21 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "dif_tls",
-      "ask_when": "Publisher trust method is absent.",
-      "header": "TLS",
-      "question": "How should the HTTPS publisher be authenticated?",
+      "ask_when": "Publisher CA source or trust anchor is absent.",
+      "header": "CA Source",
+      "question": "How should an unspecified publisher CA source be resolved?",
       "options": [
         {
-          "label": "Trusted CA (Recommended)",
-          "description": "Validate an approved CA chain."
+          "label": "Verify chain first (Recommended)",
+          "description": "Verify the publisher chain and required trust anchor before configuration."
         },
         {
-          "label": "Private CA",
-          "description": "Include controlled CA import and rotation."
+          "label": "Use supplied public CA",
+          "description": "Validate the publisher with the supplied public CA chain."
         },
         {
-          "label": "Lab unverified",
-          "description": "Classify bypass as non-production."
+          "label": "Use supplied private CA",
+          "description": "Import the supplied private CA as a controlled trust anchor before validation."
         }
       ]
     },

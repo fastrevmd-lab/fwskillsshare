@@ -85,21 +85,21 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "hipaa_vendor",
-      "ask_when": "Third-party ePHI paths are unclear.",
+      "ask_when": "Third-party ePHI path scope is unclear.",
       "header": "Vendors",
-      "question": "How should third-party ePHI paths be handled?",
+      "question": "How should unresolved third-party ePHI path scope be handled?",
       "options": [
         {
-          "label": "Include all paths (Recommended)",
-          "description": "Assess vendors, remote access, cloud, and transmission."
+          "label": "Inventory paths first (Recommended)",
+          "description": "Identify vendor, remote-access, cloud, and transmission paths before selecting scope."
         },
         {
-          "label": "Named vendors",
-          "description": "Limit review to identified parties."
+          "label": "Use supplied all paths",
+          "description": "Assess the supplied complete set of third-party ePHI paths."
         },
         {
-          "label": "Technical only",
-          "description": "Exclude contract conclusions and note BAA needs."
+          "label": "Use supplied named paths",
+          "description": "Limit assessment to the supplied named third-party paths."
         }
       ]
     },

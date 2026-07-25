@@ -102,13 +102,13 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "sd_transfer",
-      "ask_when": "The bundle delivery method is absent.",
+      "ask_when": "The bundle transfer method is absent.",
       "header": "Transfer",
-      "question": "How will the installer bundle reach the appliance?",
+      "question": "How should an unspecified bundle transfer method be resolved?",
       "options": [
-        {"label": "Approved HTTPS (Recommended)", "description": "Use controlled HTTPS and checksums."},
-        {"label": "SCP transfer", "description": "Use approved SCP without exposing credentials."},
-        {"label": "Existing method", "description": "Validate the supplied mechanism."}
+        {"label": "Confirm method first (Recommended)", "description": "Confirm the approved transfer method before moving the bundle."},
+        {"label": "Use supplied HTTPS", "description": "Transfer the bundle with the supplied approved HTTPS method and checksums."},
+        {"label": "Use supplied SCP", "description": "Transfer the bundle with the supplied approved SCP method without exposing credentials."}
       ]
     },
     {

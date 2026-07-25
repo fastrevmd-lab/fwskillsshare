@@ -26,6 +26,118 @@ SPEC.loader.exec_module(SAFETY)
 
 CATALOG_RE = re.compile(r"```json\n(?P<payload>.*?)\n```", re.DOTALL)
 DESIRED_SEMANTICS = {
+    ("cis-controls-ngfw-compliance", "cis_scope"): (
+        "How should an unspecified firewall estate scope be resolved?",
+        (
+            "Inventory estate first (Recommended)",
+            "Use supplied full estate",
+            "Use supplied named boundary",
+        ),
+    ),
+    ("cmmc-nist-800-171-ngfw-compliance", "cmmc_basis"): (
+        "How should an unspecified assessment framework be resolved?",
+        (
+            "Confirm framework first (Recommended)",
+            "Use supplied CMMC Level 2",
+            "Use supplied NIST revision",
+        ),
+    ),
+    ("cmmc-nist-800-171-ngfw-compliance", "cmmc_overlay"): (
+        "How should an unspecified contractual overlay be handled?",
+        (
+            "Inventory overlays first (Recommended)",
+            "Use supplied overlay",
+            "Standard only",
+        ),
+    ),
+    ("cmmc-nist-800-171-ngfw-compliance", "cmmc_assets"): (
+        "How should an unspecified CUI asset scope be resolved?",
+        (
+            "Inventory assets first (Recommended)",
+            "Use supplied CUI boundary",
+            "Use supplied enterprise scope",
+        ),
+    ),
+    ("firewall-config-diff", "diff_ignore"): (
+        "How should an unspecified difference allowlist be handled?",
+        (
+            "Stop pending allowlist (Recommended)",
+            "Use supplied complete allowlist",
+            "Use no exclusions",
+        ),
+    ),
+    ("hipaa-ngfw-compliance", "hipaa_vendor"): (
+        "How should unresolved third-party ePHI path scope be handled?",
+        (
+            "Inventory paths first (Recommended)",
+            "Use supplied all paths",
+            "Use supplied named paths",
+        ),
+    ),
+    ("parsing-cisco-configs", "cisco_goal"): (
+        "How should unspecified parsing depth be resolved?",
+        (
+            "Confirm depth first (Recommended)",
+            "Use full normalization",
+            "Use focused extraction",
+        ),
+    ),
+    ("parsing-fortinet-configs", "forti_goal"): (
+        "How should unspecified parsing depth be resolved?",
+        (
+            "Confirm depth first (Recommended)",
+            "Use full normalization",
+            "Use focused extraction",
+        ),
+    ),
+    ("parsing-palo-configs", "palo_goal"): (
+        "How should unspecified parsing depth be resolved?",
+        (
+            "Confirm depth first (Recommended)",
+            "Use full normalization",
+            "Use focused extraction",
+        ),
+    ),
+    ("parsing-srx-configs", "srxp_goal"): (
+        "How should unspecified parsing depth be resolved?",
+        (
+            "Confirm depth first (Recommended)",
+            "Use full normalization",
+            "Use focused extraction",
+        ),
+    ),
+    ("pci-ngfw-compliance", "pci_version"): (
+        "How should an unspecified PCI DSS version be resolved?",
+        (
+            "Confirm version first (Recommended)",
+            "Use supplied PCI DSS 4.0.1",
+            "Use supplied other version",
+        ),
+    ),
+    ("pci-ngfw-compliance", "pci_overlay"): (
+        "How should an unspecified assessment overlay be handled?",
+        (
+            "Inventory overlays first (Recommended)",
+            "Use supplied overlay",
+            "Standard only",
+        ),
+    ),
+    ("sd-onprem-proxmox-deploy", "sd_transfer"): (
+        "How should an unspecified bundle transfer method be resolved?",
+        (
+            "Confirm method first (Recommended)",
+            "Use supplied HTTPS",
+            "Use supplied SCP",
+        ),
+    ),
+    ("srx-dynamic-ip-feed", "dif_tls"): (
+        "How should an unspecified publisher CA source be resolved?",
+        (
+            "Verify chain first (Recommended)",
+            "Use supplied public CA",
+            "Use supplied private CA",
+        ),
+    ),
     ("sd-onprem-proxmox-deploy", "sd_stage"): (
         "How should an unspecified deployment stage be resolved?",
         (
@@ -107,6 +219,24 @@ DESIRED_SEMANTICS = {
         ),
     ),
 }
+TASK_30_SEMANTIC_KEYS = frozenset(
+    {
+        ("cis-controls-ngfw-compliance", "cis_scope"),
+        ("cmmc-nist-800-171-ngfw-compliance", "cmmc_basis"),
+        ("cmmc-nist-800-171-ngfw-compliance", "cmmc_overlay"),
+        ("cmmc-nist-800-171-ngfw-compliance", "cmmc_assets"),
+        ("firewall-config-diff", "diff_ignore"),
+        ("hipaa-ngfw-compliance", "hipaa_vendor"),
+        ("parsing-cisco-configs", "cisco_goal"),
+        ("parsing-fortinet-configs", "forti_goal"),
+        ("parsing-palo-configs", "palo_goal"),
+        ("parsing-srx-configs", "srxp_goal"),
+        ("pci-ngfw-compliance", "pci_version"),
+        ("pci-ngfw-compliance", "pci_overlay"),
+        ("sd-onprem-proxmox-deploy", "sd_transfer"),
+        ("srx-dynamic-ip-feed", "dif_tls"),
+    }
+)
 
 
 class RuntimeIntakeSafetyTests(unittest.TestCase):
@@ -163,7 +293,7 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         return matches[0]
 
-    def test_ten_final_review_semantics_are_exact(self) -> None:
+    def test_review_semantics_are_exact(self) -> None:
         for key, (expected_question, expected_labels) in DESIRED_SEMANTICS.items():
             with self.subTest(skill=key[0], question_id=key[1]):
                 question = self.package_question(*key)
@@ -172,6 +302,19 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 )
                 self.assertEqual(question["question"], expected_question)
                 self.assertEqual(actual_labels, expected_labels)
+
+    def test_review_semantics_have_exact_manifest_coverage(self) -> None:
+        for key in TASK_30_SEMANTIC_KEYS:
+            with self.subTest(skill=key[0], question_id=key[1]):
+                _expected_question, expected_labels = DESIRED_SEMANTICS[key]
+                self.assertEqual(
+                    SAFETY.SAFE_FIRST_LABELS.get(key),
+                    expected_labels[0],
+                )
+                self.assertEqual(
+                    SAFETY.EXACT_OPTION_LABELS.get(key),
+                    expected_labels,
+                )
 
     def test_duplicate_appendix_skill_section_is_rejected(self) -> None:
         self.use_temp_catalogs()
@@ -284,7 +427,7 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
         self.assertEqual(
             completed.stdout.strip(),
             "OK: 1 selected plan/reference catalog; parsed all 22 catalogs and "
-            "resolved all manifest keys; 1 safe default; 0 exact option tuples",
+            "resolved all manifest keys; 2 safe defaults; 1 exact option tuple",
         )
 
     def test_digest_manifest_covers_every_catalog(self) -> None:
