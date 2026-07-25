@@ -1408,7 +1408,15 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
             )
 
         for state, pending in pending_states.items():
-            for breaker in ("***", "---"):
+            for breaker in (
+                "***",
+                "=",
+                "==",
+                "===  ",
+                "-",
+                "--",
+                "---\t",
+            ):
                 for container in ("top-level", "quote", "list"):
                     with self.subTest(
                         state=state,

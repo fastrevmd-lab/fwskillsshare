@@ -441,7 +441,12 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         }
         interrupting_blocks = {
             "thematic-break": ("***", "thematic-break"),
-            "setext-underline": ("---", "setext-underline"),
+            "setext-h1-single": ("=", "setext-underline"),
+            "setext-h1-double": ("==", "setext-underline"),
+            "setext-h1-trailing-space": ("===  ", "setext-underline"),
+            "setext-h2-single": ("-", "setext-underline"),
+            "setext-h2-double": ("--", "setext-underline"),
+            "setext-h2-trailing-tab": ("---\t", "setext-underline"),
             "atx": ("## Runtime intake", "atx"),
             "raw-html-1": ("<script>", "raw-html-1"),
             "raw-html-3": ("<?runtime?>", "raw-html-3"),
@@ -493,6 +498,12 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                                 analysis.headings[-1].style,
                                 "setext",
                             )
+                            self.assertEqual(
+                                analysis.headings[-1].level,
+                                1
+                                if indicator.lstrip().startswith("=")
+                                else 2,
+                            )
                         elif expected_kind.startswith("raw-html-"):
                             self.assertEqual(
                                 analysis.raw_html_lines,
@@ -517,6 +528,78 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
                     analysis.headings[-1].content,
                     "Runtime intake",
                 )
+
+    def test_pending_link_references_preserve_paragraph_interrupt_rules(
+        self,
+    ) -> None:
+        pending_states = {
+            "label": ("[foo",),
+            "destination": ("[foo]:",),
+            "same-line-title": ('[foo]: /url "',),
+            "next-line-title": ("[foo]: /url", '"'),
+        }
+        continuations = {
+            "empty-asterisk": ("*", "  Runtime intake", "  ---"),
+            "empty-plus": ("+", "  Runtime intake", "  ---"),
+            "ordered-non-one-inline": ("10. ## Runtime intake",),
+            "ordered-non-one-block": (
+                "10.",
+                "    Runtime intake",
+                "    ---",
+            ),
+        }
+
+        def wrap(lines: tuple[str, ...], container: str) -> str:
+            if container == "quote":
+                return "".join(f"> {line}\n" for line in lines)
+            if container == "list":
+                return (
+                    f"- {lines[0]}\n"
+                    + "".join(f"  {line}\n" for line in lines[1:])
+                )
+            return "".join(f"{line}\n" for line in lines)
+
+        documents = (
+            ("skill", VALID_SKILL),
+            ("reference", render_reference()),
+        )
+        for state, pending in pending_states.items():
+            for case, continuation in continuations.items():
+                for container in ("top-level", "quote", "list"):
+                    with self.subTest(
+                        state=state,
+                        case=case,
+                        container=container,
+                    ):
+                        suffix = wrap(pending + continuation, container)
+                        analysis = VALIDATOR.analyze_markdown(suffix)
+                        self.assertEqual(analysis.headings, [])
+                        expected_depth = 0 if container == "top-level" else 1
+                        self.assertTrue(
+                            all(
+                                len(line.containers) == expected_depth
+                                for line in analysis.lines
+                            )
+                        )
+                        for document, original in documents:
+                            with self.subTest(document=document):
+                                mutant = original + "\n" + suffix
+                                if document == "skill":
+                                    self.assertEqual(
+                                        VALIDATOR.validate_skill(
+                                            STANDARD_PROBE_PATH,
+                                            mutant,
+                                        ),
+                                        [],
+                                    )
+                                else:
+                                    self.assertEqual(
+                                        VALIDATOR.validate_catalog(
+                                            Path("runtime-intake.md"),
+                                            mutant,
+                                        ),
+                                        [],
+                                    )
 
     def test_pending_link_reference_interrupts_preserve_source_mapping(
         self,
@@ -602,7 +685,15 @@ class RuntimeIntakeValidatorTests(unittest.TestCase):
         )
         for document, original, heading, assert_rejected in documents:
             for state, pending in pending_states.items():
-                for breaker in ("***", "---"):
+                for breaker in (
+                    "***",
+                    "=",
+                    "==",
+                    "===  ",
+                    "-",
+                    "--",
+                    "---\t",
+                ):
                     for container in ("top-level", "quote", "list"):
                         with self.subTest(
                             document=document,
