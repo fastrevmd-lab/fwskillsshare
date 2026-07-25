@@ -320,6 +320,86 @@ DESIRED_SEMANTICS = {
             "Use supplied mixed treatment",
         ),
     ),
+    ("parsing-cisco-configs", "cisco_platform"): (
+        "How should an ambiguous Cisco platform be resolved?",
+        (
+            "Confirm platform first (Recommended)",
+            "Use supplied Cisco ASA",
+            "Use supplied Cisco FTD",
+        ),
+    ),
+    ("parsing-palo-configs", "palo_format"): (
+        "How should an ambiguous PAN-OS format be resolved?",
+        (
+            "Confirm format first (Recommended)",
+            "Use supplied PAN-OS XML",
+            "Use supplied set format",
+        ),
+    ),
+    ("parsing-palo-configs", "palo_scope"): (
+        "How should an unspecified PAN-OS context scope be resolved?",
+        (
+            "Confirm context first (Recommended)",
+            "Use supplied all-context scope",
+            "Use supplied named-context scope",
+        ),
+    ),
+    ("parsing-palo-configs", "palo_inheritance"): (
+        "How should unspecified PAN-OS inheritance treatment be resolved?",
+        (
+            "Confirm inheritance first (Recommended)",
+            "Use supplied effective resolution",
+            "Use supplied local-only treatment",
+        ),
+    ),
+    ("parsing-srx-configs", "srxp_format"): (
+        "How should an ambiguous Junos format be resolved?",
+        (
+            "Confirm format first (Recommended)",
+            "Use supplied display set",
+            "Use supplied hierarchical",
+        ),
+    ),
+    ("srx-advpn", "advpn_gateway"): (
+        "How should unresolved ADVPN gateway support be handled?",
+        (
+            "Verify support first (Recommended)",
+            "Use supplied supported static",
+            "Use supplied supported dynamic",
+        ),
+    ),
+    ("srx-mnha", "mnha_objective"): (
+        "How should an unspecified resilience objective be resolved?",
+        (
+            "Confirm objective first (Recommended)",
+            "Use supplied continuity priority",
+            "Use supplied convergence priority",
+        ),
+    ),
+    ("soc2-ngfw-compliance", "soc2_tsc"): (
+        "How should unspecified Trust Services categories be resolved?",
+        (
+            "Confirm categories first (Recommended)",
+            "Use supplied security-only scope",
+            "Use supplied expanded scope",
+        ),
+    ),
+    ("firewall-best-practices-audit", "audit_scope"): (
+        "How should unspecified audit component coverage be resolved?",
+        (
+            "Inventory components first (Recommended)",
+            "Use supplied full-component scope",
+            "Use supplied limited-component scope",
+        ),
+    ),
+    ("firewall-best-practices-audit", "audit_boundary"): (
+        "How should an unspecified audit boundary be resolved?",
+        (
+            "Map boundary first (Recommended)",
+            "Use supplied all-context boundary",
+            "Use supplied named-context boundary",
+        ),
+    ),
 }
 TASK_30_SEMANTIC_KEYS = frozenset(
     {
@@ -356,6 +436,43 @@ TASK_31_SEMANTIC_KEYS = frozenset(
         ("srx-policy", "policy_model"),
     }
 )
+TASK_32_SEMANTIC_KEYS = frozenset(
+    {
+        ("parsing-cisco-configs", "cisco_platform"),
+        ("parsing-palo-configs", "palo_format"),
+        ("parsing-palo-configs", "palo_scope"),
+        ("parsing-palo-configs", "palo_inheritance"),
+        ("parsing-srx-configs", "srxp_format"),
+        ("srx-advpn", "advpn_gateway"),
+        ("srx-mnha", "mnha_objective"),
+        ("soc2-ngfw-compliance", "soc2_tsc"),
+        ("firewall-best-practices-audit", "audit_scope"),
+        ("firewall-best-practices-audit", "audit_boundary"),
+    }
+)
+TASK_32_EXPECTED_ASK_WHEN = {
+    ("parsing-cisco-configs", "cisco_platform"):
+        "ASA versus FTD remains ambiguous after artifact inspection.",
+    ("parsing-palo-configs", "palo_format"):
+        "XML versus set format remains ambiguous after artifact inspection.",
+    ("parsing-palo-configs", "palo_scope"):
+        "PAN-OS configuration-context selection is unclear.",
+    ("parsing-palo-configs", "palo_inheritance"):
+        "Inheritance treatment is unclear.",
+    ("parsing-srx-configs", "srxp_format"):
+        "Display-set versus hierarchical syntax remains ambiguous after "
+        "artifact inspection.",
+    ("srx-advpn", "advpn_gateway"):
+        "Release-specific gateway support is unresolved.",
+    ("srx-mnha", "mnha_objective"):
+        "Resilience priority is absent.",
+    ("soc2-ngfw-compliance", "soc2_tsc"):
+        "Trust Services categories are absent.",
+    ("firewall-best-practices-audit", "audit_scope"):
+        "Audit component coverage is unclear.",
+    ("firewall-best-practices-audit", "audit_boundary"):
+        "Audit boundary breadth is unclear.",
+}
 
 
 class RuntimeIntakeSafetyTests(unittest.TestCase):
@@ -423,7 +540,11 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                 self.assertEqual(actual_labels, expected_labels)
 
     def test_review_semantics_have_exact_manifest_coverage(self) -> None:
-        protected_keys = TASK_30_SEMANTIC_KEYS | TASK_31_SEMANTIC_KEYS
+        protected_keys = (
+            TASK_30_SEMANTIC_KEYS
+            | TASK_31_SEMANTIC_KEYS
+            | TASK_32_SEMANTIC_KEYS
+        )
         for key in protected_keys:
             with self.subTest(skill=key[0], question_id=key[1]):
                 _expected_question, expected_labels = DESIRED_SEMANTICS[key]
@@ -435,6 +556,12 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
                     SAFETY.EXACT_OPTION_LABELS.get(key),
                     expected_labels,
                 )
+
+    def test_task_32_ask_when_conditions_are_exact(self) -> None:
+        for key, expected_ask_when in TASK_32_EXPECTED_ASK_WHEN.items():
+            with self.subTest(skill=key[0], question_id=key[1]):
+                question = self.package_question(*key)
+                self.assertEqual(question["ask_when"], expected_ask_when)
 
     def test_duplicate_appendix_skill_section_is_rejected(self) -> None:
         self.use_temp_catalogs()

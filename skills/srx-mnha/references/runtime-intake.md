@@ -163,19 +163,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "mnha_objective",
       "ask_when": "Resilience priority is absent.",
       "header": "Objectives",
-      "question": "What resilience objective matters most?",
+      "question": "How should an unspecified resilience objective be resolved?",
       "options": [
         {
-          "label": "Stateful failover (Recommended)",
-          "description": "Prioritize session continuity."
+          "label": "Confirm objective first (Recommended)",
+          "description": "Confirm the primary resilience objective before design."
         },
         {
-          "label": "Fast routing",
-          "description": "Prioritize convergence."
+          "label": "Use supplied continuity priority",
+          "description": "Prioritize session and state continuity as supplied."
         },
         {
-          "label": "Active-active use",
-          "description": "Validate placement and symmetry."
+          "label": "Use supplied convergence priority",
+          "description": "Prioritize routing convergence as supplied."
         }
       ]
     },

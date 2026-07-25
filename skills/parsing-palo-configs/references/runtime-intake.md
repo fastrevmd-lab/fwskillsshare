@@ -45,41 +45,61 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "palo_format",
-      "ask_when": "XML versus set format or management context is ambiguous.",
+      "ask_when": "XML versus set format remains ambiguous after artifact inspection.",
       "header": "Format",
-      "question": "What type of PAN-OS configuration was supplied?",
+      "question": "How should an ambiguous PAN-OS format be resolved?",
       "options": [
         {
-          "label": "Auto-detect (Recommended)",
-          "description": "Detect format and management context."
+          "label": "Confirm format first (Recommended)",
+          "description": "Confirm XML versus set format before selecting a parser."
         },
         {
-          "label": "PAN-OS XML",
-          "description": "Parse XML hierarchy."
+          "label": "Use supplied PAN-OS XML",
+          "description": "Parse the supplied PAN-OS XML hierarchy."
         },
         {
-          "label": "Set format",
-          "description": "Parse CLI set statements."
+          "label": "Use supplied set format",
+          "description": "Parse the supplied PAN-OS set statements."
         }
       ]
     },
     {
       "id": "palo_scope",
-      "ask_when": "Panorama inheritance scope is unclear.",
-      "header": "Hierarchy",
-      "question": "How should Panorama or inherited configuration be handled?",
+      "ask_when": "PAN-OS configuration-context selection is unclear.",
+      "header": "Context",
+      "question": "How should an unspecified PAN-OS context scope be resolved?",
       "options": [
         {
-          "label": "Resolve all (Recommended)",
-          "description": "Combine applicable shared, device-group, template, and local values."
+          "label": "Confirm context first (Recommended)",
+          "description": "Confirm the complete configuration-context selection before parsing."
         },
         {
-          "label": "Named context",
-          "description": "Limit resolution through Other."
+          "label": "Use supplied all-context scope",
+          "description": "Parse every configuration context in the supplied artifact."
         },
         {
-          "label": "Local only",
-          "description": "Avoid effective inherited-policy claims."
+          "label": "Use supplied named-context scope",
+          "description": "Parse only the supplied named contexts specified through Other."
+        }
+      ]
+    },
+    {
+      "id": "palo_inheritance",
+      "ask_when": "Inheritance treatment is unclear.",
+      "header": "Inheritance",
+      "question": "How should unspecified PAN-OS inheritance treatment be resolved?",
+      "options": [
+        {
+          "label": "Confirm inheritance first (Recommended)",
+          "description": "Confirm inheritance treatment before making effective-configuration claims."
+        },
+        {
+          "label": "Use supplied effective resolution",
+          "description": "Resolve the supplied shared, device-group, template, and local inheritance."
+        },
+        {
+          "label": "Use supplied local-only treatment",
+          "description": "Treat only supplied local values and avoid inherited-state claims."
         }
       ]
     },

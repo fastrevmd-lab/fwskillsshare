@@ -145,21 +145,21 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "advpn_gateway",
-      "ask_when": "Release-specific gateway form is unresolved.",
+      "ask_when": "Release-specific gateway support is unresolved.",
       "header": "Gateway",
-      "question": "How should release-specific gateway limitations be handled?",
+      "question": "How should unresolved ADVPN gateway support be handled?",
       "options": [
         {
-          "label": "Conservative static (Recommended)",
-          "description": "Use the documented safe form."
+          "label": "Verify support first (Recommended)",
+          "description": "Verify model and release support before selecting a gateway form."
         },
         {
-          "label": "Dynamic gateway",
-          "description": "Use only with confirmed support."
+          "label": "Use supplied supported static",
+          "description": "Use the supplied static form after support is established."
         },
         {
-          "label": "Validate first",
-          "description": "Run read-only checks before selecting syntax."
+          "label": "Use supplied supported dynamic",
+          "description": "Use the supplied dynamic form after support is established."
         }
       ]
     },

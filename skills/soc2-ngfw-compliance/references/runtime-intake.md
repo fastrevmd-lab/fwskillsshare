@@ -47,19 +47,19 @@ platform or framework basis, evidence quality, then output preference.
       "id": "soc2_tsc",
       "ask_when": "Trust Services categories are absent.",
       "header": "TSC Scope",
-      "question": "Which Trust Services Criteria categories apply?",
+      "question": "How should unspecified Trust Services categories be resolved?",
       "options": [
         {
-          "label": "Security only (Recommended)",
-          "description": "Assess the Common Criteria."
+          "label": "Confirm categories first (Recommended)",
+          "description": "Confirm every applicable Trust Services category before mapping criteria."
         },
         {
-          "label": "Security plus A/C",
-          "description": "Include availability or confidentiality."
+          "label": "Use supplied security-only scope",
+          "description": "Assess only the supplied Security category scope."
         },
         {
-          "label": "Custom scope",
-          "description": "Use categories supplied through Other."
+          "label": "Use supplied expanded scope",
+          "description": "Assess Security plus the exact supplied additional categories specified through Other."
         }
       ]
     },

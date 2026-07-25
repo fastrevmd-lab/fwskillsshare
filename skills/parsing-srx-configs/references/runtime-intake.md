@@ -45,21 +45,21 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "srxp_format",
-      "ask_when": "Display-set versus hierarchical syntax is ambiguous.",
+      "ask_when": "Display-set versus hierarchical syntax remains ambiguous after artifact inspection.",
       "header": "Format",
-      "question": "Which Junos configuration format was supplied?",
+      "question": "How should an ambiguous Junos format be resolved?",
       "options": [
         {
-          "label": "Auto-detect (Recommended)",
-          "description": "Detect the syntax form."
+          "label": "Confirm format first (Recommended)",
+          "description": "Confirm display-set versus hierarchical syntax before selecting a parser."
         },
         {
-          "label": "Display set",
-          "description": "Parse line-oriented set commands."
+          "label": "Use supplied display set",
+          "description": "Parse the supplied line-oriented display-set commands."
         },
         {
-          "label": "Hierarchical",
-          "description": "Parse brace-delimited configuration."
+          "label": "Use supplied hierarchical",
+          "description": "Parse the supplied brace-delimited hierarchical configuration."
         }
       ]
     },

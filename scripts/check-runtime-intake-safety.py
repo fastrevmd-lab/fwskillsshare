@@ -84,7 +84,7 @@ EXPECTED_CATALOG_SHA256 = {
     "cmmc-nist-800-171-ngfw-compliance":
         "97cdac86336fb74c1f1d85d8b3875d9379d16369094b91b5e7f26a7957bf2b20",
     "firewall-best-practices-audit":
-        "8b853cf308499d27abfeecb332465d44494eaf2bc064db77648fa06f2f5d103d",
+        "058e2866ad8aa6189084615ec87dd2fa339bbf61eb30e7b5b87fe481bfb80e64",
     "firewall-config-conversion":
         "7e23567bfc9642f7b9ba7ee7eaba81794bec82932eabf287c315b76c16a90051",
     "firewall-config-diff":
@@ -94,21 +94,21 @@ EXPECTED_CATALOG_SHA256 = {
     "iso27001-ngfw-compliance":
         "0fb97b6ad0948a71824d9dcb198ca1e18230d6a7d8de7242a7068866b5c2ceaf",
     "parsing-cisco-configs":
-        "84b72ab585131ffbd2d760728f726dd8516af80f4a73cc3d059169460d28d614",
+        "35cf017fe80deb5ded5f55650848d4c0bbd2a98c1ecdcffaea4e83cf9ea24ead",
     "parsing-fortinet-configs":
         "ce7b8f2984a1e41ecf6d8d49251c4c720a6903ff2a80a6d173d550917b0ee549",
     "parsing-palo-configs":
-        "699189bdffe2698134b31bf9538b9f82a1a683dd122a0fd7f7fb0d4bb7e8f2eb",
+        "d1803d5257c303a739d497f3cb395f960cb9f9f642844db97ef38ccb599b2cb1",
     "parsing-srx-configs":
-        "40cd3dffb4a81490c7f4c8d92a22b710f902f1adc76dac0a53c593ceabbece61",
+        "4e9e76b0be58716039c92b2d0897ec249660b1d60d20ecff3273c312face5fd2",
     "pci-ngfw-compliance":
         "be8aa6f3d7d9f9cc0b2bd83df41d8fe085bf82ca1f8b26a05b2a973408a1b3ff",
     "sd-onprem-proxmox-deploy":
         "8bb5379c013fbc560bc2069f5a5a332541c189436ab8a704f4bc3859ee658bf9",
     "soc2-ngfw-compliance":
-        "2d7c045877c37220a6447234844512d594e16b41f0b905c9aa725b10291fceea",
+        "47399ea9790b92e78f57058bc6da1ca7d35728744ec84542b97dd228027cb3d1",
     "srx-advpn":
-        "0a4cfbd6ba15e4003d9cc668840c24a218539059d63f09591bfc73166c781b41",
+        "a5e9c9dc1be96a5b7700ba280d6bdcf199b6cbc6e6a106f4d7613b2b95b310e3",
     "srx-autovpn-full-tunnel":
         "d8ae7ee5b58d6412868e8f7ef9337184060cb8d9f6aec7571751674deb7509e9",
     "srx-dynamic-ip-feed":
@@ -116,7 +116,7 @@ EXPECTED_CATALOG_SHA256 = {
     "srx-ipsec-hub-spoke":
         "e1f9c59cd39aeef8346ca558b968c9d12348691bd09fb2601dfbfe1121eb3080",
     "srx-mnha":
-        "3ef71cc47caf6781a141ed9ea74446691944ccfd33d1ba94bc6ee587e6428d38",
+        "dac227adff8b20d8f98dcc7456c0c591d542851ae8fdafdb5a9a654f2ced68ee",
     "srx-mpls-in-flow":
         "528ce7a884e9c1d98421afdf75e096a8dd5c44c6fb97b675aad1cceff60b44dd",
     "srx-nat":
@@ -129,7 +129,6 @@ EXPECTED_CATALOG_SHA256 = {
 # rows while their exact serialized catalog sentences include the article.
 PLAN_ASK_WHEN_THE_IDS = {
     ("firewall-best-practices-audit", "audit_goal"),
-    ("firewall-best-practices-audit", "audit_scope"),
     ("firewall-best-practices-audit", "audit_evidence"),
     ("firewall-best-practices-audit", "audit_context"),
     ("firewall-best-practices-audit", "audit_depth"),
@@ -346,6 +345,26 @@ SAFE_FIRST_LABELS = {
         "Confirm architecture first (Recommended)",
     ("srx-policy", "policy_model"):
         "Confirm architecture first (Recommended)",
+    ("parsing-cisco-configs", "cisco_platform"):
+        "Confirm platform first (Recommended)",
+    ("parsing-palo-configs", "palo_format"):
+        "Confirm format first (Recommended)",
+    ("parsing-palo-configs", "palo_scope"):
+        "Confirm context first (Recommended)",
+    ("parsing-palo-configs", "palo_inheritance"):
+        "Confirm inheritance first (Recommended)",
+    ("parsing-srx-configs", "srxp_format"):
+        "Confirm format first (Recommended)",
+    ("srx-advpn", "advpn_gateway"):
+        "Verify support first (Recommended)",
+    ("srx-mnha", "mnha_objective"):
+        "Confirm objective first (Recommended)",
+    ("soc2-ngfw-compliance", "soc2_tsc"):
+        "Confirm categories first (Recommended)",
+    ("firewall-best-practices-audit", "audit_scope"):
+        "Inventory components first (Recommended)",
+    ("firewall-best-practices-audit", "audit_boundary"):
+        "Map boundary first (Recommended)",
 }
 
 # These final-review findings require exact, single-axis option sets, not only a
@@ -573,6 +592,56 @@ EXACT_OPTION_LABELS = {
         "Confirm architecture first (Recommended)",
         "Use supplied global policy",
         "Use supplied zone-pair policy",
+    ),
+    ("parsing-cisco-configs", "cisco_platform"): (
+        "Confirm platform first (Recommended)",
+        "Use supplied Cisco ASA",
+        "Use supplied Cisco FTD",
+    ),
+    ("parsing-palo-configs", "palo_format"): (
+        "Confirm format first (Recommended)",
+        "Use supplied PAN-OS XML",
+        "Use supplied set format",
+    ),
+    ("parsing-palo-configs", "palo_scope"): (
+        "Confirm context first (Recommended)",
+        "Use supplied all-context scope",
+        "Use supplied named-context scope",
+    ),
+    ("parsing-palo-configs", "palo_inheritance"): (
+        "Confirm inheritance first (Recommended)",
+        "Use supplied effective resolution",
+        "Use supplied local-only treatment",
+    ),
+    ("parsing-srx-configs", "srxp_format"): (
+        "Confirm format first (Recommended)",
+        "Use supplied display set",
+        "Use supplied hierarchical",
+    ),
+    ("srx-advpn", "advpn_gateway"): (
+        "Verify support first (Recommended)",
+        "Use supplied supported static",
+        "Use supplied supported dynamic",
+    ),
+    ("srx-mnha", "mnha_objective"): (
+        "Confirm objective first (Recommended)",
+        "Use supplied continuity priority",
+        "Use supplied convergence priority",
+    ),
+    ("soc2-ngfw-compliance", "soc2_tsc"): (
+        "Confirm categories first (Recommended)",
+        "Use supplied security-only scope",
+        "Use supplied expanded scope",
+    ),
+    ("firewall-best-practices-audit", "audit_scope"): (
+        "Inventory components first (Recommended)",
+        "Use supplied full-component scope",
+        "Use supplied limited-component scope",
+    ),
+    ("firewall-best-practices-audit", "audit_boundary"): (
+        "Map boundary first (Recommended)",
+        "Use supplied all-context boundary",
+        "Use supplied named-context boundary",
     ),
 }
 

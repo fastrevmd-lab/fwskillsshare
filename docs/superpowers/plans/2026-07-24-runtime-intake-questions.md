@@ -863,8 +863,8 @@ Each task follows this complete cycle:
 **Files:** Modify `skills/firewall-best-practices-audit/SKILL.md`; create
 `skills/firewall-best-practices-audit/references/runtime-intake.md`.
 
-**Catalog:** Appendix A.3 (`audit_goal`, `audit_scope`, `audit_evidence`,
-`audit_context`, `audit_depth`, `audit_remed`).
+**Catalog:** Appendix A.3 (`audit_goal`, `audit_scope`, `audit_boundary`,
+`audit_evidence`, `audit_context`, `audit_depth`, `audit_remed`).
 
 ### Task 6: `firewall-config-conversion`
 
@@ -921,7 +921,7 @@ Each task follows this complete cycle:
 `skills/parsing-palo-configs/references/runtime-intake.md`.
 
 **Catalog:** Appendix A.10 (`palo_goal`, `palo_format`, `palo_scope`,
-`palo_coverage`, `palo_output`).
+`palo_inheritance`, `palo_coverage`, `palo_output`).
 
 ### Task 13: `parsing-srx-configs`
 
@@ -1397,11 +1397,20 @@ installable skill.
   (Recommended)` — Review the complete rulebase against general practices;
   `Pre-change review` — Focus on planned-change risk; `Incident focus` —
   Prioritize a suspected attack path.
-- `audit_scope`; header `Scope`; ask when included components or boundaries are
-  unclear; question `What should the audit cover?`; options: `Full device
-  (Recommended)` — Include policy, NAT, objects, zones, routing context, and
-  logging; `Rulebase only` — Limit analysis to security-policy hygiene; `Named
-  boundary` — Limit analysis to specified contexts.
+- `audit_scope`; header `Components`; ask when audit component coverage is
+  unclear; question `How should unspecified audit component coverage be
+  resolved?`; options: `Inventory components first (Recommended)` — Inventory
+  policy, NAT, objects, zones, routing, and logging before selecting coverage;
+  `Use supplied full-component scope` — Audit the complete supplied component
+  set; `Use supplied limited-component scope` — Audit only the supplied
+  component subset specified through Other.
+- `audit_boundary`; header `Boundary`; ask when audit boundary breadth is
+  unclear; question `How should an unspecified audit boundary be resolved?`;
+  options: `Map boundary first (Recommended)` — Map every device context and
+  trust boundary before selecting breadth; `Use supplied all-context boundary`
+  — Audit every context in the supplied boundary; `Use supplied named-context
+  boundary` — Audit only the supplied named-context subset specified through
+  Other.
 - `audit_evidence`; header `Evidence`; ask when operational evidence
   availability is unclear; question `How should uncertain operational evidence
   be handled?`; options: `Inventory evidence (Recommended)` — Identify
@@ -1594,11 +1603,13 @@ installable skill.
   focused extraction is required; `Use full normalization` — Populate the
   complete shared schema and run all quality gates; `Use focused extraction` —
   Extract only the sections required for the supplied investigation.
-- `cisco_platform`; header `Platform`; ask when ASA versus FTD cannot be
-  established from the artifact; question `Which Cisco platform produced the
-  configuration?`; options: `Auto-detect (Recommended)` — Infer ASA versus FTD
-  and report uncertainty; `Cisco ASA` — Apply ASA parsing assumptions; `Cisco
-  FTD` — Account for FTD-managed gaps.
+- `cisco_platform`; header `Platform`; ask when ASA versus FTD remains
+  ambiguous after artifact inspection; question `How should an ambiguous Cisco
+  platform be resolved?`; options: `Confirm platform first (Recommended)` —
+  Confirm ASA versus FTD before applying platform-specific parsing assumptions;
+  `Use supplied Cisco ASA` — Apply Cisco ASA parsing behavior from the supplied
+  platform identity; `Use supplied Cisco FTD` — Apply Cisco FTD parsing
+  behavior from the supplied platform identity.
 - `cisco_coverage`; header `Coverage`; ask when export completeness is unclear;
   question `How should uncertain Cisco export completeness be handled?`;
   options: `Verify first (Recommended)` — Check expected sections and
@@ -1651,16 +1662,26 @@ installable skill.
   focused extraction is required; `Use full normalization` — Populate the
   complete shared schema and run all quality gates; `Use focused extraction` —
   Extract only the sections required for the supplied investigation.
-- `palo_format`; header `Format`; ask when XML versus set format or management
-  context is ambiguous; question `What type of PAN-OS configuration was
-  supplied?`; options: `Auto-detect (Recommended)` — Detect format and
-  management context; `PAN-OS XML` — Parse XML hierarchy; `Set format` — Parse
-  CLI set statements.
-- `palo_scope`; header `Hierarchy`; ask when Panorama inheritance scope is
-  unclear; question `How should Panorama or inherited configuration be
-  handled?`; options: `Resolve all (Recommended)` — Combine applicable shared,
-  device-group, template, and local values; `Named context` — Limit resolution
-  through Other; `Local only` — Avoid effective inherited-policy claims.
+- `palo_format`; header `Format`; ask when XML versus set format remains
+  ambiguous after artifact inspection; question `How should an ambiguous
+  PAN-OS format be resolved?`; options: `Confirm format first (Recommended)` —
+  Confirm XML versus set format before selecting a parser; `Use supplied
+  PAN-OS XML` — Parse the supplied PAN-OS XML hierarchy; `Use supplied set
+  format` — Parse the supplied PAN-OS set statements.
+- `palo_scope`; header `Context`; ask when PAN-OS configuration-context
+  selection is unclear; question `How should an unspecified PAN-OS context
+  scope be resolved?`; options: `Confirm context first (Recommended)` — Confirm
+  the complete configuration-context selection before parsing; `Use supplied
+  all-context scope` — Parse every configuration context in the supplied
+  artifact; `Use supplied named-context scope` — Parse only the supplied named
+  contexts specified through Other.
+- `palo_inheritance`; header `Inheritance`; ask when inheritance treatment is
+  unclear; question `How should unspecified PAN-OS inheritance treatment be
+  resolved?`; options: `Confirm inheritance first (Recommended)` — Confirm
+  inheritance treatment before making effective-configuration claims; `Use
+  supplied effective resolution` — Resolve the supplied shared, device-group,
+  template, and local inheritance; `Use supplied local-only treatment` — Treat
+  only supplied local values and avoid inherited-state claims.
 - `palo_coverage`; header `Coverage`; ask when export completeness is unclear;
   question `How should uncertain PAN-OS export completeness be handled?`;
   options: `Verify first (Recommended)` — Check expected hierarchy and
@@ -1681,10 +1702,12 @@ installable skill.
   complete shared schema and run all quality gates; `Use focused extraction` —
   Extract only the sections required for the supplied investigation.
 - `srxp_format`; header `Format`; ask when display-set versus hierarchical
-  syntax is ambiguous; question `Which Junos configuration format was
-  supplied?`; options: `Auto-detect (Recommended)` — Detect the syntax form;
-  `Display set` — Parse line-oriented set commands; `Hierarchical` — Parse
-  brace-delimited configuration.
+  syntax remains ambiguous after artifact inspection; question `How should an
+  ambiguous Junos format be resolved?`; options: `Confirm format first
+  (Recommended)` — Confirm display-set versus hierarchical syntax before
+  selecting a parser; `Use supplied display set` — Parse the supplied
+  line-oriented display-set commands; `Use supplied hierarchical` — Parse the
+  supplied brace-delimited hierarchical configuration.
 - `srxp_scope`; header `Context`; ask when logical-system scope is unclear;
   question `Which Junos contexts should be included?`; options: `All detected
   (Recommended)` — Parse main and detected logical contexts; `Named context` —
@@ -1813,10 +1836,12 @@ installable skill.
   review (Recommended)` — Identify gaps before examination; `Type I` — Assess a
   point in time; `Type II` — Assess operation over a period.
 - `soc2_tsc`; header `TSC Scope`; ask when Trust Services categories are absent;
-  question `Which Trust Services Criteria categories apply?`; options:
-  `Security only (Recommended)` — Assess the Common Criteria; `Security plus
-  A/C` — Include availability or confidentiality; `Custom scope` — Use
-  categories supplied through Other.
+  question `How should unspecified Trust Services categories be resolved?`;
+  options: `Confirm categories first (Recommended)` — Confirm every applicable
+  Trust Services category before mapping criteria; `Use supplied security-only
+  scope` — Assess only the supplied Security category scope; `Use supplied
+  expanded scope` — Assess Security plus the exact supplied additional
+  categories specified through Other.
 - `soc2_period`; header `Period`; ask when evidence period is absent; question
   `How should an unspecified SOC 2 evidence period be handled?`; options:
   `Confirm period first (Recommended)` — Establish dates and available samples
@@ -1880,11 +1905,13 @@ installable skill.
   `Shortcuts plus hub (Recommended)` — Support hub paths and spoke shortcuts;
   `Shortcuts only` — Focus on spoke-to-spoke formation; `Central backhaul` —
   Re-evaluate AutoVPN fit.
-- `advpn_gateway`; header `Gateway`; ask when release-specific gateway form is
-  unresolved; question `How should release-specific gateway limitations be
-  handled?`; options: `Conservative static (Recommended)` — Use the documented
-  safe form; `Dynamic gateway` — Use only with confirmed support; `Validate
-  first` — Run read-only checks before selecting syntax.
+- `advpn_gateway`; header `Gateway`; ask when release-specific gateway support is
+  unresolved; question `How should unresolved ADVPN gateway support be
+  handled?`; options: `Verify support first (Recommended)` — Verify model and
+  release support before selecting a gateway form; `Use supplied supported
+  static` — Use the supplied static form after support is established; `Use
+  supplied supported dynamic` — Use the supplied dynamic form after support is
+  established.
 - `advpn_evidence`; header `Evidence`; ask when troubleshooting evidence is
   incomplete; question `How should incomplete troubleshooting evidence be
   handled?`; options: `Inventory evidence (Recommended)` — Identify available
@@ -2094,10 +2121,11 @@ installable skill.
   requirements; `Use supplied complete design` — Use the supplied complete
   signaling, tracking, ownership, and convergence design.
 - `mnha_objective`; header `Objectives`; ask when resilience priority is
-  absent; question `What resilience objective matters most?`; options:
-  `Stateful failover (Recommended)` — Prioritize session continuity; `Fast
-  routing` — Prioritize convergence; `Active-active use` — Validate placement
-  and symmetry.
+  absent; question `How should an unspecified resilience objective be
+  resolved?`; options: `Confirm objective first (Recommended)` — Confirm the
+  primary resilience objective before design; `Use supplied continuity
+  priority` — Prioritize session and state continuity as supplied; `Use
+  supplied convergence priority` — Prioritize routing convergence as supplied.
 - `mnha_test`; header `Test Plan`; ask when validation depth is absent; question
   `What validation depth is required?`; options: `Full failure matrix
   (Recommended)` — Test node, link, service, routing, and recovery; `Named

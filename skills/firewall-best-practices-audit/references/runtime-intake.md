@@ -45,21 +45,41 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "audit_scope",
-      "ask_when": "The included components or boundaries are unclear.",
-      "header": "Scope",
-      "question": "What should the audit cover?",
+      "ask_when": "Audit component coverage is unclear.",
+      "header": "Components",
+      "question": "How should unspecified audit component coverage be resolved?",
       "options": [
         {
-          "label": "Full device (Recommended)",
-          "description": "Include policy, NAT, objects, zones, routing context, and logging."
+          "label": "Inventory components first (Recommended)",
+          "description": "Inventory policy, NAT, objects, zones, routing, and logging before selecting coverage."
         },
         {
-          "label": "Rulebase only",
-          "description": "Limit analysis to security-policy hygiene."
+          "label": "Use supplied full-component scope",
+          "description": "Audit the complete supplied component set."
         },
         {
-          "label": "Named boundary",
-          "description": "Limit analysis to specified contexts."
+          "label": "Use supplied limited-component scope",
+          "description": "Audit only the supplied component subset specified through Other."
+        }
+      ]
+    },
+    {
+      "id": "audit_boundary",
+      "ask_when": "Audit boundary breadth is unclear.",
+      "header": "Boundary",
+      "question": "How should an unspecified audit boundary be resolved?",
+      "options": [
+        {
+          "label": "Map boundary first (Recommended)",
+          "description": "Map every device context and trust boundary before selecting breadth."
+        },
+        {
+          "label": "Use supplied all-context boundary",
+          "description": "Audit every context in the supplied boundary."
+        },
+        {
+          "label": "Use supplied named-context boundary",
+          "description": "Audit only the supplied named-context subset specified through Other."
         }
       ]
     },

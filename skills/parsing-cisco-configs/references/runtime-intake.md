@@ -45,21 +45,21 @@ platform or framework basis, evidence quality, then output preference.
     },
     {
       "id": "cisco_platform",
-      "ask_when": "ASA versus FTD cannot be established from the artifact.",
+      "ask_when": "ASA versus FTD remains ambiguous after artifact inspection.",
       "header": "Platform",
-      "question": "Which Cisco platform produced the configuration?",
+      "question": "How should an ambiguous Cisco platform be resolved?",
       "options": [
         {
-          "label": "Auto-detect (Recommended)",
-          "description": "Infer ASA versus FTD and report uncertainty."
+          "label": "Confirm platform first (Recommended)",
+          "description": "Confirm ASA versus FTD before applying platform-specific parsing assumptions."
         },
         {
-          "label": "Cisco ASA",
-          "description": "Apply ASA parsing assumptions."
+          "label": "Use supplied Cisco ASA",
+          "description": "Apply Cisco ASA parsing behavior from the supplied platform identity."
         },
         {
-          "label": "Cisco FTD",
-          "description": "Account for FTD-managed gaps."
+          "label": "Use supplied Cisco FTD",
+          "description": "Apply Cisco FTD parsing behavior from the supplied platform identity."
         }
       ]
     },
