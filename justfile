@@ -26,6 +26,7 @@ test:
     python3 scripts/check-audit-rule-contract.py
     python3 scripts/check-srx-stig-catalog.py
     python3 scripts/check-srx-stig-behavior.py
+    python3 scripts/check-srx-license-signature-contract.py
 
 guard: lint test
 

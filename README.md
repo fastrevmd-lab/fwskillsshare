@@ -100,7 +100,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**23 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem deployment request, or compliance language in your message or a pasted config. The newest `sd-onprem-proxmox-deploy` package is a draft; the other 22 packages retain the completed review record below. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
+**24 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem deployment request, or compliance language in your message or a pasted config. The newest `sd-onprem-proxmox-deploy` and `srx-license-signature-maintenance` packages are drafts; the other 22 packages retain the completed review record below. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 ### Config parsers
 
@@ -123,6 +123,7 @@ Actionable Junos playbooks — commands, design guidance, verification, troubles
 - **[srx-ipsec-hub-spoke](./skills/srx-ipsec-hub-spoke/SKILL.md)** — Static point-to-point route-based IPsec hub-and-spoke, one explicit tunnel per spoke, hub source-NAT egress, spoke-to-spoke hairpin.
 - **[srx-mpls-in-flow](./skills/srx-mpls-in-flow/SKILL.md)** — MPLS L3VPN in flow mode (secure PE/CPE): decoupled `family mpls` packet-based with inet/inet6 flow-mode, VRF-aware policy/NAT/AppID.
 - **[srx-dynamic-ip-feed](./skills/srx-dynamic-ip-feed/SKILL.md)** — Dynamic IP objects from HTTPS feed servers: `.tgz` bundles, cert validation, basic-auth / mTLS, `ipfd` log interpretation.
+- **[srx-license-signature-maintenance](./skills/srx-license-signature-maintenance/SKILL.md)** — **New draft:** AppID and IDP/IPS entitlement audit, license installation, and offline signature updates behind two independent approval gates, with secret-safe license handling, per-node chassis-cluster verification, pilot-then-batch rollout, and condition-based polling.
 
 ### Cross-vendor tooling
 
@@ -171,11 +172,11 @@ A third round on 2026-07-04/05 applied an authoring-quality pass across those or
 | Family | Skills | Reviewed |
 |--------|-------:|:--------:|
 | Config parsers | 4 | 4 / 4 |
-| SRX operational playbooks | 8 | 8 / 8 |
+| SRX operational playbooks | 9 | 8 / 9 |
 | NGFW compliance and STIG playbooks | 7 | 7 / 7 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
 | Security management deployment | 1 | 0 / 1 |
-| **Total** | **23** | **22 / 23** |
+| **Total** | **24** | **22 / 24** |
 
 The later `srx-disa-stig-compliance` addition completed an independent review on
 2026-07-22. That review verified the NIST checklist 657 / DISA Y25M01 artifact,
@@ -211,6 +212,19 @@ silent). `parsing-srx-configs` **v1.4.0** and `firewall-best-practices-audit`
 no check for a rule name contradicting its configured action, and none for
 plaintext threat-feed transport — remain open.
 
+`srx-license-signature-maintenance` was added on 2026-07-31 and is likewise
+**draft**: it has passed portable-package, runtime-intake, installer, and its own
+behavioral contract validation
+(`scripts/check-srx-license-signature-contract.py`), but has **not** been
+exercised against live devices from this repository and has not had the full
+independent review round. Its contract validator is offline by construction — it
+asserts that the two approval gates stay independent, that unsafe license
+sources are refused, that polling only ends on a terminal state, that cluster
+aggregates never substitute for per-node evidence, that version qualifiers
+survive comparison, and that a package install with no active IDP policy is
+never reported as active enforcement. Each of those assertions was
+mutation-checked.
+
 These are research/operational and assessment-support skills, not certified products: review their output against current vendor documentation, live device behavior, and (for compliance work) a qualified assessor before relying on it.
 
 Each skill also includes optional `agents/openai.yaml` UI metadata for Codex. Claude Code and Hermes continue to use the portable `SKILL.md` content and ignore that product-specific folder.
@@ -236,7 +250,7 @@ cd fwskillsshare
 Flags:
 
 ```text
---all                 Install all 23 skills
+--all                 Install all 24 skills
 --skill NAME          Install a specific skill (repeatable)
 --family NAME         parsers | srx | tooling | compliance | deployment (repeatable)
 --target WHERE        claude | codex | hermes | both | all

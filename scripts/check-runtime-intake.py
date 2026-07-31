@@ -190,6 +190,11 @@ STANDARD_RUNTIME_TEMPLATE = " ".join(
     )
 )
 COMPACT_SCOPE_TEXT = {
+    "srx-license-signature-maintenance": (
+        "Use this skill only for SRX entitlement and signature-content "
+        "maintenance. Use `srx-policy` when the IDP policy or rulebase itself "
+        "is in question."
+    ),
     "srx-dynamic-ip-feed": (
         "Use this skill only for feed-server dynamic address objects. Use "
         "`parsing-srx-configs` for full-config extraction and `srx-policy` when "

@@ -37,6 +37,7 @@ declare -a SRX=(
     "srx-policy"
     "srx-autovpn-full-tunnel"
     "srx-ipsec-hub-spoke"
+    "srx-license-signature-maintenance"
     "srx-advpn"
 )
 

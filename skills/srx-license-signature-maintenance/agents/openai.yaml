@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRX License and Signature Maintenance"
+  short_description: "Maintain SRX licenses and signatures"
+  default_prompt: "Use $srx-license-signature-maintenance to audit or update this SRX fleet's AppID and IDP licensing and signature content."

@@ -19,6 +19,13 @@ is tracked in GitHub issues.
 
 ## Tooling and operational skills
 
+`srx-license-signature-maintenance` shipped 2026-07-31 (issue #26) as a draft:
+offline contract validation only, no live-device forward test, no independent
+review yet. See
+[the plan](docs/superpowers/plans/2026-07-31-srx-license-signature-maintenance.md)
+for what remains before it leaves draft.
+
+
 1. [ ] `palo-operational` (PAN-OS operational playbook)
    - Add Palo Alto operational depth comparable to the SRX operational skills.
    - Author and validate against the available Palo VM.
