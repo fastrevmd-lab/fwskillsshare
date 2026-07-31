@@ -189,6 +189,22 @@ were remediated and re-reviewed cleanly.
 portable-package and runtime-intake validation, but remains explicitly labeled
 draft pending the same full review depth.
 
+On **2026-07-31** `firewall-best-practices-audit` and `parsing-srx-configs` were
+re-validated against **live** SRX devices over NETCONF (read-only), covering a
+policy-light standalone vSRX and a 101-policy two-node chassis cluster. The run
+is documented in
+[the live SRX audit](./docs/skill-tests/2026-07-31-firewall-best-practices-audit-live-srx.md)
+and found two real defects, both since fixed: `security dynamic-address` objects
+were not extracted (producing false `SEC-ORPHAN-REF` on every GeoIP or
+feed-backed reference), and `match dynamic-application` was dropped (collapsing
+distinct AppID-scoped rules into false `SEC-REDUNDANT` pairs, and letting an
+AppID-scoped deny pass as a terminal deny-all so `SEC-NO-DENY-ALL` stayed
+silent). `parsing-srx-configs` **v1.4.0** and `firewall-best-practices-audit`
+**v1.2.0** carry the fixes; both behaviors are pinned by regressions in
+`scripts/check-audit-rule-contract.py`. Two catalog gaps found in the same run —
+no check for a rule name contradicting its configured action, and none for
+plaintext threat-feed transport — remain open.
+
 These are research/operational and assessment-support skills, not certified products: review their output against current vendor documentation, live device behavior, and (for compliance work) a qualified assessor before relying on it.
 
 Each skill also includes optional `agents/openai.yaml` UI metadata for Codex. Claude Code and Hermes continue to use the portable `SKILL.md` content and ignore that product-specific folder.
@@ -382,11 +398,11 @@ The four `parsing-*` skills output to a common schema with these sections:
 | Section | Contents |
 |---------|----------|
 | `zones` | Security zones and their interfaces |
-| `address_objects` | Hosts, subnets, FQDNs, ranges |
+| `address_objects` | Hosts, subnets, FQDNs, ranges, and `dynamic` objects (GeoIP, threat feeds, tag selectors) whose membership resolves at runtime |
 | `address_groups` | Groups of address objects |
 | `service_objects` | Service/port definitions |
 | `service_groups` | Groups of service objects |
-| `security_policies` | Firewall rules with resolved apps, services, profiles |
+| `security_policies` | Firewall rules with resolved apps, services, profiles, and `dynamic_applications` (runtime App-ID matches) |
 | `applications` | Resolved L7 apps with canonical names and confidence scores |
 | `application_groups` | Groups of L7 applications (canonical keys) |
 | `nat_rules` | NAT translations (source, dest, static) |

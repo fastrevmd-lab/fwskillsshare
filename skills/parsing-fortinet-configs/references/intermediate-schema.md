@@ -74,7 +74,7 @@ All extracted data should be normalized to this format regardless of source vend
 }
 ```
 
-Valid `type` values: `"host"`, `"subnet"`, `"range"`, `"fqdn"`, `"wildcard"`, `"geo"`
+Valid `type` values: `"host"`, `"subnet"`, `"range"`, `"fqdn"`, `"wildcard"`, `"geo"`, `"dynamic"`
 
 - **host**: Single IP — value is `"x.x.x.x/32"` or `"::1/128"`
 - **subnet**: Network — value is `"10.0.0.0/24"`
@@ -82,6 +82,48 @@ Valid `type` values: `"host"`, `"subnet"`, `"range"`, `"fqdn"`, `"wildcard"`, `"
 - **fqdn**: Domain name — value is `"example.com"`
 - **wildcard**: Wildcard mask — value is `"10.0.0.0/0.0.255.255"`
 - **geo**: Geographic — value is country code `"US"`
+- **dynamic**: Membership resolved at runtime, not from the config text — a
+  GeoIP category, an external threat/address feed, or a tag selector. Value is a
+  human-readable summary of the selector; the machine-readable form lives in
+  `dynamic_source`.
+
+### Dynamic Address Object
+
+```json
+{
+  "name": "Banned_countries",
+  "type": "dynamic",
+  "value": "geoip:RU,KP,IR",
+  "dynamic_source": {
+    "kind": "geoip",
+    "selector": ["RU", "KP", "IR"],
+    "feed_name": "",
+    "feed_url": "",
+    "feed_transport": ""
+  },
+  "description": "",
+  "tags": [],
+  "ip_version": "any"
+}
+```
+
+`dynamic_source.kind` values: `"geoip"`, `"feed"`, `"tag"`.
+
+- **geoip** — country/region selector. `selector` holds the country codes.
+- **feed** — external feed. `feed_name` is the configured feed, `feed_url` the
+  server URL, and `feed_transport` is `"https"` or `"http"` (recording the
+  transport lets consumers reason about feed integrity).
+- **tag** — tag/label match evaluated against runtime endpoint state.
+
+**A dynamic address object is a defined object.** Consumers resolving policy
+address references must count it as resolved; treating it as missing produces
+false undefined-reference findings on every rule that uses one. Its *members*
+are unknowable from the config, so any check that needs concrete addresses
+(overlap, shadow, containment) must degrade to heuristic or skip rather than
+assume the object is empty.
+
+Source constructs: SRX `security dynamic-address address-name`, PAN-OS dynamic
+address groups, FortiGate external threat feeds.
 
 ## Address Group
 
@@ -132,6 +174,7 @@ Protocol values: `"tcp"`, `"udp"`, `"icmp"`, `"icmpv6"`, `"sctp"`, `"ip"`, `"any
   "negate_destination": false,
   "applications": ["junos-http", "junos-https"],
   "services": ["application-default"],
+  "dynamic_applications": [],
   "url_categories": [],
   "app_groups": [],
   "action": "allow",
@@ -151,6 +194,20 @@ Protocol values: `"tcp"`, `"udp"`, `"icmp"`, `"icmpv6"`, `"sctp"`, `"ip"`, `"any
   "_implicit": false
 }
 ```
+
+### Narrowing Fields
+
+`applications`, `services`, `dynamic_applications`, `url_categories`,
+`app_groups`, `source_users`, and `schedule` all restrict what a rule matches.
+A rule is only an unrestricted any/any/any rule when **every** one of them is
+`any`, empty, or absent — alongside `any` source and destination addresses.
+
+`dynamic_applications` carries runtime application-identity matches (SRX
+`match dynamic-application`, e.g. `junos:DNS-ENCRYPTED`; PAN-OS App-ID
+members). Dropping it has two consequences, both observed on a live device:
+an AppID-scoped deny at the tail of a rulebase reads as a terminal deny-all
+when it is not, and two rules differing only by App-ID scope collapse into a
+false duplicate. Any rule-identity or catch-all test must include it.
 
 ### Action Values
 - `"allow"` — permit traffic

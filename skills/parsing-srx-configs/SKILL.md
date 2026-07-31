@@ -1,7 +1,7 @@
 ---
 name: parsing-srx-configs
 description: Parse Juniper SRX and Junos display-set or hierarchical configurations into the shared firewall schema. Use when input contains set security, zones, policies, address-book, from-zone, to-zone, NAT rule-set, chassis cluster, logical-systems, or routing-instances, including audit, conversion, diff, summary, and explanation tasks.
-version: 1.3.4
+version: 1.4.0
 author:
   - fastrevmd-lab
   - Claude
@@ -147,6 +147,34 @@ Migrate both forms to global scope with a warning.
 
 Auto-detect IP version (v4 vs v6) from the value.
 
+### 2b. Dynamic Address Objects
+Path: `security.dynamic-address.address-name.<name>`
+
+These are runtime-resolved address objects — **policies reference them exactly
+like address-book entries**, so they must land in `address_objects` or every
+rule using one emits a false undefined-reference finding. Emit with
+`type: "dynamic"` and a `dynamic_source` object (schema:
+`references/intermediate-schema.md` → Dynamic Address Object).
+
+Two forms:
+
+- **GeoIP category** — `profile category GeoIP property country string <CC>`
+  (repeated). Emit `kind: "geoip"` with the country codes as `selector`.
+- **Feed-backed** — `profile feed-name <feed>`. Emit `kind: "feed"` with
+  `feed_name`. Resolve the feed's server from
+  `security.dynamic-address.feed-server.<server>` — take `url` into `feed_url`
+  and record its scheme in `feed_transport` (`https` or `http`).
+
+```text
+set security dynamic-address address-name Banned_countries profile category GeoIP property country string RU
+set security dynamic-address feed-server myfeeds url https://feeds.example.net/bundle.tgz
+set security dynamic-address address-name blocklist profile feed-name blocklist
+```
+
+Members are **not** knowable from the config. Record the object and its
+selector; never infer that it is empty, and mark any check needing concrete
+member addresses as heuristic or skipped.
+
 ### 3. Address Groups
 Path: `security.address-book.global.address-set.<name>`
 Extract members from `address` and nested `address-set` references.
@@ -243,6 +271,14 @@ For each policy extract:
 - **src_zones** / **dst_zones** — from the path (or ["any"] for global)
 - **src_addresses** / **dst_addresses** — from `match source-address` / `match destination-address`
 - **applications** — from `match application`
+- **dynamic_applications** — from `match dynamic-application` (AppID identities
+  such as `junos:DNS-ENCRYPTED`, or a custom application-group name). **This
+  field narrows the rule and must never be dropped.** A rule with
+  `match application any` plus a `dynamic-application` match is *not* an
+  any/any/any rule; omitting it makes an AppID-scoped deny read as a terminal
+  deny-all and makes two rules differing only by AppID scope look like
+  duplicates. Emit `["any"]` when the config says `dynamic-application any`,
+  and `[]` when the statement is absent.
 - **action** — `permit` → "allow", `deny` → "deny", `reject` → "reset-both" (the schema's reject-family value). Note: SRX `reject` notifies the **source only** — TCP RST to the client, ICMP unreachable for other protocols — not both sides; emit an info warning so conversions do not overstate reset-both semantics on the target platform.
 - **log_start** — true if `then log session-init`
 - **log_end** — true if `then log session-close`
@@ -418,7 +454,12 @@ Never emit secrets raw. IKE/VPN pre-shared keys, routing-protocol authentication
 2. Zone-local address books are valid in older designs; migrate or normalize to global only with a warning.
 3. Logical-systems and routing-instances are separate contexts; preserve them instead of merging names blindly.
 4. Policy matching depends on NAT order and translated addresses; preserve both faithfully for downstream interpretation.
-5. Management (`fxp*`), fabric (`fab*`), and HA control interfaces need special handling and should not be naively treated as ordinary security-zone interfaces. By contrast, `reth*` redundant-Ethernet interfaces ARE ordinary dataplane interfaces in a chassis cluster and must be parsed as zone interfaces — do not exclude them.
+5. Do not drop `match dynamic-application` or treat `security dynamic-address`
+   objects as undefined. Both were observed corrupting downstream audits on live
+   devices: the first turns an AppID-scoped deny into an apparent deny-all and
+   collapses distinct rules into false duplicates; the second makes every GeoIP
+   or feed-backed reference look like a dangling object.
+6. Management (`fxp*`), fabric (`fab*`), and HA control interfaces need special handling and should not be naively treated as ordinary security-zone interfaces. By contrast, `reth*` redundant-Ethernet interfaces ARE ordinary dataplane interfaces in a chassis cluster and must be parsed as zone interfaces — do not exclude them.
 
 ## Verification Checklist
 
@@ -426,6 +467,9 @@ Never emit secrets raw. IKE/VPN pre-shared keys, routing-protocol authentication
 - [ ] All major object counts are reported: zones, interfaces, addresses, services/applications, policies, NAT, routes, VPN, HA, and system settings
 - [ ] Output conforms to `references/intermediate-schema.md`
 - [ ] Disabled/inactive rules and objects are preserved with explicit state
+- [ ] `security dynamic-address` objects appear in `address_objects` as
+      `type: "dynamic"`, so policy references to them resolve
+- [ ] `match dynamic-application` is captured on every policy that sets it
 - [ ] Unresolved references, unsupported blocks, and parser assumptions are listed in `metadata.warnings` and/or `residual_raw`
 - [ ] Rule order and NAT order are preserved with `_rule_index` or equivalent ordering metadata
 - [ ] Cross-vendor conversion caveats are called out before suggesting target-platform config
