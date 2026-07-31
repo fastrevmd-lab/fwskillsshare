@@ -82,14 +82,23 @@ def parse_policies(path):
 
 
 def parse_addresses(path):
-    addrs, sets = {}, defaultdict(list)
+    """Parse address-book objects, address-sets, and dynamic-address objects.
+
+    `security dynamic-address` entries are defined objects that policies
+    reference exactly like address-book entries. Omitting them makes every
+    referencing rule look like a dangling reference (SEC-ORPHAN-REF).
+    """
+    addrs, sets, dynamic = {}, defaultdict(list), {}
     for raw in open(path):
         t = raw.strip().split()
         if len(t) >= 6 and t[:5] == ["set", "security", "address-book", "global", "address"]:
             addrs[t[5]] = " ".join(t[6:])
         elif len(t) >= 8 and t[:5] == ["set", "security", "address-book", "global", "address-set"]:
             sets[t[5]].append(t[7])
-    return addrs, dict(sets)
+        elif len(t) >= 5 and t[:4] == ["set", "security", "dynamic-address", "address-name"]:
+            dynamic.setdefault(t[4], "dynamic")
+    addrs.update(dynamic)
+    return addrs, dict(sets), dynamic
 
 
 def parse_apps(path):
@@ -128,10 +137,10 @@ def is_broad(value):
 
 def main(pol_path, addr_path, app_path):
     policies = parse_policies(pol_path)
-    addrs, groups = parse_addresses(addr_path)
+    addrs, groups, dynamic = parse_addresses(addr_path)
     apps, appsets = parse_apps(app_path)
 
-    print(f"policies={len(policies)} addresses={len(addrs)} address_sets={len(groups)} "
+    print(f"policies={len(policies)} addresses={len(addrs)} (of which dynamic={len(dynamic)}) address_sets={len(groups)} "
           f"applications={len(apps)} application_sets={len(appsets)}")
 
     findings = defaultdict(list)
@@ -143,7 +152,9 @@ def main(pol_path, addr_path, app_path):
     for p in policies:
         src_any = p["src_addresses"] == ["any"]
         dst_any = p["dst_addresses"] == ["any"]
-        app_any = p["applications"] == ["any"] or not p["applications"]
+        dynapp_any = p["dynamic_applications"] in ([], ["any"])
+        # A rule scoped by dynamic-application is NOT an any-service rule.
+        app_any = (p["applications"] == ["any"] or not p["applications"]) and dynapp_any
         logged = p["log_start"] or p["log_end"]
 
         if p["action"] == "allow":
@@ -194,6 +205,7 @@ def main(pol_path, addr_path, app_path):
             and tail["src_addresses"] == ["any"]
             and tail["dst_addresses"] == ["any"]
             and (tail["applications"] == ["any"] or not tail["applications"])
+            and tail["dynamic_applications"] in ([], ["any"])
         )
         if not tail_is_deny_all:
             findings["SEC-NO-DENY-ALL"].append((tail["name"], tail["action"], "tail is not an any/any deny"))
@@ -206,7 +218,8 @@ def main(pol_path, addr_path, app_path):
         key = (
             tuple(sorted(p["src_zones"])), tuple(sorted(p["dst_zones"])),
             tuple(sorted(p["src_addresses"])), tuple(sorted(p["dst_addresses"])),
-            tuple(sorted(p["applications"])), p["action"],
+            tuple(sorted(p["applications"])),
+            tuple(sorted(p["dynamic_applications"])), p["action"],
         )
         if key in seen:
             findings["SEC-REDUNDANT"].append((seen[key], p["name"]))

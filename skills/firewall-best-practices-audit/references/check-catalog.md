@@ -58,7 +58,7 @@ schema has no generic phase/origin field, so do not invent one.
 
 ## Security Checks
 
-- SEC-ANY-ANY — enabled explicit permit rule with any source AND any destination AND any service — `enabled_explicit_rules[].{src_addresses, dst_addresses, services, applications, action}` — CRITICAL (HIGH if logged) — definitive
+- SEC-ANY-ANY — enabled explicit permit rule with any source AND any destination AND any service — `enabled_explicit_rules[].{src_addresses, dst_addresses, services, applications, dynamic_applications, action}` — CRITICAL (HIGH if logged) — definitive. A rule counts as unrestricted only when **every narrowing field** is any, empty, or absent: `applications`, `services`, `dynamic_applications`, `url_categories`, `app_groups`, `source_users`, `schedule`. A rule scoped by `dynamic_applications` is not an any/any/any rule.
 
 - SEC-ANY-SVC — enabled explicit permit rule with any/any-service but specific src+dst — `enabled_explicit_rules[].{services, applications, action}` — MEDIUM — definitive
 
@@ -70,15 +70,15 @@ schema has no generic phase/origin field, so do not invent one.
 
 - SEC-SHADOW — enabled explicit rule fully shadowed by an earlier broader enabled explicit rule in the same vendor evaluation population — `enabled_explicit_rules` ordered by `_rule_index`, resolved `address_objects`, `address_groups` — HIGH — heuristic (needs full order + resolution)
 
-- SEC-REDUNDANT — duplicate enabled explicit rule (same match + action as another) in the same vendor evaluation population — `enabled_explicit_rules` — LOW — definitive only with complete population/context evidence; otherwise heuristic or skipped
+- SEC-REDUNDANT — duplicate enabled explicit rule (same match + action as another) in the same vendor evaluation population — `enabled_explicit_rules` — LOW — definitive only with complete population/context evidence; otherwise heuristic or skipped. The compared match tuple must include **every narrowing field** — zones, addresses, `applications`, `services`, `dynamic_applications`, `url_categories`, `app_groups`, `source_users`, `schedule`, and both negate flags — before `action`. Omitting one collapses distinct rules into a false duplicate; this was observed live, where two denies differing only by `dynamic_applications` were reported as duplicates.
 
 - SEC-OVERLAP — overlapping enabled explicit rules with differing actions (ordering risk) in the same vendor evaluation population — `enabled_explicit_rules` ordered by `_rule_index` — MEDIUM — heuristic
 
-- SEC-ORPHAN-REF — explicit rule (enabled or disabled) references a missing/undefined object — `explicit_rules` vs `address_objects`, `service_objects`, `applications` — MEDIUM — definitive
+- SEC-ORPHAN-REF — explicit rule (enabled or disabled) references a missing/undefined object — `explicit_rules` vs `address_objects`, `service_objects`, `applications` — MEDIUM — definitive. **Dynamic address objects (`address_objects[].type == "dynamic"` — GeoIP categories, feed-backed and tag-based entries) are defined objects and must count as resolved.** Treating them as missing produced false findings on every rule using one. If the parser did not populate dynamic objects at all, the reference is unverifiable rather than undefined: downgrade to heuristic or skip, and say so.
 
 - SEC-DISABLED — disabled-but-present explicit rule (cleanup) — `disabled_explicit_rules` — INFO — definitive
 
-- SEC-NO-DENY-ALL — no reachable explicit logged match-all action of `deny` or `drop` at the `_rule_index` tail of each applicable enabled explicit policy context or reachable SRX global fallback; `reset-both` is not a deny alias, and an implicit vendor default can provide effective enforcement but never explicit log visibility — `enabled_explicit_rules`, `implicit_rules`, `metadata.source_vendor` — MEDIUM — heuristic
+- SEC-NO-DENY-ALL — no reachable explicit logged match-all action of `deny` or `drop` at the `_rule_index` tail of each applicable enabled explicit policy context or reachable SRX global fallback; `reset-both` is not a deny alias, and an implicit vendor default can provide effective enforcement but never explicit log visibility — `enabled_explicit_rules`, `implicit_rules`, `metadata.source_vendor` — MEDIUM — heuristic. The tail rule qualifies as match-all only when every narrowing field is any/empty/absent, `dynamic_applications` included: an AppID-scoped deny at the tail is **not** a deny-all, and accepting one silences this check on a device that has none.
 
 - SEC-NO-LOG — enabled explicit permit rule without logging — `enabled_explicit_rules[].log_end`, `enabled_explicit_rules[].log_start` — LOW (MEDIUM if broad) — definitive
 

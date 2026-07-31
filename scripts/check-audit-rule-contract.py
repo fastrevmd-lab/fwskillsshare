@@ -133,6 +133,7 @@ def _is_catchall_match(policy: Policy) -> bool:
         and _unrestricted(policy.get("source_users"))
         and _unrestricted(policy.get("url_categories"))
         and _unrestricted(policy.get("app_groups"))
+        and _unrestricted(policy.get("dynamic_applications"))
     )
 
 
@@ -142,6 +143,56 @@ def _is_logged_deny_all(policy: Policy) -> bool:
         and _is_catchall_match(policy)
         and (policy.get("log_start") is True or policy.get("log_end") is True)
     )
+
+
+def rule_identity(policy: Policy) -> tuple:
+    """Return the match+action tuple SEC-REDUNDANT compares rules on.
+
+    Every field that can narrow what a rule matches must appear here, or two
+    rules that differ only by that field collapse into a false duplicate.
+    """
+
+    def norm(values: object) -> tuple:
+        if values in (None, ""):
+            return ()
+        if isinstance(values, str):
+            return (values,)
+        if isinstance(values, list):
+            return tuple(sorted(str(value) for value in values))
+        return (str(values),)
+
+    return (
+        norm(policy.get("src_zones")),
+        norm(policy.get("dst_zones")),
+        norm(policy.get("src_addresses")),
+        norm(policy.get("dst_addresses")),
+        norm(policy.get("applications")),
+        norm(policy.get("services")),
+        norm(policy.get("dynamic_applications")),
+        norm(policy.get("app_groups")),
+        norm(policy.get("url_categories")),
+        norm(policy.get("source_users")),
+        norm(policy.get("schedule")),
+        policy.get("negate_source") is True,
+        policy.get("negate_destination") is True,
+        policy.get("action"),
+    )
+
+
+def address_reference_resolves(
+    name: str, address_objects: list[Policy], address_groups: list[Policy]
+) -> bool:
+    """Return whether a policy address reference names a defined object.
+
+    Dynamic objects (`type: "dynamic"` — GeoIP categories and feed-backed
+    entries) are defined objects. Omitting them makes every policy that
+    references one look like a dangling reference.
+    """
+    if name in ("any", "any-ipv4", "any-ipv6"):
+        return True
+    defined = {obj.get("name") for obj in address_objects}
+    defined.update(group.get("name") for group in address_groups)
+    return name in defined
 
 
 def _ordered_population(policies: list[Policy]) -> list[Policy] | None:
@@ -626,6 +677,125 @@ def behavior_errors() -> list[str]:
     if nat_flow_has_enabled_permit(nat_rule, [disabled_matching_allow], "srx"):
         errors.append("disabled permit incorrectly covered an intended NAT flow")
 
+    errors.extend(_dynamic_application_errors(trust_context, implicit_default))
+    errors.extend(_dynamic_address_errors())
+    return errors
+
+
+def _dynamic_application_errors(
+    trust_context: Policy, implicit_default: Policy
+) -> list[str]:
+    """A rule narrowed by `dynamic_applications` is not an any/any/any rule.
+
+    Regression for the 2026-07-31 live-SRX finding: an AppID-scoped DNS deny sat
+    at the tail of a 101-policy set and was accepted as a terminal deny-all, so
+    SEC-NO-DENY-ALL stayed silent on a device that had none.
+    """
+    errors: list[str] = []
+    appid_scoped_deny: Policy = {
+        "name": "DENY-ENCRYPTED-DNS",
+        "action": "deny",
+        "src_zones": ["any"],
+        "dst_zones": ["any"],
+        "src_addresses": ["any"],
+        "dst_addresses": ["any"],
+        "applications": ["any"],
+        "dynamic_applications": ["junos:DNS", "junos:DNS-ENCRYPTED"],
+        "log_end": True,
+        "_rule_index": 2,
+        "_implicit": False,
+    }
+    if _is_catchall_match(appid_scoped_deny):
+        errors.append(
+            "dynamic-application-scoped rule was treated as an any/any/any match"
+        )
+    if context_has_explicit_logged_deny_all(
+        [appid_scoped_deny, implicit_default], "srx", trust_context
+    ):
+        errors.append(
+            "AppID-scoped deny was accepted as a terminal explicit logged deny-all"
+        )
+
+    unscoped_deny: Policy = {
+        **appid_scoped_deny,
+        "name": "DENY-REST",
+        "dynamic_applications": ["any"],
+    }
+    if not _is_catchall_match(unscoped_deny):
+        errors.append(
+            "`dynamic_applications: [any]` was wrongly treated as a narrowing match"
+        )
+    if not context_has_explicit_logged_deny_all(
+        [unscoped_deny, implicit_default], "srx", trust_context
+    ):
+        errors.append(
+            "unscoped deny-all with `dynamic_applications: [any]` was not recognized"
+        )
+
+    absent_field_deny: Policy = {
+        key: value
+        for key, value in unscoped_deny.items()
+        if key != "dynamic_applications"
+    }
+    if not _is_catchall_match(absent_field_deny):
+        errors.append(
+            "absent `dynamic_applications` was wrongly treated as a narrowing match"
+        )
+
+    # SEC-REDUNDANT must not collapse two rules that differ only by AppID scope.
+    if rule_identity(appid_scoped_deny) == rule_identity(unscoped_deny):
+        errors.append(
+            "rule identity ignored dynamic_applications, collapsing distinct rules"
+        )
+    identical_twin: Policy = {**appid_scoped_deny, "name": "DENY-ENCRYPTED-DNS-COPY"}
+    if rule_identity(appid_scoped_deny) != rule_identity(identical_twin):
+        errors.append("rule identity was not stable across a genuine duplicate")
+    reordered: Policy = {
+        **appid_scoped_deny,
+        "name": "DENY-ENCRYPTED-DNS-REORDERED",
+        "dynamic_applications": ["junos:DNS-ENCRYPTED", "junos:DNS"],
+    }
+    if rule_identity(appid_scoped_deny) != rule_identity(reordered):
+        errors.append("rule identity was sensitive to dynamic_applications order")
+    return errors
+
+
+def _dynamic_address_errors() -> list[str]:
+    """Dynamic address objects are defined objects, not dangling references.
+
+    Regression for the 2026-07-31 live-SRX finding: GeoIP and feed-backed
+    `security dynamic-address` objects were absent from `address_objects`, so
+    every policy referencing one emitted a false SEC-ORPHAN-REF.
+    """
+    errors: list[str] = []
+    address_objects = [
+        {"name": "web-server", "type": "host", "value": "10.0.1.10/32"},
+        {
+            "name": "Banned_countries",
+            "type": "dynamic",
+            "value": "geoip:RU,KP,IR",
+            "dynamic_source": {"kind": "geoip", "selector": ["RU", "KP", "IR"]},
+        },
+        {
+            "name": "feed-blocklist",
+            "type": "dynamic",
+            "value": "feed:blocklist",
+            "dynamic_source": {"kind": "feed", "selector": ["blocklist"]},
+        },
+    ]
+    address_groups = [{"name": "web-servers", "members": ["web-server"]}]
+
+    for name in ("Banned_countries", "feed-blocklist"):
+        if not address_reference_resolves(name, address_objects, address_groups):
+            errors.append(f"dynamic address object {name!r} read as an undefined reference")
+    if not address_reference_resolves("web-server", address_objects, address_groups):
+        errors.append("static address object read as an undefined reference")
+    if not address_reference_resolves("web-servers", address_objects, address_groups):
+        errors.append("address group read as an undefined reference")
+    if not address_reference_resolves("any", address_objects, address_groups):
+        errors.append("`any` was treated as an undefined reference")
+    if address_reference_resolves("Bad_Countries", address_objects, address_groups):
+        errors.append("genuinely undefined reference was treated as resolved")
     return errors
 
 
@@ -643,6 +813,9 @@ def documentation_errors() -> list[str]:
             "evidence-gap warning",
             "one of `deny` or `drop`",
             "enabled `allow`",
+            "dynamic_applications",
+            "narrowing field",
+            'type == "dynamic"',
         ),
         CATALOG_PATH: (
             "explicit_rules",
@@ -656,6 +829,9 @@ def documentation_errors() -> list[str]:
             "evidence-gap warning",
             "`deny` or `drop`",
             "enabled explicit `action: allow`",
+            "dynamic_applications",
+            "narrowing field",
+            'type == "dynamic"',
         ),
     }
     for path, required_terms in requirements.items():

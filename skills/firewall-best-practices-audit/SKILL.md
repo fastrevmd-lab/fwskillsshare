@@ -1,7 +1,7 @@
 ---
 name: firewall-best-practices-audit
 description: Audit normalized Cisco, Fortinet, Palo Alto, and Juniper firewall rulebases for security hygiene. Use when finding any-any, shadowed, redundant, or orphaned rules, missing deny or logging, exposed management, weak VPN crypto, hardening gaps, or unused objects. Parse raw configs first.
-version: 1.1.4
+version: 1.2.0
 author:
   - fastrevmd-lab
   - Claude
@@ -115,6 +115,26 @@ Route on what you were given:
 - **Unsupported vendor with no parser** — say so plainly: there is no parser for this vendor, so a structured audit cannot be produced; offer to audit a manually-normalized schema or to reason about pasted excerpts without finding IDs.
 
 As of v1.1 the audit also reads `system.ssh`, `system.auth`, `system.control_plane_protection`, `zones[].screen`, and `security_services` to cover device-plane hardening (SSH/management hardening, password/lockout policy, screen presence, and unreferenced security services); any of these fields that is absent simply skips its dependent check.
+
+As of v1.2 the audit reads two further fields, both added after a live-device
+run produced wrong verdicts without them:
+
+- **`security_policies[].dynamic_applications`** — runtime application-identity
+  matches (SRX `match dynamic-application`, PAN-OS App-ID members). It is a
+  **narrowing field**: treat a rule as unrestricted only when `applications`,
+  `services`, `dynamic_applications`, `url_categories`, `app_groups`,
+  `source_users`, and `schedule` are *all* any/empty/absent. Include it in the
+  match tuple `SEC-REDUNDANT` compares on, and in the tail test behind
+  `SEC-NO-DENY-ALL`. Dropping it makes an AppID-scoped deny read as a terminal
+  deny-all and makes two rules differing only by AppID scope look identical.
+- **`address_objects[].type == "dynamic"`** — GeoIP, feed-backed, and tag-based
+  objects whose membership resolves at runtime. They are **defined objects**:
+  `SEC-ORPHAN-REF` must count them as resolved. Their members are unknowable
+  from config, so any check needing concrete addresses (overlap, shadow,
+  containment) degrades to heuristic or skips.
+
+If the parser populated neither field, say so in the skipped-checks list rather
+than reporting the resulting findings as definitive.
 
 Graceful degradation: the schema is static, so some checks have no input (for example, anything depending on hit counts or last-used timestamps, and any check needing a field the source parser did not populate). When a field is missing, skip the dependent check rather than guessing, and record every skipped check in the audit summary so the gap is visible.
 

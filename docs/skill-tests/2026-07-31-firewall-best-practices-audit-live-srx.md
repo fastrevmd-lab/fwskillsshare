@@ -351,14 +351,14 @@ tamperable on the wire. No catalog check covers feed transport.
 
 ## Recommended follow-ups
 
-1. **Parser — model `security dynamic-address`.** Extract `address-name` entries
-   (GeoIP category and feed-name backed) into `address_objects` with a type
-   marking them dynamic, so references resolve and the audit stops emitting
-   false `SEC-ORPHAN-REF`. Fixes Defect 1.
-2. **Parser — extract `match dynamic-application`** into the policy object, and
-   have the audit include it in the rule-identity tuple used by `SEC-REDUNDANT`
-   and in the any/any/any test used by `SEC-ANY-ANY` and `SEC-NO-DENY-ALL`.
-   Fixes Defect 2.
+1. ~~**Parser — model `security dynamic-address`.**~~ **Fixed 2026-07-31** in
+   `parsing-srx-configs` v1.4.0 (§2b) and `firewall-best-practices-audit` v1.2.0.
+   `address-name` entries now parse into `address_objects` as `type: "dynamic"`
+   with a `dynamic_source` selector, and `SEC-ORPHAN-REF` counts them resolved.
+2. ~~**Parser — extract `match dynamic-application`.**~~ **Fixed 2026-07-31** in
+   the same releases. It is now a documented narrowing field, included in the
+   `SEC-REDUNDANT` match tuple and the catch-all test behind `SEC-ANY-ANY` and
+   `SEC-NO-DENY-ALL`.
 3. **Catalog — add a name-versus-action contradiction check** at HIGH severity,
    definitive when the configured action is the opposite of what the rule name
    asserts. Addresses Gap 3.
@@ -369,7 +369,26 @@ tamperable on the wire. No catalog check covers feed transport.
    that case is to stay covered, it should become a retained synthetic fixture
    rather than a device reference.
 
-Items 1–4 warrant their own issues; none is fixed by this document.
+Items 3–5 remain open and warrant their own issues.
+
+### Verification of the Defect 1 and 2 fixes
+
+Re-running the replay script against the same unmodified `vsrx-fw01` capture,
+before and after the parser and catalog changes:
+
+| Check | Before | After | Why |
+|---|---|---|---|
+| `SEC-ORPHAN-REF` | 1 | **0** | the GeoIP object now parses as a defined dynamic address |
+| `SEC-REDUNDANT` | 2 | **1** | the AppID-differentiated pair is no longer a duplicate |
+| `SEC-NO-DENY-ALL` | not raised | **raised** | the tail rule is correctly rejected as AppID-scoped |
+| `SEC-ANY-ANY` | 8 | 8 | unchanged — none of those rules is AppID-scoped |
+| `SEC-ANY-SVC` | 37 | 37 | unchanged |
+
+Two false positives eliminated and one false negative corrected, with no
+collateral change to the other checks. The behavior is pinned by regressions in
+`scripts/check-audit-rule-contract.py`
+(`_dynamic_application_errors`, `_dynamic_address_errors`), which fail against
+the pre-fix logic.
 
 ## Safety statement
 
