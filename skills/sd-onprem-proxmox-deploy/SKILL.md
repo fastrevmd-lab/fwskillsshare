@@ -1,7 +1,7 @@
 ---
 name: sd-onprem-proxmox-deploy
 description: Deploy and validate Juniper Security Director On-Prem 25/26 as a Proxmox VE KVM guest. Use when planning, installing, rebuilding, validating network connectivity or first-boot seed data, and onboarding SRX/Junos devices. Not for Junos Space Security Director or Security Director Cloud.
-version: 0.3.1
+version: 0.4.0
 author:
   - fastrevmd-lab
   - Claude
@@ -39,7 +39,7 @@ metadata:
 
 # Deploying Security Director On-Prem on Proxmox VE
 
-> **STATUS: draft (v0.3.1).** Procedure below was executed end-to-end on
+> **STATUS: draft (v0.4.0).** Procedure below was executed end-to-end on
 > **SD On-Prem 26.2.1-5348** on Proxmox VE 9.2. Values in `<angle brackets>` are
 > site-specific. Finalize/promote via `writing-skills` after a second clean run.
 
@@ -257,6 +257,85 @@ Snapshot the VM before onboarding.
 
 ### 4. Onboard Junos/SRX devices
 
+#### 4a. NTP preflight — a hard gate, before any device is discovered
+
+**Do not add, discover, or onboard an SRX until its clock is proven
+synchronized.** Configured servers and a running `ntpd` are *not* the gate;
+**proven synchronization is**. An SRX whose clock is skewed still completes the
+mTLS handshake and still gets its payloads acknowledged by the collector, so
+every transport-level check passes while the logs never surface in SD. Observed
+in a live deployment: several SRXs ran ~375 s behind, the streams connected and
+were acknowledged, and the traffic logs were simply absent from the GUI. They
+appeared only after NTP was corrected and fresh traffic was generated.
+
+Configure at least two reachable servers and an appropriate source address:
+
+```junos
+set system processes ntp enable
+set system ntp server <primary-server>
+set system ntp server <secondary-server>
+set system ntp source-address <reachable-source-address>
+```
+
+**`set system processes ntp enable` is hidden from CLI completion but is valid
+and required** — it will not tab-complete, which is why it gets skipped. Verified
+present on production SRXs running Junos 26.2R1.
+
+**Verify sync before onboarding — `show ntp associations` is authoritative:**
+
+```text
+show configuration system processes | display set | match "ntp enable"
+show ntp associations no-resolve
+show system uptime | match "Current time|Time Source"
+show ntp status
+show system processes extensive | match " ntpd"
+```
+
+Required state:
+
+| Evidence | Role | Required |
+|---|---|---|
+| `show ntp associations` | **the gate** | at least one peer prefixed `*` (selected system peer), `reach` non-zero — `377` is fully reached — and `offset` within deployment tolerance |
+| `show configuration system processes` | gate | `set system processes ntp enable` present |
+| `show system processes extensive` | gate | `ntpd` running |
+| `show system uptime` | corroborating | `Time Source: NTP CLOCK` |
+| `show ntp status` | corroborating | `leap_none`, `sync_ntp`; `clock_sync` when settled |
+| Fleet-wide | gate | all SRX clocks agree **before** SD configures certificates, device identity, or log streaming |
+
+**Pass/fail on the associations table, not on the status word.** Two observations
+from live devices explain why:
+
+- **`sync_ntp` is not by itself proof of synchronization.** It appears alongside
+  `no_sys_peer` — meaning no system peer is currently selected. So `sync_ntp` on
+  its own must not be read as a pass.
+- **But `clock_sync` must not be a hard fail either.** A device reporting
+  `leap_none, sync_ntp, no_sys_peer` was, moments later, showing a `*` peer at
+  `reach 377` with a sub-second offset — genuinely synchronized, with the status
+  word simply lagging. Requiring `clock_sync` would have failed a healthy device.
+
+So: read `show ntp associations`. A `*` peer with non-zero reach and an
+acceptable offset is a pass even if the status word has not caught up; no `*`
+peer, or `reach 0`, is a fail regardless of what `sync_ntp` says.
+`Time Source: NTP CLOCK` appears in both states and cannot settle it.
+
+**Through NAT or VPN, check UDP/123 both ways.** Verify routing, security
+policy, and source NAT for UDP/123, and prove the return path — a request that
+leaves and never comes back looks identical to an unreachable server.
+
+- When remote SRXs source NTP from a **loopback management identity**, that
+  loopback prefix must be included in the transit firewall's **source**-NAT
+  match. This is the common miss: the device has a route and a policy, but its
+  loopback source is not translated, so replies never return.
+- **The NTP servers' own addresses do not belong in a source-address NAT
+  match.** They are destinations. Putting them there is a frequent
+  misconfiguration that silently breaks the return path.
+
+If any device fails this gate, fix NTP and re-verify before continuing. Do not
+proceed to 4b with a known-skewed clock and plan to fix it later — the
+onboarding will appear to succeed.
+
+#### 4b. Onboarding
+
 - **Device MANAGEMENT** (add in SD → Inventory → Devices: mgmt IP, super-user,
   NETCONF/SSH) connects toward the **device-connection VIP** and may ride the
   management path (fxp0 / mgmt net).
@@ -303,6 +382,12 @@ Snapshot the VM before onboarding.
   bidirectional and SD's only route off its subnet is its default gateway, so it
   can't reply to a device's fabric IP. Verify: the FW session shows `In` AND `Out`
   packets both non-zero.
+- **A skewed device clock looks exactly like a working log pipeline.** The mTLS
+  stream connects, the collector acknowledges the payloads, the FW session shows
+  `In` and `Out` non-zero — and the traffic logs still never appear in the SD
+  GUI. Seen with SRXs ~375 s behind; the logs surfaced only after NTP was fixed
+  and fresh traffic generated. Every transport check you would reach for passes,
+  so gate on NTP **before** onboarding (§4a) rather than debugging the stream.
 - **`lo0` is NOT a selectable log source** — SD's picker lists only physical
   revenue interfaces. For tunnel-managed branches pick the **LAN** port (subnet the
   gateway routes back over the tunnel), **not the WAN** (on the shared underlay the

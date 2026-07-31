@@ -52,6 +52,11 @@ VIP, log-collector VIP. Plan them contiguously (e.g. `.19/.20/.21/.22`).
 **Reachable NTP + DNS from the SD subnet** — and verify by *protocol*, not ping
 (see §3). SD requires NTP at first boot.
 
+This is the **appliance's** clock. The **managed SRXs' clocks are a separate
+prerequisite** with its own gate at §7.0 — satisfying one says nothing about the
+other, and a skewed device clock breaks log visibility in a way that every
+transport-level test still passes.
+
 **`--no-run` host dependencies:** `qemu-img`, `genisoimage`/`mkisofs`, `column`,
 `cracklib-check` (Debian: `cracklib-runtime`), `sha256sum`. (Proxmox 9 has all but
 `cracklib-runtime` — `apt install cracklib-runtime`.)
@@ -561,6 +566,86 @@ separate from device management.
 
 ## 7. Onboard Junos/SRX devices
 
+### 7.0 NTP preflight — STOP gate
+
+**No device is discovered or onboarded until its clock is proven synchronized.**
+Configured servers and a running `ntpd` do not satisfy this; proven sync does.
+
+Why it is a gate and not a checklist item: a skewed SRX still completes the mTLS
+handshake to the collector and still has its payloads acknowledged, so every
+transport-level test in §3.4 and §8 passes while the logs never reach the GUI.
+Live deployment: several SRXs ~375 s behind, streams connected and ACKed, traffic
+logs absent from SD. They appeared after NTP was corrected and fresh traffic was
+generated. Debugging that from the log path costs hours; the clock check costs a
+minute.
+
+```junos
+set system processes ntp enable
+set system ntp server <primary-server>
+set system ntp server <secondary-server>
+set system ntp source-address <reachable-source-address>
+```
+
+`set system processes ntp enable` **is hidden from CLI completion but valid and
+required.** It does not tab-complete, which is exactly why it gets omitted.
+Confirmed present on production SRXs on Junos 26.2R1.
+
+Verify on every device before onboarding:
+
+```text
+show configuration system processes | display set | match "ntp enable"
+show ntp associations no-resolve
+show system uptime | match "Current time|Time Source"
+show ntp status
+show system processes extensive | match " ntpd"
+```
+
+`show ntp associations no-resolve` is the authority. Required: at least one peer
+marked `*` (the selected system peer), `reach` non-zero (`377` = all recent polls
+answered), and `offset` within the deployment's tolerance:
+
+```text
+     remote               refid           auth  st  t  when  poll reach  delay     offset   jitter
+*10.x.x.1               <upstream>           -   4  u   154   256  377    1.000    +0.831    0.805
++10.x.x.2               10.x.x.1             -   5  u   221   256  377    0.926    -3.732    0.880
+```
+
+Corroborate with `Time Source: NTP CLOCK` from `show system uptime`, and
+`leap_none`, `sync_ntp` — plus `clock_sync` once settled — from `show ntp status`.
+
+**Decide pass/fail on the associations table, not the status word.** Two
+observations from live devices explain why neither half of the status word is
+safe on its own:
+
+- **`sync_ntp` is not proof of sync.** It appears alongside `no_sys_peer`, which
+  means no system peer is currently selected — so `sync_ntp` alone must not be
+  read as a pass.
+- **Absent `clock_sync` is not proof of failure.** A device reporting
+  `leap_none, sync_ntp, no_sys_peer` was, moments later, showing a `*` peer at
+  `reach 377` with a sub-second offset — genuinely in sync, status word merely
+  lagging. Treating missing `clock_sync` as a hard fail would have blocked a
+  healthy device from onboarding.
+
+Rule: a `*` peer with non-zero reach and an acceptable offset is a **pass**, even
+if the status word has not caught up. No `*` peer, or `reach 0`, is a **fail**
+regardless of `sync_ntp`. `Time Source: NTP CLOCK` shows in both states and
+cannot break the tie.
+
+**Through NAT or VPN — prove UDP/123 in both directions.** Check routing,
+security policy, and source NAT, and confirm the return path; a request that
+leaves and never returns is indistinguishable from an unreachable server.
+
+- Where a remote SRX sources NTP from a **loopback management identity**, include
+  that loopback prefix in the transit firewall's **source**-NAT match. The usual
+  failure is a device that has both a route and a permitting policy, but whose
+  loopback source is untranslated, so replies never come back.
+- **Do not put the NTP servers' own addresses in a source-address NAT match.**
+  They are destinations. This misconfiguration breaks the return path silently.
+
+Only when every device passes does onboarding begin.
+
+---
+
 **Management** and **logging are two different planes:**
 
 - **Management** — create the device in SD (Inventory → Devices), apply the
@@ -667,6 +752,11 @@ gateway-FW zone, so one transit permit + source-NAT covers the pair.
   silently falls back to `order=net0;ide2` and won't boot the OS disk.
 - **NTP must be reachable** — an internet NTP behind a site that blocks outbound
   123 hangs first boot; use an internal one.
+- **A skewed SRX clock silently swallows log visibility.** The mTLS stream
+  connects, the collector ACKs the payloads, the FW session shows `In`/`Out`
+  non-zero — and nothing appears in the SD GUI. Seen at ~375 s of skew; logs
+  surfaced only after NTP was fixed and fresh traffic generated. Gate on §7.0
+  before onboarding instead of debugging the log path.
 - **Every DNS server must actually answer DNS** — a non-resolving entry loops first
   boot on `DNS address is not connectable`; the VM never pulls the bundle
   (0 requests to the bundle server). Diagnose from the console
