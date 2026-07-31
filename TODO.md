@@ -11,6 +11,11 @@ is tracked in GitHub issues.
   defines the read-only test scope, safety boundary, evidence to collect, and
   acceptance criteria. The prior result is documented in
   [the 2026-06-29 vSRX production audit](docs/skill-tests/2026-06-29-vsrx-production-audit.md).
+  The live-device rerun was completed on 2026-07-31 —
+  [live SRX audit](docs/skill-tests/2026-07-31-firewall-best-practices-audit-live-srx.md).
+  It closed the outstanding acceptance item and surfaced four follow-ups: model
+  `security dynamic-address` in the parser, extract `match dynamic-application`,
+  add a rule-name-versus-action check, and add a feed-transport check.
 
 ## Tooling and operational skills
 

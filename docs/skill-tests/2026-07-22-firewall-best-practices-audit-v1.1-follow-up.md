@@ -8,6 +8,10 @@
 - **Outcome:** offline policy-light replay and synthetic policy-heavy validation
   exercised the intended v1.1 coverage; a current live-device rerun remains open
   because no Junos/SRX/NETCONF connector was available in this session
+- **Superseded on 2026-07-31:** the live-device rerun was completed in
+  [the 2026-07-31 live SRX audit](2026-07-31-firewall-best-practices-audit-live-srx.md),
+  which also found two reproducible parser defects (`security dynamic-address`
+  and `match dynamic-application` are not extracted)
 
 ## Acceptance summary
 
