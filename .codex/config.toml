@@ -24,9 +24,6 @@ enabled = false
 [mcp_servers.rust-junosmcp]
 enabled = false
 
-[mcp_servers.rust-srxmcp]
-enabled = false
-
 [mcp_servers.panos-mcp]
 enabled = false
 
