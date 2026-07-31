@@ -148,7 +148,7 @@ Map firewall capability to control evidence — assessor/auditor output template
 
 Install with `--family deployment`.
 
-- **[sd-onprem-proxmox-deploy](./skills/sd-onprem-proxmox-deploy/SKILL.md)** — **New draft:** plan, deploy, validate, and troubleshoot Juniper Security Director On-Prem 25/26 as a Proxmox VE guest from the vendor KVM artifacts, including sizing, four-IP planning, first-boot seed configuration, NTP/DNS reachability, SRX onboarding, and mandatory source-identical routing, bundle, device-channel, and TLS log-path proof before VM creation.
+- **[sd-onprem-proxmox-deploy](./skills/sd-onprem-proxmox-deploy/SKILL.md)** — **New draft:** plan, deploy, validate, and troubleshoot Juniper Security Director On-Prem 25/26 as a Proxmox VE guest from the vendor KVM artifacts, including sizing, four-IP planning, first-boot seed configuration, NTP/DNS reachability, SRX onboarding behind a device-clock NTP sync gate, and mandatory source-identical routing, bundle, device-channel, and TLS log-path proof before VM creation.
 
 ---
 
@@ -187,7 +187,13 @@ were remediated and re-reviewed cleanly.
 `sd-onprem-proxmox-deploy` was added later and was not part of the 2026-06-30,
 2026-07-02, or 2026-07-04/05 review rounds. It has since passed the repository's
 portable-package and runtime-intake validation, but remains explicitly labeled
-draft pending the same full review depth.
+draft pending the same full review depth. Its **device-onboarding NTP gate**
+(v0.4.0) was verified read-only against production SRXs on Junos 26.2R1: the
+hidden `set system processes ntp enable` was confirmed valid and present, and the
+pass/fail criterion was moved onto `show ntp associations` after live output
+showed `sync_ntp` appearing alongside `no_sys_peer` (so it cannot mean "synced")
+while a device missing `clock_sync` was in fact synchronized with a selected peer
+at full reach (so its absence cannot mean "failed").
 
 On **2026-07-31** `firewall-best-practices-audit` and `parsing-srx-configs` were
 re-validated against **live** SRX devices over NETCONF (read-only), covering a
@@ -322,7 +328,7 @@ enabled = false
 - **Design SRX MNHA** — Reason about MNHA modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, and DHCP caveats
 - **Operate SRX NAT** — Source/destination/static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin, proxy ARP
 - **Design SRX security policy** — Enforce `security policies global` for generated greenfield, migration, and onboarding output absent an explicit opt-out; then layer AppID/AppFW, NGWF-first web filtering, SecIntel, ATP
-- **Deploy Security Director On-Prem** — Plan the Proxmox VE guest, vendor artifact extraction, four same-subnet IPs, first-boot settings, and SRX onboarding
+- **Deploy Security Director On-Prem** — Plan the Proxmox VE guest, vendor artifact extraction, four same-subnet IPs, first-boot settings, and SRX onboarding gated on proven device NTP sync
 - **Assess compliance evidence** — Map NGFW policies, NAT, zones, logging, IDS/IPS, and segmentation to PCI / HIPAA / CMMC-NIST 800-171 / CIS / ISO 27001 / SOC 2 / SRX DISA STIG evidence expectations
 
 ### Examples
