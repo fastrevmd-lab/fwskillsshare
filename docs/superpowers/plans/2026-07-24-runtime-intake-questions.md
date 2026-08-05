@@ -2233,7 +2233,59 @@ installable skill.
   conclusions; `Approved live collection` — Collect targeted read-only device
   evidence with approval.
 
-### A.20 `srx-mnha`
+### A.20 `srx-license-signature-maintenance`
+
+- `lsm_mode`; header `Mode`; ask when requested maintenance mode is absent;
+  question `What should this maintenance run accomplish?`; options: `Audit only
+  (Recommended)` — Report entitlement and signature state without changing
+  anything; `License only` — Install entitlements and stop before any signature
+  change; `License then signatures` — Install entitlements and then update
+  signature content.
+- `lsm_scope`; header `Scope`; ask when target device scope is absent or
+  ambiguous; question `How should the target device scope be established?`;
+  options: `Resolve inventory first (Recommended)` — Enumerate the exact
+  devices and cluster nodes before acting; `Use supplied device list` — Act on
+  the explicit device names already provided; `Use supplied saved group` — Act
+  on a named inventory group already agreed for this fleet.
+- `lsm_license_src`; header `Source`; ask when a license file is implied and
+  its location is unconfirmed; question `Where does the entitlement file live
+  for this run?`; options: `Confirm safe path first (Recommended)` — Validate a
+  non-repository regular file before staging; `Use supplied external path` —
+  Stage from the operator path already confirmed outside any repository; `No
+  license file` — Skip licensing because entitlements are already active.
+- `lsm_cluster`; header `Cluster`; ask when chassis-cluster membership is
+  unconfirmed for a target; question `How should chassis-cluster membership be
+  established?`; options: `Detect topology first (Recommended)` — Read cluster
+  status and enumerate every node before acting; `Use supplied node map` —
+  Apply the node membership already supplied for each target; `Standalone only`
+  — Treat every target as a standalone device.
+- `lsm_bundle`; header `Bundle`; ask when a signature update is in scope and
+  the bundle is unconfirmed; question `How should the offline signature bundle
+  be established?`; options: `Validate archive first (Recommended)` — Verify
+  the archive and its target version before staging; `Use supplied archive` —
+  Stage the archive already validated for this run; `Use central staging copy`
+  — Reuse the retained non-secret bundle already staged for this fleet.
+- `lsm_rollout`; header `Rollout`; ask when signature rollout pacing is
+  unconfirmed for multiple targets; question `How should the signature rollout
+  be paced?`; options: `Pilot then bounded batches (Recommended)` — Verify one
+  device fully before any further fan-out; `Use supplied batch size` — Apply
+  the batch size already agreed for this fleet; `Single device only` — Update
+  one named device and stop.
+- `lsm_transport`; header `Transport`; ask when file transport behavior is
+  unconfirmed for a target; question `How should file transport to the device
+  be established?`; options: `Probe transport first (Recommended)` — Test the
+  path harmlessly before choosing a transfer mode; `Use supplied default mode`
+  — Transfer with the standard mode already proven for this fleet; `Use
+  supplied legacy mode` — Transfer with legacy mode where the subsystem is
+  known unavailable.
+- `lsm_report`; header `Report`; ask when required reporting detail is absent;
+  question `What sanitized reporting detail should the run return?`; options:
+  `Full per-node table (Recommended)` — Report every logical device and every
+  node separately; `Use supplied summary form` — Report the condensed
+  per-device summary already requested; `Exceptions only` — Report only devices
+  that failed or need follow-up.
+
+### A.21 `srx-mnha`
 
 - `mnha_task`; header `Task`; ask when requested activity is absent; question
   `What should this MNHA run accomplish?`; options: `Design or review
@@ -2289,7 +2341,7 @@ installable skill.
   failures` — Test specified cases; `One failure` — Reproduce the reported case
   safely.
 
-### A.21 `srx-mpls-in-flow`
+### A.22 `srx-mpls-in-flow`
 
 - `mpls_task`; header `Task`; ask when requested activity is absent; question
   `What should this MPLS-in-flow run accomplish?`; options: `Design or review
@@ -2339,7 +2391,7 @@ installable skill.
   supplied application, NAT, and inspection list after license and capacity
   validation.
 
-### A.22 `srx-nat`
+### A.23 `srx-nat`
 
 - `nat_task`; header `Task`; ask when requested activity is absent; question
   `What should this NAT run accomplish?`; options: `Design or review
@@ -2394,7 +2446,7 @@ installable skill.
   runtime conclusions; `Approved live collection` — Collect targeted read-only
   device evidence with approval.
 
-### A.23 `srx-policy`
+### A.24 `srx-policy`
 
 - `policy_task`; header `Task`; ask when requested activity is absent; question
   `What should this policy run accomplish?`; options: `Design or review

@@ -68,6 +68,7 @@ EXPECTED_SKILLS = (
     "srx-disa-stig-compliance",
     "srx-dynamic-ip-feed",
     "srx-ipsec-hub-spoke",
+    "srx-license-signature-maintenance",
     "srx-mnha",
     "srx-mpls-in-flow",
     "srx-nat",
@@ -121,6 +122,8 @@ EXPECTED_CATALOG_SHA256 = {
         "ea5a19c8933eadfc94dd1c9daf9880082ed32f04012bc006ef158ad518791d13",
     "srx-ipsec-hub-spoke":
         "e1f9c59cd39aeef8346ca558b968c9d12348691bd09fb2601dfbfe1121eb3080",
+    "srx-license-signature-maintenance":
+        "274557081f1c8d0230188439e11092341acbdca4793ef0f6c57a88a145fdf2f5",
     "srx-mnha":
         "dac227adff8b20d8f98dcc7456c0c591d542851ae8fdafdb5a9a654f2ced68ee",
     "srx-mpls-in-flow":
@@ -153,6 +156,9 @@ PLAN_ASK_WHEN_THE_IDS = {
     ("srx-autovpn-full-tunnel", "autovpn_task"),
     ("srx-dynamic-ip-feed", "dif_task"),
     ("srx-ipsec-hub-spoke", "hsvpn_task"),
+    ("srx-license-signature-maintenance", "lsm_mode"),
+    ("srx-license-signature-maintenance", "lsm_scope"),
+    ("srx-license-signature-maintenance", "lsm_report"),
     ("srx-ipsec-hub-spoke", "hsvpn_release"),
     ("srx-mnha", "mnha_task"),
     ("srx-mpls-in-flow", "mpls_task"),
@@ -287,6 +293,14 @@ SAFE_FIRST_LABELS = {
         "Map scope first (Recommended)",
     ("srx-disa-stig-compliance", "stig_evidence"):
         "Inventory evidence (Recommended)",
+    ("srx-license-signature-maintenance", "lsm_license_src"):
+        "Confirm safe path first (Recommended)",
+    ("srx-license-signature-maintenance", "lsm_cluster"):
+        "Detect topology first (Recommended)",
+    ("srx-license-signature-maintenance", "lsm_transport"):
+        "Probe transport first (Recommended)",
+    ("srx-license-signature-maintenance", "lsm_rollout"):
+        "Pilot then bounded batches (Recommended)",
     ("srx-dynamic-ip-feed", "dif_release"):
         "Discover first (Recommended)",
     ("srx-dynamic-ip-feed", "dif_source"):
@@ -494,6 +508,16 @@ EXACT_OPTION_LABELS = {
         "Map scope first (Recommended)",
         "Use supplied device scope",
         "Use supplied named context",
+    ),
+    ("srx-license-signature-maintenance", "lsm_license_src"): (
+        "Confirm safe path first (Recommended)",
+        "Use supplied external path",
+        "No license file",
+    ),
+    ("srx-license-signature-maintenance", "lsm_transport"): (
+        "Probe transport first (Recommended)",
+        "Use supplied default mode",
+        "Use supplied legacy mode",
     ),
     ("srx-dynamic-ip-feed", "dif_source"): (
         "Inspect source first (Recommended)",
