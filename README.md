@@ -17,7 +17,7 @@
 
 <p align="center">
   <img alt="skills" src="https://img.shields.io/badge/skills-24-0D9488">
-  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-22%2F24-262B38">
+  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-24%2F24-262B38">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
 </p>
@@ -100,7 +100,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**24 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem deployment request, or compliance language in your message or a pasted config. The newest `sd-onprem-proxmox-deploy` and `srx-license-signature-maintenance` packages are drafts; the other 22 packages retain the completed review record below. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
+**24 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem deployment request, or compliance language in your message or a pasted config. All 24 packages have completed the review record below. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 ### Config parsers
 
@@ -123,7 +123,7 @@ Actionable Junos playbooks — commands, design guidance, verification, troubles
 - **[srx-ipsec-hub-spoke](./skills/srx-ipsec-hub-spoke/SKILL.md)** — Static point-to-point route-based IPsec hub-and-spoke, one explicit tunnel per spoke, hub source-NAT egress, spoke-to-spoke hairpin.
 - **[srx-mpls-in-flow](./skills/srx-mpls-in-flow/SKILL.md)** — MPLS L3VPN in flow mode (secure PE/CPE): decoupled `family mpls` packet-based with inet/inet6 flow-mode, VRF-aware policy/NAT/AppID.
 - **[srx-dynamic-ip-feed](./skills/srx-dynamic-ip-feed/SKILL.md)** — Dynamic IP objects from HTTPS feed servers: `.tgz` bundles, cert validation, basic-auth / mTLS, `ipfd` log interpretation.
-- **[srx-license-signature-maintenance](./skills/srx-license-signature-maintenance/SKILL.md)** — **New draft:** AppID and IDP/IPS entitlement audit, license installation, and offline signature updates behind two independent approval gates, with secret-safe license handling, per-node chassis-cluster verification, pilot-then-batch rollout, and condition-based polling.
+- **[srx-license-signature-maintenance](./skills/srx-license-signature-maintenance/SKILL.md)** — AppID and IDP/IPS entitlement audit, license installation, and offline signature updates behind two independent approval gates, with secret-safe license handling, per-node chassis-cluster verification, pilot-then-batch rollout, and condition-based polling.
 
 ### Cross-vendor tooling
 
@@ -149,13 +149,13 @@ Map firewall capability to control evidence — assessor/auditor output template
 
 Install with `--family deployment`.
 
-- **[sd-onprem-proxmox-deploy](./skills/sd-onprem-proxmox-deploy/SKILL.md)** — **New draft:** plan, deploy, validate, and troubleshoot Juniper Security Director On-Prem 25/26 as a Proxmox VE guest from the vendor KVM artifacts, including sizing, four-IP planning, first-boot seed configuration, NTP/DNS reachability, SRX onboarding behind a device-clock NTP sync gate, and mandatory source-identical routing, bundle, device-channel, and TLS log-path proof before VM creation.
+- **[sd-onprem-proxmox-deploy](./skills/sd-onprem-proxmox-deploy/SKILL.md)** — Plan, deploy, validate, and troubleshoot Juniper Security Director On-Prem 25/26 as a Proxmox VE guest from the vendor KVM artifacts, including sizing, four-IP planning, first-boot seed configuration, NTP/DNS reachability, SRX onboarding behind a device-clock NTP sync gate, and mandatory source-identical routing, bundle, device-channel, and TLS log-path proof before VM creation.
 
 ---
 
 ## Quality and Review
 
-The other **22 / 22 skills** have passed independent technical review. The original 21
+All **24 / 24 skills** have passed independent technical review. The original 21
 were first reviewed on 2026-06-30, then re-reviewed on 2026-07-02 with a
 two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax
 correctness for Cisco ASA/FTD, FortiGate, PAN-OS, and Junos SRX;
@@ -172,11 +172,11 @@ A third round on 2026-07-04/05 applied an authoring-quality pass across those or
 | Family | Skills | Reviewed |
 |--------|-------:|:--------:|
 | Config parsers | 4 | 4 / 4 |
-| SRX operational playbooks | 9 | 8 / 9 |
+| SRX operational playbooks | 9 | 9 / 9 |
 | NGFW compliance and STIG playbooks | 7 | 7 / 7 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
-| Security management deployment | 1 | 0 / 1 |
-| **Total** | **24** | **22 / 24** |
+| Security management deployment | 1 | 1 / 1 |
+| **Total** | **24** | **24 / 24** |
 
 The later `srx-disa-stig-compliance` addition completed an independent review on
 2026-07-22. That review verified the NIST checklist 657 / DISA Y25M01 artifact,
@@ -186,10 +186,11 @@ installer integration, and synthetic behavior/mutation fixtures. All findings
 were remediated and re-reviewed cleanly.
 
 `sd-onprem-proxmox-deploy` was added later and was not part of the 2026-06-30,
-2026-07-02, or 2026-07-04/05 review rounds. It has since passed the repository's
-portable-package and runtime-intake validation, but remains explicitly labeled
-draft pending the same full review depth. Its **device-onboarding NTP gate**
-(v0.4.0) was verified read-only against production SRXs on Junos 26.2R1: the
+2026-07-02, or 2026-07-04/05 review rounds. It passed the repository's
+portable-package and runtime-intake validation, and was promoted to **v1.0.0**
+on 2026-08-05 after the maintainer ran the full deployment to completion three
+separate times — the repeat runs its draft label was waiting on. Its
+**device-onboarding NTP gate** was verified read-only against production SRXs on Junos 26.2R1: the
 hidden `set system processes ntp enable` was confirmed valid and present, and the
 pass/fail criterion was moved onto `show ntp associations` after live output
 showed `sync_ntp` appearing alongside `no_sys_peer` (so it cannot mean "synced")
@@ -212,18 +213,29 @@ silent). `parsing-srx-configs` **v1.4.0** and `firewall-best-practices-audit`
 no check for a rule name contradicting its configured action, and none for
 plaintext threat-feed transport — remain open.
 
-`srx-license-signature-maintenance` was added on 2026-07-31 and is likewise
-**draft**: it has passed portable-package, runtime-intake, installer, and its own
-behavioral contract validation
-(`scripts/check-srx-license-signature-contract.py`), and its **read-only**
-command surface was verified on 2026-08-05 against a live 2-node vSRX chassis
-cluster (Junos 24.4R1.9). That run corrected a real defect: `show system
-license` accepts **no** `node` argument — every per-node form is a syntax error
-— while the IDP and AppID version commands do take `node 0` / `node 1`. It also
-corrected the documented version-qualifier format to the real
-`3929(Minor, Thu Jul 23 13:53:38 2026 UTC)`. The **mutating** paths
-(`request system license add`, `security-package install`) remain untested,
-since exercising them needs a real entitlement file and changes device state.
+`srx-license-signature-maintenance` was added on 2026-07-31 and promoted to
+**v1.0.0** on 2026-08-05. It passed portable-package, runtime-intake, installer,
+and its own behavioral contract validation
+(`scripts/check-srx-license-signature-contract.py`), a five-reviewer independent
+pass, and a read-only fleet audit across 9 devices / 10 node records on Junos
+24.4R1.9, 25.4R1.12, and 26.2R1.7 —
+[documented here](./docs/skill-tests/2026-08-05-srx-license-signature-live-validation.md).
+
+That live run earned its keep. On a two-node cluster it caught the nodes
+**disagreeing** — AppID package installed on the secondary, absent on the
+primary — while IDP matched on both; the cluster-level read, a primary-only
+read, and an IDP-only read would each have missed it. It also corrected four
+documentation defects: `show system license` accepts **no** `node` argument
+(every per-node form is a syntax error, while the IDP and AppID version commands
+*do* take `node 0` / `node 1`); IDP and AppID use **different** version-qualifier
+formats; `Application package version: 0` means not-installed rather than a
+version mismatch; and a `used` counter of 1 does **not** imply an active IDP
+policy.
+
+The **mutating** paths (`request system license add`,
+`security-package install`) remain unexercised against hardware — running them
+needs a real entitlement file or signature bundle and changes device state — so
+that boundary is stated plainly in the skill-test record.
 Its contract validator is offline by construction — it
 asserts that the two approval gates stay independent, that unsafe license
 sources are refused, that polling only ends on a terminal state, that cluster

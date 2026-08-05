@@ -30,7 +30,19 @@ capture:
 
 Record `installed`, `needed`, `expiry`, and whether the grant is permanent or
 date-based. Report those fields only — **never the license key, the raw
-entitlement blob, or any identifier from it**.
+entitlement blob, or any identifier from it**. Note that `show system license`
+output also carries `License identifier`, `Software Serial Number`, and
+`Customer ID`; those are part of the entitlement material and stay out of the
+report too.
+
+The feature names to match on are **`IDP-SIG`** and **`APPID Signature`**
+(verified live). Do not grep for "IDP" alone — other licensed features exist
+alongside them.
+
+> **`used` does not mean "active policy".** A device can report `IDP-SIG` with
+> `used 1` while `show security idp status` reports `Policy Name : none`.
+> Observed live. To know whether IDP is actually enforcing, read the policy
+> name — never infer it from the license counter.
 
 ### Cluster baseline
 

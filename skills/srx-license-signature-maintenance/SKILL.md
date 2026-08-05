@@ -1,14 +1,13 @@
 ---
 name: srx-license-signature-maintenance
 description: Audit and maintain Juniper SRX AppID and IDP/IPS licensing and offline signature content. Use when reporting entitlement or expiry, installing a license from a supplied file, updating IDP or AppID signatures offline, checking chassis-cluster license or content parity, or verifying signature versions after a change. Not for Junos software upgrades or IDP policy design.
-version: 0.1.0
+version: 1.0.0
 author:
   - fastrevmd-lab
   - Claude
   - GPT
 license: MIT
 metadata:
-  status: draft
   hermes:
     tags: [srx, vsrx, junos, licensing, entitlement, appid, application-identification, idp, ips, security-package, offline-signatures, chassis-cluster, secret-handling, approval-gate, fleet-maintenance]
     related_skills: [srx-policy, parsing-srx-configs, srx-mnha]

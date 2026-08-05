@@ -2,7 +2,8 @@
 
 - **Issue:** [#26](https://github.com/fastrevmd-lab/fwskillsshare/issues/26)
 - **Date:** 2026-07-31
-- **Outcome:** skill shipped at v0.1.0, labeled draft
+- **Outcome:** shipped at v0.1.0 draft 2026-07-31; promoted to **v1.0.0** on
+  2026-08-05 after live read-only validation
 - **Worktree:** implemented in an isolated worktree, per the issue's requirement
 
 ## File responsibilities
@@ -128,8 +129,12 @@ against a generated section.
 
 ## Follow-ups
 
-1. Live validation against a lab SRX and a chassis cluster, then promote from
-   draft.
+1. ~~Live validation against a lab SRX and a chassis cluster, then promote from
+   draft.~~ **Done 2026-08-05** — read-only audit across 9 devices / 10 node
+   records on three Junos releases; caught a real per-node AppID mismatch on the
+   cluster and four documentation defects. See
+   [the skill-test record](../../skill-tests/2026-08-05-srx-license-signature-live-validation.md).
+   Promoted to v1.0.0. The mutating paths remain unexercised.
 2. Independent Junos and secret-safety review once the Codex allowance returns.
 3. Consider extending the contract validator with a fixture that exercises the
    full mode matrix (audit / license-only / signature-only / end-to-end) rather
