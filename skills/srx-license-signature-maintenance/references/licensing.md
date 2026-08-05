@@ -34,13 +34,25 @@ entitlement blob, or any identifier from it**.
 
 ### Cluster baseline
 
-`show chassis cluster status` establishes membership. On a cluster, run the
-license read **against each node**, not only the cluster-wide view:
+`show chassis cluster status` establishes membership.
+
+> **`show system license` takes no `node` argument.** Verified on a live
+> 2-node vSRX cluster (Junos 24.4R1.9): `show system license node 0`,
+> `node node0`, `node 1`, and `node all` all return
+> `syntax error, expecting <command>`. Do not write any of them — unlike the
+> IDP and AppID version commands, this one has no per-node form.
+
+To obtain per-node entitlement state, reach each node's routing engine and run
+the plain command there:
 
 ```text
-show system license node 0
-show system license node 1
+request routing-engine login node 1
+show system license
+exit
 ```
+
+Repeat per node. If a node cannot be reached, record it as an **unverified
+node**, not as a pass.
 
 > A cluster-level license response can reflect the primary alone. A valid
 > primary tells you nothing about the secondary. Treat any aggregate as
@@ -63,6 +75,18 @@ file into the repository to "make it easier".
 Stage to a private directory with restrictive ownership and mode. Never place
 the file where a shell history, diagnostic bundle, or log collector will pick
 it up. Leave the operator's original untouched.
+
+**The path itself is metadata.** License filenames routinely encode a customer,
+site, serial, or date, and the path appears wherever the command does — shell
+history, a tool-call description shown to the operator, a session log. So:
+
+- run transfers with history suppressed (`HISTFILE=/dev/null …`, or the
+  equivalent for the shell in use);
+- refer to the file generically in any description or narration ("the supplied
+  entitlement file"), never by full path; and
+- prefer a neutral staging filename over copying the operator's name through.
+
+This does not make the path secret, but it stops it being broadcast by default.
 
 ## Transport
 
@@ -121,6 +145,13 @@ satisfied — the config demands more than is installed.
 2. Remove intermediate staging directories.
 3. Remove temporary host-key artifacts created by the probe or transfer.
 4. Confirm the operator's original source file is unmodified and still in place.
+
+**If cleanup fails, that is a security finding, not a footnote.** If the delete
+errors, or verification still shows the file present after a second attempt:
+stop, do not proceed to further devices, and report the device and path as
+requiring manual remediation. A license file left on a production firewall is
+the failure mode this whole section exists to prevent — silently continuing
+turns one leaked file into a fleet-wide leak.
 
 Re-run the entitlement audit after cleanup, before offering Gate B. A signature
 phase must never be proposed on the strength of a pre-licensing baseline.

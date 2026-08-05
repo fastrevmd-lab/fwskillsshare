@@ -258,7 +258,9 @@ addresses, or local secret paths.
 
 - [ ] Device inventory resolved before any device tool call
 - [ ] AppID and IDP/IPS entitlements checked independently
-- [ ] Licensing and signature approvals obtained **separately**
+- [ ] Licensing and signature approvals obtained **separately** — Gate B was
+      requested on its own evidence and answered on its own, not inferred from
+      a combined instruction such as "license the fleet and update signatures"
 - [ ] No license material in any output, log, repository, or fixture
 - [ ] Every cluster node licensed and verified individually
 - [ ] Pilot verified before any fan-out; batches bounded

@@ -46,18 +46,67 @@ of these individually reproduces its own error, so none of the tests is vacuous:
 | `normalize_version` drops the qualifier | qualifier was discarded instead of retained |
 | `install_outcome` returns `("success", True)` with no policy | enforcement was claimed active with no active IDP policy |
 
+## Independent review (2026-08-05)
+
+Five parallel reviewers covered AGENTS.md compliance, a diff bug scan, Junos
+technical accuracy, prose-versus-validator consistency, and secret handling.
+Findings acted on:
+
+| Finding | Verdict | Action |
+|---|---|---|
+| `show system license node 0` is invalid | **Confirmed, and the proposed fix was also wrong** | Rewritten — see below |
+| `normalize_version` regex accepts `3929.`, `1..2` | Real | Tightened to `[0-9]+(?:\.[0-9]+)*`, malformed inputs now asserted |
+| Secret detection missed `license-key` / `licensekey` | Real | Replaced substring match with separator-tolerant patterns |
+| README badge still read `skills-23` | Real | Badges and prose count corrected to 24 |
+| Cleanup failure had no defined behavior | Real | Now an explicit stop-and-report security finding |
+| License file *path* leaks via history and tool descriptions | Real | Added history suppression and generic-reference guidance |
+| Gate B could be inferred from a combined instruction | Reasonable | Verification checklist now requires Gate B answered on its own |
+| AGENTS.md compliance | Clean | No action |
+
+Two reviewer suggestions were **not** taken: preferring MCP over raw SSH for
+secret handling (speculative, no evidence either path leaks differently), and
+adding non-ASCII/base64 report fixtures (the separator-tolerant patterns
+already cover the realistic cases).
+
+## Live-device verification (2026-08-05)
+
+The lab chassis cluster was brought up and the **read-only** command surface was
+verified against it (2-node vSRX, Junos 24.4R1.9, cluster ID 2). This settled a
+syntax question that neither the original text nor the reviewer got right:
+
+| Command | Result on a real cluster |
+|---|---|
+| `show system license node 0` \| `node node0` \| `node 1` \| `node all` | **all four are syntax errors** — this command has no per-node form |
+| `show system license` | works; fields `used` / `installed` / `needed` / `Expiry` confirmed, permanent vs date-based confirmed |
+| `show security idp security-package-version node 0` | works, output prefixed `node0:` |
+| `show services application-identification version node 0` | works |
+| `show version invoke-on all-routing-engines` | works, lists both nodes |
+
+Also corrected from live output: the version qualifier is
+`3929(Minor, Thu Jul 23 13:53:38 2026 UTC)` — no space before the paren, and the
+parenthetical carries a timestamp, not just a severity word. The documented
+example was `3929(Minor)`, which would have misled a parser.
+
+Real license feature names are `IDP-SIG` and `APPID Signature`.
+
 ## What was *not* done
 
-- **No live-device forward test.** The issue prohibits live devices in
-  repository CI, and none were used. The skill is therefore unvalidated against
-  real licensing or signature installation, and is labeled draft accordingly.
+- **The mutating paths remain untested.** `request system license add` and
+  `request security idp security-package install` were never executed — doing so
+  needs a real entitlement file and would change device state. Only the
+  read-only inventory and verification commands are live-verified.
 - **The RED baselines were not run as live agent trials.** The eight failure
   modes were encoded directly as assertions rather than first demonstrated
   against an unaided agent. This is weaker evidence than an observed baseline
   failure: it proves the shipped logic holds the line, not that an unaided agent
   would have crossed it.
-- **No independent Junos or secret-safety review** — the issue asks for one, and
-  the Codex gate is quota-blocked until 2026-08-05.
+- **The Codex gate never produced a verdict.** It was unusable at first because
+  `.codex/config.toml` failed to load (fixed separately in #32). Even after
+  that, seven runs — `--base`, `--commit`, and scoped `codex exec` variants,
+  including one with a full 9-minute deadline — all terminated without a final
+  `agent_message`. Neither `--commit` nor `--base` accepts a scoping prompt, and
+  each run spent its budget on the injected `~/.codex` preamble before reaching
+  the diff. The independent review above was run in-repo instead.
 
 ## Registration points
 

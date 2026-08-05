@@ -16,8 +16,8 @@
 <em>a mechub project — sovereign network-security automation</em></p>
 
 <p align="center">
-  <img alt="skills" src="https://img.shields.io/badge/skills-23-0D9488">
-  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-22%2F23-262B38">
+  <img alt="skills" src="https://img.shields.io/badge/skills-24-0D9488">
+  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-22%2F24-262B38">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
 </p>
@@ -26,7 +26,7 @@ Agent skills for the firewall work you actually do — parsing, auditing, conver
 
 Firewall work is unforgiving. A confidently wrong `access-list` line, a Junos stanza that won't commit, a compliance claim you can't back up in an audit — these aren't cosmetic. Coding agents are astonishingly good at producing *plausible* firewall config and astonishingly bad at knowing when it's wrong.
 
-These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 23. Hack around with them. Make them your own.
+These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 24. Hack around with them. Make them your own.
 
 > **Unofficial / community project.** Not affiliated with, endorsed by, or supported by Cisco, Fortinet, Palo Alto Networks, Juniper Networks, or HPE. See [License and Provenance](#license-and-provenance) for the full notice and the trademark disclaimer.
 
@@ -215,9 +215,16 @@ plaintext threat-feed transport — remain open.
 `srx-license-signature-maintenance` was added on 2026-07-31 and is likewise
 **draft**: it has passed portable-package, runtime-intake, installer, and its own
 behavioral contract validation
-(`scripts/check-srx-license-signature-contract.py`), but has **not** been
-exercised against live devices from this repository and has not had the full
-independent review round. Its contract validator is offline by construction — it
+(`scripts/check-srx-license-signature-contract.py`), and its **read-only**
+command surface was verified on 2026-08-05 against a live 2-node vSRX chassis
+cluster (Junos 24.4R1.9). That run corrected a real defect: `show system
+license` accepts **no** `node` argument — every per-node form is a syntax error
+— while the IDP and AppID version commands do take `node 0` / `node 1`. It also
+corrected the documented version-qualifier format to the real
+`3929(Minor, Thu Jul 23 13:53:38 2026 UTC)`. The **mutating** paths
+(`request system license add`, `security-package install`) remain untested,
+since exercising them needs a real entitlement file and changes device state.
+Its contract validator is offline by construction — it
 asserts that the two approval gates stay independent, that unsafe license
 sources are refused, that polling only ends on a terminal state, that cluster
 aggregates never substitute for per-node evidence, that version qualifiers

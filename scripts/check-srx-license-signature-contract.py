@@ -69,9 +69,16 @@ def cluster_evidence_complete(node_reports: dict[str, bool], expected_nodes: tup
 def normalize_version(token: str) -> tuple[str, str]:
     """Split a version token into (comparable, qualifier).
 
-    `3929(Minor)` compares as `3929` but must still report its qualifier.
+    Real device output is `3929(Minor, Thu Jul 23 13:53:38 2026 UTC)` — no
+    space before the paren, and the qualifier carries a timestamp. It compares
+    as `3929` but must still report the whole qualifier.
+
+    The numeric pattern is strict on purpose: a malformed token such as `3929.`
+    or `1..2` must not silently compare unequal to a well-formed one.
     """
-    match = re.fullmatch(r"\s*([0-9][0-9.]*)\s*(?:\(([^)]*)\))?\s*", token or "")
+    match = re.fullmatch(
+        r"\s*([0-9]+(?:\.[0-9]+)*)\s*(?:\(([^)]*)\))?\s*", token or ""
+    )
     if not match:
         return ("", "")
     return (match.group(1), match.group(2) or "")
@@ -93,13 +100,23 @@ def install_outcome(*, install_terminal_success: bool, active_idp_policy: bool) 
 # Built rather than written literally so this file does not trip its own
 # key-block scan below.
 KEY_BLOCK_MARKER = "-" * 5 + "BEGIN"
-SECRET_MARKERS = ("JUNOS", KEY_BLOCK_MARKER, "license key", "authorization code")
+SECRET_MARKERS = ("JUNOS", KEY_BLOCK_MARKER)
+# Substring matching on "license key" misses the forms secrets actually appear
+# in — "license-key", "licensekey", "License_Key". Match the separator instead.
+SECRET_PATTERNS = (
+    re.compile(r"licen[cs]e[\s_\-]*key", re.I),
+    re.compile(r"auth(?:orization)?[\s_\-]*code", re.I),
+    re.compile(r"license[\s_\-]*identifier", re.I),
+    re.compile(r"software[\s_\-]*serial[\s_\-]*number", re.I),
+)
 
 
 def report_is_sanitized(report: str) -> bool:
     """Return whether a report is free of license material markers."""
     lowered = report.lower()
-    return not any(marker.lower() in lowered for marker in SECRET_MARKERS)
+    if any(marker.lower() in lowered for marker in SECRET_MARKERS):
+        return False
+    return not any(pattern.search(report) for pattern in SECRET_PATTERNS)
 
 
 def behavior_errors() -> list[str]:
@@ -165,6 +182,18 @@ def behavior_errors() -> list[str]:
         errors.append("qualifier changed the comparable version token")
     if normalize_version("3929(Minor)")[1] == "":
         errors.append("qualifier was discarded instead of retained for the report")
+    # Real device output: no space before the paren, timestamp inside it.
+    live = normalize_version("3929(Minor, Thu Jul 23 13:53:38 2026 UTC)")
+    if live[0] != "3929":
+        errors.append("live-format version token did not compare as 3929")
+    if "Thu Jul 23" not in live[1]:
+        errors.append("live-format qualifier lost its timestamp")
+    if normalize_version("12.6.180260106") != ("12.6.180260106", ""):
+        errors.append("dotted detector version was not parsed")
+    # Malformed tokens must not masquerade as well-formed ones.
+    for malformed in ("3929.", "1..2", ".3929", "39a29"):
+        if normalize_version(malformed)[0] == malformed:
+            errors.append(f"malformed version {malformed!r} was accepted verbatim")
 
     # --- No active IDP policy ------------------------------------------------
     classification, claims = install_outcome(install_terminal_success=True,
@@ -183,6 +212,17 @@ def behavior_errors() -> list[str]:
         errors.append("a report carrying license material passed sanitization")
     if not report_is_sanitized("Router A | AppID active | expiry 2027-01-01 | updated"):
         errors.append("a clean sanitized report was rejected")
+    # Separator variants must not slip past — plain substring matching missed these.
+    for leaky in (
+        "Router A | License-key: ABC123",
+        "Router A | licensekey ABC123",
+        "notes: License_Key rotated",
+        "Router A | authorization-code XYZ",
+        "License identifier: DemolabJUNOS338042937",
+        "Software Serial Number: 44400201-CcRw7",
+    ):
+        if report_is_sanitized(leaky):
+            errors.append(f"secret-bearing report passed sanitization: {leaky!r}")
 
     return errors
 

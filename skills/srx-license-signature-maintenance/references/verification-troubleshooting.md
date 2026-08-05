@@ -14,6 +14,21 @@ show services application-identification status
 show system license
 ```
 
+**On a chassis cluster, the version commands take a node argument and the
+license command does not.** Verified on a live 2-node vSRX cluster
+(Junos 24.4R1.9):
+
+```text
+show security idp security-package-version node 0     # works, output prefixed "node0:"
+show services application-identification version node 0   # works
+show system license node 0                            # SYNTAX ERROR — no node form
+```
+
+So: use `node 0` / `node 1` for the IDP and AppID version reads, and reach each
+routing engine individually for the license read (see
+`licensing.md` §Cluster baseline). `show version invoke-on all-routing-engines`
+is a convenient way to confirm both nodes are answering at all.
+
 | Check | Pass condition |
 |---|---|
 | IDP/IPS attack database | equals the target version |
@@ -31,16 +46,25 @@ totals should both appear in the output.
 
 ## Version-token normalization
 
-Version fields can carry qualifiers:
+Version fields carry qualifiers, and the parenthetical holds more than a
+severity word. Real output from a live cluster:
 
 ```text
-3929(Minor)
+  Attack database version:3929(Minor, Thu Jul 23 13:53:38 2026 UTC)
+  Detector version :12.6.180260106
 ```
 
+Note there is **no space** before the opening parenthesis, and the qualifier
+contains a comma and a timestamp. A parser that assumes `3929 (Minor)` will
+miss this.
+
 Normalize the numeric token for comparison against the target, but **keep the
-qualifier in the report**. Stripping it silently loses information the operator
+whole qualifier in the report**. Stripping it loses the build date the operator
 may need; comparing without stripping produces a false mismatch. Do both:
-compare on `3929`, report `3929 (Minor)`.
+compare on `3929`, report `3929 (Minor, Thu Jul 23 13:53:38 2026 UTC)`.
+
+`Detector version` is a plain dotted string with no qualifier and is compared
+as-is.
 
 ## No active IDP policy
 
