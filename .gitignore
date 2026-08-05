@@ -27,3 +27,5 @@ build/
 
 # Codex isolated worktrees
 .worktrees/
+# Scratch dirs from test scripts whose TemporaryDirectory() lands in cwd
+tmp*/
