@@ -106,6 +106,19 @@ compare on `3929`, report the qualifier verbatim.
   A device with no rollback simply has no fallback if an install goes bad —
   worth stating in the report, not worth failing on.
 
+**Absent is not the same as unknown.** Three outcomes, not two:
+
+| Read | State | Report as |
+|---|---|---|
+| a parsed `0` | absent | no package installed |
+| a parsed non-zero version | installed | the version |
+| empty, `N/A`, a timeout, or anything that does not parse | **unknown** | read failed — say so |
+
+Do not collapse the third row into the first. Reporting "no package installed"
+because a read timed out is the same overclaim as reporting enforcement active
+with no IDP policy: it converts absence of evidence into evidence of absence,
+and sends the operator after the wrong problem.
+
 ## No active IDP policy
 
 Junos may report that the **data-plane** update was not performed because no

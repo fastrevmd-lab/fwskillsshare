@@ -108,7 +108,36 @@ SECRET_PATTERNS = (
     re.compile(r"auth(?:orization)?[\s_\-]*code", re.I),
     re.compile(r"license[\s_\-]*identifier", re.I),
     re.compile(r"software[\s_\-]*serial[\s_\-]*number", re.I),
+    # `show system license` also carries Customer ID; the docs forbid reporting
+    # it, so the sanitizer has to actually catch it. The trailing boundary
+    # matters in this repo: without it, "Customer IDP status" and "customer
+    # identity" are flagged as secrets.
+    re.compile(r"customer[\s_\-]*ids?\b", re.I),
 )
+
+# AppID reports `Application package version: 0` when no package is installed.
+# That is an absence, not a version that merely differs from target.
+APPID_ABSENT = "absent"
+APPID_INSTALLED = "installed"
+APPID_UNKNOWN = "unknown"
+
+
+def appid_package_state(token: str) -> str:
+    """Classify an AppID package version token.
+
+    A parsed `0` means no package is installed; reporting that as a version
+    mismatch sends an operator after a failed update instead of a missing one.
+
+    Anything that does not parse — an empty read, a timeout string, a malformed
+    token, `N/A` — is **unknown**, not absent. Claiming absence from a failed
+    read is the same class of overclaim this skill exists to prevent.
+    """
+    comparable, _ = normalize_version(token)
+    if comparable == "":
+        return APPID_UNKNOWN
+    if set(comparable) <= {"0", "."}:
+        return APPID_ABSENT
+    return APPID_INSTALLED
 
 
 def report_is_sanitized(report: str) -> bool:
@@ -220,9 +249,39 @@ def behavior_errors() -> list[str]:
         "Router A | authorization-code XYZ",
         "License identifier: DemolabJUNOS338042937",
         "Software Serial Number: 44400201-CcRw7",
+        "Customer ID: ACME-123",
+        "notes: customer-id ACME-123",
+        "Customer IDs: ACME-123",
+        "customer_ids ACME-123",
     ):
         if report_is_sanitized(leaky):
             errors.append(f"secret-bearing report passed sanitization: {leaky!r}")
+
+    # --- AppID absence vs version mismatch ------------------------------------
+    # Live: a cluster primary reported `Application package version: 0` while
+    # the secondary reported 3929. `0` is an absent package, not a mismatch.
+    for absent in ("0", "0.0"):
+        if appid_package_state(absent) != APPID_ABSENT:
+            errors.append(f"AppID token {absent!r} was not classified as absent")
+    for installed in ("3929", "3929 (Minor)", "12.6.180260106"):
+        if appid_package_state(installed) != APPID_INSTALLED:
+            errors.append(f"AppID token {installed!r} was not classified as installed")
+    # A read that did not parse is unknown. Calling it absent would report
+    # "no package installed" on the strength of a failed or timed-out read.
+    for unknown in ("", "   ", "N/A(N/A)", "timeout", "3929.", "error"):
+        if appid_package_state(unknown) != APPID_UNKNOWN:
+            errors.append(
+                f"unparseable AppID token {unknown!r} was not classified as unknown"
+            )
+
+    # Sanitizer must not fire on ordinary domain wording.
+    for clean in (
+        "Customer IDP status active",
+        "customer identity approved",
+        "Router A | IDP-SIG active | expiry 2027-01-01",
+    ):
+        if not report_is_sanitized(clean):
+            errors.append(f"clean report was wrongly flagged as secret-bearing: {clean!r}")
 
     return errors
 
@@ -263,6 +322,9 @@ def documentation_errors() -> list[str]:
             "Stop conditions",
         ),
         VERIFY_PATH: (
+            "Absent is not the same as unknown",
+            "unknown",
+            "no package installed",
             "show security idp security-package-version",
             "show services application-identification version",
             "normaliz",

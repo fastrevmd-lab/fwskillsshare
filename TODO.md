@@ -19,11 +19,13 @@ is tracked in GitHub issues.
 
 ## Tooling and operational skills
 
-`srx-license-signature-maintenance` shipped 2026-07-31 (issue #26) as a draft:
-offline contract validation only, no live-device forward test, no independent
-review yet. See
-[the plan](docs/superpowers/plans/2026-07-31-srx-license-signature-maintenance.md)
-for what remains before it leaves draft.
+`srx-license-signature-maintenance` shipped 2026-07-31 (issue #26) and reached
+**1.0.0** on 2026-08-05 after an independent review round and a read-only live
+validation across 9 devices / 10 node records —
+[skill-test record](docs/skill-tests/2026-08-05-srx-license-signature-live-validation.md).
+Its **mutating** paths (`request system license add`,
+`security-package install`) remain unexercised against hardware; that is the
+only outstanding work on it.
 
 
 1. [ ] `palo-operational` (PAN-OS operational playbook)
