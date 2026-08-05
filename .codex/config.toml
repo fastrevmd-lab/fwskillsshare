@@ -12,9 +12,6 @@ exclude_slash_tmp = true
 [mcp_servers.gbrain]
 enabled = false
 
-[mcp_servers.hpe-mcp]
-enabled = false
-
 [mcp_servers.proxmox-mcp]
 enabled = false
 
@@ -24,7 +21,7 @@ enabled = false
 [mcp_servers.rust-junosmcp]
 enabled = false
 
-[mcp_servers.panos-mcp]
+[mcp_servers.rustsdcmcp]
 enabled = false
 
 [mcp_servers.openaiDeveloperDocs]
