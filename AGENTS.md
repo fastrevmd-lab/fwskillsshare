@@ -38,6 +38,22 @@ skills share a normalized schema whose copies must remain byte-identical.
 - Configuration, commits, upgrades, reboots, deletes, and failovers require
   explicit approval, rollback protection, and post-change verification.
 
+## Codex review gate
+
+Run it with `scripts/codex-review.sh` — not `codex exec review` directly.
+
+`~/.agents/skills/superpowers` symlinks into `~/.codex/superpowers/skills`, so
+Codex loads it as a skill on every run. Its preamble makes the reviewer read
+skill files and attempt subagent dispatch instead of the diff; seven consecutive
+runs ended with no verdict. The wrapper parks that symlink for the duration and
+restores it on exit, including on failure.
+
+- **A run with no final `agent_message` is not a pass.** The wrapper exits
+  non-zero and says so; report that the gate did not run.
+- **Keep commits small.** `--commit` and `--base` both reject a custom prompt,
+  so the only way to scope a review is commit size. A ~1,300-line commit never
+  returned; ~80-line commits returned every time.
+
 ## Completion evidence
 
 Report skills/files changed, validation commands/results, vendor or framework
