@@ -44,27 +44,67 @@ is a convenient way to confirm both nodes are answering at all.
 devices updated" is not evidence about a cluster's 36 node records, and the two
 totals should both appear in the output.
 
-## Version-token normalization
+### Why per-node is not paranoia
 
-Version fields carry qualifiers, and the parenthetical holds more than a
-severity word. Real output from a live cluster:
+Observed on a live 2-node cluster during validation:
 
 ```text
-  Attack database version:3929(Minor, Thu Jul 23 13:53:38 2026 UTC)
-  Detector version :12.6.180260106
+show services application-identification version node 0
+  node0:  Application package version: 0
+show services application-identification version node 1
+  node1:  Application package version: 3929 (Minor)
 ```
 
-Note there is **no space** before the opening parenthesis, and the qualifier
-contains a comma and a timestamp. A parser that assumes `3929 (Minor)` will
-miss this.
+The nodes disagreed — AppID installed on the secondary, absent on the
+**primary** — while the IDP attack database matched on both. Every shortcut
+available would have missed it: the cluster-level read, a primary-only read,
+and checking IDP alone. Only reading both components on both nodes surfaced it.
+
+Report a node mismatch as a finding in its own right, not as a fleet-level
+version number with a footnote.
+
+## Version-token normalization
+
+**The IDP and AppID commands do not use the same format.** Do not write one
+parser and point it at both. Verified live on Junos 24.4R1.9 / 25.4R1.12 /
+26.2R1.7:
+
+```text
+# show security idp security-package-version
+  Attack database version:3929(Minor, Thu Jul 23 13:53:38 2026 UTC)
+  Detector version :12.6.180260106
+  Rollback Attack database version :N/A(N/A)
+
+# show services application-identification version
+  Application package version: 3929 (Minor)
+  Release date: Thu Jul 23 13:53:38 2026 UTC
+```
+
+| | IDP attack database | AppID package |
+|---|---|---|
+| Space before `(` | **no** | **yes** |
+| Qualifier contents | severity **and** timestamp | severity only |
+| Build date | inside the qualifier | separate `Release date:` line |
+
+So accept optional whitespace before the parenthesis, and do not assume the
+qualifier contains a date — for AppID the date is a different field entirely.
 
 Normalize the numeric token for comparison against the target, but **keep the
 whole qualifier in the report**. Stripping it loses the build date the operator
 may need; comparing without stripping produces a false mismatch. Do both:
-compare on `3929`, report `3929 (Minor, Thu Jul 23 13:53:38 2026 UTC)`.
+compare on `3929`, report the qualifier verbatim.
 
-`Detector version` is a plain dotted string with no qualifier and is compared
-as-is.
+`Detector version` is a plain dotted string with no qualifier, compared as-is.
+
+### Two values that are not versions
+
+- **`Application package version: 0`** means **no AppID package is installed**,
+  not a parse failure. Treat `0` as absent and report it as a gap, never as a
+  version that merely differs from target.
+- **`N/A(N/A)`** in a rollback field means the device has no rollback point.
+  Normalization yields an empty token; that is correct and is not an error.
+  A device with no rollback simply has no fallback if an install goes bad —
+  worth stating in the report, not worth failing on.
 
 ## No active IDP policy
 
