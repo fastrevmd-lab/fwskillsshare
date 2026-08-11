@@ -65,6 +65,7 @@ EXPECTED_SKILLS = (
     "soc2-ngfw-compliance",
     "srx-advpn",
     "srx-autovpn-full-tunnel",
+    "srx-chassis-cluster-proxmox",
     "srx-disa-stig-compliance",
     "srx-dynamic-ip-feed",
     "srx-ipsec-hub-spoke",
@@ -116,6 +117,8 @@ EXPECTED_CATALOG_SHA256 = {
         "a5e9c9dc1be96a5b7700ba280d6bdcf199b6cbc6e6a106f4d7613b2b95b310e3",
     "srx-autovpn-full-tunnel":
         "8347ee64559f60ffb2ff5f041815faed1398eccc7680c1392c221f1df828e7ba",
+    "srx-chassis-cluster-proxmox":
+        "abf3c15a321da6b6af657c21089badd5ec41584dc4b8c17b4a9356411eac754b",
     "srx-disa-stig-compliance":
         "15b527bbd63e473383eaa061903158ee254a8dbc4531f8f5e06a2a595608ac9f",
     "srx-dynamic-ip-feed":
@@ -179,6 +182,16 @@ PLAN_ASK_WHEN_THE_IDS = {
 # Final-review regression inventory. Each key is an independently unsafe
 # recommended default, and each value is the exact safe first label.
 SAFE_FIRST_LABELS = {
+    ("srx-chassis-cluster-proxmox", "cc_change_authority"):
+        "Read-only assessment (Recommended)",
+    ("srx-chassis-cluster-proxmox", "cc_task"):
+        "Assess before building (Recommended)",
+    ("srx-chassis-cluster-proxmox", "cc_fabric_segment"):
+        "Inspect the host first (Recommended)",
+    ("srx-chassis-cluster-proxmox", "cc_nic_layout"):
+        "Inspect the guests first (Recommended)",
+    ("srx-chassis-cluster-proxmox", "cc_cluster_id"):
+        "Enumerate existing clusters first (Recommended)",
     ("cis-controls-ngfw-compliance", "cis_version"):
         "Confirm version first (Recommended)",
     ("cis-controls-ngfw-compliance", "cis_scope"):
@@ -404,6 +417,30 @@ SAFE_FIRST_LABELS = {
 # These final-review findings require exact, single-axis option sets, not only a
 # safe first label.
 EXACT_OPTION_LABELS = {
+    ("srx-chassis-cluster-proxmox", "cc_change_authority"): (
+        "Read-only assessment (Recommended)",
+        "Propose then confirm",
+        "Approved to apply",
+    ),
+    ("srx-chassis-cluster-proxmox", "cc_task"): (
+        "Assess before building (Recommended)",
+        "Troubleshoot an existing cluster",
+        "Audit readiness",
+    ),
+    ("srx-chassis-cluster-proxmox", "cc_fabric_segment"): (
+        "Inspect the host first (Recommended)",
+        "Use a supplied jumbo bridge",
+        "Create a dedicated bridge",
+    ),
+    ("srx-chassis-cluster-proxmox", "cc_nic_layout"): (
+        "Inspect the guests first (Recommended)",
+        "Purpose-built for clustering",
+        "Standalone-shaped",
+    ),
+    ("srx-chassis-cluster-proxmox", "cc_cluster_id"): (
+        "Enumerate existing clusters first (Recommended)",
+        "Use the supplied identifier",
+    ),
     ("cis-controls-ngfw-compliance", "cis_version"): (
         "Confirm version first (Recommended)",
         "Use supplied CIS v8.1",

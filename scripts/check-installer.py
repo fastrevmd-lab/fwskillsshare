@@ -20,6 +20,7 @@ EXPECTED_FAMILIES = {
     "srx": {
         "srx-advpn",
         "srx-autovpn-full-tunnel",
+        "srx-chassis-cluster-proxmox",
         "srx-dynamic-ip-feed",
         "srx-ipsec-hub-spoke",
         "srx-license-signature-maintenance",
@@ -162,7 +163,7 @@ def main() -> int:
 
     print(
         "OK: installer/package inventories match; installer lists and installs "
-        "24 skills with byte-identical required artifacts across 5 families "
+        "25 skills with byte-identical required artifacts across 5 families "
         "and explicit selections"
     )
     return 0

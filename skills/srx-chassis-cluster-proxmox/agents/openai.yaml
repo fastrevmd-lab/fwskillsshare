@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRX Chassis Cluster on Proxmox"
+  short_description: "Build a vSRX chassis cluster on Proxmox VE"
+  default_prompt: "Use $srx-chassis-cluster-proxmox to build, validate, or troubleshoot this SRX chassis cluster running on Proxmox VE."
