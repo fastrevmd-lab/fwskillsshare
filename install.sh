@@ -39,6 +39,7 @@ declare -a SRX=(
     "srx-ipsec-hub-spoke"
     "srx-license-signature-maintenance"
     "srx-advpn"
+    "srx-chassis-cluster-proxmox"
 )
 
 declare -a TOOLING=(

@@ -100,7 +100,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**24 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem deployment request, or compliance language in your message or a pasted config. All 24 packages have completed the review record below. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
+**25 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem deployment request, or compliance language in your message or a pasted config. All 25 packages have completed the review record below. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 ### Config parsers
 
@@ -121,6 +121,7 @@ Actionable Junos playbooks — commands, design guidance, verification, troubles
 - **[srx-advpn](./skills/srx-advpn/SKILL.md)** — Auto Discovery VPN dynamic spoke-to-spoke shortcuts, suggester/partner roles, multipoint st0, OSPF p2mp, the cert-auth requirement and the `No public key found` fix.
 - **[srx-autovpn-full-tunnel](./skills/srx-autovpn-full-tunnel/SKILL.md)** — AutoVPN hub-and-spoke full-tunnel backhaul: dynamic `group-ike-id`, traffic selectors + ARI, shared st0.0, anti-recursion route.
 - **[srx-ipsec-hub-spoke](./skills/srx-ipsec-hub-spoke/SKILL.md)** — Static point-to-point route-based IPsec hub-and-spoke, one explicit tunnel per spoke, hub source-NAT egress, spoke-to-spoke hairpin.
+- **[srx-chassis-cluster-proxmox](./skills/srx-chassis-cluster-proxmox/SKILL.md)** — Chassis cluster whose nodes are Proxmox VE guests: control/fabric bridge and VLAN design, the fabric-jumbo vs control-1500 MTU split, virtual NIC to Junos interface mapping, the reth virtual-MAC anti-spoof trap, cluster bootstrap and validation.
 - **[srx-mpls-in-flow](./skills/srx-mpls-in-flow/SKILL.md)** — MPLS L3VPN in flow mode (secure PE/CPE): decoupled `family mpls` packet-based with inet/inet6 flow-mode, VRF-aware policy/NAT/AppID.
 - **[srx-dynamic-ip-feed](./skills/srx-dynamic-ip-feed/SKILL.md)** — Dynamic IP objects from HTTPS feed servers: `.tgz` bundles, cert validation, basic-auth / mTLS, `ipfd` log interpretation.
 - **[srx-license-signature-maintenance](./skills/srx-license-signature-maintenance/SKILL.md)** — AppID and IDP/IPS entitlement audit, license installation, and offline signature updates behind two independent approval gates, with secret-safe license handling, per-node chassis-cluster verification, pilot-then-batch rollout, and condition-based polling.
@@ -649,6 +650,10 @@ show dhcp server binding routing-instance <RI>
 ### srx-ipsec-hub-spoke
 
 `srx-ipsec-hub-spoke` is an SRX static point-to-point route-based IPsec hub-and-spoke playbook with the same full-tunnel backhaul, but using one explicit IKE gateway, IPsec VPN, `st0` unit, and static route per spoke (no traffic selectors, no ARI) — routing alone scopes each tunnel. It covers per-spoke peering by WAN IP, hub source-NAT egress, spoke-to-spoke hairpin across `st0` units, the anti-recursion route, and when to switch to AutoVPN. It is original work inspired by and attributed to Jason Anderson's `srx-p2p-ipsec-public` lab; the lab itself is not bundled or relicensed.
+
+### srx-chassis-cluster-proxmox
+
+`srx-chassis-cluster-proxmox` is original operational work, not a vendor-derived summary. Juniper documents chassis cluster for two physically cabled appliances; this skill covers the hypervisor-to-Junos seam that appears when both nodes are Proxmox VE guests and the control link, fabric link and every reth leg become Linux bridge ports. Every hypervisor value, Junos MTU, interface mapping and bridge flag was measured on a healthy two-node vSRX cluster (cluster-id 2, Junos 24.4R1.9, five reth interfaces). It records the fabric/control MTU asymmetry and its mechanism, the per-NIC firewall anti-spoof trap that silently discards reth traffic while interfaces still report `Up`, the `netN` to `ge-0/0/(N-2)` mapping with a procedure for verifying rather than assuming it, and a worked post-mortem of an abandoned build with three independent faults. Values that were measured are stated as measurements; behaviour inferred from a mechanism is labelled as such.
 
 ### srx-advpn
 

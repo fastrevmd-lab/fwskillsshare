@@ -2085,7 +2085,42 @@ installable skill.
   conclusions; `Approved live collection` — Collect targeted read-only device
   evidence with approval.
 
-### A.17 `srx-disa-stig-compliance`
+### A.17 `srx-chassis-cluster-proxmox`
+
+- `cc_change_authority`; header `Authority`; ask when hypervisor or device
+  change authority is absent; question `How should hypervisor and device changes
+  be handled?`; options: `Read-only assessment (Recommended)` — Inspect and
+  report without changing bridges, guests, or configuration; `Propose then
+  confirm` — Present each change for approval before applying it; `Approved to
+  apply` — Apply the agreed plan with verification after each phase.
+- `cc_task`; header `Task`; ask when the requested activity is absent; question
+  `What should this chassis cluster run accomplish?`; options: `Assess before
+  building (Recommended)` — Establish current hypervisor and guest state before
+  planning a build; `Troubleshoot an existing cluster` — Diagnose forwarding,
+  fabric, control link, or failover behavior; `Audit readiness` — Assess whether
+  hypervisor and guest layout can support clustering.
+- `cc_fabric_segment`; header `Fabric`; ask when the fabric segment and its MTU
+  are absent; question `How should the fabric segment and its MTU be
+  established?`; options: `Inspect the host first (Recommended)` — Enumerate
+  bridges and MTUs before choosing a fabric segment; `Use a supplied jumbo
+  bridge` — Apply the named bridge already provisioned at MTU 9000; `Create a
+  dedicated bridge` — Add a portless VLAN-aware bridge at MTU 9000 for control
+  and fabric.
+- `cc_nic_layout`; header `NIC layout`; ask when guest NIC layout is absent and
+  in-place promotion may be assumed; question `How should the guest NIC layout
+  be treated?`; options: `Inspect the guests first (Recommended)` — Read each
+  guest NIC list before assuming any interface mapping; `Purpose-built for
+  clustering` — Guests already carry management, control, fabric, and reth
+  interfaces; `Standalone-shaped` — Guests need a redrawn NIC plan because
+  in-place promotion shifts every index.
+- `cc_cluster_id`; header `Cluster id`; ask when the cluster identifier is
+  absent and other clusters may share the segment; question `How should the
+  cluster identifier be selected?`; options: `Enumerate existing clusters first
+  (Recommended)` — Confirm no cluster on the segment already uses the
+  identifier; `Use the supplied identifier` — Apply the value provided and
+  verify it is unique before boot.
+
+### A.18 `srx-disa-stig-compliance`
 
 - `stig_goal`; header `Goal`; ask when the requested assessment outcome is
   absent; question `What outcome should this SRX STIG assessment produce?`;
@@ -2127,7 +2162,7 @@ installable skill.
   text; `Executive summary` — Emphasize severity distribution, coverage, and top
   actions.
 
-### A.18 `srx-dynamic-ip-feed`
+### A.19 `srx-dynamic-ip-feed`
 
 - `dif_task`; header `Task`; ask when requested activity is absent; question
   `What should this dynamic-feed run accomplish?`; options: `Design or review
@@ -2188,7 +2223,7 @@ installable skill.
   conservative supported standard interval; `Use supplied custom interval` —
   Use the supplied custom interval after validating load and reliability.
 
-### A.19 `srx-ipsec-hub-spoke`
+### A.20 `srx-ipsec-hub-spoke`
 
 - `hsvpn_task`; header `Task`; ask when requested activity is absent; question
   `What should this hub-and-spoke run accomplish?`; options: `Design or review
@@ -2233,7 +2268,7 @@ installable skill.
   conclusions; `Approved live collection` — Collect targeted read-only device
   evidence with approval.
 
-### A.20 `srx-license-signature-maintenance`
+### A.21 `srx-license-signature-maintenance`
 
 - `lsm_mode`; header `Mode`; ask when requested maintenance mode is absent;
   question `What should this maintenance run accomplish?`; options: `Audit only
@@ -2285,7 +2320,7 @@ installable skill.
   per-device summary already requested; `Exceptions only` — Report only devices
   that failed or need follow-up.
 
-### A.21 `srx-mnha`
+### A.22 `srx-mnha`
 
 - `mnha_task`; header `Task`; ask when requested activity is absent; question
   `What should this MNHA run accomplish?`; options: `Design or review
@@ -2341,7 +2376,7 @@ installable skill.
   failures` — Test specified cases; `One failure` — Reproduce the reported case
   safely.
 
-### A.22 `srx-mpls-in-flow`
+### A.23 `srx-mpls-in-flow`
 
 - `mpls_task`; header `Task`; ask when requested activity is absent; question
   `What should this MPLS-in-flow run accomplish?`; options: `Design or review
@@ -2391,7 +2426,7 @@ installable skill.
   supplied application, NAT, and inspection list after license and capacity
   validation.
 
-### A.23 `srx-nat`
+### A.24 `srx-nat`
 
 - `nat_task`; header `Task`; ask when requested activity is absent; question
   `What should this NAT run accomplish?`; options: `Design or review
@@ -2446,7 +2481,7 @@ installable skill.
   runtime conclusions; `Approved live collection` — Collect targeted read-only
   device evidence with approval.
 
-### A.24 `srx-policy`
+### A.25 `srx-policy`
 
 - `policy_task`; header `Task`; ask when requested activity is absent; question
   `What should this policy run accomplish?`; options: `Design or review
