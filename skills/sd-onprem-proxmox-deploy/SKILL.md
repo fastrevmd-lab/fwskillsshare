@@ -397,6 +397,32 @@ onboarding will appear to succeed.
 - **Device-connection (VIP:7804) needs the same source-NAT** as logs for
   tunnel-managed branches — NAT both the device-connection VIP and the log VIP, or
   branch adoption hangs at `In:1 / Out:0` (no return path to the branch subnet).
+- **A stuck `outbound-ssh` session survives the fix that should have healed it.**
+  After you repair a transit path (policy, route, NAT) underneath a client that
+  has been retrying for a long time, the TCP session comes up — `show system
+  connections` shows `ESTABLISHED` to `<device-VIP>:7804`, the wire shows
+  byte-symmetric traffic with the EMS replying, the cert is valid and the clock
+  is in sync — and the device still sits at **status unknown** in the GUI. Every
+  transport check passes; the session itself is half-adopted. Recovery is to
+  force a brand-new session **without leaving a permanent config change**:
+
+  ```
+  delete system services outbound-ssh client <EMS-client-name>
+  commit confirmed 1        # then DO NOT confirm — let it roll back
+  ```
+
+  Junos tears the session down, restores the stanza (secret included) when the
+  timer expires, and the client reconnects from a **new source port**; the EMS
+  re-adopts it. Prefer this over `deactivate`/`activate`: one operation, no
+  second commit to forget, and a forgotten step self-heals instead of stranding
+  the device.
+
+  Two things that make this look broken while it is working: the rollback fires
+  roughly **90 s** after the commit, not exactly 60, and for ~20 s of that window
+  the device has **no `outbound-ssh` config at all** — a status check landing in
+  that gap reads as a failed restore. Confirm recovery by the **new source
+  port**, not by the mere presence of a session. Same mechanism and same fix on
+  **Security Director Cloud** — the client is `outbound-ssh` to an EMS either way.
 - **MNHA:** each node has an independent config (configure the route on both);
   only the active node logs (backup is idle, streams on failover).
 - **Disks are virtio (`virtio0/1/2`), machine q35** per the generated XML.
