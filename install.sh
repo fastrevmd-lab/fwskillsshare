@@ -6,7 +6,7 @@
 #   OR:  curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash
 #
 # Options:
-#   --all                 Select all 23 skills
+#   --all                 Select every skill in the inventory
 #   --skill NAME          Select a specific skill by name (repeatable)
 #   --family NAME         Select a whole family: parsers | srx | tooling | compliance | deployment (repeatable)
 #   --target WHERE        claude | codex | hermes | both | all
@@ -126,11 +126,11 @@ EOF
 }
 
 print_help() {
-    cat << 'EOF'
+    cat << EOF
 Usage: install.sh [options]
 
 Options:
-  --all                 Select all 23 skills
+  --all                 Select all ${TOTAL_SKILLS} skills
   --skill NAME          Select a specific skill by name (repeatable)
   --family NAME         Select a whole family: parsers | srx | tooling | compliance | deployment (repeatable)
   --target WHERE        claude | codex | hermes | both | all
