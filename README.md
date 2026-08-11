@@ -16,8 +16,8 @@
 <em>a mechub project — sovereign network-security automation</em></p>
 
 <p align="center">
-  <img alt="skills" src="https://img.shields.io/badge/skills-24-0D9488">
-  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-24%2F24-262B38">
+  <img alt="skills" src="https://img.shields.io/badge/skills-25-0D9488">
+  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-25%2F25-262B38">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
 </p>
@@ -26,7 +26,7 @@ Agent skills for the firewall work you actually do — parsing, auditing, conver
 
 Firewall work is unforgiving. A confidently wrong `access-list` line, a Junos stanza that won't commit, a compliance claim you can't back up in an audit — these aren't cosmetic. Coding agents are astonishingly good at producing *plausible* firewall config and astonishingly bad at knowing when it's wrong.
 
-These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 24. Hack around with them. Make them your own.
+These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 25. Hack around with them. Make them your own.
 
 > **Unofficial / community project.** Not affiliated with, endorsed by, or supported by Cisco, Fortinet, Palo Alto Networks, Juniper Networks, or HPE. See [License and Provenance](#license-and-provenance) for the full notice and the trademark disclaimer.
 
@@ -156,7 +156,7 @@ Install with `--family deployment`.
 
 ## Quality and Review
 
-All **24 / 24 skills** have passed independent technical review. The original 21
+All **25 / 25 skills** have passed independent technical review. The original 21
 were first reviewed on 2026-06-30, then re-reviewed on 2026-07-02 with a
 two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax
 correctness for Cisco ASA/FTD, FortiGate, PAN-OS, and Junos SRX;
@@ -170,14 +170,16 @@ commit-checking on a live vSRX 24.4R1. All findings were remediated and the four
 
 A third round on 2026-07-04/05 applied an authoring-quality pass across those original 21 skills (frontmatter, discovery keywords, secret redaction, cross-skill hand-offs, progressive disclosure into `references/` files), then closed it out with fresh clean-context retrieval tests against the restructured skills — every question had to be answerable from the SKILL.md pointers alone. The tests passed and surfaced a handful of fixes (including two operational-command syntax errors caught and corrected by live verification on vSRX 24.4R1), all remediated.
 
+The 25th skill, `srx-chassis-cluster-proxmox`, was validated on 2026-08-11 by a different method: instead of a document review, it was executed. A second chassis cluster was built from a factory template on a separate host by following the skill's own procedure, on a different Junos release (26.2R1.7) than the reference build (24.4R1.9). The run confirmed the skill's NIC-mapping rule and reth MAC formula on both releases, and **falsified its fabric-MTU claim** — forcing the fabric segment to 1500 broke nothing observable, which established that the fault is latent rather than immediate. That correction and two others were folded in before release. The throwaway cluster was destroyed afterwards.
+
 | Family | Skills | Reviewed |
 |--------|-------:|:--------:|
 | Config parsers | 4 | 4 / 4 |
-| SRX operational playbooks | 9 | 9 / 9 |
+| SRX operational playbooks | 10 | 10 / 10 |
 | NGFW compliance and STIG playbooks | 7 | 7 / 7 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
 | Security management deployment | 1 | 1 / 1 |
-| **Total** | **24** | **24 / 24** |
+| **Total** | **25** | **25 / 25** |
 
 The later `srx-disa-stig-compliance` addition completed an independent review on
 2026-07-22. That review verified the NIST checklist 657 / DISA Y25M01 artifact,
@@ -653,7 +655,7 @@ show dhcp server binding routing-instance <RI>
 
 ### srx-chassis-cluster-proxmox
 
-`srx-chassis-cluster-proxmox` is original operational work, not a vendor-derived summary. Juniper documents chassis cluster for two physically cabled appliances; this skill covers the hypervisor-to-Junos seam that appears when both nodes are Proxmox VE guests and the control link, fabric link and every reth leg become Linux bridge ports. Every hypervisor value, Junos MTU, interface mapping and bridge flag was measured on a healthy two-node vSRX cluster (cluster-id 2, Junos 24.4R1.9, five reth interfaces). It records the fabric/control MTU asymmetry and its mechanism, the per-NIC firewall anti-spoof trap that silently discards reth traffic while interfaces still report `Up`, the `netN` to `ge-0/0/(N-2)` mapping with a procedure for verifying rather than assuming it, and a worked post-mortem of an abandoned build with three independent faults. Values that were measured are stated as measurements; behaviour inferred from a mechanism is labelled as such.
+`srx-chassis-cluster-proxmox` is original operational work, not a vendor-derived summary. Juniper documents chassis cluster for two physically cabled appliances; this skill covers the hypervisor-to-Junos seam that appears when both nodes are Proxmox VE guests and the control link, fabric link and every reth leg become Linux bridge ports — a substitution whose failures are silent, because nothing logs a dropped frame. It rests on two independent builds: a reference cluster (cluster-id 2, Junos 24.4R1.9, five reth interfaces) that supplied the measurements, and a proving build (cluster-id 9, Junos 26.2R1.7) stood up on a different host by following the skill as written. The proving build corrected three claims before release — the fabric MTU requirement, which turned out to be latent and invisible to every device-side health check rather than an immediate failure; that `fxp0` cannot use a DHCP client in cluster mode; and the NIC-mapping verification procedure, replaced with a stronger one that checks reth virtual MACs against tap interfaces in the bridge forwarding table. Confirmed unchanged across both releases and both cluster-ids: the `netN` to `ge-0/0/(N-2)` mapping and the reth virtual-MAC formula. It also carries the per-NIC firewall anti-spoof trap that silently discards reth traffic while interfaces still report `Up`, and a worked post-mortem of an abandoned build with three independent faults. Values that were measured are stated as measurements; the one behaviour not exercised — an undersized fabric under sustained load — is labelled untested rather than implied.
 
 ### srx-advpn
 
