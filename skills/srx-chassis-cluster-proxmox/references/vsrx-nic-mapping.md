@@ -66,6 +66,36 @@ If step 4 lands on the expected segment, the mapping holds.
 
 Worked example from the reference build: `reth1` is built from `ge-0/0/1`. By the rule that is `net3`. On the hypervisor, `net3` is attached untagged to the bridge carrying the site LAN, and `reth1` is addressed inside that LAN's subnet. A mapping shifted by even one position would have put `reth1` on a different segment entirely, so the agreement confirms the shift-by-two rule rather than merely being consistent with it.
 
+**The strongest check: match reth virtual MACs against tap interfaces.** Once the reths are configured, each one's virtual MAC appears in the hypervisor's forwarding table on exactly the tap carrying it. Because the MAC encodes the reth number and the tap name encodes the NIC index, one command verifies the entire mapping at once:
+
+```
+bridge fdb show | grep -i '00:10:db'
+```
+
+From a cluster built with cluster-id 9, five reths, and one VLAN per reth:
+
+```
+00:10:db:ff:90:00 dev tap330i2 vlan 282 master vmbr7    # reth0 -> net2 -> ge-0/0/0
+00:10:db:ff:90:01 dev tap330i3 vlan 283 master vmbr7    # reth1 -> net3 -> ge-0/0/1
+00:10:db:ff:90:02 dev tap330i4 vlan 284 master vmbr7    # reth2 -> net4 -> ge-0/0/2
+00:10:db:ff:90:03 dev tap330i6 vlan 285 master vmbr7    # reth3 -> net6 -> ge-0/0/4
+00:10:db:ff:90:04 dev tap330i7 vlan 286 master vmbr7    # reth4 -> net7 -> ge-0/0/5
+```
+
+Every reth landed on the tap the rule predicts, including the gap at `net5` where the fabric sits. Entries appear only on the primary node's taps, which is also correct.
+
+**A second positive proof comes free from the fabric.** If each segment has its own VLAN, the fabric can only reach `Up / Up` when both nodes' fabric members sit on the same VLAN — so a fabric that comes up confirms that `ge-0/0/X` and `ge-7/0/X` are the NICs you think they are.
+
+**What does not work: matching `ge-` MAC addresses.** On vSRX the `ge-` interfaces are assigned synthetic Juniper MACs (`4c:96:14:…`), not the hypervisor-assigned addresses, so comparing them against the guest's NIC list proves nothing. Only `fxp0` and `em0` keep their assigned MACs, which does at least confirm those two anchors:
+
+```
+show interfaces extensive | match "Current address"
+```
+
+## Release coverage
+
+The shift-by-two mapping was confirmed independently on **Junos 24.4R1.9** and **Junos 26.2R1.7**, on different hosts and with different cluster-ids. It has been stable across that range, but verify it anyway on an unfamiliar image — the cost is one command and the cost of being wrong is every interface reference in the configuration.
+
 ## Sizing the NIC list
 
 Count before cloning:

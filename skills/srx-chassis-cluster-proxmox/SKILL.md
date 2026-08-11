@@ -1,7 +1,7 @@
 ---
 name: srx-chassis-cluster-proxmox
 description: Build and validate a Juniper SRX or vSRX chassis cluster whose two nodes are Proxmox VE guests. Use when planning bridges and VLANs for the control and fabric links, mapping virtual NICs to Junos interface names, bootstrapping cluster-id, configuring fab interfaces, reth interfaces and redundancy groups, or diagnosing a cluster that forms but passes no traffic. Not for Multi-Node High Availability.
-version: 1.0.0
+version: 1.1.0
 author:
   - fastrevmd-lab
   - Claude
@@ -12,9 +12,13 @@ metadata:
     tags: [srx, vsrx, junos, chassis-cluster, proxmox, kvm, linux-bridge, reth, fabric-link, control-link, mtu, high-availability, virtualization]
     related_skills: [srx-mnha, srx-policy, srx-nat, parsing-srx-configs, sd-onprem-proxmox-deploy]
   sources:
-    - title: "Reference implementation: vsrx-fw01 chassis cluster on Proxmox VE"
+    - title: "Reference implementation: two-node vSRX chassis cluster on Proxmox VE"
       author: fastrevmd-lab
-      note: "Original lab work. Every hypervisor and Junos value in this skill was measured on a healthy two-node vSRX cluster (cluster-id 2, Junos 24.4R1.9) running as Proxmox guests."
+      note: "Original lab work. Hypervisor and Junos values measured on a healthy two-node vSRX cluster (cluster-id 2, Junos 24.4R1.9) running as Proxmox guests."
+      retrieved: "2026-08-11"
+    - title: "Proving build: second cluster stood up by following this skill"
+      author: fastrevmd-lab
+      note: "Independent build on a different host from a factory template (cluster-id 9, Junos 26.2R1.7). Confirmed the NIC mapping and reth MAC formula, and corrected the fabric-MTU claim and fxp0 addressing requirement."
       retrieved: "2026-08-11"
 ---
 
@@ -24,7 +28,7 @@ metadata:
 
 Chassis cluster joins two SRX nodes into one logical chassis: a shared configuration, active/backup control plane, redundancy groups that move ownership on failure, and reth interfaces carrying a virtual MAC. Juniper documents it for two physical appliances joined by real cables.
 
-On Proxmox VE the control link, the fabric link, and every reth leg are Linux bridge ports instead. That substitution is where clusters fail, and it fails quietly. Nothing logs "your bridge dropped this frame." The observable result is a cluster that forms and reports healthy while passing no traffic, or a fabric that comes up and then wedges under load.
+On Proxmox VE the control link, the fabric link, and every reth leg are Linux bridge ports instead. That substitution is where clusters fail, and it fails quietly. Nothing logs "your bridge dropped this frame." The observable result is a cluster that forms and reports healthy while passing no traffic — or one that is genuinely misconfigured underneath while every health check on the device reports it as fine.
 
 This skill owns that hypervisor-to-Junos seam: bridge and VLAN design, virtual NIC to Junos interface mapping, the bridge settings that must hold, cluster bootstrap, and a validation sequence that catches silent filtering instead of trusting a green status line.
 
@@ -59,6 +63,8 @@ ip -d link show BRIDGE | head -2
 ```
 
 The fabric segment needs MTU 9000. The control segment does not. If no jumbo bridge exists, creating one is step zero — see `references/proxmox-network-invariants.md`.
+
+Ask this **now**, not later: a cluster whose fabric sits on a 1500-byte segment passes every device-side health check, so this is the one requirement you cannot go back and verify from the firewall.
 
 **2. Are the guests purpose-built for clustering, or standalone-shaped?**
 
@@ -123,13 +129,26 @@ show interfaces terse | match "^ge-|^em0|^fxp0"
 
 ### Phase 4 — cluster configuration
 
-Node-specific identity comes from groups, because the two nodes share one configuration:
+Node-specific identity comes from groups, because the two nodes share one configuration. **Management addressing belongs here too, and it must be static:**
 
 ```
 set groups node0 system host-name NAME-n0
+set groups node0 interfaces fxp0 unit 0 family inet address A.B.C.D/NN
 set groups node1 system host-name NAME-n1
+set groups node1 interfaces fxp0 unit 0 family inet address A.B.C.E/NN
 set apply-groups "${node}"
+delete interfaces fxp0
 ```
+
+**A chassis cluster cannot manage `fxp0` with a DHCP client.** A template that used DHCP standalone will come back from the cluster-mode reboot with no management address at all and never send a DHCP request. The cluster itself forms normally — control link up, heartbeats flowing — so this looks like a boot failure when it is only an addressing one.
+
+Plan for this before the reboot: either configure the groups above while the nodes are still standalone and reachable, or accept that recovering needs console access. Add a route back to whatever manages the device, since `fxp0` no longer receives one from DHCP:
+
+```
+set routing-options static route MGMT-NET/NN next-hop GATEWAY
+```
+
+`commit` warns that `fxp0` should be configured under groups. That warning is confirmation you have done it correctly.
 
 Then the cluster itself:
 
@@ -163,7 +182,7 @@ Run the full sequence below. Do not stop at the first green line.
 | `show chassis cluster status` | one primary, one secondary, no monitor failures |
 | `show chassis cluster interfaces` | control link Up; `fab0` and `fab1` both Up/Up; every reth Up |
 | `show chassis cluster statistics` | heartbeats incrementing, zero errors; fabric probes moving in both directions |
-| `show interfaces fab0` | MTU 9014 / 9000, confirming the underlay accepted jumbo frames |
+| `show interfaces fab0` | MTU 9014 / 9000 — what Junos provisioned, *not* proof the segment can carry it |
 | `show system alarms` | no major alarms |
 | `show version invoke-on all-routing-engines` | no version skew between routing engines |
 | `bridge fdb show` on the hypervisor | reth virtual MACs present on the primary node's tap interfaces |
@@ -176,6 +195,8 @@ bridge fdb show | grep -i '00:10:db'
 ```
 
 An empty result while reth interfaces report `Up` is the anti-spoof signature. See `references/failure-modes.md`.
+
+**This table cannot detect an undersized fabric segment.** A cluster with the fabric on a 1500-byte segment passes every row above — link Up, probes both ways, reths Up, no alarms. Verify the segment MTU on the hypervisor during the build; nothing on the device will tell you later.
 
 ## Common pitfalls
 
@@ -196,6 +217,17 @@ A third deserves naming because it destroys working service: **promoting a stand
 
 ## Source notes
 
-This skill is original operational work, not a vendor-derived summary. Every hypervisor value, Junos MTU, interface mapping, and bridge flag recorded here was measured on a healthy two-node vSRX chassis cluster running as Proxmox VE guests: cluster-id 2, Junos 24.4R1.9, five reth interfaces, control and fabric on dedicated VLANs of a single portless VLAN-aware bridge.
+This skill is original operational work, not a vendor-derived summary. Vendor documentation covers chassis cluster on physical appliances; the hypervisor-side requirements collected here are not documented by the vendor and were established empirically.
 
-Values that were measured are stated as measurements. Where behaviour is inferred from a mechanism rather than directly observed, the text says so. Vendor documentation covers chassis cluster on physical appliances; the hypervisor-side requirements collected here are not documented by the vendor and were established empirically.
+It rests on two independent builds:
+
+- **Reference cluster** — cluster-id 2, Junos 24.4R1.9, five reths, control and fabric on dedicated VLANs of one portless VLAN-aware bridge. Source of the MTU measurements, port flags, and the anti-spoof forwarding-table evidence.
+- **Proving build** — a second cluster stood up from a factory template on a different host, cluster-id 9, **Junos 26.2R1.7**, following this skill as written and correcting it where it was wrong.
+
+The proving build changed three things:
+
+1. **The fabric MTU claim was too strong.** Dropping the fabric segment to 1500 did not break the cluster: link Up, probes both directions, reths Up, no failover, no alarms. The requirement stands, but the failure is latent rather than immediate, and no health check reveals it.
+2. **`fxp0` cannot use DHCP in cluster mode.** A DHCP-addressed template returns from the cluster-mode reboot with no management address and sends no request. Management must be static, per node, under `groups`.
+3. **A better mapping proof was found** — matching reth virtual MACs against tap interfaces in the hypervisor forwarding table verifies every NIC position in one command.
+
+Values that were measured are stated as measurements. Where behaviour is inferred from a mechanism rather than directly observed — notably the consequence of an undersized fabric under sustained load — the text says so rather than implying it was tested.

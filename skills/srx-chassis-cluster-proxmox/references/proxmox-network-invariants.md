@@ -47,14 +47,31 @@ Junos provisions the fabric interface to a jumbo MTU on its own, without being a
 | `em0` (control link) | 1514 / 1500 | no |
 | `reth1` (data) | 1514 / 1500 | no |
 
-A Linux bridge at MTU 9000 carries a 9014-byte Ethernet frame. That is an exact match for the fabric interface's layer-2 MTU, which is why 9000 is the correct value rather than merely a large one. A 1500-byte segment cannot carry a 9014-byte frame at all.
+A Linux bridge at MTU 9000 carries a 9014-byte Ethernet frame. That is an exact match for the fabric interface's layer-2 MTU, which is why 9000 is the correct value rather than merely a large one.
 
-Two conclusions follow, and the second is the one people miss:
+**A wrong fabric MTU does not announce itself.** This was tested directly rather than assumed. On a healthy cluster, the fabric segment was dropped to 1500 and left there:
 
-- The **fabric** segment must be MTU 9000.
+| Check | Result at fabric MTU 1500 |
+|---|---|
+| `show chassis cluster status` | both redundancy groups healthy, no failover |
+| Control link | Up, heartbeats incrementing, zero errors |
+| Fabric link | **Up** |
+| Fabric probes | still flowing in both directions |
+| All reth interfaces | Up |
+| `show system alarms` | nothing new |
+
+Every standard health check passed. Fabric probes are small, so they cross a 1500 segment without trouble.
+
+So the failure mode is **latent, not immediate**. The fabric interface still believes it can send 9014-byte frames while the segment underneath cannot carry them. Nothing in the cluster's own state reflects the mismatch, and it is not exercised until real data-plane traffic has to cross the fabric — Z-mode forwarding, or runtime-object sync of large frames.
+
+What this means in practice:
+
+- **Set the fabric segment to 9000** so the underlay matches what Junos provisions for itself.
+- **Do not treat a healthy `show chassis cluster` as evidence the MTU is correct.** It is not. Check the segment directly.
+- The behaviour under sustained real traffic across an undersized fabric was not exercised in this test and is not claimed here.
 - The **control** segment does not need jumbo, and neither do data reths unless you want jumbo data. Control at 1500 is correct, not a latent bug.
 
-"Set every bridge to 9000" is the wrong lesson. The asymmetry is the lesson: a build can have a correct 1500 control segment and a broken 1500 fabric segment at the same time, and only the fabric one matters.
+"Set every bridge to 9000" is still the wrong lesson — the asymmetry is real, and a 1500 control segment is genuinely fine. But the corollary matters more: because a wrong fabric MTU is invisible to cluster health, verifying it belongs in the build checklist rather than in troubleshooting.
 
 **Set MTU on the bridge, not on the NIC.** The reference build carries no `mtu=` parameter on any guest NIC definition, yet its taps on the 9000 bridge come up at 9000 and its taps on the 1500 bridge come up at 1500. The tap inherits the bridge MTU.
 

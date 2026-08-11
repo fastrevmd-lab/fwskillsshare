@@ -5,7 +5,7 @@ Chassis-cluster failures on a hypervisor rarely announce themselves. This table 
 | Symptom | Cause |
 |---|---|
 | Reths report `Up`, no traffic passes | per-NIC firewall enabled: anti-spoof rule versus the reth virtual MAC |
-| Fabric never forms, or wedges under load | fabric segment below MTU 9000 |
+| Cluster reports healthy but the fabric segment is undersized | fabric segment below MTU 9000 — **silent**, see below |
 | Secondary stays `ineligible` or `disabled` | control-link segment not isolated, or leaking into a data segment |
 | Intermittent, or works in one direction only | NIC index to bridge/VLAN mapping differs between the nodes |
 | Traffic stops after failover, returns in about five minutes | `neigh_suppress` on or `learning` off: gratuitous ARP lost, forwarding entry ages out |
@@ -30,13 +30,24 @@ A non-empty first result, or an empty second result while reths report `Up`, con
 
 **Remedy:** remove `firewall=1` from every cluster NIC and delete any `/etc/pve/firewall/VMID.fw`. The option is enabled by default when a NIC is added through the web UI, so it recurs whenever someone edits the guest there.
 
-## Fabric never forms or wedges under load
+## Undersized fabric segment
 
-**Check on the hypervisor:** `ip -d link show BRIDGE | head -2` — the fabric segment must be MTU 9000.
+This one has no symptom, which is what makes it dangerous. Tested directly: with the fabric segment forced to 1500 on an otherwise healthy cluster, the fabric link stayed **Up**, probes kept flowing in both directions, every reth stayed Up, both redundancy groups stayed healthy, and no alarm was raised. Fabric probes are small enough to cross a 1500 segment.
 
-**Check on the device:** `show interfaces fab0 | match MTU` should report 9014 layer 2 and 9000 inet. `show chassis cluster statistics` should show fabric probes both sent and received; probes sent with none received points at the segment.
+The mismatch is real but latent — `fab0` still reports MTU 9014/9000 and behaves as though the segment can carry it.
 
-**Remedy:** raise the fabric bridge to MTU 9000. The control segment does not need it — see `proxmox-network-invariants.md`. Note that taps inherit the bridge MTU, so raising the bridge is sufficient for new taps, while running guests need their taps raised too or a restart.
+**Check on the hypervisor** — this is the only reliable check:
+
+```
+ip -d link show BRIDGE | head -2
+cat /sys/class/net/TAP/mtu
+```
+
+**Check on the device:** `show interfaces fab0 | match MTU` reports 9014 / 9000. Note this tells you what Junos *provisioned*, not what the segment can carry, so it confirms the requirement rather than compliance with it.
+
+**Remedy:** set the fabric segment to 9000. Taps inherit the bridge MTU at creation, so raising the bridge covers new taps while running guests need their taps raised explicitly (`ip link set TAP mtu 9000`) or a restart.
+
+**Verify at build time, not during troubleshooting.** Because cluster health never reflects this, an undersized fabric will pass every validation step and surface later as unexplained behaviour under load.
 
 ## Secondary ineligible or disabled
 
