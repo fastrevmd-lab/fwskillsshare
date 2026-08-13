@@ -59,6 +59,7 @@ declare -a COMPLIANCE=(
 )
 
 declare -a DEPLOYMENT=(
+    "clearpass-proxmox-deploy"
     "sd-onprem-proxmox-deploy"
 )
 

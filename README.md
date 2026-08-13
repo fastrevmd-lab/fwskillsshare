@@ -16,17 +16,17 @@
 <em>a mechub project — sovereign network-security automation</em></p>
 
 <p align="center">
-  <img alt="skills" src="https://img.shields.io/badge/skills-25-0D9488">
-  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-25%2F25-262B38">
+  <img alt="skills" src="https://img.shields.io/badge/skills-26-0D9488">
+  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-25%2F26-262B38">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
-  <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper-262B38">
+  <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper%20%C2%B7%20HPE%20Aruba-262B38">
 </p>
 
-Agent skills for the firewall work you actually do — parsing, auditing, converting, running Juniper SRX, and deploying Security Director On-Prem — not vibe configuring.
+Agent skills for the firewall work you actually do — parsing, auditing, converting, running Juniper SRX, and deploying Security Director On-Prem and ClearPass — not vibe configuring.
 
 Firewall work is unforgiving. A confidently wrong `access-list` line, a Junos stanza that won't commit, a compliance claim you can't back up in an audit — these aren't cosmetic. Coding agents are astonishingly good at producing *plausible* firewall config and astonishingly bad at knowing when it's wrong.
 
-These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 25. Hack around with them. Make them your own.
+These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 26. Hack around with them. Make them your own.
 
 > **Unofficial / community project.** Not affiliated with, endorsed by, or supported by Cisco, Fortinet, Palo Alto Networks, Juniper Networks, or HPE. See [License and Provenance](#license-and-provenance) for the full notice and the trademark disclaimer.
 
@@ -100,7 +100,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**25 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem deployment request, or compliance language in your message or a pasted config. All 25 packages have completed the review record below. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
+**26 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem or ClearPass deployment request, or compliance language in your message or a pasted config. 25 of the 26 packages have completed the review record below; `clearpass-proxmox-deploy` is a draft. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 ### Config parsers
 
@@ -146,17 +146,20 @@ Map firewall capability to control evidence — assessor/auditor output template
 - **[soc2-ngfw-compliance](./skills/soc2-ngfw-compliance/SKILL.md)** — SOC 2 Trust Services Criteria (CC6/CC7/CC8), Type I/II examinations, operating-effectiveness samples.
 - **[srx-disa-stig-compliance](./skills/srx-disa-stig-compliance/SKILL.md)** — Source-pinned DISA Y25M01 SRX NDM/ALG/IDPS/VPN rule assessment, CAT status, evidence gaps, and Junos compatibility review.
 
-### Security management deployment
+### Security management and NAC deployment
 
 Install with `--family deployment`.
 
+- **[clearpass-proxmox-deploy](./skills/clearpass-proxmox-deploy/SKILL.md)** — *(v0.1.0, draft)* Deploy and validate HPE Aruba ClearPass Policy Manager 6.14 as a Proxmox VE KVM guest, including CLABV/C1000V/C2000V/C3000V sizing, the mandatory UEFI firmware and pre-boot second disk, MAC-ordered management interface mapping, CRC-verified streaming of the 45 GiB raw image, and driving the VGA-only first-boot wizard through the QEMU monitor.
 - **[sd-onprem-proxmox-deploy](./skills/sd-onprem-proxmox-deploy/SKILL.md)** — Plan, deploy, validate, and troubleshoot Juniper Security Director On-Prem 25/26 as a Proxmox VE guest from the vendor KVM artifacts, including sizing, four-IP planning, first-boot seed configuration, NTP/DNS reachability, SRX onboarding behind a device-clock NTP sync gate, and mandatory source-identical routing, bundle, device-channel, and TLS log-path proof before VM creation.
 
 ---
 
 ## Quality and Review
 
-All **25 / 25 skills** have passed independent technical review. The original 21
+**25 of the 26 skills** have passed independent technical review; the exception
+is `clearpass-proxmox-deploy`, which ships as a draft and is described at the end
+of this section. The original 21
 were first reviewed on 2026-06-30, then re-reviewed on 2026-07-02 with a
 two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax
 correctness for Cisco ASA/FTD, FortiGate, PAN-OS, and Junos SRX;
@@ -178,8 +181,8 @@ The 25th skill, `srx-chassis-cluster-proxmox`, was validated on 2026-08-11 by a 
 | SRX operational playbooks | 10 | 10 / 10 |
 | NGFW compliance and STIG playbooks | 7 | 7 / 7 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
-| Security management deployment | 1 | 1 / 1 |
-| **Total** | **25** | **25 / 25** |
+| Security management and NAC deployment | 2 | 1 / 2 |
+| **Total** | **26** | **25 / 26** |
 
 The later `srx-disa-stig-compliance` addition completed an independent review on
 2026-07-22. That review verified the NIST checklist 657 / DISA Y25M01 artifact,
@@ -246,6 +249,25 @@ aggregates never substitute for per-node evidence, that version qualifiers
 survive comparison, and that a package install with no active IDP policy is
 never reported as active enforcement. Each of those assertions was
 mutation-checked.
+
+`clearpass-proxmox-deploy` was added on **2026-08-13** and is the one skill here
+that has **not** been through any independent review round. It ships at
+**v0.1.0 (draft)**: the procedure was executed end-to-end once, on ClearPass
+**6.14.0.371380** as a C1000V on Proxmox VE 9.2, and every claim in its Gotchas
+is either from that build or explicitly marked `[unverified]`. It passed the
+repository's portable-package and runtime-intake validation.
+
+Its central finding is that the ClearPass 6.14 KVM image **only boots under
+UEFI** — undocumented by the vendor, and silent when violated: the appliance
+reaches its GRUB menu and fails every boot attempt, which presents as an
+unresponsive keyboard rather than a boot failure. That was confirmed two
+independent ways: the on-screen GRUB error
+(``can't find command `linuxefi'``), and the image's own
+`/boot/grub2/i386-pc/command.lst`, which registers `linux`/`linux16` and no
+`linuxefi` at all. The vendor guide's competing IDE disk-bus instruction is
+recorded as **unverified rather than disproven** — `virtio-scsi` was verified
+working; IDE was not tested. The skill needs a repeat run, and ideally one
+non-C1000V flavor, before it earns a stable label.
 
 These are research/operational and assessment-support skills, not certified products: review their output against current vendor documentation, live device behavior, and (for compliance work) a qualified assessor before relying on it.
 

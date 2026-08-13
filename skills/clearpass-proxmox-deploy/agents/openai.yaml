@@ -1,0 +1,4 @@
+interface:
+  display_name: "ClearPass Proxmox Deploy"
+  short_description: "Deploy ClearPass Policy Manager on Proxmox VE"
+  default_prompt: "Use $clearpass-proxmox-deploy to size, deploy, and validate an HPE Aruba ClearPass Policy Manager virtual appliance on Proxmox VE."
