@@ -336,9 +336,23 @@ onboarding will appear to succeed.
 
 #### 4b. Onboarding
 
-- **Device MANAGEMENT** (add in SD → Inventory → Devices: mgmt IP, super-user,
-  NETCONF/SSH) connects toward the **device-connection VIP** and may ride the
-  management path (fxp0 / mgmt net).
+- **The ENTIRE SD path is in-band. `fxp0` is not a valid path to SD for
+  ANYTHING — not logging, and not device management either.** Manage each device
+  at a revenue-port address (`ge-0/0/x.0`, a `reth`, or an `lo0` reachable
+  in-band); the device-connection session to the **device-connection VIP**
+  (`.21`) must leave a revenue port, exactly like the log stream. An earlier
+  version of this skill said management "may ride the management path (fxp0 /
+  mgmt net)" — that is **wrong**, and following it produces a device that half
+  onboards and never streams.
+- **The route chooses the egress, not `source-interface`.** This is the trap
+  behind the rule above: if `<log-VIP>/32` or `<device-VIP>/32` resolves out
+  `fxp0`, the stream dies no matter what `security log source-interface` says,
+  because the PFE cannot egress `fxp0`. Keep the SD VIPs off any `fxp0`-facing
+  route. The clean pattern is `set system management-instance`, which lifts
+  `fxp0` into `mgmt_junos` and out of `inet.0` entirely, so data-plane routes
+  cannot resolve to it. Verified on this lab's `dc-fw`, which is managed at its
+  revenue leg `ge-0/0/3.0` (`192.168.77.50`) with `fxp0` in the management
+  instance; the branches are managed at `lo0` reached in-band over the tunnel.
 - **LOG STREAMING must NOT source off fxp0 — SD cannot receive security logs
   from the management interface.** SRX stream-mode security logs are emitted by
   the PFE (data plane), which cannot egress fxp0. So each device must reach the
@@ -353,6 +367,68 @@ onboarding will appear to succeed.
   subscription/license** (Admin → Subscriptions) — separate from device
   management. If logs arrive (verify at the collector) but Security Events is
   empty, assign a subscription to the device before chasing anything else.
+
+#### 4c. BROWN_FIELD onboarding + the cert-for-logging pitfalls
+
+Verified end-to-end onboarding all 10 REs of a lab fleet (5 standalone, two
+MNHA pairs, one chassis cluster) into a fresh 26.2 appliance.
+
+- **There is no API-key UI (that is SD Cloud only) and no clean login endpoint.**
+  The REST API authenticates with the `x-iam-token` header — a browser-session
+  JWT with a ~30-minute TTL, read from the SPA's sessionStorage key
+  `atom_portal_TOKEN`. Automations must re-copy or re-mint it; there is no
+  long-lived key. Forgotten **web-admin (`root-admin`) password** is recovered
+  from the **VM serial console** (`qm terminal <vmid>` on the Proxmox host →
+  log in as `cliadmin` → `reset local-user`); that command is console-only and
+  refuses over an SSH pts.
+- **BROWN_FIELD, device-initiated, is the onboarding path for existing SRX.**
+  `POST /api/v1/devices/create` with `type` `STANDALONE` / `MNHA` /
+  `L2_CLUSTER`, then `POST /api/v1/devices/{uuid}/get_bootstrap_config`, then
+  load that bootstrap on the SRX so it dials **outbound-ssh** to the
+  device-connection VIP `:7804`. The bootstrap's `device-id` **is the SD entry
+  UUID** (not serial-bound), so any consistent bootstrap→device assignment
+  works. The MNHA create response returns the cluster plus two children with
+  `parent_id` set — use that to map children to the physical HA pair. The
+  chassis-cluster bootstrap uses `groups node0`/`node1` + `apply-groups
+  "${node}"` and is loaded once on node0. **Load the FULL bootstrap** — a
+  partial load that omits the `<device-VIP> port 7804` host block leaves
+  outbound-ssh with nowhere to dial and the device never connects.
+- **SD auto-generates and installs the device certs (`sd_ca` + `sd_local`) on
+  onboarding — but only if the secmgt cert controller is already up.** There is
+  **no manual "install certificate" action** in the GUI or a generate API (the
+  `install_*_certificate` endpoints are multipart BYO-cert uploads). Devices
+  onboarded in the **first ~2 minutes after the appliance's first boot** miss
+  the cert step: standalones stick at `certificate_ready:false` (no `sd_local`
+  at all), and cluster/MNHA devices get a cert the **log collector rejects at
+  the TLS layer** — the stream flaps with `RTLOG_CONN_ERROR: Com 85 abort`,
+  reconnecting endlessly. **Fix (both cases):** delete the SD device entry
+  (`POST /api/v1/devices/remove` — allowed even when `POST /api/v1/devices/sync`
+  BulkSync is token-capability-denied with 403) and re-create BROWN_FIELD; the
+  cert regenerates and installs within ~60 s on re-adopt. For MNHA/chassis,
+  delete the cluster entry (it cascades to the children) and recreate.
+- **Verifying the log stream — no session exists until a security EVENT fires.**
+  An idle onboarded device shows nothing; do not conclude it is broken.
+  `show system connections` NEVER shows the stream (it is PFE/rtlogd, not RE —
+  only the `:7804` device-management channel appears there). The authoritative
+  checks are, on the SRX: `show log messages | match RTLOG_CONN_OPEN`
+  (`Connection established sd-logs TLS <src> <log-VIP>/6514`) and
+  `show security flow session destination-prefix <log-VIP>` (**In AND Out both
+  non-zero** on the `:6514` session). On the SNAT log-gateway you will see every
+  device's stream transiting it (dozens of sessions), all source-NATted to the
+  gateway's revenue IP — the collector distinguishes devices by client-cert
+  UUID, not source IP, so a shared SNAT source is fine.
+- **An inert factory `default-permit` zone-pair policy silently suppresses
+  logging even when the log config is perfect.** Zone-pair policies
+  (`from-zone X to-zone Y`) are evaluated BEFORE global policies. A leftover
+  `from-zone trust to-zone untrust policy default-permit` (permit, no `then
+  log`) matches transit traffic first, so it never reaches the global
+  `…then log session-close` policy and the stream never opens — the device looks
+  un-onboarded while being perfectly healthy. Confirm with `show security flow
+  session` (the matched `Policy name:` is `default-permit/N`) and
+  `show security policies hit-count` (the logging policy stays at 0). Delete the
+  shadowing zone-pair `default-permit`; traffic falls through to the logging
+  global policy (which also permits, so no traffic drop). Only the ACTIVE node
+  of an MNHA pair / chassis cluster streams — the backup is idle until failover.
 
 ## Gotchas (all hit in a real 26.2.1 build)
 
