@@ -44,6 +44,7 @@ EXPECTED_FAMILIES = {
         "srx-disa-stig-compliance",
     },
     "deployment": {
+        "deploy-clearpass-proxmox",
         "sd-onprem-proxmox-deploy",
     },
 }
@@ -163,7 +164,7 @@ def main() -> int:
 
     print(
         "OK: installer/package inventories match; installer lists and installs "
-        "25 skills with byte-identical required artifacts across 5 families "
+        "26 skills with byte-identical required artifacts across 5 families "
         "and explicit selections"
     )
     return 0

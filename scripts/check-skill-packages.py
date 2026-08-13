@@ -31,6 +31,7 @@ EXPECTED_SKILL_NAMES = frozenset(
     {
         "cis-controls-ngfw-compliance",
         "cmmc-nist-800-171-ngfw-compliance",
+        "deploy-clearpass-proxmox",
         "firewall-best-practices-audit",
         "firewall-config-conversion",
         "firewall-config-diff",
