@@ -173,37 +173,37 @@ this guest through the pre-power-on gate unattended.
 > the 4 MB EFI-vars volume. Non-LVM stores have no `/dev/<vg>` path at all.
 > Resolve the volume from the config every time:
 
-```bash
-ssh root@<host> '
-VOL=$(qm config <vmid> | sed -n "s/^scsi0: \([^,]*\).*/\1/p")
-DEV=$(pvesm path "$VOL")
-echo "scsi0 -> $VOL -> $DEV"
-lsblk -bno SIZE "$DEV"          # must equal the step-1 file_size
-'
-```
-
-Confirm that device is the intended size before writing — the write is
-destructive and unrecoverable if pointed at the wrong volume.
-
-Then inflate the stream straight onto it; do not unzip to disk.
 `scripts/stream-inflate-zip.py` sends only the ~5 GB compressed stream over the
 wire, inflates on the hypervisor, and verifies size + CRC32 against the zip
-header as it writes:
+header as it writes.
+
+**Resolution, size gate, and write must happen in one remote shell** — a shell
+variable does not survive into a second `ssh`, and a half-resolved path is how a
+destructive write goes to the wrong volume:
 
 ```bash
 scp scripts/stream-inflate-zip.py root@<host>:/root/cppm/
-ssh root@<host> 'cd /root/cppm && python3 stream-inflate-zip.py \
-  "$DEV" <crc32-hex> <uncompressed-bytes>' < <zip>
+ssh root@<host> 'set -eu
+VOL=$(qm config <vmid> | sed -n "s/^scsi0: \([^,]*\).*/\1/p")
+DEV=$(pvesm path "$VOL")
+echo "scsi0 -> $VOL -> $DEV"
+
+# Size gate. pvesm path yields a block device on LVM/ZFS and a regular file on
+# dir/NFS storage, so check both forms rather than assuming a block device.
+if [ -b "$DEV" ]; then SIZE=$(blockdev --getsize64 "$DEV")
+else SIZE=$(stat -c %s "$DEV"); fi
+[ "$SIZE" = "<uncompressed-bytes>" ] || { echo "size $SIZE != image"; exit 1; }
+
+cd /root/cppm && python3 stream-inflate-zip.py "$DEV" <crc32-hex> <uncompressed-bytes>
+fdisk -l "$DEV"
+' < <zip>
 # expect: written=<n> ... crc=0x... MATCH
-```
-
-Do not place that script in `/tmp` on a Proxmox host — see Gotchas. Confirm the
-result before booting:
-
-```bash
-ssh root@<host> 'fdisk -l "$DEV"'
 # GPT: p1 200M EFI System · p2 1G Linux filesystem · p3 1M BIOS boot · p4 LVM
 ```
+
+On file-backed storage the volume must be **raw** (`qemu-img info "$DEV"`);
+a qcow2 volume is not a valid target for a raw block-level write. Do not place
+the helper script in `/tmp` on a Proxmox host — see Gotchas.
 
 The 1 MB BIOS boot partition is **vestigial**. Its presence is the single most
 misleading artifact in the image; do not read it as BIOS support.
@@ -246,9 +246,11 @@ echo 'screendump /tmp/<vmid>.ppm' | qm monitor <vmid>   # observe
 echo 'sendkey <key>'              | qm monitor <vmid>   # type
 ```
 
-`scripts/console-type.py` maps a literal string to `sendkey` lines (shifted
-symbols included). Screenshot after every answer — the wizard's question set
-differs from the guide's.
+This skill's `scripts/console-type.py` maps a literal string to `sendkey` lines
+(shifted symbols included). It is not on `PATH` — the installer copies the
+package verbatim — so run it as `python3 <this-skill-dir>/scripts/console-type.py`.
+Screenshot after every answer; the wizard's question set differs from the
+guide's.
 
 **Never pass the cluster password as an argument.** argv is readable by every
 user on the host via `ps` and lands in shell history. Use the script's `--stdin`
@@ -256,7 +258,9 @@ mode for that prompt and suppress its stdout, which spells the secret out one
 key per line:
 
 ```bash
-systemd-ask-password --echo=0 | console-type.py --stdin | qm monitor <vmid> >/dev/null
+# CT=<this-skill-dir>/scripts/console-type.py — the package is copied verbatim
+# and is not added to PATH, so invoke it by path.
+systemd-ask-password --echo=0 | python3 "$CT" --stdin | qm monitor <vmid> >/dev/null
 ```
 
 Log in with `appadmin` / `eTIPS123`, wait past `Waiting for network connection`,

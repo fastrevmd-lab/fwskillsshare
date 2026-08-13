@@ -10,10 +10,16 @@ own local file header, so a truncated transfer cannot pass silently.
 Usage:
     stream-inflate-zip.py <device> <expected_crc32_hex> <expected_size_bytes>
 
-Typical invocation from the workstation holding the zip:
+Typical invocation from the workstation holding the zip. Resolve the target in
+the SAME remote shell that writes -- never hardcode vm-<vmid>-disk-0, because
+efidisk0 is allocated before scsi0 and takes that name, and non-LVM stores have
+no /dev/<vg> path at all:
 
-    ssh root@<host> 'cd /root/cppm && python3 stream-inflate-zip.py \\
-        /dev/<vg>/vm-<vmid>-disk-0 2572e1fe 48318382080' < CPPM-...-KVM.raw.zip
+    ssh root@<host> 'set -eu
+    VOL=$(qm config <vmid> | sed -n "s/^scsi0: \\([^,]*\\).*/\\1/p")
+    DEV=$(pvesm path "$VOL")
+    cd /root/cppm && python3 stream-inflate-zip.py "$DEV" 2572e1fe 48318382080
+    ' < CPPM-...-KVM.raw.zip
 
 Read the expected values off the archive first:
 
