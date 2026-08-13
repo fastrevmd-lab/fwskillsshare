@@ -182,7 +182,8 @@ variable does not survive into a second `ssh`, and a half-resolved path is how a
 destructive write goes to the wrong volume:
 
 ```bash
-scp scripts/stream-inflate-zip.py root@<host>:/root/cppm/
+# Chain the upload: a failed scp must not be followed by a write attempt.
+scp scripts/stream-inflate-zip.py root@<host>:/root/cppm/ && \
 ssh root@<host> 'set -eu
 VOL=$(qm config <vmid> | sed -n "s/^scsi0: \([^,]*\).*/\1/p")
 DEV=$(pvesm path "$VOL")
@@ -198,6 +199,11 @@ else SIZE=$(stat -c %s "$DEV"); fi
 # `cd X && python3 ...` would silently skip the write if the scp above failed
 # and still exit 0.
 cd /root/cppm
+# An interrupted upload can leave a truncated or empty helper, which would exit
+# 0 without writing anything. Prove it is intact before the destructive write.
+# Both checks are needed: an empty file is syntactically valid Python.
+[ -s stream-inflate-zip.py ] || { echo "helper empty or missing"; exit 1; }
+python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" stream-inflate-zip.py
 python3 stream-inflate-zip.py "$DEV" <crc32-hex> <uncompressed-bytes>
 fdisk -l "$DEV"
 ' < <zip>
