@@ -8,8 +8,11 @@ the result. Skip answered or irrelevant entries. Prioritize safety, scope,
 platform or framework basis, evidence quality, then output preference.
 
 Three entries below (`cppm_flavor`, `cppm_encryption`, `cppm_firmware`) cover
-decisions that **cannot be changed after first boot** without rebuilding the
-appliance. Resolve them before any `qm start`, not during the wizard.
+decisions that are made before or during first boot and are costly or impossible
+to revisit afterwards. Resolve them before any `qm start`, not during the wizard.
+Local-data encryption is genuinely permanent. The flavor fixes the second disk's
+partitioning, so changing it means a rebuild unless the vendor's `system
+morph-vm` grow path applies — which this skill has **not** verified.
 
 ## Tool adaptation
 
@@ -62,13 +65,13 @@ appliance. Resolve them before any `qm start`, not during the wizard.
     },
     {
       "id": "cppm_flavor",
-      "ask_when": "The appliance flavor is absent. Permanent at first boot without a rebuild.",
+      "ask_when": "The appliance flavor is absent. Fixed at first boot; changing it normally means a rebuild.",
       "header": "Sizing",
       "question": "Which ClearPass appliance flavor should the VM be built for?",
       "options": [
         {"label": "Measure requirements first (Recommended)", "description": "Measure endpoint count, authentication rate, and retention before selecting CLABV, C1000V, C2000V, or C3000V."},
         {"label": "Use supplied final flavor", "description": "Build vCPU, RAM, and the second disk to the supplied flavor row without reselecting its size."},
-        {"label": "Size down deliberately", "description": "Select the smaller flavor and grow later with system morph-vm rather than overcommitting storage now."}
+        {"label": "Plan for a rebuild", "description": "Select the smaller flavor now and treat a later change as a rebuild, because the vendor system morph-vm grow path is unverified by this skill."}
       ]
     },
     {

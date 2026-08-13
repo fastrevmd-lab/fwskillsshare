@@ -9,6 +9,7 @@ is synthesised key events through the QEMU monitor.
 Usage:
     console-type.py "some text"      # keystrokes for the text
     console-type.py --key ret esc    # named keys, in order
+    console-type.py --stdin          # read one line of text from stdin
 
 Pipe the output into the monitor, then screenshot to confirm what landed:
 
@@ -20,8 +21,16 @@ Always screenshot after each answer. The 6.14 wizard's question set differs from
 the installation guide's, so a pre-baked answer list desyncs and every later
 answer lands in the wrong field.
 
-Suppress this script's output when typing a password — the sendkey lines spell
-it out one character per line.
+SECRETS: never pass the cluster password as an argument. Anything in argv is
+visible to `ps` for every user on the host and lands in shell history. Use
+`--stdin`, which reads the secret from a pipe and never places it in argv:
+
+    systemd-ask-password --echo=0 | console-type.py --stdin | qm monitor <vmid>
+    # or from an existing 0600 file, without echoing it:
+    console-type.py --stdin < secret.txt | qm monitor <vmid>
+
+Also suppress this script's stdout when it carries a password — the sendkey
+lines spell the secret out one character per line.
 """
 import sys
 
@@ -53,6 +62,11 @@ def keys_for(char):
     raise SystemExit('unmappable character: %r' % char)
 
 
+def emit(text):
+    for char in text:
+        print('sendkey %s' % keys_for(char))
+
+
 def main():
     if len(sys.argv) < 2:
         sys.exit(__doc__)
@@ -60,8 +74,12 @@ def main():
         for name in sys.argv[2:]:
             print('sendkey %s' % name)
         return
-    for char in sys.argv[1]:
-        print('sendkey %s' % keys_for(char))
+    if sys.argv[1] == '--stdin':
+        # Strip only the trailing newline the pipe adds; a password may legally
+        # contain leading or trailing spaces, so do not strip() generally.
+        emit(sys.stdin.readline().rstrip('\n'))
+        return
+    emit(sys.argv[1])
 
 
 if __name__ == '__main__':

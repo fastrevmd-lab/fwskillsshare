@@ -88,7 +88,11 @@ Flavor table (from the guide; only **C1000V** was exercised). "Disk space" is th
   ClearPass maps the lowest MAC to `eth0`/management. Pin them explicitly.
 - One free management IP outside any DHCP pool, plus gateway, DNS, and a
   reachable NTP server.
-- A flavor can be grown later with `system morph-vm`, so when unsure size down.
+- The guide documents `system morph-vm` for moving to a **larger** flavor after
+  installation. **[unverified]** — not exercised in this build, and the
+  supported transitions are not enumerated by the guide. Treat the flavor as
+  fixed when planning: size for the endpoint count you expect, and plan a
+  rebuild rather than assuming a later morph will land.
 
 ## Runtime intake
 
@@ -117,6 +121,9 @@ before configuration, commit, upgrade, reboot, delete, or failover actions.
    changed after installation.
 5. The management IP is confirmed free (`arping`/`ip neigh`) and outside the
    DHCP pool.
+6. The device you are about to write to really is `scsi0` — resolved through
+   `qm config` + `pvesm path`, never assumed to be `vm-<vmid>-disk-0` (§3).
+   Autostart stays off until §6 passes.
 
 ## Procedure
 
@@ -142,20 +149,43 @@ qm create <vmid> \
   --sockets 1 --cores 8 --memory 8192 --balloon 0 \
   --bios ovmf --efidisk0 <storage>:1,efitype=4m,pre-enrolled-keys=0 \
   --scsihw virtio-scsi-pci \
-  --scsi0 <storage>:45 \
-  --scsi1 <storage>:1000 \
+  --scsi0 <storage>:<image-GiB-from-step-1> \
+  --scsi1 <storage>:<flavor-2nd-disk-GB> \
   --net0 virtio=<MAC-LOW>,bridge=<mgmt-bridge> \
   --net1 virtio=<MAC-HIGH>,bridge=<data-bridge> \
-  --boot order=scsi0 --onboot 1
+  --boot order=scsi0
 ```
 
+Size `scsi0` from step 1's `file_size`, not from this build's number.
 `pre-enrolled-keys=0` keeps Secure Boot out of the picture. Adding
 `--serial0 socket` is useful for kernel messages but **will not show you the
 setup wizard** (§5).
 
+**Leave autostart off until §6 passes.** Set `--onboot 1` after verification, so
+a node reboot between landing the image and the approved first boot cannot power
+this guest through the pre-power-on gate unattended.
+
 ### 3. Write the image without a 45 GiB temp file
 
-Do not unzip to disk — inflate the stream straight onto the logical volume.
+> **Never assume `vm-<vmid>-disk-0` is `scsi0`.** Proxmox allocates drive keys in
+> sorted order, so with the `qm create` above **`efidisk0` takes `disk-0` and
+> `scsi0` becomes `disk-1`** (verified on PVE 9.2). Writing to `disk-0` targets
+> the 4 MB EFI-vars volume. Non-LVM stores have no `/dev/<vg>` path at all.
+> Resolve the volume from the config every time:
+
+```bash
+ssh root@<host> '
+VOL=$(qm config <vmid> | sed -n "s/^scsi0: \([^,]*\).*/\1/p")
+DEV=$(pvesm path "$VOL")
+echo "scsi0 -> $VOL -> $DEV"
+lsblk -bno SIZE "$DEV"          # must equal the step-1 file_size
+'
+```
+
+Confirm that device is the intended size before writing — the write is
+destructive and unrecoverable if pointed at the wrong volume.
+
+Then inflate the stream straight onto it; do not unzip to disk.
 `scripts/stream-inflate-zip.py` sends only the ~5 GB compressed stream over the
 wire, inflates on the hypervisor, and verifies size + CRC32 against the zip
 header as it writes:
@@ -163,7 +193,7 @@ header as it writes:
 ```bash
 scp scripts/stream-inflate-zip.py root@<host>:/root/cppm/
 ssh root@<host> 'cd /root/cppm && python3 stream-inflate-zip.py \
-  /dev/<vg>/vm-<vmid>-disk-0 <crc32-hex> <uncompressed-bytes>' < <zip>
+  "$DEV" <crc32-hex> <uncompressed-bytes>' < <zip>
 # expect: written=<n> ... crc=0x... MATCH
 ```
 
@@ -171,7 +201,7 @@ Do not place that script in `/tmp` on a Proxmox host — see Gotchas. Confirm th
 result before booting:
 
 ```bash
-ssh root@<host> 'fdisk -l /dev/<vg>/vm-<vmid>-disk-0'
+ssh root@<host> 'fdisk -l "$DEV"'
 # GPT: p1 200M EFI System · p2 1G Linux filesystem · p3 1M BIOS boot · p4 LVM
 ```
 
@@ -220,6 +250,15 @@ echo 'sendkey <key>'              | qm monitor <vmid>   # type
 symbols included). Screenshot after every answer — the wizard's question set
 differs from the guide's.
 
+**Never pass the cluster password as an argument.** argv is readable by every
+user on the host via `ps` and lands in shell history. Use the script's `--stdin`
+mode for that prompt and suppress its stdout, which spells the secret out one
+key per line:
+
+```bash
+systemd-ask-password --echo=0 | console-type.py --stdin | qm monitor <vmid> >/dev/null
+```
+
 Log in with `appadmin` / `eTIPS123`, wait past `Waiting for network connection`,
 then answer, **in this order**:
 
@@ -261,10 +300,18 @@ Current system configuration:  8 CPUs / 8.00 GB / 1045.00 GB
 Required system configuration: 8 CPUs / 8 GB / 1000 GB
 ```
 
-Finally, **log in once at the console with the new password.** The wizard's
+Then **log in once at the console with the new password.** The wizard's
 confirm field only proves the two entries matched each other — if a synthesised
 keystroke dropped in both, they still match and the stored password is not the
 one you think it is.
+
+Only once all of the above passes, enable autostart and take the snapshot that
+the rollback section depends on:
+
+```bash
+qm set <vmid> --onboot 1
+qm snapshot <vmid> post-initial-config
+```
 
 ## Gotchas (all hit in a real 6.14.0.371380 build)
 
@@ -313,6 +360,12 @@ one you think it is.
   `Total Memory = 10 GB` while `show system-resources` afterwards reported
   `8.00 GB`. Both passed the C1000V gate; do not resize on the strength of the
   pre-install number.
+- **`efidisk0` steals `vm-<vmid>-disk-0` from `scsi0`.** Proxmox allocates drive
+  keys in sorted order, so a single `qm create` carrying both gives the EFI-vars
+  volume `disk-0` and the boot disk `disk-1` (verified on PVE 9.2). Any runbook
+  that hardcodes `disk-0` writes 45 GiB at a 4 MB volume. Always resolve
+  `scsi0` through `qm config` + `pvesm path`, which is also the only form that
+  works on non-LVM storage.
 - **Do not stage helper scripts in `/tmp` on a Proxmox host.** Python puts the
   script's own directory first on `sys.path`, and an unrelated `/tmp/struct.py`
   (proxmox-mcp leaves one) shadows the stdlib `struct` module and kills the
