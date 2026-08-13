@@ -194,7 +194,11 @@ if [ -b "$DEV" ]; then SIZE=$(blockdev --getsize64 "$DEV")
 else SIZE=$(stat -c %s "$DEV"); fi
 [ "$SIZE" = "<uncompressed-bytes>" ] || { echo "size $SIZE != image"; exit 1; }
 
-cd /root/cppm && python3 stream-inflate-zip.py "$DEV" <crc32-hex> <uncompressed-bytes>
+# Standalone cd: under set -e the left side of an AND-OR list is exempt, so
+# `cd X && python3 ...` would silently skip the write if the scp above failed
+# and still exit 0.
+cd /root/cppm
+python3 stream-inflate-zip.py "$DEV" <crc32-hex> <uncompressed-bytes>
 fdisk -l "$DEV"
 ' < <zip>
 # expect: written=<n> ... crc=0x... MATCH
@@ -258,8 +262,8 @@ mode for that prompt and suppress its stdout, which spells the secret out one
 key per line:
 
 ```bash
-# CT=<this-skill-dir>/scripts/console-type.py — the package is copied verbatim
-# and is not added to PATH, so invoke it by path.
+# The package is copied verbatim and is not added to PATH, so invoke by path.
+CT="<this-skill-dir>/scripts/console-type.py"
 systemd-ask-password --echo=0 | python3 "$CT" --stdin | qm monitor <vmid> >/dev/null
 ```
 
