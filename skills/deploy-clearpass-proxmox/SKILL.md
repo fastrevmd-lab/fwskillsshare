@@ -183,6 +183,7 @@ destructive write goes to the wrong volume:
 
 ```bash
 # Chain the upload: a failed scp must not be followed by a write attempt.
+# <helper-sha256> = sha256sum scripts/stream-inflate-zip.py | cut -d" " -f1
 scp scripts/stream-inflate-zip.py root@<host>:/root/cppm/ && \
 ssh root@<host> 'set -eu
 VOL=$(qm config <vmid> | sed -n "s/^scsi0: \([^,]*\).*/\1/p")
@@ -199,11 +200,11 @@ else SIZE=$(stat -c %s "$DEV"); fi
 # `cd X && python3 ...` would silently skip the write if the scp above failed
 # and still exit 0.
 cd /root/cppm
-# An interrupted upload can leave a truncated or empty helper, which would exit
-# 0 without writing anything. Prove it is intact before the destructive write.
-# Both checks are needed: an empty file is syntactically valid Python.
-[ -s stream-inflate-zip.py ] || { echo "helper empty or missing"; exit 1; }
-python3 -c "import ast,sys;ast.parse(open(sys.argv[1]).read())" stream-inflate-zip.py
+# An interrupted upload can leave the helper empty, or truncated at a
+# syntactically valid boundary; either exits 0 without writing anything, and a
+# target with a readable partition table then lets fdisk mask it as success.
+# Only an exact whole-file match rules that out — size and parse checks do not.
+echo "<helper-sha256>  stream-inflate-zip.py" | sha256sum -c -
 python3 stream-inflate-zip.py "$DEV" <crc32-hex> <uncompressed-bytes>
 fdisk -l "$DEV"
 ' < <zip>
