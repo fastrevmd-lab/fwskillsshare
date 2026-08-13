@@ -1,5 +1,5 @@
 ---
-name: deploy-clearpass-proxmox
+name: clearpass-proxmox-deploy
 description: Deploy and validate HPE Aruba ClearPass Policy Manager (CPPM) 6.14 as a Proxmox VE KVM guest. Use when installing or sizing the virtual appliance, driving its VGA-only first-boot wizard, or fixing an image that shows the GRUB menu but never boots.
 version: 0.1.0
 author:

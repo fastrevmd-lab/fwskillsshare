@@ -30,8 +30,8 @@ OBSOLETE_LICENSE_MARKERS = (
 EXPECTED_SKILL_NAMES = frozenset(
     {
         "cis-controls-ngfw-compliance",
+        "clearpass-proxmox-deploy",
         "cmmc-nist-800-171-ngfw-compliance",
-        "deploy-clearpass-proxmox",
         "firewall-best-practices-audit",
         "firewall-config-conversion",
         "firewall-config-diff",

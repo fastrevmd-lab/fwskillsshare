@@ -100,7 +100,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**26 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem or ClearPass deployment request, or compliance language in your message or a pasted config. 25 of the 26 packages have completed the review record below; `deploy-clearpass-proxmox` is a draft. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
+**26 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem or ClearPass deployment request, or compliance language in your message or a pasted config. 25 of the 26 packages have completed the review record below; `clearpass-proxmox-deploy` is a draft. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 ### Config parsers
 
@@ -150,7 +150,7 @@ Map firewall capability to control evidence — assessor/auditor output template
 
 Install with `--family deployment`.
 
-- **[deploy-clearpass-proxmox](./skills/deploy-clearpass-proxmox/SKILL.md)** — *(v0.1.0, draft)* Deploy and validate HPE Aruba ClearPass Policy Manager 6.14 as a Proxmox VE KVM guest, including CLABV/C1000V/C2000V/C3000V sizing, the mandatory UEFI firmware and pre-boot second disk, MAC-ordered management interface mapping, CRC-verified streaming of the 45 GiB raw image, and driving the VGA-only first-boot wizard through the QEMU monitor.
+- **[clearpass-proxmox-deploy](./skills/clearpass-proxmox-deploy/SKILL.md)** — *(v0.1.0, draft)* Deploy and validate HPE Aruba ClearPass Policy Manager 6.14 as a Proxmox VE KVM guest, including CLABV/C1000V/C2000V/C3000V sizing, the mandatory UEFI firmware and pre-boot second disk, MAC-ordered management interface mapping, CRC-verified streaming of the 45 GiB raw image, and driving the VGA-only first-boot wizard through the QEMU monitor.
 - **[sd-onprem-proxmox-deploy](./skills/sd-onprem-proxmox-deploy/SKILL.md)** — Plan, deploy, validate, and troubleshoot Juniper Security Director On-Prem 25/26 as a Proxmox VE guest from the vendor KVM artifacts, including sizing, four-IP planning, first-boot seed configuration, NTP/DNS reachability, SRX onboarding behind a device-clock NTP sync gate, and mandatory source-identical routing, bundle, device-channel, and TLS log-path proof before VM creation.
 
 ---
@@ -158,7 +158,7 @@ Install with `--family deployment`.
 ## Quality and Review
 
 **25 of the 26 skills** have passed independent technical review; the exception
-is `deploy-clearpass-proxmox`, which ships as a draft and is described at the end
+is `clearpass-proxmox-deploy`, which ships as a draft and is described at the end
 of this section. The original 21
 were first reviewed on 2026-06-30, then re-reviewed on 2026-07-02 with a
 two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax
@@ -250,7 +250,7 @@ survive comparison, and that a package install with no active IDP policy is
 never reported as active enforcement. Each of those assertions was
 mutation-checked.
 
-`deploy-clearpass-proxmox` was added on **2026-08-13** and is the one skill here
+`clearpass-proxmox-deploy` was added on **2026-08-13** and is the one skill here
 that has **not** been through any independent review round. It ships at
 **v0.1.0 (draft)**: the procedure was executed end-to-end once, on ClearPass
 **6.14.0.371380** as a C1000V on Proxmox VE 9.2, and every claim in its Gotchas

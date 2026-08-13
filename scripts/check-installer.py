@@ -44,7 +44,7 @@ EXPECTED_FAMILIES = {
         "srx-disa-stig-compliance",
     },
     "deployment": {
-        "deploy-clearpass-proxmox",
+        "clearpass-proxmox-deploy",
         "sd-onprem-proxmox-deploy",
     },
 }
