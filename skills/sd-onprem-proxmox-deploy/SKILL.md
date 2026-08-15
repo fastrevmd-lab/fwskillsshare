@@ -464,6 +464,26 @@ MNHA pairs, one chassis cluster) into a fresh 26.2 appliance.
   GUI. Seen with SRXs ~375 s behind; the logs surfaced only after NTP was fixed
   and fresh traffic generated. Every transport check you would reach for passes,
   so gate on NTP **before** onboarding (§4a) rather than debugging the stream.
+- **The machine running the browser must have the correct time.** A client clock
+  skewed more than the ~30-minute IAM token lifetime makes the GUI unusable in a
+  way that looks like a broken login: you sign in, the SPA loads its shell and
+  locale files, and then it drops you straight back to the login screen with no
+  error. The IAM tokens are `iat`/`exp` 1800 s apart and the portal compares
+  `exp` against the **local** clock, so a freshly minted token reads as already
+  expired and the app signs itself out. **The signature that saves the hunt:**
+  server-side everything says success — `authenticate:: User <x> authentication
+  was successful`, a full `GenerateToken` IDToken + RefreshToken pair, an
+  `Audit log for operation User Login`, a `chat_token_request` (the app shell
+  really did start), and every gateway request `200`. The bounce is entirely
+  client-side. Check the clock on the workstation before touching the network:
+  this presents identically whether the browser reaches SD over a firewall DNAT
+  or a straight TCP proxy, survives a private window, and affects every account,
+  which sends you chasing paths, certificates, sessions, and MTU for hours.
+  Read the evidence with `show logs pod <iam-pod>` (namespace `atom-iam`) and
+  `tail /var/log/pods/atom-api-gateway_ambassador-*/ambassador/0.log <n>` from
+  the appliance CLI — the gateway access log also carries the client
+  User-Agent, which is how you spot that the failing workstation is a different
+  browser/machine from the one that works.
 - **`lo0` is NOT a selectable log source** — SD's picker lists only physical
   revenue interfaces. For tunnel-managed branches pick the **LAN** port (subnet the
   gateway routes back over the tunnel), **not the WAN** (on the shared underlay the
