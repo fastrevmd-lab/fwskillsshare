@@ -150,7 +150,7 @@ Map firewall capability to control evidence — assessor/auditor output template
 
 Install with `--family deployment`.
 
-- **[clearpass-proxmox-deploy](./skills/clearpass-proxmox-deploy/SKILL.md)** — *(v0.1.0, draft)* Deploy and validate HPE Aruba ClearPass Policy Manager 6.14 as a Proxmox VE KVM guest, including CLABV/C1000V/C2000V/C3000V sizing, the mandatory UEFI firmware and pre-boot second disk, MAC-ordered management interface mapping, CRC-verified streaming of the 45 GiB raw image, and driving the VGA-only first-boot wizard through the QEMU monitor.
+- **[clearpass-proxmox-deploy](./skills/clearpass-proxmox-deploy/SKILL.md)** — *(v0.2.0, draft)* Deploy, validate, and bring into service HPE Aruba ClearPass Policy Manager 6.14 as a Proxmox VE KVM guest, including CLABV/C1000V/C2000V/C3000V sizing, the mandatory UEFI firmware and pre-boot second disk, MAC-ordered management interface mapping, CRC-verified streaming of the 45 GiB raw image, driving the VGA-only first-boot wizard through the QEMU monitor, and day-2 operations — licence order and artifact formats, HTTPS certificate import via the Trust List, and the REST API's retrievable-token/unretrievable-secret split.
 - **[sd-onprem-proxmox-deploy](./skills/sd-onprem-proxmox-deploy/SKILL.md)** — Plan, deploy, validate, and troubleshoot Juniper Security Director On-Prem 25/26 as a Proxmox VE guest from the vendor KVM artifacts, including sizing, four-IP planning, first-boot seed configuration, NTP/DNS reachability, SRX onboarding behind a device-clock NTP sync gate, and mandatory source-identical routing, bundle, device-channel, and TLS log-path proof before VM creation.
 
 ---
@@ -252,10 +252,12 @@ mutation-checked.
 
 `clearpass-proxmox-deploy` was added on **2026-08-13** and is the one skill here
 that has **not** been through any independent review round. It ships at
-**v0.1.0 (draft)**: the procedure was executed end-to-end once, on ClearPass
-**6.14.0.371380** as a C1000V on Proxmox VE 9.2, and every claim in its Gotchas
-is either from that build or explicitly marked `[unverified]`. It passed the
-repository's portable-package and runtime-intake validation.
+**v0.2.0 (draft)**: the deploy procedure was executed end-to-end once, on
+ClearPass **6.14.0.371380** as a C1000V on Proxmox VE 9.2, and the day-2
+reference (licensing, HTTPS certificate import, REST API) was confirmed against
+that same appliance on 2026-08-15/16. Every claim in its Gotchas is either from
+those runs or explicitly marked `[unverified]`. It passed the repository's
+portable-package and runtime-intake validation.
 
 Its central finding is that the ClearPass 6.14 KVM image **only boots under
 UEFI** — undocumented by the vendor, and silent when violated: the appliance

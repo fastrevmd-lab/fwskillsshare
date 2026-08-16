@@ -1,7 +1,7 @@
 ---
 name: clearpass-proxmox-deploy
-description: Deploy and validate HPE Aruba ClearPass Policy Manager (CPPM) 6.14 as a Proxmox VE KVM guest. Use when installing or sizing the virtual appliance, driving its VGA-only first-boot wizard, or fixing an image that shows the GRUB menu but never boots.
-version: 0.1.0
+description: Deploy, license, and validate HPE Aruba ClearPass Policy Manager 6.14 on Proxmox VE KVM. Use when sizing the appliance, driving the VGA-only first-boot wizard, fixing a GRUB menu that never boots, importing an HTTPS certificate, or using the REST API.
+version: 0.2.0
 author:
   - fastrevmd-lab
   - Claude
@@ -390,6 +390,24 @@ qm snapshot <vmid> post-initial-config
 - **[unverified] beyond this build:** the CLABV/C2000V/C3000V flavors, `q35`
   machine type (`i440fx` was used), Secure Boot with pre-enrolled keys, and the
   guide's 6.12.x→6.14 upgrade path.
+
+## Day-2 operations
+
+`SKILL.md` ends at a booted, addressed appliance. Licensing, HTTPS certificate
+import, and the REST API are covered in
+`references/clearpass-day-2-operations.md`. The four that cost the most time:
+
+- **Licence order is mandatory** and the error does not say so — an Access key
+  pasted at the Platform Activation screen returns a bare `invalid license key`.
+- **The issuing root must be in the Trust List** even for the appliance's own
+  server certificate, and CAs must be uploaded as `.crt` — `.pem` is typed
+  `application/pkcs7-mime` and rejected.
+- **There is no success banner on certificate import.** Verify with
+  `openssl s_client`, and build the p12 from fullchain or Android and curl fail
+  where desktop browsers pass.
+- **The API client secret is never displayed**, so `client_credentials` cannot
+  be automated — but **Generate Access Token** mints a usable bearer token, so
+  the API itself is not blocked.
 
 ## Rollback
 
