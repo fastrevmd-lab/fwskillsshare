@@ -462,7 +462,7 @@ Session, IPsec, routing, VIP, and DHCP checks are listed inline in their section
 
 21. A signal-route export policy that re-advertises only learned routes and forgets the node's own **connected transit subnets** — the far side can't route back to on-transit sources (SNAT addresses, downstream transit IPs) and return traffic black-holes. Add a `from protocol direct … route-filter <transit> exact accept` term.
 
-22. Assuming a configured SRG1 always elects a single active. If cold-sync doesn't converge, both nodes self-elect ACTIVE (active/active); routing failover still works but stateful sync does not. Check `Conn State`/`Cold Sync Status`, not just `Node Status`.
+22. Assuming a configured SRG1 always elects a single active. If cold-sync doesn't converge, both nodes self-elect ACTIVE (active/active); routing failover still works but stateful sync does not. Check `Conn State`/`Cold Sync Status`, not just `Node Status`. **Before accepting non-convergence, rule out the ICL zone missing `host-inbound-traffic protocols bfd`** — BFD is a protocol, not a system-service, so a zone permitting `system-services high-availability` passes ICMP and silently drops the liveness BFD, producing identical symptoms.
 
 23. Leaving `fxp0` on DHCP on a node whose failover depends on a BGP-learned default — the DHCP default (Access-internal, pref 12) beats BGP (170) and black-holes transit. Make `fxp0` static.
 
