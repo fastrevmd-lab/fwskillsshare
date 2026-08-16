@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRX Syslog & Logging"
+  short_description: "Configure and troubleshoot SRX logging to a collector or SIEM"
+  default_prompt: "Use $srx-syslog-logging to configure or troubleshoot SRX logging to this collector."

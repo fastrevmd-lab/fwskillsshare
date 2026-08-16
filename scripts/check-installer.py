@@ -28,6 +28,7 @@ EXPECTED_FAMILIES = {
         "srx-mpls-in-flow",
         "srx-nat",
         "srx-policy",
+        "srx-syslog-logging",
     },
     "tooling": {
         "firewall-best-practices-audit",

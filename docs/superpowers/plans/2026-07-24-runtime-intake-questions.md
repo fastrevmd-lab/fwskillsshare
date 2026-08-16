@@ -2535,3 +2535,45 @@ installable skill.
   sessions` — Clear only separately approved matching sessions;
   `Maintenance-window reset` — Reset broader session state only under separate
   maintenance approval with rollback.
+
+### A.26 `srx-syslog-logging`
+
+- `syslog_task`; header `Task`; ask when the requested activity is absent;
+  question `What should this logging run accomplish?`; options: `Design or
+  review (Recommended)` — Produce or assess a read-only logging design and
+  candidate configuration; `Troubleshoot` — Diagnose why events are not
+  reaching the collector; `Audit` — Assess existing logging coverage and
+  source-interface choices.
+- `syslog_scope`; header `Scope`; ask when it is unclear which log subsystem is
+  in scope; question `Which log types are in scope?`; options: `Both subsystems
+  (Recommended)` — Cover Routing Engine system syslog and PFE security logs,
+  which use different paths; `System syslog only` — Commits, logins, kernel and
+  daemon events from the Routing Engine; `Security logs only` — Traffic and
+  threat events streamed from the PFE.
+- `syslog_platform`; header `Platform`; ask when model or release is absent and
+  affects supported behavior; question `How should missing SRX model or Junos
+  release details be handled?`; options: `Discover first (Recommended)` —
+  Identify exact models and releases before support conclusions; `Exact details
+  supplied` — Apply model- and release-specific limits; `Assume generic
+  behavior` — Describe common behavior and flag anything release-dependent.
+- `syslog_source`; header `Source`; ask when the intended log source interface
+  is unstated; question `Which interface should carry logs off the device?`;
+  options: `Decide from topology (Recommended)` — Choose per log type after
+  checking collector reachability and management isolation; `Management
+  interface` — Prefer out-of-band for system syslog where the collector is
+  reachable from it; `Revenue interface` — Required for stream-mode security
+  logs and where the collector is on the dataplane.
+- `syslog_change`; header `Change`; ask when device configuration changes may be
+  required and approval is unstated; question `How should device configuration
+  changes be handled?`; options: `Propose only (Recommended)` — Produce
+  candidate configuration and a diff for review without committing; `Approved
+  with rollback` — Commit with a reviewed diff and a confirmed-commit rollback
+  window; `No device changes` — Restrict the run to analysis of supplied
+  artifacts.
+- `syslog_evidence`; header `Evidence`; ask when delivery evidence is incomplete
+  and diagnosis depends on it; question `How should incomplete delivery evidence
+  be handled?`; options: `Inventory evidence (Recommended)` — Identify available
+  configuration, local log files, captures, and collector records before
+  diagnosis; `Use supplied artifacts` — Diagnose only from supplied artifacts
+  and limit runtime conclusions; `Approved live collection` — Collect targeted
+  read-only device evidence and packet captures with approval.

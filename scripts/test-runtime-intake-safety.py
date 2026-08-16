@@ -567,7 +567,7 @@ FINAL_REVIEW_EXPECTED_ASK_WHEN = {
     ("srx-autovpn-full-tunnel", "autovpn_auth"):
         "The target peer-authentication model is absent and affects the design.",
 }
-EXPECTED_FINAL_QUESTION_COUNT = 174
+EXPECTED_FINAL_QUESTION_COUNT = 180
 EXPECTED_FINAL_SAFE_LABEL_COUNT = 115
 EXPECTED_FINAL_EXACT_TUPLE_COUNT = 67
 EXPECTED_FINAL_SEMANTIC_ID_COUNT = 50
@@ -728,7 +728,7 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
         SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
         with self.assertRaisesRegex(
             ValueError,
-            "expected exactly 25 Appendix A sections, found 0",
+            "expected exactly 26 Appendix A sections, found 0",
         ):
             SAFETY.parse_plan_catalogs()
 
@@ -1633,7 +1633,7 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
         SAFETY.PLAN_PATH.write_text(text, encoding="utf-8")
         with self.assertRaisesRegex(
             ValueError,
-            "expected exactly 25 Appendix A sections, found 0",
+            "expected exactly 26 Appendix A sections, found 0",
         ):
             SAFETY.parse_plan_catalogs()
 
@@ -1815,7 +1815,7 @@ class RuntimeIntakeSafetyTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(
             completed.stdout.strip(),
-            "OK: 1 selected plan/reference catalog; parsed all 25 catalogs and "
+            "OK: 1 selected plan/reference catalog; parsed all 26 catalogs and "
             "resolved all manifest keys; 3 safe defaults; 2 exact option tuples",
         )
 
