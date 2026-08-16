@@ -1,7 +1,7 @@
 ---
 name: srx-chassis-cluster-proxmox
 description: Build and validate a Juniper SRX or vSRX chassis cluster whose two nodes are Proxmox VE guests. Use when planning bridges and VLANs for the control and fabric links, mapping virtual NICs to Junos interface names, bootstrapping cluster-id, configuring fab interfaces, reth interfaces and redundancy groups, or diagnosing a cluster that forms but passes no traffic. Not for Multi-Node High Availability.
-version: 1.1.0
+version: 1.2.0
 author:
   - fastrevmd-lab
   - Claude
@@ -20,6 +20,10 @@ metadata:
       author: fastrevmd-lab
       note: "Independent build on a different host from a factory template (cluster-id 9, Junos 26.2R1.7). Confirmed the NIC mapping and reth MAC formula, and corrected the fabric-MTU claim and fxp0 addressing requirement."
       retrieved: "2026-08-11"
+    - title: "Third build: remote-lab cluster following this skill"
+      author: fastrevmd-lab
+      note: "Remote lab build on a separate host (VMs 340/341 legacy-dc-n0/n1, cluster-id 3, Junos 26.2R1.7, single VLAN-aware bridge vmbr6 MTU 9000). Confirmed tap MTU inheritance from bridge, documented RG1 hold state post-commit, and validated the skill's NIC mapping and fxp0-under-groups warnings as exact and essential."
+      retrieved: "2026-08-12"
 ---
 
 # SRX Chassis Cluster on Proxmox VE
@@ -190,6 +194,8 @@ Run the full sequence below. Do not stop at the first green line.
 
 **A passing cluster status is not sufficient.** Reth interfaces report `Up` whenever their underlying links are up, including when the hypervisor is silently discarding every frame they send. Two checks catch that case and nothing else does: fabric probe counters moving in *both* directions, and the reth virtual MAC appearing in the bridge forwarding table.
 
+**Immediately post-commit: RG1 hold state is expected.** After committing the redundancy-group configuration, RG1 shows status `hold` on both nodes while the RG hold-down timer runs. During this window, `show chassis cluster interfaces` reports reths as `Down` while all member legs report `Up / Up` under Interface Monitoring, `monitor_failures` remains empty, and RG1 status literally reads `hold`. This is expected post-commit behaviour, not a fault. Once the timer expires, RG1 elects primary/secondary with no intervention and the reths come Up with their addresses. Do not debug this as a misconfiguration — wait for the hold timer. See `references/failure-modes.md` for how to distinguish this from anti-spoof or other real faults.
+
 ```
 bridge fdb show | grep -i '00:10:db'
 ```
@@ -219,15 +225,18 @@ A third deserves naming because it destroys working service: **promoting a stand
 
 This skill is original operational work, not a vendor-derived summary. Vendor documentation covers chassis cluster on physical appliances; the hypervisor-side requirements collected here are not documented by the vendor and were established empirically.
 
-It rests on two independent builds:
+It rests on three independent builds:
 
 - **Reference cluster** — cluster-id 2, Junos 24.4R1.9, five reths, control and fabric on dedicated VLANs of one portless VLAN-aware bridge. Source of the MTU measurements, port flags, and the anti-spoof forwarding-table evidence.
-- **Proving build** — a second cluster stood up from a factory template on a different host, cluster-id 9, **Junos 26.2R1.7**, following this skill as written and correcting it where it was wrong.
+- **Second build (proving build)** — cluster-id 9, **Junos 26.2R1.7**, on a different host from a factory template, following this skill as written and correcting it where it was wrong.
+- **Third build (remote-lab)** — VMs 340/341 on a separate remote host, cluster-id 3, **Junos 26.2R1.7**, single VLAN-aware bridge vmbr6 MTU 9000 carrying control VLAN 210, fabric 211, reth0 212, reth1 213. Confirmed tap MTU inheritance and documented the RG1 hold state.
 
-The proving build changed three things:
+The second build changed three things:
 
 1. **The fabric MTU claim was too strong.** Dropping the fabric segment to 1500 did not break the cluster: link Up, probes both directions, reths Up, no failover, no alarms. The requirement stands, but the failure is latent rather than immediate, and no health check reveals it.
 2. **`fxp0` cannot use DHCP in cluster mode.** A DHCP-addressed template returns from the cluster-mode reboot with no management address and sends no request. Management must be static, per node, under `groups`.
 3. **A better mapping proof was found** — matching reth virtual MACs against tap interfaces in the hypervisor forwarding table verifies every NIC position in one command.
+
+The third build validated the skill's predictions with no corrections needed: NIC mapping was exact, the fxp0-under-groups warning prevented a lockout, and tap interfaces inherited MTU 9000 from the bridge with no per-NIC `mtu=` parameter set. It surfaced one undocumented post-commit behaviour: RG1 sits in status `hold` after the redundancy-group config is committed, during which reths report `Down` while member legs are `Up` and monitor-failures is empty — expected timer behaviour, not a fault. It had cleared on its own within 180 seconds; the duration itself was not timed.
 
 Values that were measured are stated as measurements. Where behaviour is inferred from a mechanism rather than directly observed — notably the consequence of an undersized fabric under sustained load — the text says so rather than implying it was tested.

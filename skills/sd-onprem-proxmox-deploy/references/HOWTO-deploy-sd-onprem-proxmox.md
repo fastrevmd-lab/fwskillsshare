@@ -650,10 +650,27 @@ Only when every device passes does onboarding begin.
 
 - **Management** — create the device in SD (Inventory → Devices), apply the
   generated adopt/onboard config to the device. It connects out to the
-  **device-connection VIP** (`.21`); can ride the management path (fxp0/mgmt net).
-  SD then pushes the `sd-logs` log stream to the device.
+  **device-connection VIP** (`.21`). **This must be in-band, off a revenue port —
+  NOT fxp0.** SD then pushes the `sd-logs` log stream to the device.
 - **Logging — must NOT source off fxp0.** SD cannot receive security logs from the
   management interface. See §8.
+
+> **Both planes are in-band; `fxp0` is not a path to SD for anything.** An earlier
+> revision of this guide said management "can ride the management path (fxp0/mgmt
+> net)" — that is wrong. Manage devices at a revenue-port address (`ge-0/0/x.0`, a
+> `reth`, or an in-band-reachable `lo0`).
+>
+> The reason is that **the route chooses the egress, not `source-interface`**: if
+> `<log-VIP>/32` or `<device-VIP>/32` resolves out `fxp0`, the log stream dies
+> whatever `security log source-interface` says, because the PFE cannot egress
+> `fxp0`. Adding a static route to the SD subnet via the management LAN is
+> therefore an attractive-looking change that silently breaks logging.
+>
+> The clean fix is `set system management-instance`, which moves `fxp0` into
+> `mgmt_junos` and out of `inet.0`, so no data-plane route can resolve to it.
+> Verified in this lab: `dc-fw` is managed at revenue leg `ge-0/0/3.0`
+> (`192.0.2.50`) with `fxp0` in the management instance, and the branches are
+> managed at `lo0` reached in-band over the IPsec tunnel.
 
 ---
 

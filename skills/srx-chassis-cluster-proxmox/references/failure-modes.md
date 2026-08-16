@@ -4,6 +4,7 @@ Chassis-cluster failures on a hypervisor rarely announce themselves. This table 
 
 | Symptom | Cause |
 |---|---|
+| Reths report `Down` immediately post-commit, RG1 shows `hold`, member legs `Up` | RG1 hold-down timer — **expected**, not a fault, see below |
 | Reths report `Up`, no traffic passes | per-NIC firewall enabled: anti-spoof rule versus the reth virtual MAC |
 | Cluster reports healthy but the fabric segment is undersized | fabric segment below MTU 9000 — **silent**, see below |
 | Secondary stays `ineligible` or `disabled` | control-link segment not isolated, or leaking into a data segment |
@@ -14,6 +15,36 @@ Chassis-cluster failures on a hypervisor rarely announce themselves. This table 
 | The internet-facing segment dies the moment clustering is enabled | standalone-shaped guest promoted in place: second NIC became the control link and every index shifted |
 
 ---
+
+## Reths down immediately post-commit: RG1 hold state
+
+After committing the redundancy-group configuration, RG1 enters a **hold state** on both nodes while the RG hold-down timer runs. This is expected post-commit behaviour, not a misconfiguration.
+
+On the third build (Junos 26.2R1.7) RG1 was observed in `hold` shortly after the commit and had resolved on its own by a re-check **180 seconds later**; the exact duration was not timed. Junos defaults the RG hold-down to 300 seconds, which is consistent with that observation but was not independently measured here. Treat it as minutes, not seconds — and wait rather than intervene.
+
+**During the hold window:**
+
+- `show chassis cluster status` reports RG1 with `"status": "hold"` on BOTH nodes
+- `show chassis cluster interfaces` shows **reths as `Down`**
+- ALL member legs report `Up / Up` under Interface Monitoring
+- `"monitor_failures": []` is empty
+- `"failover_count": 0` before the timer expires, then increments to 1 when primary/secondary election completes
+
+**After the timer expires**, RG1 elects primary/secondary with no intervention, reths come Up with their addresses, and `failover_count: 1` reflects the initial election.
+
+**How to distinguish from real faults:**
+
+| Symptom | RG1 hold (expected) | Anti-spoof (fault) |
+|---|---|---|
+| RG1 status | literally reads `hold` | `primary` / `secondary` |
+| Reths | `Down` | `Up` |
+| Member legs | `Up / Up` | `Up / Up` |
+| Monitor failures | empty | empty (fault is hypervisor-side) |
+| Resolution | wait for the timer, resolves itself | disable per-NIC firewall |
+
+The hold state is time-bounded and self-resolving. Do not debug it as a fault — confirm RG1 status says `hold`, verify member legs are up and monitor-failures is empty, then wait for the timer.
+
+The bridge forwarding table is not a useful discriminator during hold and is deliberately left out of the table above: the reth virtual MACs were not checked mid-hold on the third build, so what the FDB shows in that window is untested.
 
 ## Reths up, no traffic
 
