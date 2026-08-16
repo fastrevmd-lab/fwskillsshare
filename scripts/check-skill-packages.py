@@ -23,6 +23,11 @@ RAW_DUMP_MARKERS = (
     "Jump to Best Answer",
     "New Best Answer",
 )
+# Soft ceiling for the combined description surface. Not a Codex constant:
+# a trend signal so the catalogue does not grow unnoticed. Codex's only
+# stated description limit is 1,024 characters PER SKILL (see below).
+COMBINED_DESCRIPTION_WARN = 12000
+
 OBSOLETE_LICENSE_MARKERS = (
     "source-derived-summary-local-use",
     "CC-BY-NC-SA-4.0-source-derived-summary",
@@ -123,6 +128,7 @@ def raw_reference_errors(path: Path, text: str) -> list[str]:
 def main() -> int:
     errors: list[str] = []
     description_characters = 0
+    warnings: list[str] = []
     skill_files = sorted(SKILLS_DIR.glob("*/SKILL.md"))
     actual_skill_names = {skill_file.parent.name for skill_file in skill_files}
 
@@ -152,8 +158,11 @@ def main() -> int:
             errors.append(f"{skill_file}: name must be hyphen-case and at most 64 characters")
         if not description:
             errors.append(f"{skill_file}: description is required")
+        # Codex enforces this per skill. Verified against codex-cli 0.147.0, whose
+        # binary carries the string:
+        #   "Description is too long ({n} characters). Maximum is 1024 characters."
         if len(description) > 1024:
-            errors.append(f"{skill_file}: description exceeds 1024 characters")
+            errors.append(f"{skill_file}: description exceeds Codex's 1,024-character per-skill limit")
         if ". Use when " not in description:
             errors.append(
                 f"{skill_file}: description must state what the skill does, then include 'Use when'"
@@ -199,10 +208,27 @@ def main() -> int:
                 f"{skill_file}: {line_count} lines exceeds the 500-line progressive-disclosure limit"
             )
 
-    if description_characters > 8000:
-        errors.append(
-            "combined descriptions exceed Codex's 8,000-character fallback discovery budget "
-            f"({description_characters})"
+    # Combined descriptions are a SOFT signal, not a gate.
+    #
+    # The previous hard 8,000-character error had no recorded provenance and did
+    # not match shipped behaviour. Codex 0.147.0 does not drop skills at a cliff:
+    # ext/skills/src/render_observability.rs reports `budget_limit`,
+    # `included_skills`, `omitted_skills`, `truncated_description_chars_per_skill`
+    # and `truncated_skill_descriptions`, and logs "truncated skill metadata to fit
+    # skills context budget". Discovery also runs through a dynamic selector
+    # (ext/skills/src/dynamic_skill_selector/{character_ngram,rrf_lexical_char}.rs),
+    # so the flat concatenated list is a fallback rather than the primary path.
+    #
+    # A hard combined cap therefore scales the ceiling with skill count and blocks
+    # growth for a limit the runtime degrades gracefully around. Warn instead, so
+    # the trend stays visible without gating.
+    if description_characters > COMBINED_DESCRIPTION_WARN:
+        warnings.append(
+            f"combined descriptions are {description_characters} characters, over the "
+            f"{COMBINED_DESCRIPTION_WARN:,} soft budget. Codex truncates skill metadata to fit "
+            "its context budget, so discovery quality may degrade before it fails. "
+            "Prefer consolidating skills over shortening 'Use when ...' keyword lists, "
+            "which are what discovery matches on."
         )
 
     for markdown_file in sorted(SKILLS_DIR.rglob("*.md")):
@@ -211,6 +237,9 @@ def main() -> int:
         for marker in OBSOLETE_LICENSE_MARKERS:
             if marker in markdown_text:
                 errors.append(f"{markdown_file}: contains obsolete license marker {marker!r}")
+
+    for warning in warnings:
+        print(f"WARNING: {warning}", file=sys.stderr)
 
     for error in errors:
         print(f"ERROR: {error}", file=sys.stderr)
