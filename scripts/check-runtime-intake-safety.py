@@ -74,6 +74,7 @@ EXPECTED_SKILLS = (
     "srx-mpls-in-flow",
     "srx-nat",
     "srx-policy",
+    "srx-syslog-logging",
 )
 STRUCTURAL_VALIDATOR_PATH = ROOT / "scripts" / "check-runtime-intake.py"
 STRUCTURAL_SPEC = importlib.util.spec_from_file_location(
@@ -135,6 +136,9 @@ EXPECTED_CATALOG_SHA256 = {
         "b656fabb08f40dcbb609cc04f549dc7682a7ce527bd5b9858d7f085fef5b1601",
     "srx-policy":
         "1172cdc0d1f9b0dbdd9e4a1dd3df5fcfc5030272ef6aa71ccbd076855a361c7a",
+    "srx-syslog-logging": (
+        "606a6fcc5ec17e4db299c95483947af2239c1e7e2ea2399372bb5ce97612e17d"
+    ),
 }
 
 # Appendix A intentionally uses compact "ask when ..." fragments for these

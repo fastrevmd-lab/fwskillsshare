@@ -40,6 +40,7 @@ declare -a SRX=(
     "srx-license-signature-maintenance"
     "srx-advpn"
     "srx-chassis-cluster-proxmox"
+    "srx-syslog-logging"
 )
 
 declare -a TOOLING=(

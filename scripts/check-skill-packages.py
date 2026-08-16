@@ -61,6 +61,7 @@ EXPECTED_SKILL_NAMES = frozenset(
         "srx-mpls-in-flow",
         "srx-nat",
         "srx-policy",
+        "srx-syslog-logging",
     }
 )
 
