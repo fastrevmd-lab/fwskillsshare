@@ -56,12 +56,18 @@ set chassis high-availability services-redundancy-group 1 backup-signal-route 16
 - **Grid model required on 26.x.** The flat `local-id local-ip` / `peer-id
   peer-ip` form commits but never activates (*mode not configured*) until you
   switch to `grid-id`/`local-domain-id`/`peer-domain-id` **and reboot**.
-- **SRG1 election may not converge → active/active.** ICL cold sync stuck at
-  `Conn State: DOWN` / `Cold Sync Status: UNKNOWN`, SRG0 reported *No HA peer
-  configured*, so **both nodes self-elected ACTIVE**, both installed the active
-  signal route and advertised the better MED → neighbors ECMP across both nodes
-  and stateful cold-sync never completed. **Routing failover still works** (kill
-  a node, the survivor keeps the route); only *stateful* failover is lost.
+- **ICL BFD is blocked unless the zone permits it as a PROTOCOL.** MNHA liveness
+  is BFD, and in Junos BFD is `host-inbound-traffic protocols bfd`, **not** a
+  `system-service`. A zone with `system-services high-availability` and `ping`
+  passes ICMP but silently drops BFD, giving `Conn State: DOWN`,
+  `Cold Sync Status: UNKNOWN` and SRG0 *No HA peer configured* — which reads
+  exactly like a virtualization limitation and is not one.
+  **Diagnostic signature:** ICMP crosses the ICL at 0% loss (including
+  1400-byte DF), while `show bfd session extensive` shows `Client JSRPD`,
+  `remote discriminator 0`, transmit ~0.5 pps and **receive 0.0 pps**.
+  **Fix:** `set security zones security-zone <ICL_ZONE> host-inbound-traffic
+  protocols bfd` on BOTH nodes. Confirmed 2026-08-16 on vSRX 26.2R1.7: BFD went
+  to `Up`, receive rate to 1.0 pps, `Conn State: UP`, SRG0 `ONLINE`.
   Verify via `Conn State`/`Cold Sync Status`, not just `Node Status`.
 - **Advertise connected transit subnets in the signal-route export**, not just
   learned routes — otherwise the peer can't route back to on-transit sources
@@ -71,7 +77,8 @@ set chassis high-availability services-redundancy-group 1 backup-signal-route 16
 - **Active/active SNAT: give each node its own pool + proxy-ARP address** so
   they never both answer ARP for one IP; return traffic follows the pool that
   translated it, no VIP needed. Sessions don't survive a failover that changes
-  the pool (acceptable where cold-sync isn't converging).
+  the pool (only needed where cold-sync genuinely cannot converge — first rule
+  out the ICL BFD permit above, which produces identical symptoms).
 - **`fxp0` on DHCP black-holes transit** — its default (Access-internal pref 12)
   beats BGP (170). Make `fxp0` static where failover depends on the BGP default.
 - **Virtualized SRX (vSRX on KVM/Proxmox):** a soft `request system reboot` can
