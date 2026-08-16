@@ -73,7 +73,7 @@ What this means in practice:
 
 "Set every bridge to 9000" is still the wrong lesson — the asymmetry is real, and a 1500 control segment is genuinely fine. But the corollary matters more: because a wrong fabric MTU is invisible to cluster health, verifying it belongs in the build checklist rather than in troubleshooting.
 
-**Set MTU on the bridge, not on the NIC.** The reference build carries no `mtu=` parameter on any guest NIC definition, yet its taps on the 9000 bridge come up at 9000 and its taps on the 1500 bridge come up at 1500. The tap inherits the bridge MTU.
+**Set MTU on the bridge, not on the NIC.** On Proxmox, tap interfaces inherit the MTU from their parent bridge automatically at creation. Setting the bridge to MTU 9000 is sufficient — no per-NIC `mtu=` parameter is required in the guest configuration. The reference build carries no `mtu=` parameter on any guest NIC, yet its taps on the 9000 bridge come up at 9000 and its taps on the 1500 bridge come up at 1500. Verified on the third build: bridge `vmbr6` set to 9000, zero `mtu=` options in `qm config`, and `bridge -d link show dev tapNNNiN` confirmed all taps at mtu 9000.
 
 ## The anti-spoof trap
 
