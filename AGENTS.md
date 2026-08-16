@@ -22,6 +22,34 @@ skills share a normalized schema whose copies must remain byte-identical.
   validation requires a separate explicit task and approval.
 - Run `just security` and `just release-check` before handoff.
 
+## Skill description constraints
+
+Two different limits, often confused:
+
+- **Per skill: 1,024 characters, hard.** Codex enforces this. Verified against
+  codex-cli **0.147.0**, whose binary carries
+  `Description is too long ({n} characters). Maximum is 1024 characters.`
+  `scripts/check-skill-packages.py` errors on it.
+- **Combined across all skills: soft, warn only.** There is no cliff. Codex
+  0.147.0 truncates skill metadata to fit its context budget and reports what it
+  did — `ext/skills/src/render_observability.rs` emits `budget_limit`,
+  `included_skills`, `omitted_skills`, `truncated_description_chars_per_skill`
+  and `truncated_skill_descriptions`. Discovery also runs through a dynamic
+  selector (`ext/skills/src/dynamic_skill_selector/`), so the flat concatenated
+  list is a fallback, not the primary path. The checker warns above
+  `COMBINED_DESCRIPTION_WARN` and never fails on it.
+
+A hard combined cap was previously enforced at 8,000 characters with no recorded
+provenance. It scaled the ceiling with skill count — at 26 skills the repo sat at
+7,998 of 8,000 — and would have blocked the next skill for a limit the runtime
+degrades gracefully around. If you change these numbers, **cite the Codex version
+you measured against**, as above.
+
+When the combined warning does fire, prefer **consolidating overlapping skills**
+over shortening descriptions. The `Use when ...` clauses are ~71% of the surface
+and are exactly what lexical discovery matches on; trimming them makes skills
+harder to find, which fails silently.
+
 ## Generated files and dependencies
 
 - Keep skill frontmatter, references, bundled assets, and UI metadata valid.
