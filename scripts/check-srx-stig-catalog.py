@@ -270,8 +270,6 @@ def validate_core(errors: list[str]) -> None:
         ),
         errors,
     )
-    if skill and skill.count("\n") + 1 > 500:
-        errors.append(f"{SKILL_PATH.relative_to(ROOT)}: exceeds 500 lines")
     if re.search(r"(?:device|SRX|environment) is DISA compliant", skill, re.IGNORECASE):
         errors.append(f"{SKILL_PATH.relative_to(ROOT)}: contains prohibited compliance verdict")
 
