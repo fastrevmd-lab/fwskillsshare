@@ -47,6 +47,8 @@ PUBLISH_FILES = (
     ".gitignore",
     ".python-version",
     ".pre-commit-config.yaml",
+    ".gitleaks.toml",  # the security workflow reads it; shipping one without the other
+                       # scans downstream copies with no allowlist
     ".github/workflows/security.yml",
 )
 PUBLISH_DIRS = ("skills", "scripts")
