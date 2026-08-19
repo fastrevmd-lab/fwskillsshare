@@ -405,8 +405,14 @@ def validate_target(target: Path, repo_slug: str) -> str | None:
 
     Returns an error message, or None when the target is usable.
     """
-    if not (target / ".git").is_dir():
-        return f"not a git clone: {target}"
+    # `.git` is a file, not a directory, inside a linked worktree -- and this repo
+    # uses worktrees -- so test with git itself rather than by inspecting the path.
+    probe = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"],
+        cwd=target, capture_output=True, text=True,
+    )
+    if probe.returncode != 0 or probe.stdout.strip() != "true":
+        return f"not a git working tree: {target}"
     if target == ROOT or target in ROOT.parents or ROOT in target.parents:
         return f"refusing to sync into the upstream repo or a path containing it: {target}"
     try:
