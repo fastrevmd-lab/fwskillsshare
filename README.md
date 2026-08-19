@@ -28,7 +28,7 @@ Agent skills for the firewall work you actually do — parsing, auditing, conver
 
 Firewall work is unforgiving. A confidently wrong `access-list` line, a Junos stanza that won't commit, a compliance claim you can't back up in an audit — these aren't cosmetic. Coding agents are astonishingly good at producing *plausible* firewall config and astonishingly bad at knowing when it's wrong.
 
-These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 26. Hack around with them. Make them your own.
+These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 27. Hack around with them. Make them your own.
 
 <!-- brand:disclaimer:start -->
 > **Unofficial / community project.** Not affiliated with, endorsed by, or supported by Cisco, Fortinet, Palo Alto Networks, Juniper Networks, or HPE. See [License and Provenance](#license-and-provenance) for the full notice and the trademark disclaimer.
@@ -104,7 +104,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**26 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem or ClearPass deployment request, or compliance language in your message or a pasted config. 25 of the 26 packages have completed the review record below; `clearpass-proxmox-deploy` is a draft. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
+**27 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem or ClearPass deployment request, or compliance language in your message or a pasted config. 25 of the 27 packages have completed the review record below; `clearpass-proxmox-deploy` is a draft and `srx-syslog-logging` has not yet been reviewed. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 ### Config parsers
 
@@ -129,6 +129,7 @@ Actionable Junos playbooks — commands, design guidance, verification, troubles
 - **[srx-mpls-in-flow](./skills/srx-mpls-in-flow/SKILL.md)** — MPLS L3VPN in flow mode (secure PE/CPE): decoupled `family mpls` packet-based with inet/inet6 flow-mode, VRF-aware policy/NAT/AppID.
 - **[srx-dynamic-ip-feed](./skills/srx-dynamic-ip-feed/SKILL.md)** — Dynamic IP objects from HTTPS feed servers: `.tgz` bundles, cert validation, basic-auth / mTLS, `ipfd` log interpretation.
 - **[srx-license-signature-maintenance](./skills/srx-license-signature-maintenance/SKILL.md)** — AppID and IDP/IPS entitlement audit, license installation, and offline signature updates behind two independent approval gates, with secret-safe license handling, per-node chassis-cluster verification, pilot-then-batch rollout, and condition-based polling.
+- **[srx-syslog-logging](./skills/srx-syslog-logging/SKILL.md)** — *(v1.0.0, not yet reviewed)* External syslog and SIEM delivery: the Routing Engine vs PFE logging split, choosing a source interface per log type, the `fxp0` and `mgmt_junos` rules, Security Director Cloud onboarding, and why a non-default syslog port can be discarded silently.
 
 ### Cross-vendor tooling
 
@@ -183,11 +184,11 @@ The 25th skill, `srx-chassis-cluster-proxmox`, was validated on 2026-08-11 by a 
 | Family | Skills | Reviewed |
 |--------|-------:|:--------:|
 | Config parsers | 4 | 4 / 4 |
-| SRX operational playbooks | 10 | 10 / 10 |
+| SRX operational playbooks | 11 | 10 / 11 |
 | NGFW compliance and STIG playbooks | 7 | 7 / 7 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
 | Security management and NAC deployment | 2 | 1 / 2 |
-| **Total** | **26** | **25 / 26** |
+| **Total** | **27** | **25 / 27** |
 
 The later `srx-disa-stig-compliance` addition completed an independent review on
 2026-07-22. That review verified the NIST checklist 657 / DISA Y25M01 artifact,
