@@ -41,6 +41,7 @@ PUBLISH_FILES = (
     "install.sh",
     "LICENSE",
     "README.md",
+    "QUALITY.md",
     "justfile",
     "mise.toml",
     ".editorconfig",
@@ -201,10 +202,23 @@ def transform_readme(dest: Path, repo_slug: str, skill_count: int) -> None:
     text = swap_marked_block(text, "trademark", brand_block("trademark"))
     text = swap_marked_block(text, "footer", brand_block("footer"))
 
-    # docs/ is never published; repoint its links at upstream so they still resolve.
-    text = BROKEN_LINK.sub(f"](https://github.com/{UPSTREAM_SLUG}/blob/main/docs/", text)
+    path.write_text(repoint_docs_links(text), encoding="utf-8")
 
-    path.write_text(text, encoding="utf-8")
+
+def repoint_docs_links(text: str) -> str:
+    """Point ./docs/ links at upstream, where they still resolve.
+
+    docs/ is upstream-only, so a published copy that keeps the relative link
+    ships a 404. gate() fails the run on any such link rather than trusting
+    this transform to have caught them all.
+    """
+    return BROKEN_LINK.sub(f"](https://github.com/{UPSTREAM_SLUG}/blob/main/docs/", text)
+
+
+def transform_quality(dest: Path) -> None:
+    """Repoint the review history's skill-test links; it carries no brand blocks."""
+    path = dest / "QUALITY.md"
+    path.write_text(repoint_docs_links(path.read_text(encoding="utf-8")), encoding="utf-8")
 
 
 def pad_to_width(line: str, old: str, new: str) -> str:
@@ -568,6 +582,7 @@ def main() -> int:
         stage_tree(staged, ref)
         skills = sorted(p.name for p in (staged / "skills").iterdir() if p.is_dir())
         transform_readme(staged, args.repo_slug, len(skills))
+        transform_quality(staged)
         transform_install(staged, args.repo_slug)
         transform_skill_frontmatter(staged, args.author)
         transform_skill_checker(staged, args.author)
