@@ -15,6 +15,11 @@
 #   scripts/codex-review.sh <sha>           # review a specific commit
 #   scripts/codex-review.sh --base main     # review a branch against a base
 #
+# MCP servers are not loaded: .codex/config.toml carries no per-server denylist,
+# because naming a server the user config no longer defines breaks config loading
+# outright. --ignore-user-config denies them all instead, cannot be broken by a
+# rename, and fails closed. Set CODEX_REVIEW_LOAD_MCP=1 to opt back in.
+#
 # Exit status: 0 if a verdict was produced, 1 if the gate did not run.
 # A gate that produces no verdict is NOT a pass — this script says so and fails.
 set -uo pipefail
@@ -56,8 +61,12 @@ echo "reviewing: ${SCOPE[*]}" >&2
 # message is the only diagnostic, and the JSON stream will be empty. It must not
 # be merged into $OUT — one non-JSON line there would break the verdict parse.
 ERR="${OUT%.jsonl}.err"
+CONFIG=(--ignore-user-config)
+if [ "${CODEX_REVIEW_LOAD_MCP:-0}" = "1" ]; then
+  CONFIG=()
+fi
 timeout "${CODEX_REVIEW_TIMEOUT:-600}" \
-  codex exec review "${SCOPE[@]}" --json >"$OUT" 2>"$ERR"
+  codex exec "${CONFIG[@]}" review "${SCOPE[@]}" --json >"$OUT" 2>"$ERR"
 
 # The verdict is the final agent_message. `fromjson?` rather than plain jq: one
 # stray non-JSON line would abort a strict parse and lose the whole review.

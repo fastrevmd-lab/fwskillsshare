@@ -9,21 +9,18 @@ writable_roots = []
 exclude_tmpdir_env_var = true
 exclude_slash_tmp = true
 
-[mcp_servers.gbrain]
-enabled = false
-
-[mcp_servers.proxmox-mcp]
-enabled = false
-
-[mcp_servers.unifi-mcp]
-enabled = false
-
-[mcp_servers.rust-junosmcp]
-enabled = false
-
-[mcp_servers.rustsdcmcp]
-enabled = false
-
-[mcp_servers.openaiDeveloperDocs]
-enabled = true
-enabled_tools = ["search_openai_docs", "fetch_openai_doc"]
+# No [mcp_servers.*] blocks, deliberately. Reviewing a skills repo needs no
+# infrastructure access, but denying servers *here* cannot be done safely:
+#
+#   - `enabled = false` alone is only valid for a server the user config still
+#     defines. Name one it no longer defines and codex reads it as a new server
+#     with no transport, then refuses to load ANY config -- every review in this
+#     repo fails instantly. That is how this broke twice: e639bfc, and again when
+#     rust-junosmcp/rustsdcmcp became prod-labmode-junos/prod-labmode-sdc.
+#   - Adding `command` to make stale names harmless breaks the live ones instead
+#     ("url is not supported for stdio"), because the user config gives them a url.
+#
+# So a per-server list is either rename-fragile or transport-conflicted. Denial is
+# enforced at invocation instead: `codex exec --ignore-user-config` loads none of
+# the user config's servers, cannot be broken by a rename, and fails closed. The
+# justfile `review` recipe does that; use it rather than calling codex directly.

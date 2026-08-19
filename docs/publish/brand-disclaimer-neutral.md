@@ -1,0 +1,1 @@
+> **Community project.** Not affiliated with, endorsed by, or supported by Cisco, Fortinet, Palo Alto Networks, or HPE. See [License and Provenance](#license-and-provenance) for the full notice and the trademark disclaimer.

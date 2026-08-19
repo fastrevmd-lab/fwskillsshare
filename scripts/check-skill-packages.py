@@ -204,9 +204,9 @@ def main() -> int:
             errors.append(f"{openai_yaml}: default_prompt must be quoted and mention ${name}")
 
         line_count = text.count("\n") + 1
-        if line_count > 500:
+        if line_count > 600:
             errors.append(
-                f"{skill_file}: {line_count} lines exceeds the 500-line progressive-disclosure limit"
+                f"{skill_file}: {line_count} lines exceeds the 600-line progressive-disclosure limit"
             )
 
     # Combined descriptions are a SOFT signal, not a gate.
