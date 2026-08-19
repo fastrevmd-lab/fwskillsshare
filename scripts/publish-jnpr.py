@@ -111,7 +111,12 @@ def archive_ref(allow_dirty: bool) -> tuple[str, bool]:
     """
     if not allow_dirty:
         return "HEAD", False
-    created = run(["git", "stash", "create"], cwd=ROOT).strip()
+    try:
+        created = run(["git", "stash", "create"], cwd=ROOT).strip()
+    except subprocess.CalledProcessError as error:
+        raise SystemExit(
+            f"could not snapshot the working tree for a dirty export: {error.stderr.strip() or error}"
+        ) from error
     return (created, True) if created else ("HEAD", False)
 
 
@@ -378,6 +383,30 @@ def remote_slug(url: str) -> str | None:
     return f"{match.group(1)}/{match.group(2)}".lower() if match else None
 
 
+def validate_target(target: Path, repo_slug: str) -> str | None:
+    """Check everything about the target that can refuse the run, mutating nothing.
+
+    Split out from sync_to_target so it can run before the export is staged.
+    Left inside, a bad target was only detected after stage_tree() had already
+    written the export, so a refused run still left generated files behind.
+
+    Returns an error message, or None when the target is usable.
+    """
+    if not (target / ".git").is_dir():
+        return f"not a git clone: {target}"
+    if target == ROOT or target in ROOT.parents or ROOT in target.parents:
+        return f"refusing to sync into the upstream repo or a path containing it: {target}"
+    try:
+        remote = run(["git", "remote", "get-url", "origin"], cwd=target).strip()
+    except subprocess.CalledProcessError:
+        return f"target has no origin remote to verify: {target}"
+    if remote_slug(remote) != repo_slug.lower():
+        return f"target origin {remote!r} does not match --repo-slug {repo_slug!r}"
+    if run(["git", "status", "--porcelain"], cwd=target).strip():
+        return f"target clone has uncommitted changes: {target}"
+    return None
+
+
 def sync_to_target(staged: Path, target: Path, sha: str, dirty: bool, repo_slug: str, commit: bool) -> None:
     """Mirror the staged tree into a target clone as a single squashed commit.
 
@@ -386,25 +415,16 @@ def sync_to_target(staged: Path, target: Path, sha: str, dirty: bool, repo_slug:
     untracked and ignored files (a local .env, for instance) alone -- a plain
     wipe would take those with it, and `git status --porcelain` would not even
     have shown them.
-    """
-    if dirty and commit:
-        raise SystemExit(
-            "refusing to commit a dirty export: the trailer would name a commit "
-            "that cannot reproduce this tree. Re-run from a clean working tree."
-        )
-    if not (target / ".git").is_dir():
-        raise SystemExit(f"not a git clone: {target}")
-    if target == ROOT or target in ROOT.parents or ROOT in target.parents:
-        raise SystemExit(f"refusing to sync into the upstream repo or a path containing it: {target}")
-    try:
-        remote = run(["git", "remote", "get-url", "origin"], cwd=target).strip()
-    except subprocess.CalledProcessError:
-        raise SystemExit(f"target has no origin remote to verify: {target}")
-    if remote_slug(remote) != repo_slug.lower():
-        raise SystemExit(f"target origin {remote!r} does not match --repo-slug {repo_slug!r}")
-    if run(["git", "status", "--porcelain"], cwd=target).strip():
-        raise SystemExit(f"target clone has uncommitted changes: {target}")
 
+    The target is revalidated here even though main() already checked it.
+    Staging and gating take time and the clone is not held, so between the
+    preflight and this point another process can dirty it, change its remote,
+    or add untracked files the copy would overwrite. Check once to fail early,
+    again immediately before mutating.
+    """
+    problem = validate_target(target, repo_slug)
+    if problem:
+        raise SystemExit(problem)
     if run(["git", "ls-files"], cwd=target).strip():
         run(["git", "rm", "-r", "-q", "--", "."], cwd=target)
 
@@ -457,6 +477,28 @@ def main() -> int:
 
     sha = head_sha()
     ref, dirty = archive_ref(args.allow_dirty)
+
+    # Everything that can refuse the run happens before a single file is
+    # written. The refusal inside sync_to_target() is too late on its own: with
+    # --out pointing inside --target, staging populates the target before the
+    # sync is ever called.
+    if args.target:
+        target = args.target.resolve()
+        problem = validate_target(target, args.repo_slug)
+        if problem:
+            print(f"ERROR: {problem}", file=sys.stderr)
+            return 1
+        if dirty and args.commit:
+            print("ERROR: refusing to commit a dirty export: the trailer would name a "
+                  "commit that cannot reproduce this tree. Re-run from a clean working "
+                  "tree.", file=sys.stderr)
+            return 1
+        if args.out:
+            out = args.out.resolve()
+            if out == target or target in out.parents or out in target.parents:
+                print(f"ERROR: --out {out} overlaps --target {target}; staging would "
+                      "write into the clone being synced.", file=sys.stderr)
+                return 1
 
     scratch = Path(tempfile.mkdtemp(prefix="publish-jnpr-"))
     staged = args.out.resolve() if args.out else scratch / "tree"
