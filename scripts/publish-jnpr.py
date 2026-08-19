@@ -1,0 +1,405 @@
+#!/usr/bin/env python3
+"""Publish a de-branded copy of this repository to a downstream org.
+
+This repository is upstream. The published copy deliberately shares no git
+history with it, so no merge can carry mechub branding downstream, and no
+downstream contribution can pull third-party copyright back into upstream.
+Syncing is one-way, by design; bring downstream fixes back by hand.
+
+The de-branding is verified, not assumed: `gate()` fails the run if any
+forbidden token survives into the staged tree. A silent transform is not proof.
+
+Default behaviour is a dry run that stages and verifies without touching any
+target clone. Pushing is never automated -- the command to run is printed.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+BRAND_DIR = ROOT / "docs" / "publish"
+
+UPSTREAM_SLUG = "fastrevmd-lab/fwskillsshare"
+
+# Allowlist, not denylist: anything not named here is never published, so a new
+# directory of lab notes cannot leak by being forgotten.
+PUBLISH_FILES = (
+    "install.sh",
+    "LICENSE",
+    "README.md",
+    "justfile",
+    "mise.toml",
+    ".editorconfig",
+    ".gitignore",
+    ".python-version",
+    ".pre-commit-config.yaml",
+    ".github/workflows/security.yml",
+)
+PUBLISH_DIRS = ("skills", "scripts")
+
+# Excluded even though their parent directory is published.
+# These read from docs/, which is upstream-only process material, so they cannot
+# run downstream. gate() independently detects this class of breakage.
+EXCLUDE_PATHS = (
+    "scripts/check-readme-branding.py",      # asserts upstream branding
+    "scripts/check-audit-rule-contract.py",  # reads docs/skill-tests/
+    "scripts/check-runtime-intake-safety.py",
+    "scripts/test-runtime-intake-safety.py",  # imports the checker above
+    "scripts/publish-jnpr.py",                # upstream tooling; not part of the distribution
+)
+
+FORBIDDEN = re.compile(r"mechub|fastrevmd|violet", re.IGNORECASE)
+
+# Citations of real field evidence, kept deliberately: stripping the URL turns a
+# sourced claim into a bare assertion, which is the failure mode these skills exist
+# to prevent. Attribution in the footer is an MIT courtesy, not branding.
+PROVENANCE_OK = re.compile(re.escape(UPSTREAM_SLUG))
+
+# Lab-specific values that are fine upstream but must not ship downstream.
+SANITIZE = (
+    ("O=mechub", "O=example"),
+)
+
+BROKEN_LINK = re.compile(r"\]\((?:\./)?docs/")
+
+
+def run(args: list[str], cwd: Path | None = None) -> str:
+    """Run a command, returning stdout; raises CalledProcessError on failure."""
+    return subprocess.run(
+        args, cwd=cwd, check=True, capture_output=True, text=True
+    ).stdout
+
+
+def head_sha() -> str:
+    """Return the full SHA of upstream HEAD."""
+    return run(["git", "rev-parse", "HEAD"], cwd=ROOT).strip()
+
+
+def working_tree_is_clean() -> bool:
+    """True when there are no staged or unstaged changes."""
+    return not run(["git", "status", "--porcelain"], cwd=ROOT).strip()
+
+
+def archive_ref(allow_dirty: bool) -> str:
+    """Return the ref to export.
+
+    With --allow-dirty, `git stash create` builds a throwaway commit object of
+    the working tree without disturbing it, so the export matches what is on
+    disk rather than silently publishing stale content from HEAD.
+    """
+    if not allow_dirty:
+        return "HEAD"
+    created = run(["git", "stash", "create"], cwd=ROOT).strip()
+    return created or "HEAD"
+
+
+def stage_tree(dest: Path, ref: str) -> None:
+    """Export tracked files at ref into dest, then apply the allowlist."""
+    archive = dest.parent / "head.tar"
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    with archive.open("wb") as handle:
+        subprocess.run(
+            ["git", "archive", "--format=tar", ref],
+            cwd=ROOT, check=True, stdout=handle,
+        )
+    dest.mkdir(parents=True, exist_ok=True)
+    run(["tar", "-xf", str(archive), "-C", str(dest)])
+    archive.unlink()
+
+    keep = {Path(name) for name in PUBLISH_FILES}
+    for path in sorted(dest.rglob("*"), reverse=True):
+        rel = path.relative_to(dest)
+        if path.is_dir():
+            if not any(path.iterdir()):
+                path.rmdir()
+            continue
+        allowed = rel in keep or rel.parts[0] in PUBLISH_DIRS
+        if not allowed or str(rel) in EXCLUDE_PATHS:
+            path.unlink()
+
+    for cache in dest.rglob("__pycache__"):
+        shutil.rmtree(cache, ignore_errors=True)
+
+
+def select_skills(dest: Path, wanted: list[str] | None) -> tuple[list[str], list[str]]:
+    """Prune skills to the requested subset; return (published, all_upstream)."""
+    skills_dir = dest / "skills"
+    present = sorted(p.name for p in skills_dir.iterdir() if p.is_dir())
+    if wanted is None:
+        return present, present
+
+    unknown = sorted(set(wanted) - set(present))
+    if unknown:
+        raise SystemExit(f"unknown skill(s): {', '.join(unknown)}")
+    for name in present:
+        if name not in wanted:
+            shutil.rmtree(skills_dir / name)
+    return sorted(wanted), present
+
+
+def brand_block(name: str, **fields: str) -> str:
+    """Load a neutral brand block template and fill its {PLACEHOLDERS}."""
+    text = (BRAND_DIR / f"brand-{name}-neutral.md").read_text(encoding="utf-8").rstrip("\n")
+    for key, value in fields.items():
+        text = text.replace("{" + key + "}", value)
+    return text
+
+
+def swap_marked_block(text: str, name: str, replacement: str) -> str:
+    """Replace the content between <!-- brand:NAME:start/end --> markers."""
+    pattern = re.compile(
+        rf"<!-- brand:{name}:start -->\n.*?\n<!-- brand:{name}:end -->",
+        re.DOTALL,
+    )
+    if not pattern.search(text):
+        raise SystemExit(f"README.md is missing the brand:{name} markers")
+    return pattern.sub(lambda _: replacement, text)
+
+
+def transform_readme(dest: Path, repo_slug: str, skill_count: int) -> None:
+    """Swap branded blocks for neutral ones and repoint upstream-only links."""
+    path = dest / "README.md"
+    text = path.read_text(encoding="utf-8")
+    repo_name = repo_slug.split("/")[-1]
+
+    # Sweep first: clone URLs, installer URLs, issue links all point downstream.
+    # The brand blocks swapped in below deliberately reintroduce upstream credit.
+    text = text.replace(UPSTREAM_SLUG, repo_slug)
+
+    text = swap_marked_block(
+        text, "header",
+        brand_block("header", REPO_NAME=repo_name, SKILL_COUNT=str(skill_count)),
+    )
+    text = swap_marked_block(text, "disclaimer", brand_block("disclaimer"))
+    text = swap_marked_block(text, "trademark", brand_block("trademark"))
+    text = swap_marked_block(text, "footer", brand_block("footer"))
+
+    # docs/ is never published; repoint its links at upstream so they still resolve.
+    text = BROKEN_LINK.sub(f"](https://github.com/{UPSTREAM_SLUG}/blob/main/docs/", text)
+
+    path.write_text(text, encoding="utf-8")
+
+
+def pad_to_width(line: str, old: str, new: str) -> str:
+    """Swap old->new inside a box-drawn banner line, preserving its display width.
+
+    Padding is adjusted against the closing bar, so a shorter or longer slug does
+    not shear the box. Box characters are single-column, so len() is the width.
+    """
+    if old not in line or "\u2551" not in line:
+        return line
+    swapped = line.replace(old, new)
+    delta = len(line) - len(swapped)
+    if delta == 0:
+        return swapped
+    head, bar, tail = swapped.rpartition("\u2551")
+    if delta > 0:
+        return head + " " * delta + bar + tail
+    return re.sub(r" {0,%d}$" % -delta, "", head) + bar + tail
+
+
+def transform_install(dest: Path, repo_slug: str, skills: list[str], all_skills: list[str]) -> None:
+    """Repoint the installer at the downstream repo and prune its skill inventory."""
+    dropped = set(all_skills) - set(skills)
+    path = dest / "install.sh"
+    out: list[str] = []
+    for line in path.read_text(encoding="utf-8").split("\n"):
+        # Drop pruned skills from the bash inventory arrays. TOTAL_SKILLS is
+        # computed from array lengths, so the count corrects itself.
+        if line.strip().strip('"') in dropped and line.strip().startswith('"'):
+            continue
+        line = pad_to_width(line, UPSTREAM_SLUG, repo_slug)
+        line = line.replace(UPSTREAM_SLUG, repo_slug)
+        out.append(line)
+    path.write_text("\n".join(out), encoding="utf-8")
+    path.chmod(0o755)
+
+
+def transform_skill_frontmatter(dest: Path, author: str) -> None:
+    """Rewrite the authors: entry in every published SKILL.md."""
+    for skill in sorted((dest / "skills").rglob("SKILL.md")):
+        text = skill.read_text(encoding="utf-8")
+        text = re.sub(r"^(\s*-\s*)fastrevmd-lab\s*$", rf"\g<1>{author}", text, flags=re.MULTILINE)
+        text = re.sub(r"^(\s*author:\s*)fastrevmd-lab\s*$", rf"\g<1>{author}", text, flags=re.MULTILINE)
+        skill.write_text(text, encoding="utf-8")
+
+
+def transform_skill_checker(dest: Path, author: str) -> None:
+    """Point the package checker at the downstream author it will actually see."""
+    path = dest / "scripts" / "check-skill-packages.py"
+    if not path.is_file():
+        return
+    text = re.sub(r'"fastrevmd-lab"', f'"{author}"', path.read_text(encoding="utf-8"))
+    path.write_text(text, encoding="utf-8")
+
+
+def sanitize(dest: Path) -> None:
+    """Strip lab-specific values that carry no meaning downstream."""
+    for path in sorted(dest.rglob("*")):
+        if not path.is_file() or path.suffix not in {".md", ".py", ".sh"}:
+            continue
+        text = path.read_text(encoding="utf-8")
+        updated = text
+        for needle, replacement in SANITIZE:
+            updated = updated.replace(needle, replacement)
+        if updated != text:
+            path.write_text(updated, encoding="utf-8")
+
+
+def transform_justfile(dest: Path) -> None:
+    """Drop recipe lines invoking checks that do not ship downstream."""
+    dropped = {Path(p).name for p in EXCLUDE_PATHS}
+    path = dest / "justfile"
+    kept = [
+        line for line in path.read_text(encoding="utf-8").split("\n")
+        if not any(name in line for name in dropped)
+    ]
+    path.write_text("\n".join(kept), encoding="utf-8")
+
+
+def write_provenance(dest: Path, sha: str, skills: list[str]) -> None:
+    """Record what this copy was built from, so the next sync knows the delta."""
+    (dest / "UPSTREAM.md").write_text(
+        "# Upstream\n\n"
+        f"This repository is a de-branded distribution of [{UPSTREAM_SLUG}]"
+        f"(https://github.com/{UPSTREAM_SLUG}), published under the MIT License.\n\n"
+        f"- Upstream commit: `{sha}`\n"
+        f"- Skills published: {len(skills)}\n\n"
+        "Changes are made upstream and synced here one-way by "
+        "`scripts/publish-jnpr.py`. Downstream fixes are welcome; they are "
+        "carried back upstream by hand so that authorship stays unambiguous.\n",
+        encoding="utf-8",
+    )
+
+
+def gate(dest: Path) -> list[str]:
+    """Fail-closed verification. Returns human-readable violations."""
+    violations: list[str] = []
+    for path in sorted(dest.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(dest)
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            violations.append(f"{rel}: binary file in published tree")
+            continue
+
+        scrubbed = PROVENANCE_OK.sub("", text)
+        for number, line in enumerate(scrubbed.split("\n"), start=1):
+            if FORBIDDEN.search(line):
+                violations.append(f"{rel}:{number}: forbidden token -> {line.strip()[:90]}")
+        if path.suffix == ".py" and rel.parts[0] == "scripts" and re.search(r'"docs"|docs/', text):
+            violations.append(f"{rel}: published script depends on unpublished docs/")
+        if path.suffix == ".md":
+            for number, line in enumerate(text.split("\n"), start=1):
+                if BROKEN_LINK.search(line):
+                    violations.append(f"{rel}:{number}: link into unpublished docs/")
+    return violations
+
+
+def sync_to_target(staged: Path, target: Path, sha: str, commit: bool) -> None:
+    """Mirror the staged tree into a target clone as a single squashed commit."""
+    if not (target / ".git").is_dir():
+        raise SystemExit(f"not a git clone: {target}")
+    if run(["git", "status", "--porcelain"], cwd=target).strip():
+        raise SystemExit(f"target clone has uncommitted changes: {target}")
+
+    for entry in target.iterdir():
+        if entry.name == ".git":
+            continue
+        shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
+    ignore = shutil.ignore_patterns("__pycache__", "*.pyc")
+    for entry in staged.iterdir():
+        dst = target / entry.name
+        if entry.is_dir():
+            shutil.copytree(entry, dst, ignore=ignore)
+        else:
+            shutil.copy2(entry, dst)
+
+    run(["git", "add", "-A"], cwd=target)
+    if not run(["git", "status", "--porcelain"], cwd=target).strip():
+        print("target already matches upstream; nothing to commit")
+        return
+    if not commit:
+        print(f"staged into {target} (not committed; pass --commit)")
+        return
+
+    message = (
+        f"chore: sync skills from upstream\n\n"
+        f"De-branded export of {UPSTREAM_SLUG}.\n\n"
+        f"Upstream-Commit: {sha}\n"
+    )
+    run(["git", "commit", "-m", message], cwd=target)
+    print(f"committed to {target}")
+    print("\nReview, then push yourself:")
+    print(f"  git -C {target} push origin HEAD")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--repo-slug", default="JNPRAutomate/fwskillsshare",
+                        help="downstream org/repo (default: %(default)s)")
+    parser.add_argument("--author", default="JNPRAutomate",
+                        help="value for the authors: frontmatter field")
+    parser.add_argument("--skills", help="comma-separated subset to publish (default: all)")
+    parser.add_argument("--out", type=Path, help="keep the staged tree at this path")
+    parser.add_argument("--target", type=Path, help="local clone of the downstream repo")
+    parser.add_argument("--commit", action="store_true", help="commit in the target clone")
+    parser.add_argument("--allow-dirty", action="store_true",
+                        help="publish from a dirty working tree (not recommended)")
+    args = parser.parse_args()
+
+    if not args.allow_dirty and not working_tree_is_clean():
+        print("ERROR: working tree is dirty; commit first or pass --allow-dirty", file=sys.stderr)
+        return 1
+
+    sha = head_sha()
+    ref = archive_ref(args.allow_dirty)
+    wanted = [s.strip() for s in args.skills.split(",")] if args.skills else None
+
+    scratch = Path(tempfile.mkdtemp(prefix="publish-jnpr-"))
+    staged = args.out.resolve() if args.out else scratch / "tree"
+    if staged.exists():
+        shutil.rmtree(staged)
+
+    try:
+        stage_tree(staged, ref)
+        skills, all_skills = select_skills(staged, wanted)
+        transform_readme(staged, args.repo_slug, len(skills))
+        transform_install(staged, args.repo_slug, skills, all_skills)
+        transform_skill_frontmatter(staged, args.author)
+        transform_skill_checker(staged, args.author)
+        transform_justfile(staged)
+        sanitize(staged)
+        write_provenance(staged, sha, skills)
+
+        violations = gate(staged)
+        if violations:
+            print(f"ERROR: de-branding gate failed ({len(violations)} violation(s)):", file=sys.stderr)
+            for violation in violations:
+                print(f"  {violation}", file=sys.stderr)
+            return 1
+
+        print(f"OK: staged {len(skills)} skill(s) from {sha[:12]}, de-branding gate clean")
+        print(f"    tree: {staged}")
+
+        if args.target:
+            sync_to_target(staged, args.target.resolve(), sha, args.commit)
+        else:
+            print("    dry run -- pass --target <clone> to sync")
+    except SystemExit:
+        shutil.rmtree(scratch, ignore_errors=True)
+        raise
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

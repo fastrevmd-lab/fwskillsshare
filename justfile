@@ -30,6 +30,11 @@ test:
 
 guard: lint test
 
+# Stage a de-branded copy for the downstream org and verify it. Dry run by
+# default; pass --target <clone> --commit to land it. Never pushes.
+publish-jnpr *ARGS:
+    python3 scripts/publish-jnpr.py {{ARGS}}
+
 integration:
     @echo "Real-device validation is intentionally opt-in and is not automated by this repository."
 

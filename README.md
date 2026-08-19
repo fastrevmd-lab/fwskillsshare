@@ -1,3 +1,4 @@
+<!-- brand:header:start -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/mechub-mark.svg">
@@ -21,6 +22,7 @@
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper%20%C2%B7%20HPE%20Aruba-262B38">
 </p>
+<!-- brand:header:end -->
 
 Agent skills for the firewall work you actually do — parsing, auditing, converting, running Juniper SRX, and deploying Security Director On-Prem and ClearPass — not vibe configuring.
 
@@ -28,7 +30,9 @@ Firewall work is unforgiving. A confidently wrong `access-list` line, a Junos st
 
 These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 26. Hack around with them. Make them your own.
 
+<!-- brand:disclaimer:start -->
 > **Unofficial / community project.** Not affiliated with, endorsed by, or supported by Cisco, Fortinet, Palo Alto Networks, Juniper Networks, or HPE. See [License and Provenance](#license-and-provenance) for the full notice and the trademark disclaimer.
+<!-- brand:disclaimer:end -->
 
 ## Quickstart (30-second setup)
 
@@ -779,7 +783,9 @@ informed the work. They are concise original summaries, not bundled page copies 
 upstream configurations. Linked third-party material remains under its owners' terms
 and is not relicensed by this repository.
 
+<!-- brand:trademark:start -->
 **Trademark / affiliation disclaimer.** This repository is an independent, community-driven project. It is not affiliated with, endorsed by, sponsored by, or supported by Hewlett Packard Enterprise, Cisco, Palo Alto Networks, Fortinet, or Juniper Networks. "HPE", "Juniper", "Cisco", "Fortinet", "Palo Alto Networks", and "Juniper SRX" are trademarks of their respective owners and are used here only to describe what this software interoperates with. Please direct support and licensing questions about those products to the respective vendors.
+<!-- brand:trademark:end -->
 
 ## Contributing
 
@@ -788,6 +794,7 @@ inclusion in this repository are licensed under the MIT License.
 
 ---
 
+<!-- brand:footer:start -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/mechub-mark.svg">
@@ -796,3 +803,4 @@ inclusion in this repository are licensed under the MIT License.
   <sub><code>a mechub project</code> · deterministic decides · the model explains · a human approves<br>
   <a href="https://github.com/fastrevmd-lab">github.com/fastrevmd-lab</a></sub>
 </p>
+<!-- brand:footer:end -->
