@@ -11,6 +11,12 @@ forbidden token survives into the staged tree. A silent transform is not proof.
 
 Default behaviour is a dry run that stages and verifies without touching any
 target clone. Pushing is never automated -- the command to run is printed.
+
+The whole catalog is published or nothing is. A partial export fails six of the
+repo's own validators -- they assert the full inventory, and the skill-specific
+checks crash outright when their skill is absent -- so shipping one would mean a
+distribution that cannot pass its own checks. Curate by choosing when to sync,
+not by choosing which skills go.
 """
 
 from __future__ import annotations
@@ -66,7 +72,7 @@ PROVENANCE_OK = re.compile(re.escape(UPSTREAM_SLUG))
 # purpose -- they credit whoever did the underlying lab work, and rewriting them
 # would attribute that evidence to the downstream org. They are provenance, not
 # branding, so the gate must not treat them as a leak.
-SOURCE_ATTRIBUTION_OK = re.compile(r"^\s+author:\s*fastrevmd-lab\s*$", re.MULTILINE)
+SOURCE_ATTRIBUTION_LINE = re.compile(r"^\s+author:\s*fastrevmd-lab\s*$")
 
 # Lab-specific values that are fine upstream but must not ship downstream.
 SANITIZE = (
@@ -108,16 +114,17 @@ def archive_ref(allow_dirty: bool) -> str:
 
 def stage_tree(dest: Path, ref: str) -> None:
     """Export tracked files at ref into dest, then apply the allowlist."""
-    archive = dest.parent / "head.tar"
-    archive.parent.mkdir(parents=True, exist_ok=True)
-    with archive.open("wb") as handle:
-        subprocess.run(
-            ["git", "archive", "--format=tar", ref],
-            cwd=ROOT, check=True, stdout=handle,
-        )
     dest.mkdir(parents=True, exist_ok=True)
-    run(["tar", "-xf", str(archive), "-C", str(dest)])
-    archive.unlink()
+    # A fixed name beside dest would truncate, then delete, an unrelated file
+    # that happened to sit there. Keep the archive in its own temp directory.
+    with tempfile.TemporaryDirectory(prefix="publish-jnpr-archive-") as tmp:
+        archive = Path(tmp) / "export.tar"
+        with archive.open("wb") as handle:
+            subprocess.run(
+                ["git", "archive", "--format=tar", ref],
+                cwd=ROOT, check=True, stdout=handle,
+            )
+        run(["tar", "-xf", str(archive), "-C", str(dest)])
 
     keep = {Path(name) for name in PUBLISH_FILES}
     for path in sorted(dest.rglob("*"), reverse=True):
@@ -132,22 +139,6 @@ def stage_tree(dest: Path, ref: str) -> None:
 
     for cache in dest.rglob("__pycache__"):
         shutil.rmtree(cache, ignore_errors=True)
-
-
-def select_skills(dest: Path, wanted: list[str] | None) -> tuple[list[str], list[str]]:
-    """Prune skills to the requested subset; return (published, all_upstream)."""
-    skills_dir = dest / "skills"
-    present = sorted(p.name for p in skills_dir.iterdir() if p.is_dir())
-    if wanted is None:
-        return present, present
-
-    unknown = sorted(set(wanted) - set(present))
-    if unknown:
-        raise SystemExit(f"unknown skill(s): {', '.join(unknown)}")
-    for name in present:
-        if name not in wanted:
-            shutil.rmtree(skills_dir / name)
-    return sorted(wanted), present
 
 
 def brand_block(name: str, **fields: str) -> str:
@@ -211,19 +202,13 @@ def pad_to_width(line: str, old: str, new: str) -> str:
     return re.sub(r" {0,%d}$" % -delta, "", head) + bar + tail
 
 
-def transform_install(dest: Path, repo_slug: str, skills: list[str], all_skills: list[str]) -> None:
-    """Repoint the installer at the downstream repo and prune its skill inventory."""
-    dropped = set(all_skills) - set(skills)
+def transform_install(dest: Path, repo_slug: str) -> None:
+    """Repoint the installer at the downstream repo."""
     path = dest / "install.sh"
     out: list[str] = []
     for line in path.read_text(encoding="utf-8").split("\n"):
-        # Drop pruned skills from the bash inventory arrays. TOTAL_SKILLS is
-        # computed from array lengths, so the count corrects itself.
-        if line.strip().strip('"') in dropped and line.strip().startswith('"'):
-            continue
         line = pad_to_width(line, UPSTREAM_SLUG, repo_slug)
-        line = line.replace(UPSTREAM_SLUG, repo_slug)
-        out.append(line)
+        out.append(line.replace(UPSTREAM_SLUG, repo_slug))
     path.write_text("\n".join(out), encoding="utf-8")
     path.chmod(0o755)
 
@@ -290,19 +275,66 @@ def transform_justfile(dest: Path) -> None:
     path.write_text("\n".join(kept), encoding="utf-8")
 
 
-def write_provenance(dest: Path, sha: str, skills: list[str]) -> None:
-    """Record what this copy was built from, so the next sync knows the delta."""
+def write_provenance(dest: Path, sha: str, dirty: bool, skills: list[str]) -> None:
+    """Record what this copy was built from, so the next sync knows the delta.
+
+    A dirty export comes from a `git stash create` object, not HEAD, so naming
+    HEAD would point the next sync at a revision that cannot reproduce this
+    tree. Say so instead.
+    """
+    provenance = (
+        f"- Upstream commit: `{sha}`\n" if not dirty else
+        f"- Upstream commit: `{sha}` **plus uncommitted changes** -- this export\n"
+        f"  was taken from the working tree and cannot be reproduced from that\n"
+        f"  commit. Re-publish from a clean tree before relying on it.\n"
+    )
     (dest / "UPSTREAM.md").write_text(
         "# Upstream\n\n"
         f"This repository is a de-branded distribution of [{UPSTREAM_SLUG}]"
         f"(https://github.com/{UPSTREAM_SLUG}), published under the MIT License.\n\n"
-        f"- Upstream commit: `{sha}`\n"
+        f"{provenance}"
         f"- Skills published: {len(skills)}\n\n"
         "Changes are made upstream and synced here one-way by "
         "`scripts/publish-jnpr.py`. Downstream fixes are welcome; they are "
         "carried back upstream by hand so that authorship stays unambiguous.\n",
         encoding="utf-8",
     )
+
+
+def scrub_source_attribution(rel: Path, text: str) -> str:
+    """Blank out author lines that sit under metadata.sources in SKILL.md frontmatter.
+
+    Scoped rather than global: an indented `author: fastrevmd-lab` anywhere else
+    is branding that must still trip the gate, so only entries proven to be
+    inside the sources block are exempt.
+    """
+    if rel.name != "SKILL.md":
+        return text
+    lines = text.split("\n")
+    if not lines or lines[0].strip() != "---":
+        return text
+    try:
+        end = lines.index("---", 1)
+    except ValueError:
+        return text
+
+    in_metadata = False
+    in_sources = False
+    for index in range(1, end):
+        line = lines[index]
+        indent = len(line) - len(line.lstrip())
+        if line.strip() and indent == 0:
+            in_metadata = line.startswith("metadata:")
+            in_sources = False
+            continue
+        if in_metadata and indent == 2 and line.strip().startswith("sources:"):
+            in_sources = True
+            continue
+        if in_metadata and in_sources and indent <= 2 and line.strip():
+            in_sources = False
+        if in_sources and SOURCE_ATTRIBUTION_LINE.match(line):
+            lines[index] = ""
+    return "\n".join(lines)
 
 
 def gate(dest: Path) -> list[str]:
@@ -318,7 +350,7 @@ def gate(dest: Path) -> list[str]:
             violations.append(f"{rel}: binary file in published tree")
             continue
 
-        scrubbed = SOURCE_ATTRIBUTION_OK.sub("", PROVENANCE_OK.sub("", text))
+        scrubbed = PROVENANCE_OK.sub("", scrub_source_attribution(rel, text))
         for number, line in enumerate(scrubbed.split("\n"), start=1):
             if FORBIDDEN.search(line):
                 violations.append(f"{rel}:{number}: forbidden token -> {line.strip()[:90]}")
@@ -331,7 +363,19 @@ def gate(dest: Path) -> list[str]:
     return violations
 
 
-def sync_to_target(staged: Path, target: Path, sha: str, repo_slug: str, commit: bool) -> None:
+def remote_slug(url: str) -> str | None:
+    """Normalize a git remote URL to owner/repo, lowercased.
+
+    A substring test is not enough: `JNPRAutomate/fwskillsshare` is a substring
+    of `JNPRAutomate/fwskillsshare-backup`, and accepting the wrong clone means
+    staging the deletion of every tracked file in it.
+    """
+    cleaned = url.strip().removesuffix(".git")
+    match = re.search(r"[:/]([^/:]+)/([^/]+)$", cleaned)
+    return f"{match.group(1)}/{match.group(2)}".lower() if match else None
+
+
+def sync_to_target(staged: Path, target: Path, sha: str, dirty: bool, repo_slug: str, commit: bool) -> None:
     """Mirror the staged tree into a target clone as a single squashed commit.
 
     Stale files are removed with `git rm`, never with a recursive filesystem
@@ -348,7 +392,7 @@ def sync_to_target(staged: Path, target: Path, sha: str, repo_slug: str, commit:
         remote = run(["git", "remote", "get-url", "origin"], cwd=target).strip()
     except subprocess.CalledProcessError:
         raise SystemExit(f"target has no origin remote to verify: {target}")
-    if repo_slug not in remote:
+    if remote_slug(remote) != repo_slug.lower():
         raise SystemExit(f"target origin {remote!r} does not match --repo-slug {repo_slug!r}")
     if run(["git", "status", "--porcelain"], cwd=target).strip():
         raise SystemExit(f"target clone has uncommitted changes: {target}")
@@ -360,7 +404,10 @@ def sync_to_target(staged: Path, target: Path, sha: str, repo_slug: str, commit:
     for entry in staged.iterdir():
         dst = target / entry.name
         if entry.is_dir():
-            shutil.copytree(entry, dst, ignore=ignore)
+            # dirs_exist_ok: `git rm` leaves a directory behind when it still
+            # holds ignored files (a stray __pycache__), and a plain copytree
+            # would raise FileExistsError in exactly the case this preserves.
+            shutil.copytree(entry, dst, ignore=ignore, dirs_exist_ok=True)
         else:
             shutil.copy2(entry, dst)
 
@@ -372,6 +419,11 @@ def sync_to_target(staged: Path, target: Path, sha: str, repo_slug: str, commit:
         print(f"staged into {target} (not committed; pass --commit)")
         return
 
+    if dirty:
+        raise SystemExit(
+            "refusing to commit a dirty export: the trailer would name a commit "
+            "that cannot reproduce this tree. Re-run from a clean working tree."
+        )
     message = (
         f"chore: sync skills from upstream\n\n"
         f"De-branded export of {UPSTREAM_SLUG}.\n\n"
@@ -389,7 +441,6 @@ def main() -> int:
                         help="downstream org/repo (default: %(default)s)")
     parser.add_argument("--author", default="JNPRAutomate",
                         help="value for the authors: frontmatter field")
-    parser.add_argument("--skills", help="comma-separated subset to publish (default: all)")
     parser.add_argument("--out", type=Path, help="keep the staged tree at this path")
     parser.add_argument("--target", type=Path, help="local clone of the downstream repo")
     parser.add_argument("--commit", action="store_true", help="commit in the target clone")
@@ -403,7 +454,6 @@ def main() -> int:
 
     sha = head_sha()
     ref = archive_ref(args.allow_dirty)
-    wanted = [s.strip() for s in args.skills.split(",")] if args.skills else None
 
     scratch = Path(tempfile.mkdtemp(prefix="publish-jnpr-"))
     staged = args.out.resolve() if args.out else scratch / "tree"
@@ -414,14 +464,14 @@ def main() -> int:
 
     try:
         stage_tree(staged, ref)
-        skills, all_skills = select_skills(staged, wanted)
+        skills = sorted(p.name for p in (staged / "skills").iterdir() if p.is_dir())
         transform_readme(staged, args.repo_slug, len(skills))
-        transform_install(staged, args.repo_slug, skills, all_skills)
+        transform_install(staged, args.repo_slug)
         transform_skill_frontmatter(staged, args.author)
         transform_skill_checker(staged, args.author)
         transform_justfile(staged)
         sanitize(staged)
-        write_provenance(staged, sha, skills)
+        write_provenance(staged, sha, args.allow_dirty, skills)
 
         violations = gate(staged)
         if violations:
@@ -434,7 +484,7 @@ def main() -> int:
         print(f"    tree: {staged}")
 
         if args.target:
-            sync_to_target(staged, args.target.resolve(), sha, args.repo_slug, args.commit)
+            sync_to_target(staged, args.target.resolve(), sha, args.allow_dirty, args.repo_slug, args.commit)
         else:
             print("    dry run -- pass --target <clone> to sync")
     except SystemExit:

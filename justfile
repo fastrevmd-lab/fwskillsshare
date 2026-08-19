@@ -35,12 +35,15 @@ guard: lint test
 publish-jnpr *ARGS:
     python3 scripts/publish-jnpr.py {{ARGS}}
 
-# --ignore-user-config loads no MCP servers: nothing here needs them, and unlike a
-# per-server denylist in .codex/config.toml it cannot be broken by a server rename.
-# Codex review of a single commit (default: HEAD)
+# Codex review gate for one commit (default: HEAD)
+#
+# Must go through the wrapper, not `codex exec review`: the wrapper parks the
+# superpowers skill (which made seven consecutive runs end with no verdict),
+# denies MCP servers, and exits non-zero when no verdict is produced. A raw
+# `codex ... | jq` pipeline exits 0 on an empty stream, reporting success for a
+# gate that never ran. See AGENTS.md "Codex review gate".
 review COMMIT="HEAD":
-    codex exec --ignore-user-config review --commit "$(git rev-parse {{COMMIT}})" --json \
-      | jq -rR 'fromjson? | select(.type=="item.completed") | .item | select(.type=="agent_message") | .text'
+    scripts/codex-review.sh "$(git rev-parse {{COMMIT}})"
 
 integration:
     @echo "Real-device validation is intentionally opt-in and is not automated by this repository."
