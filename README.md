@@ -34,6 +34,75 @@ These skills exist to close that gap. They pin the agent to vendor syntax that's
 > **Unofficial / community project.** Not affiliated with, endorsed by, or supported by Cisco, Fortinet, Palo Alto Networks, Juniper Networks, or HPE. See [License and Provenance](#license-and-provenance) for the full notice and the trademark disclaimer.
 <!-- brand:disclaimer:end -->
 
+## Before You Install
+
+These skills change how your agent behaves. Read this before you install.
+
+**A skill is instructions your agent will follow.** Every `SKILL.md` here is plain
+markdown that gets loaded into your agent's context and acted on. Installing one —
+from this repo or any other — means letting someone else's text steer a tool that
+can read your configs and, if you permit it, reach your devices. **Read the whole skill
+directory before you install it — not just `SKILL.md`.** Most of a skill is markdown
+you can read straight through, but the two Proxmox deployment skills also ship Python
+helpers under `scripts/` that the instructions tell the agent to run, and every skill
+carries an `agents/openai.yaml`. Nothing is obfuscated or generated at runtime, but
+"read the skill" has to mean the directory, not one file. Some skills also direct the
+agent at your own equipment — the deployment and operational ones run commands
+against your devices, which is the point of them, and the reason to know what you
+installed.
+
+**Treat every config you paste as untrusted input.** The parsing and audit skills
+ingest whatever you hand them, and a config file can carry text written to redirect
+the agent — in a comment, a description field, an object name. That is prompt
+injection, and nothing in this repository defends against it. Read what comes back:
+if the agent proposes something you did not ask for, or reaches for a device when
+you asked for a parse, stop.
+
+These skills default to parse / read / analyze / plan / dry-run, and anything that
+changes a device — configuration, commits, upgrades, reboots, failovers — is written
+to require explicit approval and post-change verification. That is authoring intent,
+not a sandbox. What actually constrains the agent is the permissions you give it.
+
+**Do not paste secrets you would not send to your model provider.** Firewall configs
+carry pre-shared keys, SNMP communities, RADIUS secrets, certificate material, and
+password hashes. Pasting a config into a hosted assistant discloses it to whoever
+runs that model. That may be perfectly fine — but make it a decision you took, not
+one you backed into. If the policy you are working on should not leave your control,
+you have two options:
+
+- **Sanitize first, carefully.** An anonymizer can rewrite addresses, hostnames and
+  secrets, but it has to preserve address *semantics* — a consistent, containment-
+  preserving mapping. The audits reason about real relationships: shadowed and
+  overlapping rules, supernets, `0.0.0.0/0`, host versus subnet. An anonymizer that
+  changes prefix lengths or breaks containment will hand you a clean-looking report
+  about a policy you do not have. Read the output before you paste it, too: no
+  anonymizer knows which of your zone, object, or policy names are themselves
+  sensitive.
+- **Or keep it on your own equipment.** These skills are plain markdown with no
+  runtime dependency on any particular provider, so they work with a model you host
+  yourself. Nothing here needs a hosted assistant to function.
+
+**Install only the skills you need.** A skill's body loads only when the skill is
+invoked, so what an installed-but-unused skill costs you is its description sitting
+in the discovery surface. How much that costs depends on the runtime and version —
+Codex 0.147.0 routes discovery through a dynamic selector and treats a flat
+concatenated list as a fallback, truncating metadata to fit its budget rather than
+failing — so the direct token cost is modest and not worth optimizing: all 27
+descriptions together are only ~8,400 characters. The cost that matters is
+**selection**: the more overlapping descriptions compete, the likelier your agent
+reaches for a near-miss instead of the right skill, and truncation degrades that
+quietly rather than visibly. Install the families you actually use.
+
+**Skills are copied, not linked.** The installer copies files into your skills
+directory, so they do not change when this repository does. Re-run the installer to
+pick up updates — approving the overwrite when prompted, or passing `--force`, since
+a non-interactive run (`-y`) skips a skill that is already installed and would
+otherwise leave you on a stale copy.
+
+**Verify against your own platform and release.** Behavior here is reported as
+observed on specific versions. Commit-check on your release before trusting a stanza
+in production.
+
 ## Quickstart (30-second setup)
 
 1. Run the installer and pick what you want:
@@ -155,7 +224,7 @@ Map firewall capability to control evidence — assessor/auditor output template
 
 Install with `--family deployment`.
 
-- **[clearpass-proxmox-deploy](./skills/clearpass-proxmox-deploy/SKILL.md)** — *(v0.2.0, draft)* Deploy, validate, and bring into service HPE Aruba ClearPass Policy Manager 6.14 as a Proxmox VE KVM guest, including CLABV/C1000V/C2000V/C3000V sizing, the mandatory UEFI firmware and pre-boot second disk, MAC-ordered management interface mapping, CRC-verified streaming of the 45 GiB raw image, driving the VGA-only first-boot wizard through the QEMU monitor, and day-2 operations — licence order and artifact formats, HTTPS certificate import via the Trust List, and the REST API's retrievable-token/unretrievable-secret split.
+- **[clearpass-proxmox-deploy](./skills/clearpass-proxmox-deploy/SKILL.md)** — *(v0.2.0, draft)* Deploy, validate, and bring into service HPE Aruba ClearPass Policy Manager 6.14 as a Proxmox VE KVM guest, including CLABV/C1000V/C2000V/C3000V sizing, the mandatory UEFI firmware and pre-boot second disk, MAC-ordered management interface mapping, CRC-verified streaming of the 45 GiB raw image, driving the VGA-only first-boot wizard through the QEMU monitor, and day-2 operations — license order and artifact formats, HTTPS certificate import via the Trust List, and the REST API's retrievable-token/unretrievable-secret split.
 - **[sd-onprem-proxmox-deploy](./skills/sd-onprem-proxmox-deploy/SKILL.md)** — Plan, deploy, validate, and troubleshoot Juniper Security Director On-Prem 25/26 as a Proxmox VE guest from the vendor KVM artifacts, including sizing, four-IP planning, first-boot seed configuration, NTP/DNS reachability, SRX onboarding behind a device-clock NTP sync gate, and mandatory source-identical routing, bundle, device-channel, and TLS log-path proof before VM creation.
 
 ---
@@ -685,7 +754,7 @@ show dhcp server binding routing-instance <RI>
 
 ### srx-chassis-cluster-proxmox
 
-`srx-chassis-cluster-proxmox` is original operational work, not a vendor-derived summary. Juniper documents chassis cluster for two physically cabled appliances; this skill covers the hypervisor-to-Junos seam that appears when both nodes are Proxmox VE guests and the control link, fabric link and every reth leg become Linux bridge ports — a substitution whose failures are silent, because nothing logs a dropped frame. It rests on two independent builds: a reference cluster (cluster-id 2, Junos 24.4R1.9, five reth interfaces) that supplied the measurements, and a proving build (cluster-id 9, Junos 26.2R1.7) stood up on a different host by following the skill as written. The proving build corrected three claims before release — the fabric MTU requirement, which turned out to be latent and invisible to every device-side health check rather than an immediate failure; that `fxp0` cannot use a DHCP client in cluster mode; and the NIC-mapping verification procedure, replaced with a stronger one that checks reth virtual MACs against tap interfaces in the bridge forwarding table. Confirmed unchanged across both releases and both cluster-ids: the `netN` to `ge-0/0/(N-2)` mapping and the reth virtual-MAC formula. It also carries the per-NIC firewall anti-spoof trap that silently discards reth traffic while interfaces still report `Up`, and a worked post-mortem of an abandoned build with three independent faults. Values that were measured are stated as measurements; the one behaviour not exercised — an undersized fabric under sustained load — is labelled untested rather than implied.
+`srx-chassis-cluster-proxmox` is original operational work, not a vendor-derived summary. Juniper documents chassis cluster for two physically cabled appliances; this skill covers the hypervisor-to-Junos seam that appears when both nodes are Proxmox VE guests and the control link, fabric link and every reth leg become Linux bridge ports — a substitution whose failures are silent, because nothing logs a dropped frame. It rests on two independent builds: a reference cluster (cluster-id 2, Junos 24.4R1.9, five reth interfaces) that supplied the measurements, and a proving build (cluster-id 9, Junos 26.2R1.7) stood up on a different host by following the skill as written. The proving build corrected three claims before release — the fabric MTU requirement, which turned out to be latent and invisible to every device-side health check rather than an immediate failure; that `fxp0` cannot use a DHCP client in cluster mode; and the NIC-mapping verification procedure, replaced with a stronger one that checks reth virtual MACs against tap interfaces in the bridge forwarding table. Confirmed unchanged across both releases and both cluster-ids: the `netN` to `ge-0/0/(N-2)` mapping and the reth virtual-MAC formula. It also carries the per-NIC firewall anti-spoof trap that silently discards reth traffic while interfaces still report `Up`, and a worked post-mortem of an abandoned build with three independent faults. Values that were measured are stated as measurements; the one behavior not exercised — an undersized fabric under sustained load — is labelled untested rather than implied.
 
 ### srx-advpn
 
