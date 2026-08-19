@@ -62,6 +62,12 @@ FORBIDDEN = re.compile(r"mechub|fastrevmd|violet", re.IGNORECASE)
 # to prevent. Attribution in the footer is an MIT courtesy, not branding.
 PROVENANCE_OK = re.compile(re.escape(UPSTREAM_SLUG))
 
+# Nested metadata.sources[].author entries are left as the upstream author on
+# purpose -- they credit whoever did the underlying lab work, and rewriting them
+# would attribute that evidence to the downstream org. They are provenance, not
+# branding, so the gate must not treat them as a leak.
+SOURCE_ATTRIBUTION_OK = re.compile(r"^\s+author:\s*fastrevmd-lab\s*$", re.MULTILINE)
+
 # Lab-specific values that are fine upstream but must not ship downstream.
 SANITIZE = (
     ("O=mechub", "O=example"),
@@ -223,12 +229,32 @@ def transform_install(dest: Path, repo_slug: str, skills: list[str], all_skills:
 
 
 def transform_skill_frontmatter(dest: Path, author: str) -> None:
-    """Rewrite the authors: entry in every published SKILL.md."""
+    """Rewrite only the top-level author list in every published SKILL.md.
+
+    Scoped deliberately. `metadata.sources[].author` credits the person who did
+    the underlying lab work, and rewriting those would attribute upstream field
+    evidence to the downstream org -- a false provenance claim, and the exact
+    thing these skills exist to prevent. Only the package's own author list,
+    which is a top-level key with two-space list items, is rewritten.
+    """
     for skill in sorted((dest / "skills").rglob("SKILL.md")):
-        text = skill.read_text(encoding="utf-8")
-        text = re.sub(r"^(\s*-\s*)fastrevmd-lab\s*$", rf"\g<1>{author}", text, flags=re.MULTILINE)
-        text = re.sub(r"^(\s*author:\s*)fastrevmd-lab\s*$", rf"\g<1>{author}", text, flags=re.MULTILINE)
-        skill.write_text(text, encoding="utf-8")
+        lines = skill.read_text(encoding="utf-8").split("\n")
+        if not lines or lines[0].strip() != "---":
+            continue
+        try:
+            end = lines.index("---", 1)
+        except ValueError:
+            continue
+
+        in_author_block = False
+        for index in range(1, end):
+            line = lines[index]
+            if not line.startswith((" ", "\t")) and line.rstrip().endswith(":"):
+                in_author_block = line.startswith("author:")
+                continue
+            if in_author_block and line == "  - fastrevmd-lab":
+                lines[index] = f"  - {author}"
+        skill.write_text("\n".join(lines), encoding="utf-8")
 
 
 def transform_skill_checker(dest: Path, author: str) -> None:
@@ -292,7 +318,7 @@ def gate(dest: Path) -> list[str]:
             violations.append(f"{rel}: binary file in published tree")
             continue
 
-        scrubbed = PROVENANCE_OK.sub("", text)
+        scrubbed = SOURCE_ATTRIBUTION_OK.sub("", PROVENANCE_OK.sub("", text))
         for number, line in enumerate(scrubbed.split("\n"), start=1):
             if FORBIDDEN.search(line):
                 violations.append(f"{rel}:{number}: forbidden token -> {line.strip()[:90]}")
@@ -305,17 +331,31 @@ def gate(dest: Path) -> list[str]:
     return violations
 
 
-def sync_to_target(staged: Path, target: Path, sha: str, commit: bool) -> None:
-    """Mirror the staged tree into a target clone as a single squashed commit."""
+def sync_to_target(staged: Path, target: Path, sha: str, repo_slug: str, commit: bool) -> None:
+    """Mirror the staged tree into a target clone as a single squashed commit.
+
+    Stale files are removed with `git rm`, never with a recursive filesystem
+    delete. That keeps every removal recoverable from git history and leaves
+    untracked and ignored files (a local .env, for instance) alone -- a plain
+    wipe would take those with it, and `git status --porcelain` would not even
+    have shown them.
+    """
     if not (target / ".git").is_dir():
         raise SystemExit(f"not a git clone: {target}")
+    if target == ROOT or target in ROOT.parents or ROOT in target.parents:
+        raise SystemExit(f"refusing to sync into the upstream repo or a path containing it: {target}")
+    try:
+        remote = run(["git", "remote", "get-url", "origin"], cwd=target).strip()
+    except subprocess.CalledProcessError:
+        raise SystemExit(f"target has no origin remote to verify: {target}")
+    if repo_slug not in remote:
+        raise SystemExit(f"target origin {remote!r} does not match --repo-slug {repo_slug!r}")
     if run(["git", "status", "--porcelain"], cwd=target).strip():
         raise SystemExit(f"target clone has uncommitted changes: {target}")
 
-    for entry in target.iterdir():
-        if entry.name == ".git":
-            continue
-        shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
+    if run(["git", "ls-files"], cwd=target).strip():
+        run(["git", "rm", "-r", "-q", "--", "."], cwd=target)
+
     ignore = shutil.ignore_patterns("__pycache__", "*.pyc")
     for entry in staged.iterdir():
         dst = target / entry.name
@@ -367,8 +407,10 @@ def main() -> int:
 
     scratch = Path(tempfile.mkdtemp(prefix="publish-jnpr-"))
     staged = args.out.resolve() if args.out else scratch / "tree"
-    if staged.exists():
-        shutil.rmtree(staged)
+    if staged.exists() and any(staged.iterdir()):
+        print(f"ERROR: --out path is not empty, refusing to write into it: {staged}",
+              file=sys.stderr)
+        return 1
 
     try:
         stage_tree(staged, ref)
@@ -392,7 +434,7 @@ def main() -> int:
         print(f"    tree: {staged}")
 
         if args.target:
-            sync_to_target(staged, args.target.resolve(), sha, args.commit)
+            sync_to_target(staged, args.target.resolve(), sha, args.repo_slug, args.commit)
         else:
             print("    dry run -- pass --target <clone> to sync")
     except SystemExit:
