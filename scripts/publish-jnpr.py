@@ -22,6 +22,7 @@ not by choosing which skills go.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
@@ -82,10 +83,10 @@ SANITIZE = (
 BROKEN_LINK = re.compile(r"\]\((?:\./)?docs/")
 
 
-def run(args: list[str], cwd: Path | None = None) -> str:
+def run(args: list[str], cwd: Path | None = None, env: dict[str, str] | None = None) -> str:
     """Run a command, returning stdout; raises CalledProcessError on failure."""
     return subprocess.run(
-        args, cwd=cwd, check=True, capture_output=True, text=True
+        args, cwd=cwd, env=env, check=True, capture_output=True, text=True
     ).stdout
 
 
@@ -102,22 +103,34 @@ def working_tree_is_clean() -> bool:
 def archive_ref(allow_dirty: bool) -> tuple[str, bool]:
     """Return (ref to export, whether it differs from HEAD).
 
-    With --allow-dirty, `git stash create` builds a throwaway commit object of
-    the working tree without disturbing it, so the export matches what is on
-    disk rather than silently publishing stale content from HEAD. It returns
-    nothing when there is nothing to stash, including a tree carrying only
-    untracked files -- so permission to export dirty state is not evidence that
-    the export is dirty, and the caller must not conflate the two.
+    With --allow-dirty the export must be the working tree, so it is captured by
+    building a throwaway index rather than with `git stash create`. A stash
+    commit holds only tracked changes -- untracked files hang off a separate
+    parent and never appear in `git archive` -- so a newly added, uncommitted
+    skill would have been silently omitted while the provenance claimed a clean,
+    reproducible HEAD. Writing a tree from a scratch index picks up tracked
+    modifications, deletions, and untracked files alike, still honours
+    .gitignore, and leaves the real index untouched.
+
+    Comparing that tree to HEAD's is also an exact dirtiness test, rather than
+    inferring it from the flag.
     """
+    head_tree = run(["git", "rev-parse", "HEAD^{tree}"], cwd=ROOT).strip()
     if not allow_dirty:
         return "HEAD", False
-    try:
-        created = run(["git", "stash", "create"], cwd=ROOT).strip()
-    except subprocess.CalledProcessError as error:
-        raise SystemExit(
-            f"could not snapshot the working tree for a dirty export: {error.stderr.strip() or error}"
-        ) from error
-    return (created, True) if created else ("HEAD", False)
+
+    with tempfile.TemporaryDirectory(prefix="publish-jnpr-index-") as tmp:
+        env = {**os.environ, "GIT_INDEX_FILE": str(Path(tmp) / "index")}
+        try:
+            run(["git", "read-tree", "HEAD"], cwd=ROOT, env=env)
+            run(["git", "add", "-A"], cwd=ROOT, env=env)
+            tree = run(["git", "write-tree"], cwd=ROOT, env=env).strip()
+        except subprocess.CalledProcessError as error:
+            raise SystemExit(
+                f"could not snapshot the working tree for a dirty export: "
+                f"{error.stderr.strip() or error}"
+            ) from error
+    return tree, tree != head_tree
 
 
 def stage_tree(dest: Path, ref: str) -> None:
