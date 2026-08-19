@@ -420,6 +420,32 @@ def validate_target(target: Path, repo_slug: str) -> str | None:
     return None
 
 
+def ignored_collisions(staged: Path, target: Path) -> list[str]:
+    """Return target paths holding ignored files that the export would overwrite.
+
+    `git rm` leaves ignored files alone and `git status` never reports them, so
+    they survive the removal step and then get clobbered by the copy. That
+    contradicts the preservation this sync promises, and the loss is silent and
+    unrecoverable -- the file was never in git. Detect the overlap and refuse.
+    """
+    candidates = [
+        str(path.relative_to(staged))
+        for path in staged.rglob("*")
+        if path.is_file() and (target / path.relative_to(staged)).is_file()
+    ]
+    if not candidates:
+        return []
+    result = subprocess.run(
+        ["git", "check-ignore", "--stdin"],
+        cwd=target, input="\n".join(candidates),
+        capture_output=True, text=True,
+    )
+    # exit 0 = some ignored, 1 = none ignored, >1 = real error
+    if result.returncode > 1:
+        raise SystemExit(f"could not check ignored paths in {target}: {result.stderr.strip()}")
+    return sorted(line for line in result.stdout.split("\n") if line.strip())
+
+
 def sync_to_target(staged: Path, target: Path, sha: str, dirty: bool, repo_slug: str, commit: bool) -> None:
     """Mirror the staged tree into a target clone as a single squashed commit.
 
@@ -438,6 +464,16 @@ def sync_to_target(staged: Path, target: Path, sha: str, dirty: bool, repo_slug:
     problem = validate_target(target, repo_slug)
     if problem:
         raise SystemExit(problem)
+    collisions = ignored_collisions(staged, target)
+    if collisions:
+        listed = "\n  ".join(collisions[:10])
+        more = f"\n  ... and {len(collisions) - 10} more" if len(collisions) > 10 else ""
+        raise SystemExit(
+            "refusing to sync: these target paths hold ignored local files that the "
+            f"export would overwrite:\n  {listed}{more}\n"
+            "Move or delete them, or drop them from the export."
+        )
+
     if run(["git", "ls-files"], cwd=target).strip():
         run(["git", "rm", "-r", "-q", "--", "."], cwd=target)
 
