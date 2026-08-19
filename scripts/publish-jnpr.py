@@ -99,17 +99,20 @@ def working_tree_is_clean() -> bool:
     return not run(["git", "status", "--porcelain"], cwd=ROOT).strip()
 
 
-def archive_ref(allow_dirty: bool) -> str:
-    """Return the ref to export.
+def archive_ref(allow_dirty: bool) -> tuple[str, bool]:
+    """Return (ref to export, whether it differs from HEAD).
 
     With --allow-dirty, `git stash create` builds a throwaway commit object of
     the working tree without disturbing it, so the export matches what is on
-    disk rather than silently publishing stale content from HEAD.
+    disk rather than silently publishing stale content from HEAD. It returns
+    nothing when there is nothing to stash, including a tree carrying only
+    untracked files -- so permission to export dirty state is not evidence that
+    the export is dirty, and the caller must not conflate the two.
     """
     if not allow_dirty:
-        return "HEAD"
+        return "HEAD", False
     created = run(["git", "stash", "create"], cwd=ROOT).strip()
-    return created or "HEAD"
+    return (created, True) if created else ("HEAD", False)
 
 
 def stage_tree(dest: Path, ref: str) -> None:
@@ -235,7 +238,7 @@ def transform_skill_frontmatter(dest: Path, author: str) -> None:
         for index in range(1, end):
             line = lines[index]
             if not line.startswith((" ", "\t")) and line.rstrip().endswith(":"):
-                in_author_block = line.startswith("author:")
+                in_author_block = line.rstrip() == "author:"
                 continue
             if in_author_block and line == "  - fastrevmd-lab":
                 lines[index] = f"  - {author}"
@@ -324,10 +327,10 @@ def scrub_source_attribution(rel: Path, text: str) -> str:
         line = lines[index]
         indent = len(line) - len(line.lstrip())
         if line.strip() and indent == 0:
-            in_metadata = line.startswith("metadata:")
+            in_metadata = line.rstrip() == "metadata:"
             in_sources = False
             continue
-        if in_metadata and indent == 2 and line.strip().startswith("sources:"):
+        if in_metadata and indent == 2 and line.strip() == "sources:":
             in_sources = True
             continue
         if in_metadata and in_sources and indent <= 2 and line.strip():
@@ -384,6 +387,11 @@ def sync_to_target(staged: Path, target: Path, sha: str, dirty: bool, repo_slug:
     wipe would take those with it, and `git status --porcelain` would not even
     have shown them.
     """
+    if dirty and commit:
+        raise SystemExit(
+            "refusing to commit a dirty export: the trailer would name a commit "
+            "that cannot reproduce this tree. Re-run from a clean working tree."
+        )
     if not (target / ".git").is_dir():
         raise SystemExit(f"not a git clone: {target}")
     if target == ROOT or target in ROOT.parents or ROOT in target.parents:
@@ -419,11 +427,6 @@ def sync_to_target(staged: Path, target: Path, sha: str, dirty: bool, repo_slug:
         print(f"staged into {target} (not committed; pass --commit)")
         return
 
-    if dirty:
-        raise SystemExit(
-            "refusing to commit a dirty export: the trailer would name a commit "
-            "that cannot reproduce this tree. Re-run from a clean working tree."
-        )
     message = (
         f"chore: sync skills from upstream\n\n"
         f"De-branded export of {UPSTREAM_SLUG}.\n\n"
@@ -453,7 +456,7 @@ def main() -> int:
         return 1
 
     sha = head_sha()
-    ref = archive_ref(args.allow_dirty)
+    ref, dirty = archive_ref(args.allow_dirty)
 
     scratch = Path(tempfile.mkdtemp(prefix="publish-jnpr-"))
     staged = args.out.resolve() if args.out else scratch / "tree"
@@ -471,7 +474,7 @@ def main() -> int:
         transform_skill_checker(staged, args.author)
         transform_justfile(staged)
         sanitize(staged)
-        write_provenance(staged, sha, args.allow_dirty, skills)
+        write_provenance(staged, sha, dirty, skills)
 
         violations = gate(staged)
         if violations:
@@ -484,7 +487,7 @@ def main() -> int:
         print(f"    tree: {staged}")
 
         if args.target:
-            sync_to_target(staged, args.target.resolve(), sha, args.allow_dirty, args.repo_slug, args.commit)
+            sync_to_target(staged, args.target.resolve(), sha, dirty, args.repo_slug, args.commit)
         else:
             print("    dry run -- pass --target <clone> to sync")
     except SystemExit:
