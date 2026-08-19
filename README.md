@@ -17,8 +17,8 @@
 <em>a mechub project — sovereign network-security automation</em></p>
 
 <p align="center">
-  <img alt="skills" src="https://img.shields.io/badge/skills-26-0D9488">
-  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-25%2F26-262B38">
+  <img alt="skills" src="https://img.shields.io/badge/skills-27-0D9488">
+  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-25%2F27-262B38">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper%20%C2%B7%20HPE%20Aruba-262B38">
 </p>
@@ -161,9 +161,10 @@ Install with `--family deployment`.
 
 ## Quality and Review
 
-**25 of the 26 skills** have passed independent technical review; the exception
-is `clearpass-proxmox-deploy`, which ships as a draft and is described at the end
-of this section. The original 21
+**25 of the 27 skills** have passed independent technical review. The exceptions
+are `clearpass-proxmox-deploy`, which ships as a draft and is described at the end
+of this section, and `srx-syslog-logging`, which has not yet been through the
+two-stage review below. The original 21
 were first reviewed on 2026-06-30, then re-reviewed on 2026-07-02 with a
 two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax
 correctness for Cisco ASA/FTD, FortiGate, PAN-OS, and Junos SRX;

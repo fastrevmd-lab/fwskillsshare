@@ -60,14 +60,14 @@ cleanly with full-tunnel backhaul once two commit-blockers were worked around:
   verification** on the identical image. Proven three ways on 2026-07-03:
   - spoke↔spoke static cert VPN BR-07↔BR-08 (test16↔test12): UP.
   - hub→BR-07 **static-address** cert gateway (`CDX-STATIC-BR07`, reth0.0,
-    remote-identity container O=mechub): **UP** (tunnel 131080, port 4500).
+    remote-identity container O=example.org): **UP** (tunnel 131080, port 4500).
   - the real dynamic `ADVPN-HUB-GW`: still `No public key found`, same run.
 - **The iked path divergence (the actionable evidence for JTAC):**
   - Static-gateway responder (works): `iked_policy_public_key` →
     `ssh_policy_find_public_key_send_ipc` → `IKED-PKID-IPC 1 cert, len1<917>`
     → pkid returns key → `ssh_cm_cert_get_x509` → `Signature verification ok`.
   - Dynamic-gateway responder (fails): after the identical
-    `Container identity matched (O=mechub)` /
+    `Container identity matched (O=example.org)` /
     `id based lookup found: Sa_cfg:ADVPN-HUB`, iked takes the
     `iked_pm_ike_public_key look up sa_cfg based on ike-id for main-mode dialup`
     branch and returns `No public key found` **without ever calling
