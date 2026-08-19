@@ -35,6 +35,13 @@ guard: lint test
 publish-jnpr *ARGS:
     python3 scripts/publish-jnpr.py {{ARGS}}
 
+# --ignore-user-config loads no MCP servers: nothing here needs them, and unlike a
+# per-server denylist in .codex/config.toml it cannot be broken by a server rename.
+# Codex review of a single commit (default: HEAD)
+review COMMIT="HEAD":
+    codex exec --ignore-user-config review --commit "$(git rev-parse {{COMMIT}})" --json \
+      | jq -rR 'fromjson? | select(.type=="item.completed") | .item | select(.type=="agent_message") | .text'
+
 integration:
     @echo "Real-device validation is intentionally opt-in and is not automated by this repository."
 
