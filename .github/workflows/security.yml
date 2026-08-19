@@ -23,8 +23,24 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - name: gitleaks (secrets)
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+      # The gitleaks binary, not gitleaks-action: the Action requires a paid
+      # GITLEAKS_LICENSE for organization-owned repositories and fails closed
+      # without one. That failure is indistinguishable from a real finding at a
+      # glance, so a downstream copy of this repo in any org would show a red
+      # security check that never scanned anything. The binary has no such limit.
+      - name: Install gitleaks
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_VERSION: "8.30.1"
+          GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+        run: |
+          set -euo pipefail
+          curl -sSfL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          rm -f gitleaks.tar.gz gitleaks
+      # `git` scans history, matching the Action's behaviour with fetch-depth 0.
+      # `detect` was removed in 8.x -- the subcommands are dir, git and stdin.
+      - name: gitleaks (secrets)
+        run: gitleaks git . --config .gitleaks.toml --redact --no-banner
