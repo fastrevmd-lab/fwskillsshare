@@ -389,8 +389,8 @@ def gate(dest: Path) -> list[str]:
 def remote_slug(url: str) -> str | None:
     """Normalize a git remote URL to owner/repo, lowercased.
 
-    A substring test is not enough: `JNPRAutomate/fwskillsshare` is a substring
-    of `JNPRAutomate/fwskillsshare-backup`, and accepting the wrong clone means
+    A substring test is not enough: `JNPRAutomate/fw-skills-share` is a substring
+    of `JNPRAutomate/fw-skills-share-backup`, and accepting the wrong clone means
     staging the deletion of every tracked file in it.
     """
     cleaned = url.strip().removesuffix(".git")
@@ -517,7 +517,7 @@ def sync_to_target(staged: Path, target: Path, sha: str, dirty: bool, repo_slug:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--repo-slug", default="JNPRAutomate/fwskillsshare",
+    parser.add_argument("--repo-slug", default="JNPRAutomate/fw-skills-share",
                         help="downstream org/repo (default: %(default)s)")
     parser.add_argument("--author", default="JNPRAutomate",
                         help="value for the authors: frontmatter field")
