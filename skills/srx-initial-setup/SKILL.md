@@ -61,7 +61,7 @@ Use this skill to bring a new or factory-reset Juniper SRX from its shipped stat
 
 **Every device write runs behind a per-stage approval gate** under confirmed commit with a rollback timer. If verification fails, the confirmed commit expires automatically and Junos rolls back to the pre-change configuration.
 
-**Validation status:** At 1.0.0 this skill is written from vendor documentation and validated on vSRX. Hardware validation on SRX345, SRX1600, and SRX4700 is deferred to a later release. Platform scope: Branch SRX300/400, campus SRX1600/4120, datacenter SRX4300/4700/5000. SRX1500 is end-of-sale and is not a validation target.
+**Validation status:** At 1.0.0 this skill is written from vendor documentation and existing verified repository references; no device validation has been performed. Validation against vSRX and against SRX345, SRX1600, and SRX4700 hardware is deferred to a later release. Platform scope: Branch SRX300/400, campus SRX1600/4120, datacenter SRX4300/4700/5000. SRX1500 is end-of-sale and is not a validation target.
 
 ## Scope and routing
 
@@ -143,20 +143,11 @@ Full gap model, namespaces, ordering rules, and idempotency contract: `reference
 
 ## Gate protocol
 
-Every lockout-risk change follows this protocol:
-
-1. **Assess read-only.** Never propose a change from an assumption about current state.
-2. **Show the candidate change** as a configuration diff before applying it.
-3. **Obtain explicit approval** for this stage. Approval of one gate never implies approval of the next.
-4. **Apply under confirmed commit** with a rollback timer (default 3 minutes).
-5. **Verify reachability** and the stage's success criteria.
-6. **Issue the confirming commit** only after verification succeeds.
-
-**Never issue a bare commit on a remote session.**
+Every lockout-risk change follows a six-step protocol: assess read-only, show the candidate change as a configuration diff, obtain explicit approval for this stage, apply under confirmed commit with a rollback timer, verify reachability and the stage's success criteria, and issue the confirming commit only after verification succeeds. Approval of one gate never implies approval of the next, and a bare commit is never issued on a remote session.
 
 If verification fails while a confirmed commit is pending, do NOT issue the confirming commit. Let the timer expire; Junos will automatically roll back to the pre-change configuration.
 
-**Confirmed commit mechanics, timer selection, rollback behavior, and verification-failure handling:** `references/write-safety.md`.
+**Confirmed commit mechanics, timer default, rollback points, recovery-path requirements, and verification-failure handling:** `references/write-safety.md`.
 
 ## 3. Stages
 
