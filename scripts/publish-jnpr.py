@@ -42,6 +42,8 @@ PUBLISH_FILES = (
     "LICENSE",
     "README.md",
     "QUALITY.md",
+    "SKILLS.md",
+    "CHANGELOG.md",
     "justfile",
     "mise.toml",
     ".editorconfig",

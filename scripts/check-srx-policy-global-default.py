@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills" / "srx-policy" / "SKILL.md"
 EXAMPLE = ROOT / "skills" / "srx-policy" / "references" / "zone-pair-to-global-example.md"
 README = ROOT / "README.md"
+# The per-skill detail moved out of the README; the contract sentence moved with it.
+CATALOG = ROOT / "SKILLS.md"
 
 
 def require(pattern: str, text: str, label: str, errors: list[str]) -> None:
@@ -71,12 +73,16 @@ def main() -> int:
                 "'show security policies hit-count global' syntax"
             )
     readme = README.read_text(encoding="utf-8")
-    if "show security policies hit-count global" in readme:
-        errors.append("README.md uses unsupported 'show security policies hit-count global' syntax")
+    catalog = CATALOG.read_text(encoding="utf-8")
+    for name, text in (("README.md", readme), ("SKILLS.md", catalog)):
+        if "show security policies hit-count global" in text:
+            errors.append(
+                f"{name} uses unsupported 'show security policies hit-count global' syntax"
+            )
     require(
         r"`srx-policy`[^\n]+enforces `security policies global`",
-        readme,
-        "README.md does not describe the enforced global-policy output default",
+        catalog,
+        "SKILLS.md does not describe the enforced global-policy output default",
         errors,
     )
     if re.search(
