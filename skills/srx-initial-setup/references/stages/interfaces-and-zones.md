@@ -15,6 +15,8 @@ All `zone.*` gaps are `blocking` for later stages. Security policies (Stage 5) r
 
 Changing zone membership or host-inbound-traffic settings for the interface currently carrying management traffic is the most common way a correctly-addressed interface becomes unreachable.
 
+**All lockout-risk gaps in this stage follow the gate protocol in `references/write-safety.md`.** That file is the authority for commit-confirmed mechanics, timer selection, rollback points, and the requirement to state the operator's recovery path before proposing a lockout-risk change. Gap entries below specify only the verification commands and success criteria unique to each gap.
+
 ### What host-inbound-traffic controls
 
 Host-inbound-traffic regulates traffic destined **to the device itself** from directly connected systems. This includes SSH, HTTPS, ping, SNMP, routing protocols, and other services that terminate on the Routing Engine.
@@ -35,8 +37,6 @@ An interface can have a correct IP address, be assigned to a security zone, and 
 
 **Common scenario:** An operator configures a new management zone, moves the management interface into it, and commits without adding `host-inbound-traffic system-services ssh` to the new zone. The commit succeeds, the interface is reachable via ping (if ICMP was enabled separately), but SSH is refused. If the operator was connected via that interface and did not use `commit confirmed`, they are locked out.
 
-**Lockout-risk mitigation:** Before moving the current management interface to a new zone, add `host-inbound-traffic system-services ssh` to the destination zone first. Apply via `commit confirmed 3`, verify SSH reachability through the new zone configuration, then confirm. If verification fails, the automatic rollback restores the working configuration.
-
 ## Ordering within the stage
 
 **Critical rule:** Establish and verify the replacement management path **before** removing or changing the old one.
@@ -45,10 +45,9 @@ If the current management access is through a factory-default zone (e.g., trust 
 
 1. Create the new zone with `host-inbound-traffic system-services ssh` (and any other required services).
 2. If using a different interface, configure its addressing and assign it to the new zone.
-3. Apply via `commit confirmed 3`.
+3. Apply the change per the gate protocol in `write-safety.md`.
 4. **Verify** SSH reachability through the new interface/zone by establishing a **new** SSH session from the management network. Do not assume the existing session proves anything — it may survive because it is already established.
-5. If verification succeeds, issue the confirming commit. The new path is now the active management path.
-6. Only after the new path is confirmed working: remove the old zone's `host-inbound-traffic` settings or deactivate the old interface (as a separate, later change with its own `commit confirmed` protection).
+5. Only after the new path is confirmed working: remove the old zone's `host-inbound-traffic` settings or deactivate the old interface (as a separate, later change).
 
 If the new and old management paths use the same physical interface but different zones, the same principle applies: add `host-inbound-traffic` to the new zone, move the interface, verify, confirm, then clean up the old zone in a separate change.
 
@@ -132,7 +131,7 @@ If the new and old management paths use the same physical interface but differen
 
   **Reasoning:** The trust zone typically contains the LAN and may be the path the operator uses to reach the device. If SSH is not explicitly enabled here, the interface may be reachable via ping but SSH will be refused.
 
-  **Lockout-risk mitigation:** If the operator is currently connected via an interface in the trust zone, apply via `commit confirmed 3`, verify SSH still works by establishing a new session, then confirm. If the operator is connected via another zone (e.g., fxp0 in a separate mgmt zone), this change carries no lockout risk for them.
+  **Verification:** If the operator is currently connected via an interface in the trust zone, verify SSH still works by establishing a new session after applying the change. If the operator is connected via another zone (e.g., fxp0 in a separate mgmt zone), this change carries no lockout risk for them.
 
   **Source:** Juniper Networks, "system-services (Security Zones Host Inbound Traffic)" (Junos OS CLI Reference), retrieved 2026-08-20.
   URL: https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/statement/security-edit-system-service-zone-host-inbound-traffic.html
@@ -177,7 +176,7 @@ If the new and old management paths use the same physical interface but differen
 
   **Reasoning:** The mgmt zone exists specifically for device management. SSH, HTTPS, and optionally NETCONF (for API-based management) must be enabled.
 
-  **Lockout-risk mitigation:** If the operator is currently connected via another zone and this gap is being closed in preparation for moving the management interface to the mgmt zone, apply this configuration **before** moving the interface. Use `commit confirmed 3`, establish a **new** SSH session through the mgmt zone (if the interface is already there or routable), verify it works, then confirm. If verification fails, the rollback restores the previous state.
+  **Verification:** If the operator is currently connected via another zone and this gap is being closed in preparation for moving the management interface to the mgmt zone, apply this configuration **before** moving the interface. Establish a **new** SSH session through the mgmt zone (if the interface is already there or routable) to verify it works.
 
   **Source:** Same as `zone.trust-host-inbound-missing`.
 
@@ -210,12 +209,10 @@ If the new and old management paths use the same physical interface but differen
 
   Replace interface names with the actual LAN-facing interfaces for the platform.
 
-  **Lockout-risk mitigation:** If the operator is currently connected via one of these interfaces **and** that interface is currently in a different zone (e.g., a factory-default trust zone being replaced with a new trust zone, or moving from mgmt to trust), the sequence must be:
+  **Prerequisites and verification:** If the operator is currently connected via one of these interfaces **and** that interface is currently in a different zone (e.g., a factory-default trust zone being replaced with a new trust zone, or moving from mgmt to trust):
 
-  1. Ensure `zone.trust-host-inbound-missing` is closed (SSH is enabled in the destination zone).
-  2. Apply the interface assignment via `commit confirmed 3`.
-  3. Verify SSH reachability through the interface in its new zone by establishing a **new** session.
-  4. Confirm the commit if successful.
+  1. Ensure `zone.trust-host-inbound-missing` is closed (SSH is enabled in the destination zone) before applying this gap.
+  2. After applying, verify SSH reachability through the interface in its new zone by establishing a **new** session.
 
   If the operator is connected via a different interface (e.g., fxp0 in mgmt zone), this change carries no lockout risk for their current session.
 
@@ -264,18 +261,14 @@ If the new and old management paths use the same physical interface but differen
   set security zones security-zone mgmt interfaces ge-0/0/1.0
   ```
 
-  **Lockout-risk mitigation:** This is the highest-risk gap in the entire skill if the operator is currently connected via the interface being reassigned.
+  **Prerequisites and verification:** This is the highest-risk gap in the entire skill if the operator is currently connected via the interface being reassigned.
 
-  **Safe sequence:**
-
+  Before applying:
   1. Verify `zone.mgmt-host-inbound-missing` is closed (SSH is enabled in mgmt zone).
   2. Verify the interface has a configured address and is reachable via ping from the management network.
-  3. Apply the zone assignment via `commit confirmed 3`.
-  4. **Immediately** establish a **new** SSH session to the device through the management interface's address. Do not rely on the existing session.
-  5. If the new session succeeds, issue the confirming commit from the new session.
-  6. If the new session fails, do nothing — the automatic rollback will restore the interface to its previous zone within 3 minutes.
+  3. Confirm out-of-band recovery access (console or alternate management interface) is available.
 
-  **Never apply this change without commit-confirmed and a verified fallback path** (console access or an alternate management interface in a different zone).
+  After applying: **Immediately** establish a **new** SSH session to the device through the management interface's address. Do not rely on the existing session.
 
   **Source:** Same as `zone.trust-interface-unassigned`.
 
