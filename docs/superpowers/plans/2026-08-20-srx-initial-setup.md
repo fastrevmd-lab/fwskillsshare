@@ -25,6 +25,7 @@ Every task's requirements implicitly include this section. Values are copied ver
 - **`agents/openai.yaml`** needs a quoted `display_name`, a quoted `short_description` of **25–64 characters**, and a quoted `default_prompt` containing the literal `$srx-initial-setup`.
 - **`## Runtime intake` in `SKILL.md` must byte-match the approved standard template** after whitespace normalization. Do not paraphrase it.
 - **`references/runtime-intake.md` must contain exactly these headings**, in this order: `# Runtime Intake`, `## When to ask`, `## Tool adaptation`, `## Question catalog`.
+- **Intake option labels must be 1-5 words**, excluding a trailing `(Recommended)`. Enforced by `scripts/check-runtime-intake.py`. Shorten the label; never relax the validator.
 - **Intake question objects use only these keys:** `id`, `ask_when`, `header`, `question`, `options`. Option objects use only `label` and `description`.
 - **No HTML comments and no raw HTML blocks** anywhere in skill Markdown.
 - **Combined descriptions warn only above 12,000 characters.** The catalogue is at 8,376 across 27 skills; this skill adds roughly 370. No warning will fire. **Do not shorten `Use when` clauses for budget reasons** — they are what lexical discovery matches on.
@@ -237,7 +238,7 @@ Write `skills/srx-initial-setup/references/runtime-intake.md`. Copy the `# Runti
       "question": "Which SRX platform is being set up?",
       "options": [
         {
-          "label": "Read the platform from the device (Recommended)",
+          "label": "Read platform from device (Recommended)",
           "description": "Determine platform and Junos release from device output rather than assuming."
         },
         {
@@ -345,7 +346,7 @@ In `scripts/check-runtime-intake-safety.py`:
     ("srx-initial-setup", "sis_console"):
         "Confirm console access first (Recommended)",
     ("srx-initial-setup", "sis_platform"):
-        "Read the platform from the device (Recommended)",
+        "Read platform from device (Recommended)",
     ("srx-initial-setup", "sis_task"):
         "Assess and report gaps (Recommended)",
 ```
