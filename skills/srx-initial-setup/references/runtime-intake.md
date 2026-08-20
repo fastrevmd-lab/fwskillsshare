@@ -82,7 +82,7 @@ platform or framework basis, evidence quality, then output preference.
       "question": "Which SRX platform is being set up?",
       "options": [
         {
-          "label": "Read the platform from the device (Recommended)",
+          "label": "Read platform from device (Recommended)",
           "description": "Determine platform and Junos release from device output rather than assuming."
         },
         {

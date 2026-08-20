@@ -1766,8 +1766,8 @@ def validate_catalog(path: Path, text: str) -> list[str]:
             else:
                 labels.add(label)
                 words = label.removesuffix(" (Recommended)").split()
-                if not 1 <= len(words) <= 6:
-                    errors.append(f"{option_prefix} label must contain 1-6 words")
+                if not 1 <= len(words) <= 5:
+                    errors.append(f"{option_prefix} label must contain 1-5 words")
             if not is_nonempty_stripped(description):
                 errors.append(
                     f"{option_prefix} `description` must be non-empty and stripped"
