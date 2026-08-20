@@ -301,7 +301,7 @@ Every stage requires verification after its gaps close. Verification proves the 
 - **Stage 4:** Starter profile exists; screens bound to zones; screen statistics show expected behavior; logs show screen hits only for actual attacks
 - **Stage 5:** Global policy table exists with correct ordering; policy hit counts reflect traffic; session logging working (see `references/verification.md` for external connectivity test requirements)
 
-**Verification must complete BEFORE the confirmed-commit timer expires.** For lockout-risk changes, the gate protocol mandates a 3-minute confirmed-commit timer by default. All verification commands must execute and their output interpreted within that window.
+**Verification must complete BEFORE the confirmed-commit timer expires.** For lockout-risk changes, the gate protocol mandates a confirmed-commit timer (default duration documented in `references/write-safety.md`). All verification commands must execute and their output interpreted within that window.
 
 **If verification fails while a confirmed commit is pending:** Do NOT issue the confirming commit. Let the timer expire; Junos will automatically roll back to the pre-change configuration.
 
@@ -365,7 +365,7 @@ Stage references (each defines gaps, lockout risk, verification commands, and su
 - [ ] Each gap has all seven required fields populated
 - [ ] Gaps offered in dependency order; unsatisfied dependencies not offered
 - [ ] Every lockout-risk gap follows the gate protocol (assess, show diff, approve, commit confirmed, verify, confirm)
-- [ ] Confirmed commit uses 3-minute timer by default for lockout-risk changes
+- [ ] Confirmed commit uses timer documented in `references/write-safety.md` for lockout-risk changes
 - [ ] Verification completes BEFORE the confirmed-commit timer expires
 - [ ] If verification fails, confirming commit is NOT issued; timer expires and Junos rolls back automatically
 - [ ] Re-running against a finished device produces verification matrix and proposes no writes (idempotency)
