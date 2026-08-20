@@ -315,7 +315,9 @@ the rest of the SRX300/400 line is still an inference and is labeled as one.
 All hardware validation runs **after** the documentation-sourced skill is
 complete and passing offline checks, not interleaved with authoring:
 
-- The skill is written and released against vSRX plus vendor documentation.
+- The skill is written and released from vendor documentation and existing
+  verified repository references. **No device validation is claimed at 1.0.0** —
+  vSRX exercise is itself a validation phase, not a precondition of release.
 - SRX345 validation follows as a distinct phase, upgrading Branch claims from
   documentation-sourced to verified-live and correcting whatever it contradicts.
 - SRX1600 and SRX4700 validation follows when that hardware arrives, as its own
