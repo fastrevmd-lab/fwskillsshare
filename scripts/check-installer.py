@@ -23,6 +23,7 @@ EXPECTED_FAMILIES = {
         "srx-chassis-cluster-proxmox",
         "srx-dynamic-ip-feed",
         "srx-ipsec-hub-spoke",
+        "srx-initial-setup",
         "srx-license-signature-maintenance",
         "srx-mnha",
         "srx-mpls-in-flow",
