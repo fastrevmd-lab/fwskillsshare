@@ -169,17 +169,19 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
 - **Depends on:** `mgmt.external-dhcp-configured` or `mgmt.static-assignments` (if replacing)
 - **Lockout risk:** `true` (removing DHCP before replacement addressing is active disconnects all LAN clients)
 - **Evidence:** `show configuration interfaces irb` and `show configuration system services dhcp` report IRB as DHCP server for 192.168.2.0/24
-- **Proposal:** If keeping DHCP but want reservations:
+- **Proposal:**
+
+  **If the operator chose to keep the factory-default IRB DHCP server** (adopt it as-is or with reservations), this gap documents that adoption decision. Example adoption with static bindings:
   ```text
   set system services dhcp pool 192.168.2.0/24 address-range low 192.168.2.10 high 192.168.2.200
   set system services dhcp pool 192.168.2.0/24 static-binding <MAC-address> fixed-address 192.168.2.50
   ```
-  If moving to external DHCP server, configure DHCP relay:
+
+  **If the operator chose external DHCP relay,** the cutover to external DHCP (relay configuration plus removal of the local DHCP server) is handled atomically by the `mgmt.external-dhcp-configured` gap in `references/stages/management-plane.md`. That gap performs both the relay configuration and the `delete system services dhcp pool 192.168.2.0/24` in one confirmed commit to ensure the lease test validates the relay, not the local server. When `mgmt.external-dhcp-configured` is closed, this gap is already handled and should be marked as such during assessment.
+
+  **If the operator chose static client addressing,** the `mgmt.static-assignments` gap documents the coordination point for reconfiguring clients with static IPs before removing the local server. Once clients are verified on static addressing, remove the DHCP pool:
   ```text
   delete system services dhcp pool 192.168.2.0/24
-  set forwarding-options dhcp-relay server-group dhcp-servers <external-dhcp-ip>
-  set forwarding-options dhcp-relay group dhcp-relay-group active-server-group dhcp-servers
-  set forwarding-options dhcp-relay group dhcp-relay-group interface irb.0
   ```
 
 ### `factory.vlan-trust-single-broadcast-domain`

@@ -270,25 +270,31 @@ The decision between fxp0 (dedicated out-of-band management interface) and a rev
 - **Evidence:** The deployment requires an external DHCP server instead of the device's built-in DHCP service, but the external server is not yet configured or reachable
 - **Proposal:**
 
-  Configure DHCP relay to forward client requests to the external DHCP server:
+  **This gap performs the atomic cutover from the local DHCP server to external DHCP relay.** Both the relay configuration and the removal of the local DHCP server must occur in the same confirmed commit. Configuring the relay without removing the local server allows clients to continue using the local server, giving a false positive on lease tests; removing the server without the relay being functional disconnects all clients.
+
+  Configure DHCP relay and remove the local DHCP server in one commit:
 
   ```text
   set forwarding-options dhcp-relay server-group external-dhcp <external-dhcp-server-ip>
   set forwarding-options dhcp-relay group dhcp-relay-group active-server-group external-dhcp
   set forwarding-options dhcp-relay group dhcp-relay-group interface <client-facing-interface>
+  delete system services dhcp pool <subnet>
   ```
 
-  Example for external DHCP server at 10.1.1.100 serving clients on irb.0:
+  Example for external DHCP server at 10.1.1.100 serving clients on irb.0, removing the factory-default 192.168.2.0/24 pool:
 
   ```text
   set forwarding-options dhcp-relay server-group external-dhcp 10.1.1.100
   set forwarding-options dhcp-relay group dhcp-relay-group active-server-group external-dhcp
   set forwarding-options dhcp-relay group dhcp-relay-group interface irb.0
+  delete system services dhcp pool 192.168.2.0/24
   ```
 
-  **Verification before closing `factory.irb-dhcp-server`:** Confirm the external DHCP server is operational and clients can obtain leases through the relay before removing the device's DHCP service. Test with a client DHCP request and verify lease assignment.
+  **Verification before confirming the commit:** After applying via `commit confirmed <minutes>` (see `references/write-safety.md` for timer default), test that a client can obtain a lease from the external server through the relay. If the lease test succeeds, confirm the commit. If it fails, do not confirm — the automatic rollback will restore the local DHCP server configuration.
 
-  **Lockout-risk mitigation:** Apply via `commit confirmed 5`, verify a client obtains a lease from the external server, then confirm. If clients cannot reach the external server or leases fail, the automatic rollback restores the device's DHCP service.
+  **What rollback restores:** This commit removes the local DHCP server and adds DHCP relay. If the confirming commit does not arrive before the timer expires, rollback deletes the relay configuration and restores the local DHCP server pool, returning clients to local DHCP service.
+
+  **Cross-reference to `factory.irb-dhcp-server`:** The `factory.irb-dhcp-server` gap in `references/factory-default-branch.md` documents the factory-default DHCP server as an element that can be adopted or removed. If this gap (`mgmt.external-dhcp-configured`) is closed — meaning the local server has been replaced with external DHCP relay — then `factory.irb-dhcp-server` is already handled and should be marked as such during assessment. Conversely, if the operator chooses to keep the local DHCP server (adopt the factory default), this gap remains open and `factory.irb-dhcp-server` documents that adoption decision.
 
   **Status:** UNVERIFIED. The DHCP relay syntax and configuration hierarchy are common patterns for Junos platforms, but exact syntax, server-group configuration options, and interface reference format should be verified against current Junos OS documentation for the target platform.
 
