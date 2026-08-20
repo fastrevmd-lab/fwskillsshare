@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.1 — README split
+
+Documentation only. No skill content changed, and every skill keeps the version it
+carried in 1.1.0.
+
+- `README.md` trimmed from 783 to 494 lines.
+- Per-skill detail for the compliance and SRX operational playbooks moved to
+  [`SKILLS.md`](./SKILLS.md).
+- The v1.1.0 parser notes below moved out of the README into this file.
+- The 21-row intermediate-schema table condensed to prose plus a link at its canonical
+  copy, `skills/parsing-srx-configs/references/intermediate-schema.md`.
+- Usage examples cut from eleven to five; each skill's own `SKILL.md` carries worked
+  examples for its topic.
+- `SKILLS.md` and `CHANGELOG.md` added to the downstream publish allowlist, without
+  which the published README would link to two files that were never published.
+
 ## 1.1.0 — parser improvements from fatcat/converter
 
 Version 1.1.0 of these skills incorporates parsing improvements identified by analyzing the [fatcat/converter](https://github.com/fatcat/converter) JavaScript parsers. The following areas were significantly enhanced based on fatcat's implementation:
