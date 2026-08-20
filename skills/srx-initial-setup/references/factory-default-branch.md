@@ -37,7 +37,9 @@ If the platform includes a dedicated out-of-band management interface (`fxp0`), 
 **Source:** Juniper Networks, "Configuring Junos OS on the SRX1500" (mentions fxp0 management interface configuration for platforms that have it), retrieved 2026-08-20.
 URL: https://juniper.net/documentation/en_US/release-independent/junos/topics/topic-map/srx1500-configuring-junos.html
 
-**Note:** Not all Branch platforms include fxp0. SRX300 series models vary by SKU; consult platform-specific hardware documentation.
+**Additional reference:** `skills/srx-syslog-logging/references/fxp0-and-management-vrf.md` (this repository) documents fxp0 behavior, management VRF considerations, and the distinction between fxp0 (control-plane, no flow processing) and revenue interfaces (data-plane, security-policy-governed).
+
+**Note:** SRX1500 is end-of-sale and is **not** a validation target for this skill. The citation above establishes fxp0 existence and DHCP server behavior as a pattern observed across platforms that include a management interface, but platform-specific behavior on SRX300/400 Branch models should be verified against Branch-specific documentation or live device output. Not all Branch platforms include fxp0; SRX300 series models vary by SKU. Consult platform-specific hardware documentation.
 
 ### Security policies
 
@@ -146,7 +148,7 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
 - **Stage:** factory-default-removal
 - **Severity:** `blocking` (too permissive; violates least-privilege)
 - **Depends on:** `policy.explicit-outbound` (a gap proposing explicit application-aware policies)
-- **Lockout risk:** `false` (policy change does not affect management-plane reachability if management access is in a separate zone)
+- **Lockout risk:** `true` (if the assessment's judgment about management-plane path is wrong — e.g., operator is reaching the device via a trust-to-untrust hairpin or an unexpected policy dependency exists — removing the permissive policy can cut access. The risk is lower than other factory gaps because traffic destined to the device itself is governed by `host-inbound-traffic`, not transit security policies, but it is not zero.)
 - **Evidence:** `show security policies from-zone trust to-zone untrust` reports a default-permit or broad junos-defaults policy
 - **Proposal:** Replace with explicit policies per required application. Example:
   ```text
@@ -203,7 +205,7 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
 - **Stage:** factory-default-removal
 - **Severity:** `advisory` (no harm if unused, but clarifies intent)
 - **Depends on:** Whether out-of-band management network exists
-- **Lockout risk:** `false` (if fxp0 is unused, removing its config has no reachability impact)
+- **Lockout risk:** `true` (this gap's entire existence depends on the assessment having correctly concluded fxp0 is unused. If that conclusion is wrong — e.g., the operator is connected via fxp0 but the assessment missed a DHCP lease or the connection path was misidentified — removing fxp0 configuration is exactly the change that strands the operator. If fxp0 truly is unused, the risk is zero, but the correctness of "unused" is what is being tested.)
 - **Evidence:** Platform has fxp0; `show configuration interfaces fxp0` reports 192.168.1.1/24 DHCP server; no devices are connected to it
 - **Proposal:** If truly unused:
   ```text
