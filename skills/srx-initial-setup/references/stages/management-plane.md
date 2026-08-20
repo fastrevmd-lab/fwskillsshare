@@ -22,12 +22,9 @@ The decision between fxp0 (dedicated out-of-band management interface) and a rev
 - When to use a revenue port instead (e.g., Security Director Cloud onboarding, which requires a revenue port for stream-mode security logs)
 - Platform and release support considerations
 
-**Summary of the decision framework:**
+**This stage requires choosing which interface will carry management traffic** — either fxp0 (the dedicated out-of-band management interface, if present) or a revenue port (a data-plane interface that participates in security policy processing). The choice depends on platform capabilities, deployment topology, and whether features like Security Director Cloud onboarding are required.
 
-- **fxp0 (if present):** Dedicated out-of-band management, no flow processing, not subject to security policy, comes up before the forwarding plane. Suitable for initial access and zero-touch provisioning. On chassis clusters, each node keeps its own fxp0 address.
-- **Revenue port:** Subject to security zones and policies, participates in packet forwarding. Required for Security Director Cloud onboarding and stream-mode security logging (because security logs are PFE-generated and fxp0 is not part of the PFE).
-
-**Route to `srx-syslog-logging` for the full analysis.** This stage assumes the operator has chosen the management interface based on that guidance.
+**Route to `skills/srx-syslog-logging/references/fxp0-and-management-vrf.md` for the complete decision framework.** This stage assumes the operator has chosen the management interface based on that analysis.
 
 ## Gaps
 
@@ -261,6 +258,65 @@ The decision between fxp0 (dedicated out-of-band management interface) and a rev
   If the WAN interface is a DHCP client, the DHCP server typically provides a default route automatically. Verify with `show route 0.0.0.0/0` before proposing a static default route.
 
   **Status:** UNVERIFIED. The static route syntax is a common pattern, but platform-specific behavior (e.g., how DHCP-learned routes interact with static routes, routing-instance requirements for fxp0) should be verified.
+
+### `mgmt.external-dhcp-configured`
+
+- **Stage:** management-plane
+- **Severity:** `advisory` (required only if replacing factory-default IRB DHCP server with external DHCP)
+- **Depends on:** All `access.*` gaps closed
+- **Lockout risk:** `true` (removing the device's DHCP server before the external one is operational disconnects all LAN clients)
+- **Evidence:** The deployment requires an external DHCP server instead of the device's built-in DHCP service, but the external server is not yet configured or reachable
+- **Proposal:**
+
+  Configure DHCP relay to forward client requests to the external DHCP server:
+
+  ```text
+  set forwarding-options dhcp-relay server-group external-dhcp <external-dhcp-server-ip>
+  set forwarding-options dhcp-relay group dhcp-relay-group active-server-group external-dhcp
+  set forwarding-options dhcp-relay group dhcp-relay-group interface <client-facing-interface>
+  ```
+
+  Example for external DHCP server at 10.1.1.100 serving clients on irb.0:
+
+  ```text
+  set forwarding-options dhcp-relay server-group external-dhcp 10.1.1.100
+  set forwarding-options dhcp-relay group dhcp-relay-group active-server-group external-dhcp
+  set forwarding-options dhcp-relay group dhcp-relay-group interface irb.0
+  ```
+
+  **Verification before closing `factory.irb-dhcp-server`:** Confirm the external DHCP server is operational and clients can obtain leases through the relay before removing the device's DHCP service. Test with a client DHCP request and verify lease assignment.
+
+  **Lockout-risk mitigation:** Apply via `commit confirmed 5`, verify a client obtains a lease from the external server, then confirm. If clients cannot reach the external server or leases fail, the automatic rollback restores the device's DHCP service.
+
+  **Status:** UNVERIFIED. The DHCP relay syntax and configuration hierarchy are common patterns for Junos platforms, but exact syntax, server-group configuration options, and interface reference format should be verified against current Junos OS documentation for the target platform.
+
+### `mgmt.static-assignments`
+
+- **Stage:** management-plane
+- **Severity:** `advisory` (required only if replacing factory-default IRB DHCP server with static addressing for LAN clients)
+- **Depends on:** All `access.*` gaps closed
+- **Lockout risk:** `true` (removing the DHCP server before clients are reconfigured with static addresses disconnects all LAN clients)
+- **Evidence:** The deployment requires static IP assignments for LAN clients instead of DHCP, but clients are not yet reconfigured
+- **Proposal:**
+
+  This gap is a **coordination point**, not a device configuration change. The proposal is:
+
+  1. Document the static IP assignment plan for all LAN clients (addresses, subnet mask, gateway, DNS servers).
+  2. Reconfigure each client with its assigned static address **before** removing the device's DHCP service.
+  3. Verify each client can reach the gateway and resolve DNS.
+  4. Only after all clients are verified on static addressing, proceed with closing `factory.irb-dhcp-server` to remove the device's DHCP service.
+
+  **Example static assignment plan:**
+
+  | Client Hostname | MAC Address       | Static IP     | Gateway     | DNS             |
+  |-----------------|-------------------|---------------|-------------|-----------------|
+  | workstation-1   | 00:11:22:33:44:55 | 192.168.2.10  | 192.168.2.1 | 8.8.8.8, 8.8.4.4 |
+  | workstation-2   | 00:11:22:33:44:66 | 192.168.2.11  | 192.168.2.1 | 8.8.8.8, 8.8.4.4 |
+  | server-1        | 00:11:22:33:44:77 | 192.168.2.100 | 192.168.2.1 | 8.8.8.8, 8.8.4.4 |
+
+  This gap closes when the operator confirms all clients are reconfigured and verified.
+
+  **Lockout-risk mitigation:** This gap itself carries no device configuration change, so its lockout risk is indirect — it gates the `factory.irb-dhcp-server` removal, which is the actual lockout-risk change. Closing this gap is a confirmation that the precondition (clients reconfigured) is met.
 
 ## Verification
 
