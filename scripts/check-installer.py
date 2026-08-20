@@ -166,7 +166,7 @@ def main() -> int:
 
     print(
         "OK: installer/package inventories match; installer lists and installs "
-        "27 skills with byte-identical required artifacts across 5 families "
+        "28 skills with byte-identical required artifacts across 5 families "
         "and explicit selections"
     )
     return 0

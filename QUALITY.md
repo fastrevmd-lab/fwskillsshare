@@ -2,9 +2,9 @@
 
 Round-by-round review history for the skills in this repository. Summary and caveat live in the [README](./README.md#quality-and-review).
 
-**25 of the 27 skills** have passed independent technical review. The exceptions
+**25 of the 28 skills** have passed independent technical review. The exceptions
 are `clearpass-proxmox-deploy`, which ships as a draft and is described at the end
-of this page, and `srx-syslog-logging`, which has not yet been through the
+of this page, and `srx-syslog-logging` and `srx-initial-setup`, which have not yet been through the
 two-stage review described below. The original 21
 were first reviewed on 2026-06-30, then re-reviewed on 2026-07-02 with a
 two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax
@@ -24,11 +24,11 @@ The 25th skill, `srx-chassis-cluster-proxmox`, was validated on 2026-08-11 by a 
 | Family | Skills | Reviewed |
 |--------|-------:|:--------:|
 | Config parsers | 4 | 4 / 4 |
-| SRX operational playbooks | 11 | 10 / 11 |
+| SRX operational playbooks | 12 | 10 / 12 |
 | NGFW compliance and STIG playbooks | 7 | 7 / 7 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
 | Security management and NAC deployment | 2 | 1 / 2 |
-| **Total** | **27** | **25 / 27** |
+| **Total** | **28** | **25 / 28** |
 
 The later `srx-disa-stig-compliance` addition completed an independent review on
 2026-07-22. That review verified the NIST checklist 657 / DISA Y25M01 artifact,
