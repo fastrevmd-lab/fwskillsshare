@@ -24,6 +24,8 @@ A usable Branch SRX requires:
 - This is not application-aware. The baseline uses port-based applications (HTTP, HTTPS, DNS) because AppID signatures, dynamic applications, and deep inspection are out of scope for initial setup.
 - This is not segmented. The baseline assumes a simple trust-to-untrust flow. Multi-zone policies, DMZ isolation, and cross-zone LAN segmentation are later work.
 
+**All gaps in this stage have `lockout_risk: false`.** Adding permit policies and default-deny does not affect management reachability. The gate protocol in `references/write-safety.md` applies to this skill's lockout-risk changes in other stages.
+
 ## Default deny and logging
 
 Junos SRX implements implicit deny: if no policy matches, traffic is dropped. However, relying on implicit behavior provides no log visibility.

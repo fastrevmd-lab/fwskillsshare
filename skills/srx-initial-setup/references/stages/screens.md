@@ -27,6 +27,8 @@ The documentation states that screens inspect traffic "prior to the security pol
 
 **Critical limitation:** Screens can produce false positives. An overly aggressive screen configuration can drop legitimate traffic, especially in environments with high connection rates, legitimate network scanning tools, or fragmented traffic. The starter profile below is deliberately conservative to minimize false positives in a normal Branch deployment.
 
+**All gaps in this stage have `lockout_risk: false`.** Changes proposed here do not affect management reachability. The gate protocol in `references/write-safety.md` applies to this skill's lockout-risk changes in other stages.
+
 ## The starter profile
 
 This table documents the screen options proposed for a conservative starter profile. Only options with **low or documented false-positive risk** are enabled by default. Options that can interfere with legitimate traffic in a normal Branch deployment are marked as advisory and not included in the applied configuration.

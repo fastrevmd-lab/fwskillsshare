@@ -11,6 +11,8 @@ This stage establishes system identity, time synchronization, name resolution, a
 
 All `mgmt.*` gaps are `blocking` for the `factory.*` stage. Factory-default removal is a lockout-risk change; the replacement management path must be established and verified before factory elements are removed.
 
+**Lockout-risk gaps in this stage follow the gate protocol in `references/write-safety.md`.** That file is the authority for commit-confirmed mechanics, timer selection, rollback points, and recovery-path requirements.
+
 ## Choosing the management interface
 
 The decision between fxp0 (dedicated out-of-band management interface) and a revenue port (data-plane interface subject to security zones and policies) depends on platform capabilities, network topology, and deployment requirements.
