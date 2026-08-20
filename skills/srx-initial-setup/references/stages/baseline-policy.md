@@ -308,25 +308,12 @@ After this stage closes, verify:
    show log messages | match RT_FLOW
    ```
 
-   Expect `RT_FLOW_SESSION_CREATE` and `RT_FLOW_SESSION_CLOSE` log entries for permitted sessions, and `RT_FLOW_SESSION_DENY` entries for denied sessions.
+   Expect `RT_FLOW_SESSION_CLOSE` log entries for permitted sessions, and `RT_FLOW_SESSION_DENY` entries for denied sessions.
 
    **Source for log message format:** Junos generates session log entries with `RT_FLOW` tags. This is common Junos logging behavior, but the exact log format and message structure are platform and release-specific. Verify log output on the target device.
 
 5. **Traffic is flowing:**
 
-   From a LAN client in the trust zone:
-
-   ```text
-   nslookup example.com
-   curl http://example.com
-   curl https://example.com
-   ```
-
-   Expect successful DNS resolution and HTTP/HTTPS connectivity. If these fail, check:
-
-   - Are the permit policies in place and ordered before the default-deny?
-   - Is NAT configured? (The baseline policy permits traffic, but without source NAT, the WAN interface's public IP is not applied to outbound traffic, and return traffic may be blocked by the ISP. See `srx-nat` for NAT configuration.)
-   - Are the zones and interfaces configured correctly? (Stage 3)
-   - Is routing working? (Is there a default route pointing to the ISP gateway?)
+   External connectivity tests (`nslookup example.com`, `curl http://example.com`, `curl https://example.com`) require source NAT, which this skill does not configure — see `srx-nat` for NAT configuration. Without NAT, these tests fail even when the baseline policy is correct. Test policy effectiveness via hit counts and log entries, not external reachability. See `references/verification.md` for the complete verification protocol.
 
 All `policy.*` gaps are now closed. The device has a minimal working policy. Further policy design and security service configuration are handled by `srx-policy`.

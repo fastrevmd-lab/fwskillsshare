@@ -299,7 +299,7 @@ Every stage requires verification after its gaps close. Verification proves the 
 - **Stage 2:** Hostname and domain configured; DNS resolution works; NTP synchronized (at least one server shows `*` with offset < 1000ms); management interface reachable; default route active
 - **Stage 3:** All zones exist; interfaces assigned to zones; host-inbound-traffic configured correctly; management access still works from management network
 - **Stage 4:** Starter profile exists; screens bound to zones; screen statistics show expected behavior; logs show screen hits only for actual attacks
-- **Stage 5:** Global policy table exists with correct ordering; policy hit counts reflect traffic; session logging working; DNS, HTTP, HTTPS work from LAN clients
+- **Stage 5:** Global policy table exists with correct ordering; policy hit counts reflect traffic; session logging working (see `references/verification.md` for external connectivity test requirements)
 
 **Verification must complete BEFORE the confirmed-commit timer expires.** For lockout-risk changes, the gate protocol mandates a 3-minute confirmed-commit timer by default. All verification commands must execute and their output interpreted within that window.
 
