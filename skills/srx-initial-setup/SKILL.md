@@ -17,7 +17,7 @@ metadata:
 
 ## Overview
 
-Placeholder body replaced in Task 15.
+Placeholder body replaced in Task 15. Core model references: `references/entry-state-assessment.md`.
 
 ## Runtime intake
 
