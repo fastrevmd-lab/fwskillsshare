@@ -95,6 +95,28 @@ Global policies are evaluated in the order they appear in the configuration. The
 3. `120-TRUST-TO-UNTRUST-NTP` — Permit NTP from trust to untrust
 4. `999-DEFAULT-DENY` — Deny all other traffic
 
+## Explicit zone-to-zone opt-out
+
+**Default:** This skill generates Day-1 baseline policy under `security policies global`, consistent with the `srx-policy` skill's enforced position.
+
+**Documented exceptions:** Use `security policies from-zone <zone> to-zone <zone>` structure only when the caller explicitly opts into one of the three exceptions documented in `skills/srx-policy/SKILL.md` (lines 85-87):
+
+1. **Existing-estate compatibility** where structural change is outside scope;
+2. **An isolated exception** that is clearer and safer as a zone-pair policy;
+3. **A customer standard or toolchain** that requires zone-pair contexts.
+
+**Caller responsibility:** When an exception applies, the caller must:
+
+- State which exception applies and why global policy is unsuitable for this specific baseline;
+- Constrain the zone-pair scope to only the zones where the exception is necessary;
+- Keep all other generated rules global.
+
+**Not implicit opt-outs:** A small initial rulebase, the presence of zone-pair syntax in prior configurations, or a staged migration plan do not constitute implicit opt-outs. Repeated rules across zone pairs require a global rewrite unless the caller explicitly selects an exception and provides the rationale.
+
+**Rationale:** See `skills/srx-policy/SKILL.md`, section "Enforced Global-Policy Output Contract" and "Explicit Zone-to-Zone Opt-Out" for the complete reasoning behind this position.
+
+**Verification:** Absent an explicit opt-out, the proposed set-format configuration must contain no matches for `set security policies from-zone`. All baseline rules must start with `set security policies global policy` and carry `match from-zone` and `match to-zone` fields.
+
 ## Gaps
 
 ### `policy.global-policy-absent`

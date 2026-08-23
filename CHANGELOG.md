@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0 — srx-initial-setup policy model opt-out
+
+**srx-initial-setup** v1.1.0 — adds explicit zone-to-zone policy opt-out to align with `srx-policy` skill's enforced global-policy contract. The baseline policy architecture now defaults to global policies with a documented escape hatch for three named exceptions: existing-estate compatibility, isolated exceptions clearer as zone-pair policies, and customer standards requiring zone-pair contexts. Adds runtime intake question `sis_policy_model` to confirm the architecture before generating the baseline.
+
 ## 1.2.0 — srx-initial-setup skill
 
 New skill: **[srx-initial-setup](./skills/srx-initial-setup/SKILL.md)** v1.0.0 — first-time SRX bring-up from factory-default or zeroized state to a reachable, zoned, screened, and minimally policied device. Automates Day-0 and Day-1 setup for Branch SRX300/400, campus SRX1600/4120, and datacenter SRX4300/4700/5000 platforms. At 1.0.0 this skill is written from vendor documentation and existing verified repository references; no device validation has been performed. Validation against vSRX and against SRX345, SRX1600, and SRX4700 hardware is deferred to a later release. Key features:
