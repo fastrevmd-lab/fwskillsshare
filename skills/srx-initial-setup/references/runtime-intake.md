@@ -114,6 +114,26 @@ platform or framework basis, evidence quality, then output preference.
           "description": "Confirm an already-configured device against the verification matrix."
         }
       ]
+    },
+    {
+      "id": "sis_policy_model",
+      "ask_when": "The baseline policy architecture has not been specified.",
+      "header": "Policy model",
+      "question": "Which policy architecture should the baseline use?",
+      "options": [
+        {
+          "label": "Confirm policy model first (Recommended)",
+          "description": "Confirm the architecture before generating the baseline; global policy is the default unless an exception is explicitly selected."
+        },
+        {
+          "label": "Global policy",
+          "description": "Generate the baseline as global policies, expressing zones as match from-zone and match to-zone fields."
+        },
+        {
+          "label": "Zone-pair by exception",
+          "description": "Use zone-pair structure only under one of the named exceptions documented in baseline-policy.md; the caller states which exception applies and why."
+        }
+      ]
     }
   ]
 }
