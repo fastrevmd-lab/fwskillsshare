@@ -99,7 +99,7 @@ Global policies are evaluated in the order they appear in the configuration. The
 
 **Default:** This skill generates Day-1 baseline policy under `security policies global`, consistent with the `srx-policy` skill's enforced position.
 
-**Documented exceptions:** Use `security policies from-zone <zone> to-zone <zone>` structure only when the caller explicitly opts into one of the three exceptions documented in `skills/srx-policy/SKILL.md` (lines 85-87):
+**Documented exceptions:** Use `security policies from-zone <zone> to-zone <zone>` structure only when the caller explicitly opts into one of the three exceptions documented in `skills/srx-policy/SKILL.md`, section "Enforced Global-Policy Output Contract":
 
 1. **Existing-estate compatibility** where structural change is outside scope;
 2. **An isolated exception** that is clearer and safer as a zone-pair policy;
