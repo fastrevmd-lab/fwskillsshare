@@ -2223,7 +2223,43 @@ installable skill.
   conservative supported standard interval; `Use supplied custom interval` —
   Use the supplied custom interval after validating load and reliability.
 
-### A.20 `srx-ipsec-hub-spoke`
+
+### A.20 `srx-initial-setup`
+
+- `sis_entry_state`; header `Entry state`; ask when the device entry state is
+  unknown and no read-only assessment output was supplied; question `What state
+  is this SRX in right now?`; options: `Assess the device first (Recommended)`
+  — Run the read-only entry-state assessment and report what is present before
+  proposing any change; `Factory default or freshly zeroized` — The device
+  still carries its shipped or reset configuration; `Partially configured` —
+  Some setup was already done and the remaining gaps should be closed.
+- `sis_change_authority`; header `Authority`; ask when a device write is in
+  scope and no approval boundary was stated; question `What may this run do to
+  the device?`; options: `Read-only assessment (Recommended)` — Assess and
+  report gaps with candidate configuration, applying nothing; `Staged writes
+  with per-stage approval` — Apply approved stages under commit confirmed,
+  pausing for approval at each gate.
+- `sis_console`; header `Recovery`; ask when a change with lockout risk is in
+  scope and out-of-band access was not confirmed; question `Is console or
+  out-of-band access available if in-band reachability is lost?`; options:
+  `Confirm console access first (Recommended)` — Do not propose lockout-risk
+  changes until an out-of-band recovery path is confirmed; `Console access is
+  confirmed available` — An out-of-band path exists and a lost in-band session
+  is recoverable.
+- `sis_platform`; header `Platform`; ask when the platform class is unknown and
+  cannot be read from supplied evidence; question `Which SRX platform is being
+  set up?`; options: `Read platform from device (Recommended)` — Determine
+  platform and Junos release from device output rather than assuming; `Branch
+  SRX300 or SRX400` — Ships with a factory-default configuration that must be
+  understood before it is removed; `Campus or datacenter SRX` — SRX1600,
+  SRX4120, SRX4300, SRX4700, or SRX5000.
+- `sis_task`; header `Task`; ask when the requested activity is absent; question
+  `What should this setup run accomplish?`; options: `Assess and report gaps
+  (Recommended)` — Produce the entry-state assessment, gap list, and entitlement
+  readout without changing the device; `Close open setup gaps` — Walk the open
+  stage gates and bring the device to a usable baseline; `Verify a finished
+  setup` — Confirm an already-configured device against the verification matrix.
+### A.21 `srx-ipsec-hub-spoke`
 
 - `hsvpn_task`; header `Task`; ask when requested activity is absent; question
   `What should this hub-and-spoke run accomplish?`; options: `Design or review
@@ -2268,7 +2304,7 @@ installable skill.
   conclusions; `Approved live collection` — Collect targeted read-only device
   evidence with approval.
 
-### A.21 `srx-license-signature-maintenance`
+### A.22 `srx-license-signature-maintenance`
 
 - `lsm_mode`; header `Mode`; ask when requested maintenance mode is absent;
   question `What should this maintenance run accomplish?`; options: `Audit only
@@ -2320,7 +2356,7 @@ installable skill.
   per-device summary already requested; `Exceptions only` — Report only devices
   that failed or need follow-up.
 
-### A.22 `srx-mnha`
+### A.23 `srx-mnha`
 
 - `mnha_task`; header `Task`; ask when requested activity is absent; question
   `What should this MNHA run accomplish?`; options: `Design or review
@@ -2376,7 +2412,7 @@ installable skill.
   failures` — Test specified cases; `One failure` — Reproduce the reported case
   safely.
 
-### A.23 `srx-mpls-in-flow`
+### A.24 `srx-mpls-in-flow`
 
 - `mpls_task`; header `Task`; ask when requested activity is absent; question
   `What should this MPLS-in-flow run accomplish?`; options: `Design or review
@@ -2426,7 +2462,7 @@ installable skill.
   supplied application, NAT, and inspection list after license and capacity
   validation.
 
-### A.24 `srx-nat`
+### A.25 `srx-nat`
 
 - `nat_task`; header `Task`; ask when requested activity is absent; question
   `What should this NAT run accomplish?`; options: `Design or review
@@ -2481,7 +2517,7 @@ installable skill.
   runtime conclusions; `Approved live collection` — Collect targeted read-only
   device evidence with approval.
 
-### A.25 `srx-policy`
+### A.26 `srx-policy`
 
 - `policy_task`; header `Task`; ask when requested activity is absent; question
   `What should this policy run accomplish?`; options: `Design or review
@@ -2536,7 +2572,7 @@ installable skill.
   `Maintenance-window reset` — Reset broader session state only under separate
   maintenance approval with rollback.
 
-### A.26 `srx-syslog-logging`
+### A.27 `srx-syslog-logging`
 
 - `syslog_task`; header `Task`; ask when the requested activity is absent;
   question `What should this logging run accomplish?`; options: `Design or

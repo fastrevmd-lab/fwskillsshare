@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 — srx-initial-setup skill
+
+New skill: **[srx-initial-setup](./skills/srx-initial-setup/SKILL.md)** v1.0.0 — first-time SRX bring-up from factory-default or zeroized state to a reachable, zoned, screened, and minimally policied device. Automates Day-0 and Day-1 setup for Branch SRX300/400, campus SRX1600/4120, and datacenter SRX4300/4700/5000 platforms. At 1.0.0 this skill is written from vendor documentation and existing verified repository references; no device validation has been performed. Validation against vSRX and against SRX345, SRX1600, and SRX4700 hardware is deferred to a later release. Key features:
+
+- Assess-first architecture: read-only entry-state assessment classifies device into one of five states before proposing any writes
+- Dependency-ordered gap model: closes only the gaps that are actually open, making the skill idempotent
+- Per-stage approval gates with confirmed commit and rollback timers on all lockout-risk changes
+- Branch factory-default handling: removal of shipped zones, DHCP server, and permissive policy only after replacement management path is verified
+- Five stages: access and recovery, management plane, interfaces and zones with host-inbound-traffic, starter IDS screens, and minimal baseline policy
+- Entitlement readout across three independent axes (entitled, configured, active) that routes to sibling skills for license mutation and feature configuration
+
 ## 1.1.1 — README split
 
 Documentation only. No skill content changed, and every skill keeps the version it

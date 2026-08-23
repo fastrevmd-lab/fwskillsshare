@@ -55,6 +55,7 @@ EXPECTED_SKILL_NAMES = frozenset(
         "srx-autovpn-full-tunnel",
         "srx-chassis-cluster-proxmox",
         "srx-dynamic-ip-feed",
+        "srx-initial-setup",
         "srx-ipsec-hub-spoke",
         "srx-license-signature-maintenance",
         "srx-mnha",

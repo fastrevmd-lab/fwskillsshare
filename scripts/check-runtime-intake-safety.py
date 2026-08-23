@@ -68,6 +68,7 @@ EXPECTED_SKILLS = (
     "srx-chassis-cluster-proxmox",
     "srx-disa-stig-compliance",
     "srx-dynamic-ip-feed",
+    "srx-initial-setup",
     "srx-ipsec-hub-spoke",
     "srx-license-signature-maintenance",
     "srx-mnha",
@@ -124,6 +125,8 @@ EXPECTED_CATALOG_SHA256 = {
         "15b527bbd63e473383eaa061903158ee254a8dbc4531f8f5e06a2a595608ac9f",
     "srx-dynamic-ip-feed":
         "ea5a19c8933eadfc94dd1c9daf9880082ed32f04012bc006ef158ad518791d13",
+    "srx-initial-setup":
+        "208809151d1346f8fc6e2514a7cd3799e25eadca892ebb955f31f7522eab790a",
     "srx-ipsec-hub-spoke":
         "e1f9c59cd39aeef8346ca558b968c9d12348691bd09fb2601dfbfe1121eb3080",
     "srx-license-signature-maintenance":
@@ -328,6 +331,16 @@ SAFE_FIRST_LABELS = {
         "Verify endpoint first (Recommended)",
     ("srx-dynamic-ip-feed", "dif_route"):
         "Trace route first (Recommended)",
+    ("srx-initial-setup", "sis_entry_state"):
+        "Assess the device first (Recommended)",
+    ("srx-initial-setup", "sis_change_authority"):
+        "Read-only assessment (Recommended)",
+    ("srx-initial-setup", "sis_console"):
+        "Confirm console access first (Recommended)",
+    ("srx-initial-setup", "sis_platform"):
+        "Read platform from device (Recommended)",
+    ("srx-initial-setup", "sis_task"):
+        "Assess and report gaps (Recommended)",
     ("srx-ipsec-hub-spoke", "hsvpn_release"):
         "Discover first (Recommended)",
     ("srx-ipsec-hub-spoke", "hsvpn_topo"):

@@ -30,6 +30,7 @@ declare -a PARSERS=(
 )
 
 declare -a SRX=(
+    "srx-initial-setup"
     "srx-dynamic-ip-feed"
     "srx-mpls-in-flow"
     "srx-mnha"

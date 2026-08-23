@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRX First-Time Setup"
+  short_description: "Bring a new or reset SRX up to a usable baseline"
+  default_prompt: "Use $srx-initial-setup to assess this SRX and bring it to a usable baseline."
