@@ -32,9 +32,49 @@ only outstanding work on it.
 design. `srx-initial-setup` targets Branch platforms and reaches the
 baseline-policy stage; when a zone-pair exception applies, that stage routes to
 `srx-policy`. But `srx-policy` scopes itself to "non-Branch SRX platforms" and
-disclaims Branch. Closing this gap means extending and validating `srx-policy`
-for Branch, or building a separate Branch-specific policy skill. Until then,
-operators on Branch platforms needing zone-pair policy design it manually.
+disclaims Branch. Until this is closed, operators on Branch platforms needing
+zone-pair policy design it manually, and both `srx-initial-setup` and this file
+say so rather than implying coverage.
+
+**Decision: narrow `srx-policy`'s exclusion. Do not build a separate
+`srx-branch-policy` skill.** Blocked on SRX345 hardware validation — see below.
+
+Investigated 2026-08-24. Findings:
+
+- The `non-Branch` scope has been present since `srx-policy`'s first commit
+  (`95d247e`) with **no recorded rationale anywhere** — no design document, no
+  reference file, no commit message explains it. It appears in exactly two
+  places: the `description` frontmatter field and `SKILL.md`'s Overview.
+- No Branch hardware has ever been tested against `srx-policy`. Its validation
+  records name vSRX and unspecified devices only, so the exclusion is not
+  backed by a negative result either.
+- Juniper documentation (retrieved 2026-08-24) records **no** Branch exclusion
+  for policy structure. Global policies, zone-pair policies, and unified
+  policies with `match dynamic-application` are documented for "SRX Series"
+  generically. Unified policies — the most advanced construct — have been
+  Branch-supported since Junos 18.2R1.
+- Address and application objects, rule order, default-deny, session logging,
+  and hit counts show no documented Branch-specific difference.
+- The NGFW service-attachment features are all Branch-available and
+  license-gated, by the same gates that apply to higher-end SRX: AppID/AppFW,
+  NGWF, EWF, SecIntel, ATP, and IDP/IPS. UTM is in fact **Branch-oriented** —
+  Juniper publishes "Understanding UTM for Branch SRX Series".
+- A separate Branch policy skill would duplicate 90%+ of identical content and
+  runs against this repository's own rule in `AGENTS.md` to prefer
+  consolidating overlapping skills over adding them. Two policy skills would
+  also split lexical discovery for the same question.
+
+**What closing it requires:** widen `srx-policy`'s stated scope to cover Branch
+for core policy design, add a licensing/feature-gate reference section, and
+qualify service-attachment claims per platform. Because that widens a mature
+skill's scope, the Branch claims must be labelled documentation-sourced until
+they are exercised on the SRX345. **Do not widen the scope before that
+validation** — widening on documentation alone, in a skill that has never seen
+Branch hardware, is the overclaiming this repository forbids.
+
+The absence of a recorded rationale is evidence the exclusion was never
+justified, not proof it was wrong; the original author may simply have never
+validated Branch and hedged. The SRX345 settles it either way.
 
 1. [ ] `palo-operational` (PAN-OS operational playbook)
    - Add Palo Alto operational depth comparable to the SRX operational skills.
