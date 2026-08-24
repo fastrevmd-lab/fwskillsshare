@@ -131,7 +131,7 @@ platform or framework basis, evidence quality, then output preference.
         },
         {
           "label": "Zone-pair by exception",
-          "description": "Use zone-pair structure only under one of the named exceptions documented in baseline-policy.md; the caller states which exception applies and why."
+          "description": "Route the policy stage to srx-policy for zone-pair design under a named exception documented in baseline-policy.md; the caller states which exception applies and why."
         }
       ]
     }

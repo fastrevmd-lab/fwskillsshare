@@ -97,13 +97,17 @@ Global policies are evaluated in the order they appear in the configuration. The
 
 ## Explicit zone-to-zone opt-out
 
-**Default:** This skill generates Day-1 baseline policy under `security policies global`, consistent with the `srx-policy` skill's enforced position.
+**Default:** This skill generates Day-1 baseline policy under `security policies global` only. Global policy is the only policy model this skill produces.
 
-**Documented exceptions:** Use `security policies from-zone <zone> to-zone <zone>` structure only when the caller explicitly opts into one of the three exceptions documented in `skills/srx-policy/SKILL.md`, section "Enforced Global-Policy Output Contract":
+**Zone-pair exceptions route to `srx-policy`.** When the caller opts into one of the three exceptions documented in `skills/srx-policy/SKILL.md`, section "Enforced Global-Policy Output Contract", this skill does not generate policy at all — the baseline-policy stage routes policy design to `skills/srx-policy/`, which owns zone-pair design and already has a working zone-pair generation path.
+
+The three named exceptions are:
 
 1. **Existing-estate compatibility** where structural change is outside scope;
 2. **An isolated exception** that is clearer and safer as a zone-pair policy;
 3. **A customer standard or toolchain** that requires zone-pair contexts.
+
+**What still applies under an opt-out:** Stages 1 through 4 (access and recovery, management plane, interfaces and zones, screens) apply unchanged. Only the baseline-policy stage hands off to `srx-policy`.
 
 **Caller responsibility:** When an exception applies, the caller must:
 
@@ -115,7 +119,7 @@ Global policies are evaluated in the order they appear in the configuration. The
 
 **Rationale:** See `skills/srx-policy/SKILL.md`, section "Enforced Global-Policy Output Contract" and "Explicit Zone-to-Zone Opt-Out" for the complete reasoning behind this position.
 
-**Verification:** Absent an explicit opt-out, the proposed set-format configuration must contain no matches for `set security policies from-zone`. All baseline rules must start with `set security policies global policy` and carry `match from-zone` and `match to-zone` fields.
+**Verification:** Without an opt-out, the proposed set-format configuration must contain no matches for `set security policies from-zone` and every baseline rule must start with `set security policies global policy` with `match from-zone` and `match to-zone` fields. With an opt-out, this skill proposes no policy configuration at all and the verification check does not apply here — verification belongs to `srx-policy`.
 
 ## Gaps
 

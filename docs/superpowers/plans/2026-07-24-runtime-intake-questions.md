@@ -2265,8 +2265,7 @@ installable skill.
   Confirm the architecture before generating the baseline; global policy is the
   default unless an exception is explicitly selected; `Global policy` — Generate
   the baseline as global policies, expressing zones as match from-zone and match
-  to-zone fields; `Zone-pair by exception` — Use zone-pair structure only under
-  one of the named exceptions documented in baseline-policy.md; the caller states
+  to-zone fields; `Zone-pair by exception` — Route the policy stage to srx-policy for zone-pair design under a named exception documented in baseline-policy.md; the caller states
   which exception applies and why.
 ### A.21 `srx-ipsec-hub-spoke`
 
