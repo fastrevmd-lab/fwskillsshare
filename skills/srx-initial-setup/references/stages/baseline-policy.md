@@ -133,7 +133,7 @@ The three named exceptions are:
 - **Severity:** `blocking`
 - **Depends on:** `zone.trust-absent`, `zone.untrust-absent`
 - **Lockout risk:** `false` (creating a policy table does not change traffic flow; policies must be committed and activated)
-- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when a policy configuration exists and is verified by that party, whatever its structure.
+- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when session logging on permit and deny rules is verified by that party, whatever the policy structure.
 - **Evidence:** `show configuration security policies global` returns no configuration
 - **Proposal:**
 
@@ -153,7 +153,7 @@ The three named exceptions are:
 - **Severity:** `blocking`
 - **Depends on:** `policy.global-policy-absent`, all `zone.*` gaps closed
 - **Lockout risk:** `false` (adding permit policies does not break existing flows; removing or changing them can)
-- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when a policy configuration exists and is verified by that party, whatever its structure.
+- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when session logging on permit and deny rules is verified by that party, whatever the policy structure.
 - **Evidence:** `show configuration security policies global` returns no policies, or existing policies do not permit trust-to-untrust outbound traffic for essential services (DNS, HTTP, HTTPS, NTP)
 - **Proposal:**
 
@@ -217,7 +217,7 @@ The three named exceptions are:
 - **Severity:** `blocking`
 - **Depends on:** `policy.explicit-outbound`
 - **Lockout risk:** `false` (adding a default-deny at the bottom of the table does not block traffic already permitted by earlier rules; it only makes the implicit deny explicit and logged)
-- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when a policy configuration exists and is verified by that party, whatever its structure.
+- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when session logging on permit and deny rules is verified by that party, whatever the policy structure.
 - **Evidence:** `show configuration security policies global` returns policies, but no final deny-all rule with logging exists
 - **Proposal:**
 
@@ -251,7 +251,7 @@ The three named exceptions are:
 - **Severity:** `advisory` (logging is operationally important but not a blocker for connectivity)
 - **Depends on:** `policy.explicit-outbound`, `policy.default-deny-absent`
 - **Lockout risk:** `false`
-- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when a policy configuration exists and is verified by that party, whatever its structure.
+- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when session logging on permit and deny rules is verified by that party, whatever the policy structure.
 - **Evidence:** Policies exist but `show configuration security policies global | match log` returns no logging configuration on permit policies
 - **Proposal:**
 
