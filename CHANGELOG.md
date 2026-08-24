@@ -2,7 +2,7 @@
 
 ## 1.3.0 — srx-initial-setup policy model opt-out
 
-**srx-initial-setup** v1.1.0 — adds explicit zone-to-zone policy opt-out to align with `srx-policy` skill's enforced global-policy contract. The baseline policy is generated as global policy; when a zone-pair exception applies (existing-estate compatibility, isolated exceptions clearer as zone-pair policies, or customer standards requiring zone-pair contexts), the policy stage routes to `srx-policy` for zone-pair design. Adds runtime intake question `sis_policy_model` to confirm the architecture before generating the baseline.
+**srx-initial-setup** v1.1.0 — adds explicit zone-to-zone policy opt-out to align with `srx-policy` skill's enforced global-policy contract. The baseline policy is generated as global policy; when a zone-pair exception applies (existing-estate compatibility, isolated exceptions clearer as zone-pair policies, or customer standards requiring zone-pair contexts), the policy stage routes to `srx-policy` for zone-pair design on non-Branch platforms (Branch SRX zone-pair policy is unowned). Adds runtime intake question `sis_policy_model` to confirm the architecture before generating the baseline.
 
 ## 1.2.0 — srx-initial-setup skill
 

@@ -73,7 +73,7 @@ Use this skill for first-time setup, Day-0 and Day-1 bring-up, factory-default r
 
 2. **Licensing mutation.** This skill reads feature entitlement and operational state (entitled, configured, active) but never installs, modifies, or removes licenses. All mutating license work routes to `srx-license-signature-maintenance`.
 
-3. **Policy design beyond the baseline.** This skill establishes the minimum security policy required to make the device usable: outbound DNS, web, and NTP, plus default-deny with logging. The baseline is generated using global policies; when a zone-pair exception applies, the policy stage routes to srx-policy (see `references/stages/baseline-policy.md`). Application-aware policies, URL filtering, intrusion prevention, and advanced security services route to `srx-policy`.
+3. **Policy design beyond the baseline.** This skill establishes the minimum security policy required to make the device usable: outbound DNS, web, and NTP, plus default-deny with logging. The baseline is generated using global policies; when a zone-pair exception applies, the policy stage routes to srx-policy for non-Branch platforms (see `references/stages/baseline-policy.md` for Branch limitations). Application-aware policies, URL filtering, intrusion prevention, and advanced security services route to `srx-policy` (non-Branch platforms only; Branch SRX zone-pair policy is unowned).
 
 ## Runtime intake
 
