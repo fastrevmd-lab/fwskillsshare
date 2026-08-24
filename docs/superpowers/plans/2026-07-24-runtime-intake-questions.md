@@ -2259,6 +2259,13 @@ installable skill.
   readout without changing the device; `Close open setup gaps` — Walk the open
   stage gates and bring the device to a usable baseline; `Verify a finished
   setup` — Confirm an already-configured device against the verification matrix.
+- `sis_policy_model`; header `Policy model`; ask when the baseline policy
+  architecture has not been specified; question `Which policy architecture should
+  the baseline use?`; options: `Confirm policy model first (Recommended)` —
+  Confirm the architecture before generating the baseline; global policy is the
+  default unless an exception is explicitly selected; `Global policy` — Generate
+  the baseline as global policies, expressing zones as match from-zone and match
+  to-zone fields; `Zone-pair by exception` — Route the policy stage for zone-pair design under a named exception documented in baseline-policy.md (srx-policy for non-Branch platforms, operator-owned for Branch); the caller states which exception applies and why.
 ### A.21 `srx-ipsec-hub-spoke`
 
 - `hsvpn_task`; header `Task`; ask when requested activity is absent; question

@@ -28,6 +28,14 @@ Its **mutating** paths (`request system license add`,
 only outstanding work on it.
 
 
+**Unowned scope:** Branch SRX (SRX300 series, SRX400 series) zone-pair policy
+design. `srx-initial-setup` targets Branch platforms and reaches the
+baseline-policy stage; when a zone-pair exception applies, that stage routes to
+`srx-policy`. But `srx-policy` scopes itself to "non-Branch SRX platforms" and
+disclaims Branch. Closing this gap means extending and validating `srx-policy`
+for Branch, or building a separate Branch-specific policy skill. Until then,
+operators on Branch platforms needing zone-pair policy design it manually.
+
 1. [ ] `palo-operational` (PAN-OS operational playbook)
    - Add Palo Alto operational depth comparable to the SRX operational skills.
    - Author and validate against the available Palo VM.

@@ -1,7 +1,7 @@
 ---
 name: srx-initial-setup
 description: Bring a new or factory-reset Juniper SRX from its shipped state to a reachable, zoned, screened, and minimally policied device. Use when performing first-time setup or Day-0 and Day-1 bring-up on SRX300 or SRX400 Branch, SRX1600 or SRX4120 campus, or SRX4300, SRX4700, or SRX5000 datacenter platforms, when removing or adopting factory-default configuration, when establishing management access, NTP, DNS, and system services, when creating interfaces, zones, and host-inbound-traffic, when applying starter screens, or when reading which licensed feature sets are entitled, configured, and active. Not for chassis-cluster formation, ZTP, Junos upgrades, or full policy design.
-version: 1.0.0
+version: 1.1.0
 author:
   - fastrevmd-lab
   - Claude
@@ -73,7 +73,7 @@ Use this skill for first-time setup, Day-0 and Day-1 bring-up, factory-default r
 
 2. **Licensing mutation.** This skill reads feature entitlement and operational state (entitled, configured, active) but never installs, modifies, or removes licenses. All mutating license work routes to `srx-license-signature-maintenance`.
 
-3. **Policy design beyond the baseline.** This skill establishes the minimum security policy required to make the device usable: outbound DNS, web, and NTP, plus default-deny with logging. Application-aware policies, URL filtering, intrusion prevention, and advanced security services route to `srx-policy`.
+3. **Policy design beyond the baseline.** This skill establishes the minimum security policy required to make the device usable: outbound DNS, web, and NTP, plus default-deny with logging. The baseline is generated using global policies; when a zone-pair exception applies, the policy stage routes to srx-policy for non-Branch platforms (see `references/stages/baseline-policy.md` for Branch limitations). Application-aware policies, URL filtering, intrusion prevention, and advanced security services route to `srx-policy` (non-Branch platforms only; Branch SRX zone-pair policy is unowned).
 
 ## Runtime intake
 

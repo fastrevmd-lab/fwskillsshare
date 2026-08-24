@@ -126,7 +126,7 @@ EXPECTED_CATALOG_SHA256 = {
     "srx-dynamic-ip-feed":
         "ea5a19c8933eadfc94dd1c9daf9880082ed32f04012bc006ef158ad518791d13",
     "srx-initial-setup":
-        "208809151d1346f8fc6e2514a7cd3799e25eadca892ebb955f31f7522eab790a",
+        "491764a201f053b6348bffccab58547c0b643667e7e9a75789caa35326f9dd44",
     "srx-ipsec-hub-spoke":
         "e1f9c59cd39aeef8346ca558b968c9d12348691bd09fb2601dfbfe1121eb3080",
     "srx-license-signature-maintenance":
@@ -341,6 +341,8 @@ SAFE_FIRST_LABELS = {
         "Read platform from device (Recommended)",
     ("srx-initial-setup", "sis_task"):
         "Assess and report gaps (Recommended)",
+    ("srx-initial-setup", "sis_policy_model"):
+        "Confirm policy model first (Recommended)",
     ("srx-ipsec-hub-spoke", "hsvpn_release"):
         "Discover first (Recommended)",
     ("srx-ipsec-hub-spoke", "hsvpn_topo"):
