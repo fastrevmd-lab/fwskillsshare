@@ -251,6 +251,7 @@ The three named exceptions are:
 - **Severity:** `advisory` (logging is operationally important but not a blocker for connectivity)
 - **Depends on:** `policy.explicit-outbound`, `policy.default-deny-absent`
 - **Lockout risk:** `false`
+- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when a policy configuration exists and is verified by that party, whatever its structure.
 - **Evidence:** Policies exist but `show configuration security policies global | match log` returns no logging configuration on permit policies
 - **Proposal:**
 

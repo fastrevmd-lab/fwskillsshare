@@ -131,7 +131,7 @@ platform or framework basis, evidence quality, then output preference.
         },
         {
           "label": "Zone-pair by exception",
-          "description": "Route the policy stage to srx-policy for zone-pair design under a named exception documented in baseline-policy.md; the caller states which exception applies and why."
+          "description": "Route the policy stage for zone-pair design under a named exception documented in baseline-policy.md (srx-policy for non-Branch platforms, operator-owned for Branch); the caller states which exception applies and why."
         }
       ]
     }
