@@ -1,3 +1,5 @@
+
+
 <!-- brand:header:start -->
 <p align="center">
   <picture>
@@ -297,7 +299,7 @@ Examples:
 ./install.sh --all --target codex               # everything, into ~/.agents/skills
 ./install.sh --family parsers --family srx      # just the parsers + SRX playbooks
 ./install.sh --family tooling --target all      # tooling skills into all three agents
-./install.sh --family deployment --target codex # Security Director On-Prem deployment skill
+./install.sh --family deployment --target codex # Security Director On-Prem and ClearPass deployment skills
 ./install.sh --skill sd-onprem-proxmox-deploy --target claude -y
 ./install.sh --skill parsing-srx-configs --skill srx-nat -y
 ./install.sh --list                             # see what's available
