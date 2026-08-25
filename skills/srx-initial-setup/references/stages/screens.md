@@ -97,21 +97,15 @@ set security screen ids-option STARTER-SCREENS tcp land
 set security screen ids-option STARTER-SCREENS tcp winnuke
 set security screen ids-option STARTER-SCREENS ip tear-drop
 
-set security screen ids-option STARTER-SCREENS-UNTRUST ip source-route-option
-set security screen ids-option STARTER-SCREENS-UNTRUST ip record-route-option
-set security screen ids-option STARTER-SCREENS-UNTRUST ip bad-option
-set security screen ids-option STARTER-SCREENS-UNTRUST ip tear-drop
-set security screen ids-option STARTER-SCREENS-UNTRUST icmp ping-death
-set security screen ids-option STARTER-SCREENS-UNTRUST icmp icmp-fragment
-set security screen ids-option STARTER-SCREENS-UNTRUST tcp syn-fin
-set security screen ids-option STARTER-SCREENS-UNTRUST tcp fin-no-ack
-set security screen ids-option STARTER-SCREENS-UNTRUST tcp tcp-no-flag
-set security screen ids-option STARTER-SCREENS-UNTRUST tcp syn-frag
-set security screen ids-option STARTER-SCREENS-UNTRUST tcp land
-set security screen ids-option STARTER-SCREENS-UNTRUST tcp winnuke
-
-set security zones security-zone untrust screen STARTER-SCREENS-UNTRUST
 set security zones security-zone trust screen STARTER-SCREENS
+```
+
+**The untrust profile is deliberately not spelled out as a runnable block.** It cannot be a fixed list: Junos permits one screen profile per zone, so whatever is bound to `untrust` must be the **union** of this starter set, the IPv6 leaves where IPv6 is deployed, and every leaf already on the profile it replaces — including thresholds and any operator additions. A copyable fixed list is precisely how the original regression happened, and repeating it here would reintroduce it one level down.
+
+Build `STARTER-SCREENS-UNTRUST` per the union procedure in `screen.starter-profile-absent` below, then bind it:
+
+```text
+set security zones security-zone untrust screen STARTER-SCREENS-UNTRUST
 ```
 
 **Recommended binding:**

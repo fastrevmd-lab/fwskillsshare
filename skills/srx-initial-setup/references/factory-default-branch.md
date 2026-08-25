@@ -225,21 +225,21 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
   ```text
   delete security policies from-zone trust to-zone untrust policy trust-to-untrust
   delete security policies from-zone trust to-zone trust policy trust-to-trust
+  <the COMPLETE Stage 5 baseline — see below; do not hand-copy a subset here>
   set security policies global policy 200-TRUST-INTRAZONE match from-zone trust
   set security policies global policy 200-TRUST-INTRAZONE match to-zone trust
   set security policies global policy 200-TRUST-INTRAZONE match source-address any
   set security policies global policy 200-TRUST-INTRAZONE match destination-address any
   set security policies global policy 200-TRUST-INTRAZONE match application any
   set security policies global policy 200-TRUST-INTRAZONE then permit
-  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match from-zone trust
-  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match to-zone untrust
-  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match source-address any
-  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match destination-address any
-  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match application [ junos-dns-udp junos-dns-tcp ]
-  set security policies global policy 100-TRUST-TO-UNTRUST-DNS then permit
-  set security policies global policy 100-TRUST-TO-UNTRUST-DNS then log session-close
   ```
-  Expand per deployment needs (NTP, ICMP, etc.). Use address objects instead of `any` for tighter control.
+  **The replacement half is not defined here — it is the complete Stage 5 baseline.** `references/stages/baseline-policy.md` is the single source of truth for it: `policy.global-policy-absent`, `policy.explicit-outbound` (DNS **and** HTTP/HTTPS **and** NTP), and `policy.default-deny-absent`. Emit all of them, plus the `200-TRUST-INTRAZONE` replacement above, in this one commit.
+
+  An earlier revision restated a *subset* of that baseline inline and drifted: it created only DNS and intrazone rules while claiming to satisfy `policy.explicit-outbound`, which would have left web and NTP permanently denied behind the new default-deny. Reference the Stage 5 gaps; do not copy them.
+
+  **Closing condition.** This gap closes only when its own evidence passes: the factory zone-pair policies are gone **and** every Stage 5 baseline gap's evidence is satisfied. Deleting permit-any is not sufficient to close it.
+
+  Use address objects instead of `any` for tighter control.
 
   **Delete by policy name, never by hierarchy.** `delete security policies from-zone trust to-zone untrust` removes *every* policy in that zone pair, not just the factory one. On a `partial` device — factory remnants plus operator-added rules, which is the state this skill explicitly expects to find — that silently destroys the operator's custom access with nothing in the evidence to justify it. Enumerate the factory policy names from `show configuration security policies` and delete only those; migrate every other rule into the global table instead of dropping it.
 
