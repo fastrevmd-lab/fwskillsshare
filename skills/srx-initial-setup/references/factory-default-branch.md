@@ -225,15 +225,20 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
   ```text
   delete security policies from-zone trust to-zone untrust policy trust-to-untrust
   delete security policies from-zone trust to-zone trust policy trust-to-trust
-  <the COMPLETE Stage 5 baseline — see below; do not hand-copy a subset here>
+  <Stage 5 permit gaps that are still open — 100-DNS, 110-WEB, 120-NTP>
   set security policies global policy 200-TRUST-INTRAZONE match from-zone trust
   set security policies global policy 200-TRUST-INTRAZONE match to-zone trust
   set security policies global policy 200-TRUST-INTRAZONE match source-address any
   set security policies global policy 200-TRUST-INTRAZONE match destination-address any
   set security policies global policy 200-TRUST-INTRAZONE match application any
   set security policies global policy 200-TRUST-INTRAZONE then permit
+  <policy.default-deny-absent LAST — 999-DEFAULT-DENY>
   ```
-  **The replacement half is not defined here — it is the complete Stage 5 baseline.** `references/stages/baseline-policy.md` is the single source of truth for it: `policy.global-policy-absent`, `policy.explicit-outbound` (DNS **and** HTTP/HTTPS **and** NTP), and `policy.default-deny-absent`. Emit all of them, plus the `200-TRUST-INTRAZONE` replacement above, in this one commit.
+
+  **Order is load-bearing.** Junos evaluates global policies in creation order, and `999-DEFAULT-DENY` is a catch-all. Every permit — including `200-TRUST-INTRAZONE` — must be created **before** it. Emitting the full Stage 5 baseline first and appending the intrazone permit afterwards shadows that permit behind the deny, so once factory `trust-to-trust` is gone, routed intra-trust traffic is denied. Where ordering cannot be controlled by creation sequence, use `insert security policies global policy 200-TRUST-INTRAZONE before policy 999-DEFAULT-DENY` and verify with `show security policies global`.
+  **The replacement half is not defined here — it is the complete Stage 5 baseline.** `references/stages/baseline-policy.md` is the single source of truth for it: `policy.global-policy-absent`, `policy.explicit-outbound` (DNS **and** HTTP/HTTPS **and** NTP), and `policy.default-deny-absent`.
+
+  **Emit only the Stage 5 gaps that are still open**, plus the `200-TRUST-INTRAZONE` replacement, in this one commit. Re-emitting an already-closed gap violates the idempotency contract in `references/gap-model.md` — on a `partial` device whose operator already wrote tighter custom global rules, re-proposing the stock `any` versions either duplicates them or overwrites same-named policies with something broader than what was there. Assess first, compose the cutover from the deletion plus the open gaps only.
 
   An earlier revision restated a *subset* of that baseline inline and drifted: it created only DNS and intrazone rules while claiming to satisfy `policy.explicit-outbound`, which would have left web and NTP permanently denied behind the new default-deny. Reference the Stage 5 gaps; do not copy them.
 

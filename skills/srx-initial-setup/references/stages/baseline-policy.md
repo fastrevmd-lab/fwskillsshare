@@ -163,7 +163,7 @@ The three named exceptions are:
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS match to-zone untrust
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS match source-address any
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS match destination-address any
-  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match application junos-dns-udp
+  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match application [ junos-dns-udp junos-dns-tcp ]
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS then permit
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS then log session-close
 
@@ -187,11 +187,11 @@ The three named exceptions are:
 
   **Reasoning:** These three policies permit the minimum outbound traffic required for a functional Branch deployment:
 
-  - **DNS (junos-dns-udp):** Required for name resolution by the device and LAN clients.
+  - **DNS (`junos-dns-udp` and `junos-dns-tcp`):** Required for name resolution by the device and LAN clients. **Include TCP/53, not just UDP.** Resolvers fall back to TCP whenever a response is truncated (large RRsets, DNSSEC), so a UDP-only permit sitting above a default-deny produces intermittent resolution failures that look like flaky DNS rather than a policy problem.
   - **HTTP and HTTPS (junos-http, junos-https):** Required for web browsing by LAN clients and for the device to reach external services (software updates, cloud management, license activation).
   - **NTP (junos-ntp):** Required for time synchronization by the device and optionally by LAN clients.
 
-  **Why these applications:** The `junos-dns-udp`, `junos-http`, `junos-https`, and `junos-ntp` applications are predefined in Junos and match the standard port/protocol combinations for these services. Using predefined applications avoids custom application definitions for basic services.
+  **Why these applications:** The `junos-dns-udp`, `junos-dns-tcp`, `junos-http`, `junos-https`, and `junos-ntp` applications are predefined in Junos and match the standard port/protocol combinations for these services. Using predefined applications avoids custom application definitions for basic services.
 
   **Why `session-close` logging:** These are permit policies. Logging at session-close records completed sessions without flooding logs with session-init entries for every connection.
 
@@ -212,7 +212,7 @@ The three named exceptions are:
 
   **Cross-reference to factory.permissive-policy:** This gap is the replacement for the factory-default trust-to-untrust permit-any policy documented in `skills/srx-initial-setup/references/factory-default-branch.md`. The factory policy allows all applications; this baseline allows only DNS, HTTP, HTTPS, and NTP.
 
-**Ownership runs the other way when factory policies are present.** `factory.permissive-policy` does **not** wait for this gap — it owns the whole cutover and emits the deletion together with this baseline in one commit, then this gap is recorded closed by that commit. The reverse ordering deadlocks: the deletion would wait on Stage 5, while Stage 5 cannot verify because the factory permit-any shadows every global rule, so Stage 5 rolls back and the deletion is never reached.
+**Ownership runs the other way when `factory.permissive-policy` is open** — keyed to that gap's state, not to the mere presence of any factory policy, matching the handoff condition above. When it is open, `factory.permissive-policy` does **not** wait for this gap — it owns the whole cutover and emits the deletion together with this baseline in one commit, then this gap is recorded closed by that commit. The reverse ordering deadlocks: the deletion would wait on Stage 5, while Stage 5 cannot verify because the factory permit-any shadows every global rule, so Stage 5 rolls back and the deletion is never reached.
 
 ### `policy.default-deny-absent`
 
