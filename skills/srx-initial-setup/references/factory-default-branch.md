@@ -16,15 +16,17 @@ Two security zones exist:
 
 | Zone | Interfaces | Configuration |
 |---|---|---|
-| `untrust` | ge-0/0/0 (WAN interface) | DHCP client to obtain IP address from ISP |
-| `trust` | All LAN ports | Full Layer 2 connectivity within VLAN `vlan-trust` |
+| `untrust` | `ge-0/0/0.0`, `ge-0/0/15.0`, `dl0.0` | `ge-0/0/0` and `ge-0/0/15` are DHCP clients; `dl0` is the dialer interface |
+| `trust` | `irb.0` only | `irb.0` carries VLAN `vlan-trust`, whose members are `ge-0/0/1.0`–`ge-0/0/14.0` |
+
+**Hardware-verified (SRX345, `srx345-dual-ac`, Junos 21.2R3-S6.11, 2026-08-25):** `untrust` binds **three** interfaces, not one. `ge-0/0/15` is a second DHCP-client WAN port and `dl0` is the dialer. `trust` binds only `irb.0`; the LAN ports reach it through the VLAN, and `ge-0/0/15` is **not** a LAN port despite sitting in the middle of the LAN port block.
 
 ### VLAN configuration
 
 Two VLANs are preconfigured:
 
 - **default VLAN** (ID 1) — Unassigned in factory configuration
-- **vlan-trust** (ID 3) — Contains all LAN ports, sharing the 192.168.2.0/24 IP subnet
+- **vlan-trust** (ID 3) — Contains `ge-0/0/1.0`–`ge-0/0/14.0`, sharing the **192.168.2.0/24** IP subnet (`irb.0` = 192.168.2.1/24). Hardware-verified on SRX345, 2026-08-25.
 
 ### DHCP service
 
@@ -34,12 +36,33 @@ An **Integrated Routing and Bridging (IRB)** interface functions as the DHCP ser
 
 If the platform includes a dedicated out-of-band management interface (`fxp0`), it is configured as a DHCP server with IP address 192.168.1.1/24.
 
+**Hardware-verified (SRX345, 2026-08-25):** SRX345 **does** have `fxp0`, and it **is** configured — `fxp0.0 = 192.168.1.1/24`, serving DHCP from pool `junosDHCPPool1` (192.168.1.2–192.168.1.254, router 192.168.1.1). Confirmed by both `show interfaces terse` and an external DHCPDISCOVER that returned a `DHCPOFFER` of 192.168.1.2 with server identifier 192.168.1.1.
+
+**Consequence worth stating plainly:** `fxp0` holds 192.168.1.1/24 **statically** and runs a DHCP server on it. Connecting `fxp0` to a network that already uses 192.168.1.0/24 produces both an address collision with that network's gateway and a rogue DHCP server. `fxp0` on a Branch SRX is not a passive management port waiting for a lease.
+
 **Source:** Juniper Networks, "Configuring Junos OS on the SRX1500" (mentions fxp0 management interface configuration for platforms that have it), retrieved 2026-08-20.
 URL: https://juniper.net/documentation/en_US/release-independent/junos/topics/topic-map/srx1500-configuring-junos.html
 
 **Additional reference:** `skills/srx-syslog-logging/references/fxp0-and-management-vrf.md` (this repository) documents fxp0 behavior, management VRF considerations, and the distinction between fxp0 (control-plane, no flow processing) and revenue interfaces (data-plane, security-policy-governed).
 
 **Note:** SRX1500 is end-of-sale and is **not** a validation target for this skill. The citation above establishes fxp0 existence and DHCP server behavior as a pattern observed across platforms that include a management interface, but platform-specific behavior on SRX300/400 Branch models should be verified against Branch-specific documentation or live device output. Not all Branch platforms include fxp0; SRX300 series models vary by SKU. Consult platform-specific hardware documentation.
+
+### Auto Image Upgrade (phone-home ZTP)
+
+**Hardware-verified (SRX345, 2026-08-25).** The factory default enables `chassis auto-image-upgrade`. On boot with no valid configuration on its DHCP-client interfaces, Junos starts phone-home ZTP and emits repeating console messages:
+
+```text
+Auto Image Upgrade: Phone-home ZTP failed, reset all enabled DHCP clients
+Auto Image Upgrade: DHCP INET Client State Reset : ge-0/0/0.0 ge-0/0/15.0
+Auto Image Upgrade: DHCP client(s) with NO VALID CONFIG, phone-home ZTP started
+Auto Image Upgrade: To stop, on CLI apply "delete chassis auto-image-upgrade" and commit
+```
+
+This is not cosmetic. ZTP **resets DHCP client state on `ge-0/0/0.0` and `ge-0/0/15.0` repeatedly**, and phone-home ZTP is permitted to fetch and install a Junos image and reboot the device unattended. Both behaviours can race a Day-0 session: addressing changes underneath the operator, and an unattended reboot discards an uncommitted candidate configuration.
+
+It also makes the console difficult to use, which matters because console is the only access path on a device whose root password was just set.
+
+**Disable it early.** This is the one factory element that should be closed *before* the management-plane stage rather than after it, because it actively interferes with establishing that stage. It carries no lockout risk: `auto-image-upgrade` provides no operator access path.
 
 ### Security policies
 
@@ -52,9 +75,23 @@ The factory-default policies establish asymmetrical traffic flow:
 
 ### System services
 
-System services (HTTPS, DHCP, TFTP, SSH) are permitted from the untrust zone to the local host, allowing remote management from the WAN.
+**Hardware-verified (SRX345, 2026-08-25).** Untrust host-inbound-traffic is configured **per-interface inside the zone**, not at zone level, and the permitted set differs per interface:
 
-**Security concern:** This exposes management interfaces to the internet. In production deployments, these should be restricted to trusted management networks only.
+```text
+security-zone untrust {
+    interfaces {
+        ge-0/0/0.0  { host-inbound-traffic { system-services { dhcp; tftp; https; } } }
+        ge-0/0/15.0 { host-inbound-traffic { system-services { dhcp; tftp; } } }
+        dl0.0       { host-inbound-traffic { system-services { tftp; } } }
+    }
+}
+```
+
+**SSH is NOT permitted from untrust** in the factory default. HTTPS is permitted on `ge-0/0/0.0` only. DHCP and TFTP are permitted on both WAN-facing units.
+
+By contrast, `trust` **does** use zone-level host-inbound-traffic (`system-services all`, `protocols all`). The two zones use different hierarchies, which is the single most important structural fact in this file: a remediation written against the zone-level path silently does nothing on `untrust`.
+
+**Security concern:** HTTPS, DHCP, and TFTP are reachable from the WAN. In production these should be removed. The exposure is real but narrower than "all management services" — SSH is already closed.
 
 ### MAC address learning
 
@@ -87,7 +124,8 @@ Not all factory-default elements are harmful. The decision framework:
 
 | Element | Reasoning | Gap id |
 |---|---|---|
-| System services allowed from untrust | Exposes SSH, HTTPS, DHCP, TFTP to the internet | `factory.untrust-system-services` |
+| `chassis auto-image-upgrade` (phone-home ZTP) | Resets DHCP client state and may install an image and reboot unattended; interferes with Day-0 setup | `factory.auto-image-upgrade` |
+| System services allowed from untrust | Exposes HTTPS, DHCP, TFTP to the WAN (SSH is already closed in the factory default) | `factory.untrust-system-services` |
 | ge-0/0/0 as DHCP client | ISP-assigned address is unpredictable; static or PPPoE is preferred for routing and policy | `factory.wan-dhcp` |
 | Default trust-to-untrust allow-any policy | Too permissive; replace with explicit application-aware policies | `factory.permissive-policy` |
 
@@ -119,13 +157,15 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
 - **Severity:** `blocking` (security risk; must resolve before production)
 - **Depends on:** `mgmt.ssh-reachable` (or equivalent management-plane gap confirming trusted access is established)
 - **Lockout risk:** `true`
-- **Evidence:** `show security zones untrust detail` reports `system-services` including SSH, HTTPS, DHCP, TFTP from untrust
+- **Evidence:** `show configuration security zones security-zone untrust` reports per-interface `host-inbound-traffic system-services` — `https`, `dhcp`, `tftp` on `ge-0/0/0.0`; `dhcp`, `tftp` on `ge-0/0/15.0`; `tftp` on `dl0.0`. Read the **per-interface** stanzas; untrust has no zone-level `host-inbound-traffic` to read.
 - **Proposal:**
   ```text
-  delete security zones security-zone untrust host-inbound-traffic system-services ssh
-  delete security zones security-zone untrust host-inbound-traffic system-services https
-  delete security zones security-zone untrust host-inbound-traffic system-services dhcp
-  delete security zones security-zone untrust host-inbound-traffic system-services tftp
+  delete security zones security-zone untrust interfaces ge-0/0/0.0 host-inbound-traffic system-services https
+  delete security zones security-zone untrust interfaces ge-0/0/0.0 host-inbound-traffic system-services dhcp
+  delete security zones security-zone untrust interfaces ge-0/0/0.0 host-inbound-traffic system-services tftp
+  delete security zones security-zone untrust interfaces ge-0/0/15.0 host-inbound-traffic system-services dhcp
+  delete security zones security-zone untrust interfaces ge-0/0/15.0 host-inbound-traffic system-services tftp
+  delete security zones security-zone untrust interfaces dl0.0 host-inbound-traffic system-services tftp
   ```
   Apply via `commit confirmed 3` after verifying trusted-network SSH access works.
 
@@ -168,20 +208,21 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
 - **Severity:** `advisory` (functional; replace only if external DHCP or static assignments are required)
 - **Depends on:** `mgmt.external-dhcp-configured` or `mgmt.static-assignments` (if replacing)
 - **Lockout risk:** `true` (removing DHCP before replacement addressing is active disconnects all LAN clients)
-- **Evidence:** `show configuration interfaces irb` and `show configuration system services dhcp` report IRB as DHCP server for 192.168.2.0/24
+- **Evidence:** `show configuration interfaces irb` reports `irb.0 = 192.168.2.1/24`; `show configuration system services dhcp-local-server` lists `group jdhcp-group { interface fxp0.0; interface irb.0; }`; `show configuration access address-assignment` reports pool `junosDHCPPool2` for 192.168.2.0/24. The legacy `system services dhcp` hierarchy is **not** used on Junos 21.2 Branch SRX — a remediation written against it silently does nothing.
 - **Proposal:**
 
   **If the operator chose to keep the factory-default IRB DHCP server** (adopt it as-is or with reservations), this gap documents that adoption decision. Example adoption with static bindings:
   ```text
-  set system services dhcp pool 192.168.2.0/24 address-range low 192.168.2.10 high 192.168.2.200
-  set system services dhcp pool 192.168.2.0/24 static-binding <MAC-address> fixed-address 192.168.2.50
+  set access address-assignment pool junosDHCPPool2 family inet range junosRange low 192.168.2.10 high 192.168.2.200
+  set access address-assignment pool junosDHCPPool2 family inet host <name> hardware-address <MAC-address> ip-address 192.168.2.50
   ```
 
-  **If the operator chose external DHCP relay,** the cutover to external DHCP (relay configuration plus removal of the local DHCP server) is handled atomically by the `mgmt.external-dhcp-configured` gap in `references/stages/management-plane.md`. That gap performs both the relay configuration and the `delete system services dhcp pool 192.168.2.0/24` in one confirmed commit to ensure the lease test validates the relay, not the local server. When `mgmt.external-dhcp-configured` is closed, this gap is already handled and should be marked as such during assessment.
+  **If the operator chose external DHCP relay,** the cutover to external DHCP (relay configuration plus removal of the local DHCP server) is handled atomically by the `mgmt.external-dhcp-configured` gap in `references/stages/management-plane.md`. That gap performs both the relay configuration and the removal of the local server (`delete system services dhcp-local-server group jdhcp-group interface irb.0` plus `delete access address-assignment pool junosDHCPPool2`) in one confirmed commit to ensure the lease test validates the relay, not the local server. When `mgmt.external-dhcp-configured` is closed, this gap is already handled and should be marked as such during assessment.
 
   **If the operator chose static client addressing,** the `mgmt.static-assignments` gap documents the coordination point for reconfiguring clients with static IPs before removing the local server. Once clients are verified on static addressing, remove the DHCP pool:
   ```text
-  delete system services dhcp pool 192.168.2.0/24
+  delete system services dhcp-local-server group jdhcp-group interface irb.0
+  delete access address-assignment pool junosDHCPPool2
   ```
 
 ### `factory.vlan-trust-single-broadcast-domain`
@@ -202,17 +243,31 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
   ```
   Corresponding IRB units and zones required. Plan and test before removing `vlan-trust`.
 
+### `factory.auto-image-upgrade`
+
+- **Stage:** factory-default-removal
+- **Severity:** `blocking` (actively interferes with every later stage)
+- **Depends on:** nothing. **This gap is the documented exception to the rule that all `factory.*` gaps depend on management-plane completion** — ZTP interferes with establishing the management plane, so it must close first.
+- **Lockout risk:** `false` — `auto-image-upgrade` provides no operator access path, so removing it cannot cost reachability.
+- **Evidence:** `show configuration chassis` reports `auto-image-upgrade;`, and/or the console emits `Auto Image Upgrade:` messages
+- **Proposal:**
+  ```text
+  delete chassis auto-image-upgrade
+  ```
+  Because `lockout_risk` is false and the change is required before the management plane can be established reliably, this gap may be applied with a plain `commit`. Junos itself emits this exact remediation on the console.
+
 ### `factory.fxp0-unused`
 
 - **Stage:** factory-default-removal
 - **Severity:** `advisory` (no harm if unused, but clarifies intent)
 - **Depends on:** Whether out-of-band management network exists
 - **Lockout risk:** `true` (this gap's entire existence depends on the assessment having correctly concluded fxp0 is unused. If that conclusion is wrong — e.g., the operator is connected via fxp0 but the assessment missed a DHCP lease or the connection path was misidentified — removing fxp0 configuration is exactly the change that strands the operator. If fxp0 truly is unused, the risk is zero, but the correctness of "unused" is what is being tested.)
-- **Evidence:** Platform has fxp0; `show configuration interfaces fxp0` reports 192.168.1.1/24 DHCP server; no devices are connected to it
+- **Evidence:** Platform has fxp0; `show interfaces terse` reports `fxp0.0 inet 192.168.1.1/24`; `show configuration system services dhcp-local-server` lists `interface fxp0.0`; `show configuration access address-assignment` reports pool `junosDHCPPool1`; no devices are connected to it
 - **Proposal:** If truly unused:
   ```text
   delete interfaces fxp0
-  delete system services dhcp pool 192.168.1.0/24
+  delete system services dhcp-local-server group jdhcp-group interface fxp0.0
+  delete access address-assignment pool junosDHCPPool1
   ```
   If out-of-band management is planned, keep and connect it.
 
@@ -220,6 +275,18 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
 
 This file documents factory-default configuration observed and documented for **SRX300 and SRX400 series** Branch platforms. The Juniper guided setup documentation specifically covers SRX300 Line models (SRX320, SRX340, SRX345, SRX380).
 
-**SRX345 validation target:** The repository owner has an SRX345 available for hardware validation. Claims applicable to SRX345 are especially valuable and should be verified against live device output when possible.
+**SRX345: hardware-validated 2026-08-25.** Validated against a live SRX345 (`srx345-dual-ac`, Junos 21.2R3-S6.11) in factory-default state. Corrections applied from that run:
+
+| Claim | Pre-validation | Hardware result |
+|---|---|---|
+| `fxp0` present and configured | Hedged ("if present") | Present; `192.168.1.1/24`, DHCP server — confirmed by `show interfaces terse` and an external DHCPOFFER |
+| `vlan-trust` subnet | 192.168.2.0/24 | **Correct** — `irb.0 = 192.168.2.1/24` |
+| `untrust` interface count | 1 (`ge-0/0/0`) | **3** — `ge-0/0/0.0`, `ge-0/0/15.0`, `dl0.0` |
+| untrust host-inbound-traffic | zone-level | **per-interface**; zone-level path does not exist |
+| SSH from untrust | permitted | **not permitted** |
+| DHCP config hierarchy | `system services dhcp pool` | `access address-assignment` + `system services dhcp-local-server` |
+| `chassis auto-image-upgrade` | absent from this file | present and active |
+
+Remaining unvalidated on hardware: SRX300/320/340/380 (fxp0 presence varies by SKU), SRX400 series, and all campus and datacenter platforms.
 
 **Campus and datacenter platforms do not ship this configuration.** On SRX1600, SRX4120, SRX4300, SRX4700, and SRX5000 series, `factory-default` entry state means something different. Consult platform-specific documentation or classify as `bare` if the device was zeroized.
