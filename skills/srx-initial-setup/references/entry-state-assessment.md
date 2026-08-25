@@ -44,6 +44,14 @@ show chassis cluster status
 
 Establishes whether the device is part of a cluster. If cluster membership is found, this skill stops and routes to `srx-chassis-cluster-proxmox` or `srx-mnha`.
 
+### Phone-home ZTP (auto-image-upgrade)
+
+```
+show configuration chassis
+```
+
+Returns `auto-image-upgrade;` when phone-home ZTP is enabled. This is the **strongest single factory-default signature** — an operator-configured device has almost always had it removed — and it generates a blocking gap that is offered *before* the management-plane stage. Empty output means the gap is closed. Collect this read on every assessment; without it a device whose only remaining factory remnant is ZTP classifies as `configured` and the blocking gap is never generated.
+
 ### Configured interfaces and units
 
 ```text

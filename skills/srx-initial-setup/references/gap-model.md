@@ -42,7 +42,7 @@ Gaps close in dependency order. A gap whose `depends_on` is unsatisfied is not o
 
 **Dependency rules:**
 
-1. All `factory.*` gaps depend on management-plane stage completion. Factory-default removal is a lockout-risk change; the replacement management path must be established and verified first.
+1. `factory.*` gaps depend on management-plane stage completion. Factory-default removal is a lockout-risk change; the replacement management path must be established and verified first. **Exception: `factory.auto-image-upgrade` depends on nothing and is offered first** — phone-home ZTP resets DHCP client state and can install an image and reboot unattended, so it interferes with establishing the management plane it would otherwise wait on. It carries no lockout risk because it provides no operator access path.
 2. Zone creation may depend on interface configuration.
 3. Screen application depends on the screen profile and zone both existing.
 4. Policy creation depends on zones existing.

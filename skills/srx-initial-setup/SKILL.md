@@ -106,6 +106,7 @@ The skill ALWAYS opens with a read-only assessment that establishes current devi
 - `show version` — hostname, model, Junos OS version
 - `show chassis hardware` — chassis inventory, platform series
 - `show chassis cluster status` — cluster membership (stop and route away if detected)
+- `show configuration chassis` — phone-home ZTP (`auto-image-upgrade`); the strongest single factory-default signature, and a blocking gap if present
 - `show interfaces terse` — configured units and operational states
 - `show security zones` — zones, interface bindings, host-inbound-traffic
 - `show security screen ids-option` — screen profiles

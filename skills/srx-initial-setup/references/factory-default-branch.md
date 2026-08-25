@@ -1,6 +1,8 @@
 # Branch Factory-Default Configuration
 
-Applies to **SRX300 and SRX400 Branch platforms only**. Campus and datacenter platforms (SRX1600, SRX4120, SRX4300, SRX4700, SRX5000 series) do **not** ship this configuration; on those, an entry state of `factory-default` means a different shipped state and this file does not apply.
+Applies to **SRX300 and SRX400 Branch platforms only**.
+
+> **Interface names in this file are SRX345-specific.** They were captured from a live SRX345 and are used as a worked example, not as a portable port map. Port counts and interface names differ across Branch SKUs — an SRX320 has no `ge-0/0/15`, for instance. **Always enumerate the actual units from assessment output (`show interfaces terse`, `show configuration security zones`) and substitute them; never emit the literal interface names below as CLI against a device you have not read.** The *structure* (which zone, which hierarchy, which service) is what generalises. Campus and datacenter platforms (SRX1600, SRX4120, SRX4300, SRX4700, SRX5000 series) do **not** ship this configuration; on those, an entry state of `factory-default` means a different shipped state and this file does not apply.
 
 ## What ships on the device
 
@@ -126,7 +128,7 @@ Not all factory-default elements are harmful. The decision framework:
 |---|---|---|
 | `chassis auto-image-upgrade` (phone-home ZTP) | Resets DHCP client state and may install an image and reboot unattended; interferes with Day-0 setup | `factory.auto-image-upgrade` |
 | System services allowed from untrust | Exposes HTTPS, DHCP, TFTP to the WAN (SSH is already closed in the factory default) | `factory.untrust-system-services` |
-| ge-0/0/0 as DHCP client | ISP-assigned address is unpredictable; static or PPPoE is preferred for routing and policy | `factory.wan-dhcp` |
+| **Every** WAN unit running a DHCP client (`ge-0/0/0` *and* `ge-0/0/15` on SRX345) | ISP-assigned address is unpredictable; static or PPPoE is preferred for routing and policy | `factory.wan-dhcp` |
 | Default trust-to-untrust allow-any policy | Too permissive; replace with explicit application-aware policies | `factory.permissive-policy` |
 
 ### Elements to **adopt** or keep
@@ -160,13 +162,23 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
 - **Evidence:** `show configuration security zones security-zone untrust` reports per-interface `host-inbound-traffic system-services` — `https`, `dhcp`, `tftp` on `ge-0/0/0.0`; `dhcp`, `tftp` on `ge-0/0/15.0`; `tftp` on `dl0.0`. Read the **per-interface** stanzas; untrust has no zone-level `host-inbound-traffic` to read.
 - **Proposal:**
   ```text
-  delete security zones security-zone untrust interfaces ge-0/0/0.0 host-inbound-traffic system-services https
-  delete security zones security-zone untrust interfaces ge-0/0/0.0 host-inbound-traffic system-services dhcp
-  delete security zones security-zone untrust interfaces ge-0/0/0.0 host-inbound-traffic system-services tftp
-  delete security zones security-zone untrust interfaces ge-0/0/15.0 host-inbound-traffic system-services dhcp
-  delete security zones security-zone untrust interfaces ge-0/0/15.0 host-inbound-traffic system-services tftp
-  delete security zones security-zone untrust interfaces dl0.0 host-inbound-traffic system-services tftp
+  delete security zones security-zone untrust interfaces <wan-unit> host-inbound-traffic system-services https
+  delete security zones security-zone untrust interfaces <wan-unit> host-inbound-traffic system-services tftp
   ```
+
+  **`dhcp` is conditional — read this before deleting it.** An interface that is still a DHCP client *requires* `host-inbound-traffic system-services dhcp` to receive OFFER and renewal traffic for itself. Deleting it does **not** fail at commit and does **not** fail during verification: the existing lease keeps working until it reaches renewal, which is typically hours later. The WAN address and default route then disappear long after the confirmed commit was made permanent, with no obvious link back to this change.
+
+  Only delete `dhcp` on a unit whose DHCP client has also been removed, in the **same** commit:
+
+  ```text
+  delete interfaces <wan-if> unit 0 family inet
+  delete security zones security-zone untrust interfaces <wan-unit> host-inbound-traffic system-services dhcp
+  ```
+
+  If `factory.wan-dhcp` is being adopted (ISP requires DHCP), leave `system-services dhcp` in place on that unit and record it as adopted, not as an unremediated exposure.
+
+  Enumerate `<wan-unit>` from assessment output rather than assuming; on the validated SRX345 the units are `ge-0/0/0.0`, `ge-0/0/15.0`, and `dl0.0`, and other Branch SKUs differ.
+
   Apply via `commit confirmed 3` after verifying trusted-network SSH access works.
 
 ### `factory.wan-dhcp`
@@ -175,11 +187,15 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
 - **Severity:** `advisory` (functional, but unpredictable addressing complicates routing and policy)
 - **Depends on:** `mgmt.wan-static` (a gap proposing static WAN configuration, if desired) or ISP's requirement for DHCP
 - **Lockout risk:** `true` (if DHCP is replaced with static but the static config is wrong, WAN connectivity is lost)
-- **Evidence:** `show configuration interfaces ge-0/0/0 unit 0 family inet` reports `dhcp`
+- **Evidence:** `show configuration interfaces` reports `family inet { dhcp; }` on one or more untrust units. **Enumerate all of them** — the Branch factory default ships more than one DHCP WAN (on SRX345: `ge-0/0/0` and `ge-0/0/15`). Handling only the first leaves a second untrust port as a live DHCP client while the gap reports handled.
 - **Proposal:** Depends on ISP requirements. If static IP is available:
   ```text
-  delete interfaces ge-0/0/0 unit 0 family inet dhcp
-  set interfaces ge-0/0/0 unit 0 family inet address <ISP-assigned-IP>/<prefix>
+  delete interfaces <wan-if> unit 0 family inet dhcp
+  set interfaces <wan-if> unit 0 family inet address <ISP-assigned-IP>/<prefix>
+  ```
+  Repeat per DHCP WAN unit found. For a unit that is unused rather than re-addressed, remove the family outright:
+  ```text
+  delete interfaces <wan-if> unit 0 family inet
   ```
   If ISP requires DHCP, mark this gap as `adopted` and leave the configuration as-is.
 
@@ -254,7 +270,9 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
   ```text
   delete chassis auto-image-upgrade
   ```
-  Because `lockout_risk` is false and the change is required before the management plane can be established reliably, this gap may be applied with a plain `commit`. Junos itself emits this exact remediation on the console.
+  `lockout_risk` is false, but that does **not** license a bare commit: `write-safety.md` bans bare commits on remote sessions and SKILL.md gates every device write. Apply this gap like any other — approval, diff, `commit confirmed`, verification (`show configuration chassis` returns empty), then the confirming commit. A generous timer (5-10 minutes) is appropriate since no reachability is at stake. Junos itself emits this exact remediation on the console.
+
+  **Confirming-commit hazard.** A `commit confirmed` is satisfied by *any* subsequent `commit` from *any* user or session, including an operator at the console who does not know a gated change is pending. On a device with a live console operator, say explicitly that a confirmed commit is outstanding before issuing it — otherwise the rollback safety net can be closed out from under the change with nobody intending it. Observed during the 2026-08-25 SRX345 validation run.
 
 ### `factory.fxp0-unused`
 

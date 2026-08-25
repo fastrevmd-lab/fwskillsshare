@@ -9,7 +9,7 @@ This stage establishes system identity, time synchronization, name resolution, a
 - **Name resolution:** DNS name servers configured, enabling the device to resolve hostnames for logging, NTP (if using domain names), and external services.
 - **Management addressing:** The management interface has a routable address, either static or via DHCP with a confirmed lease, and is reachable from the operator's management network.
 
-All `mgmt.*` gaps are `blocking` for the `factory.*` stage. Factory-default removal is a lockout-risk change; the replacement management path must be established and verified before factory elements are removed.
+All `mgmt.*` gaps are `blocking` for the `factory.*` stage, **except for `factory.auto-image-upgrade`, which is offered before this stage runs.** Phone-home ZTP resets DHCP client state on the WAN units and can install an image and reboot unattended, either of which can disrupt establishing the management plane; it must therefore close first. Every other factory-default removal is a lockout-risk change and waits for the replacement management path to be established and verified.
 
 **Lockout-risk gaps in this stage follow the gate protocol in `references/write-safety.md`.** That file is the authority for commit-confirmed mechanics, timer selection, rollback points, and recovery-path requirements.
 
