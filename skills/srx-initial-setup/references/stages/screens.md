@@ -97,6 +97,19 @@ set security screen ids-option STARTER-SCREENS tcp land
 set security screen ids-option STARTER-SCREENS tcp winnuke
 set security screen ids-option STARTER-SCREENS ip tear-drop
 
+set security screen ids-option STARTER-SCREENS-UNTRUST ip source-route-option
+set security screen ids-option STARTER-SCREENS-UNTRUST ip record-route-option
+set security screen ids-option STARTER-SCREENS-UNTRUST ip bad-option
+set security screen ids-option STARTER-SCREENS-UNTRUST ip tear-drop
+set security screen ids-option STARTER-SCREENS-UNTRUST icmp ping-death
+set security screen ids-option STARTER-SCREENS-UNTRUST icmp icmp-fragment
+set security screen ids-option STARTER-SCREENS-UNTRUST tcp syn-fin
+set security screen ids-option STARTER-SCREENS-UNTRUST tcp fin-no-ack
+set security screen ids-option STARTER-SCREENS-UNTRUST tcp tcp-no-flag
+set security screen ids-option STARTER-SCREENS-UNTRUST tcp syn-frag
+set security screen ids-option STARTER-SCREENS-UNTRUST tcp land
+set security screen ids-option STARTER-SCREENS-UNTRUST tcp winnuke
+
 set security zones security-zone untrust screen STARTER-SCREENS-UNTRUST
 set security zones security-zone trust screen STARTER-SCREENS
 ```
@@ -159,6 +172,15 @@ The documentation provides configuration examples showing screens created under 
   set security screen ids-option STARTER-SCREENS-UNTRUST tcp winnuke
   set security screen ids-option STARTER-SCREENS-UNTRUST tcp syn-flood <carry the observed factory thresholds>
   ```
+
+  **Build this profile by union, never by copying the list above verbatim.** The new profile becomes the zone's *sole* screen profile, so anything not restated here is silently disabled — the exact failure mode this split exists to prevent, reproduced one level down. Before writing it, read the currently bound untrust profile and include:
+
+  1. every leaf in `STARTER-SCREENS` above;
+  2. the IPv6 leaves (`ipv6-malformed-header`, `ipv6-extension-header-limit 7`) whenever IPv6 is deployed;
+  3. **every leaf already present on the bound untrust profile** — operator-added flood, sweep, scan or signature options included — carried forward unless the operator explicitly agrees to drop it;
+  4. the observed threshold screens.
+
+  Diff the resulting profile against the one it replaces and show that diff at the gate. A leaf present before and absent after is a regression, not a simplification.
 
   **Do not hard-code syn-flood thresholds, and do not bind them to internal zones.** This file classifies `syn-flood` as **Medium to High** false-positive risk and recommends baselining before tuning; on a busy LAN or server zone, WAN-derived thresholds can drop legitimate connection bursts. The values exist here only to avoid a *regression*: Junos allows one profile per zone, so binding a signature-only profile to `untrust` silently discards whatever threshold protection the factory `untrust-screen` already provided.
 
@@ -278,7 +300,15 @@ After this stage closes, verify:
    show security zones
    ```
 
-   Expect `Screen: STARTER-SCREENS` to appear under the untrust and trust zones.
+   Expect `Screen: STARTER-SCREENS-UNTRUST` under the **untrust** zone and `Screen: STARTER-SCREENS` under the **trust** zone. The two zones bind **different** profiles: untrust carries the threshold screens, trust is signature-only. Verification that expects the same profile name on both zones will fail every run against a correctly configured device.
+
+3. **Untrust thresholds carried forward:**
+
+   ```text
+   show security screen ids-option STARTER-SCREENS-UNTRUST
+   ```
+
+   Expect the threshold screens observed on the profile this one replaced. If the platform's factory configuration had no threshold screens, expect none here and treat that as a pass.
 
 3. **Screen statistics (after traffic flows):**
 

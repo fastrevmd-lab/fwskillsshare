@@ -203,9 +203,15 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
 
 - **Stage:** factory-default-removal
 - **Severity:** `blocking` (too permissive; violates least-privilege)
-- **Depends on:** nothing directly. **This gap does not close on its own.** Its deletion is executed *inside* the Stage 5 `policy.explicit-outbound` commit, and it closes when that commit is confirmed.
+- **Depends on:** management-plane stage completion — the same prerequisite every `factory.*` gap carries except `factory.auto-image-upgrade`. This gap is lockout-risk, so trusted management access must exist and be verified before it is offered. It does **not** depend on `policy.explicit-outbound`.
 
-  **Why it cannot depend on `policy.explicit-outbound` the ordinary way.** A gap whose `depends_on` is unsatisfied is not offered, so declaring that dependency deadlocks the factory-default path: the deletion waits for Stage 5, while Stage 5 cannot verify — global policies never accumulate hit counts or logs while the factory zone-pair still shadows them — so Stage 5 rolls back and the deletion is never reached. The cutover is a single atomic operation with a single owner (Stage 5), not two gaps in sequence.
+  **This gap is a self-closing composite cutover.** It owns both halves of the change and emits them as one commit: delete the factory zone-pair policies **and** create the global replacements. It closes when its own commit is confirmed, and it never waits on another gap to run.
+
+  **Why it cannot depend on `policy.explicit-outbound`.** A gap whose `depends_on` is unsatisfied is not offered, so that dependency deadlocks the factory-default path: the deletion waits for Stage 5, while Stage 5 cannot verify — global policies accumulate no hit counts or logs while the factory zone-pair still shadows them — so Stage 5 rolls back and the deletion is never reached.
+
+  **Why it cannot instead be folded into the Stage 5 gap.** On a `partial` device where `policy.explicit-outbound` is already closed, completed stages are skipped, so no Stage 5 commit would exist to carry the deletion and this blocking gap could never close.
+
+  **Interaction with `policy.explicit-outbound`.** When this gap runs, it satisfies the outbound-permit requirement as a side effect. Assessment should re-read state afterwards and record `policy.explicit-outbound` as closed rather than proposing the same global policies twice.
 - **Lockout risk:** `true` (if the assessment's judgment about management-plane path is wrong — e.g., operator is reaching the device via a trust-to-untrust hairpin or an unexpected policy dependency exists — removing the permissive policy can cut access. The risk is lower than other factory gaps because traffic destined to the device itself is governed by `host-inbound-traffic`, not transit security policies, but it is not zero.)
 - **Evidence:** `show security policies from-zone trust to-zone untrust` reports a default-permit or broad junos-defaults policy
 - **Proposal:** Replace with explicit **global** policies per required application, in **one atomic commit** with the deletion.

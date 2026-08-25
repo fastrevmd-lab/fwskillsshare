@@ -155,6 +155,7 @@ The three named exceptions are:
 - **Lockout risk:** `false` (adding permit policies does not break existing flows; removing or changing them can)
 - **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when outbound DNS, HTTP, HTTPS, and NTP from trust to untrust are verified permitted by that party, whatever the policy structure.
 - **Evidence:** `show configuration security policies global` returns no policies, or existing policies do not permit trust-to-untrust outbound traffic for essential services (DNS, HTTP, HTTPS, NTP)
+- **Factory zone-pair interaction:** If factory zone-pair policies are still present, **this gap does not run.** Junos evaluates zone-pair policies before global ones, so adding global rules underneath a factory permit-any produces a table that verifies as configured but is never reached. In that state the cutover is owned end-to-end by `factory.permissive-policy` in `references/factory-default-branch.md`, which deletes the factory policies and creates these same global replacements in a single commit. Record this gap as closed by that commit rather than proposing the policies a second time.
 - **Proposal:**
 
   ```text
