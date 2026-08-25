@@ -44,6 +44,14 @@ show chassis cluster status
 
 Establishes whether the device is part of a cluster. If cluster membership is found, this skill stops and routes to `srx-chassis-cluster-proxmox` or `srx-mnha`.
 
+### Phone-home ZTP (auto-image-upgrade)
+
+```
+show configuration chassis
+```
+
+Returns `auto-image-upgrade;` when phone-home ZTP is enabled. This is the **strongest single factory-default signature** — an operator-configured device has almost always had it removed — and it generates a blocking gap that is offered *before* the management-plane stage. Empty output means the gap is closed. Collect this read on every assessment; without it a device whose only remaining factory remnant is ZTP classifies as `configured` and the blocking gap is never generated.
+
 ### Configured interfaces and units
 
 ```text
@@ -146,10 +154,15 @@ No SSH, console, or NETCONF session can be established. Emit the console recover
 
 Presence of vendor-shipped configuration elements. For **Branch platforms only** (SRX300 and SRX400 series), these signatures indicate factory-default:
 
-- Security zone named `trust` containing `vlan-trust` with subnet 192.168.2.0/24
-- Security zone named `untrust` containing ge-0/0/0 configured as DHCP client
-- Default security policies permitting trust-to-untrust with source NAT
-- System services (HTTPS, DHCP, TFTP, SSH) permitted from untrust to local host
+- `chassis auto-image-upgrade` present in configuration (**strongest single signature** — an operator-configured device has almost always had this removed, and `show configuration chassis` is one short read)
+- `fxp0.0` addressed `192.168.1.1/24` with `system services dhcp-local-server` listing `interface fxp0.0` (on SKUs that have fxp0)
+- Security zone named `trust` bound to `irb.0`, with `vlan-trust` on subnet 192.168.2.0/24
+- Security zone named `untrust` binding `ge-0/0/0.0`, `ge-0/0/15.0`, and `dl0.0`, with `ge-0/0/0` and `ge-0/0/15` configured as DHCP clients
+- Default security policies permitting trust-to-untrust with source NAT (`rule-set trust-to-untrust`, `source-nat interface`)
+- Per-interface host-inbound-traffic under `untrust` permitting HTTPS/DHCP/TFTP (**not** SSH — SSH is not permitted from untrust in the factory default)
+- DHCP pools named `junosDHCPPool1` / `junosDHCPPool2` under `access address-assignment`
+
+**Hardware-verified on SRX345** (`srx345-dual-ac`, Junos 21.2R3-S6.11, 2026-08-25). Do not read `untrust` host-inbound-traffic at the zone level — the factory default configures it per-interface, and the zone-level path does not exist.
 
 **Campus and datacenter platforms** (SRX1600, SRX4120, SRX4300, SRX4700, SRX5000 series) do **not** ship this configuration. On those platforms, `factory-default` means a different shipped state; consult platform-specific documentation or classify as `bare` if zeroized.
 
@@ -157,6 +170,8 @@ If factory-default elements are detected alongside operator-added configuration,
 
 **Source for Branch factory-default signatures:** Juniper Networks, "Verify Default Branch Connectivity" (Guided Setup: SRX300 Line Firewalls), retrieved 2026-08-20.
 URL: https://www.juniper.net/documentation/us/en/guided-setup/branch-srx-gs/step-1-p1-verify_defaults.html
+
+Signature list corrected against live SRX345 output on 2026-08-25; see the validation record in `references/factory-default-branch.md`.
 
 ### `configured`
 

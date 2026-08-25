@@ -34,6 +34,14 @@ URL: https://www.juniper.net/documentation/us/en/software/junos/cli/topics/topic
 
 The documentation states: "To change the amount of time before you must confirm the new configuration, specify the number of minutes when you issue the command." The default confirmation window is 10 minutes. If confirmation does not occur within the specified timeframe, "the operating system automatically rolls back to the previous configuration and a broadcast message is sent to all logged-in users."
 
+## Hazard: enabling NTP moves the clock the timer rides on
+
+**Observed on hardware (SRX345, 2026-08-25.)** The management-plane stage is the stage that enables NTP. When NTP first synchronises it may **step** the clock, and a `commit confirmed` rollback deadline is expressed in wall-clock terms. During validation the clock stepped **backward ~32 minutes** while a 10-minute timer was pending, silently extending the rollback window; the commit log shows entries out of chronological order as a result.
+
+A backward step is benign — it lengthens the window. **A forward step is not:** it can push the deadline into the past and fire the rollback while verification is still in progress, discarding a change that was working.
+
+**Rule: never enable NTP in the same commit whose rollback timer you are relying on.** Enable NTP in its own commit, let the clock settle, and only then run lockout-risk changes under a short timer. If the device's clock is known to be wrong at the start of a session, treat every timer as unreliable until NTP has stepped and settled.
+
 ## Confirming the commit
 
 To keep the new configuration active after verifying it works correctly, issue one of these commands within the timer window:

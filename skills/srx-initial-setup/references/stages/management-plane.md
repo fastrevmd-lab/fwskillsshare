@@ -9,7 +9,7 @@ This stage establishes system identity, time synchronization, name resolution, a
 - **Name resolution:** DNS name servers configured, enabling the device to resolve hostnames for logging, NTP (if using domain names), and external services.
 - **Management addressing:** The management interface has a routable address, either static or via DHCP with a confirmed lease, and is reachable from the operator's management network.
 
-All `mgmt.*` gaps are `blocking` for the `factory.*` stage. Factory-default removal is a lockout-risk change; the replacement management path must be established and verified before factory elements are removed.
+All `mgmt.*` gaps are `blocking` for the `factory.*` stage, **except for `factory.auto-image-upgrade`, which is offered before this stage runs.** Phone-home ZTP resets DHCP client state on the WAN units and can install an image and reboot unattended, either of which can disrupt establishing the management plane; it must therefore close first. Every other factory-default removal is a lockout-risk change and waits for the replacement management path to be established and verified.
 
 **Lockout-risk gaps in this stage follow the gate protocol in `references/write-safety.md`.** That file is the authority for commit-confirmed mechanics, timer selection, rollback points, and recovery-path requirements.
 
@@ -278,7 +278,8 @@ The decision between fxp0 (dedicated out-of-band management interface) and a rev
   set forwarding-options dhcp-relay server-group external-dhcp <external-dhcp-server-ip>
   set forwarding-options dhcp-relay group dhcp-relay-group active-server-group external-dhcp
   set forwarding-options dhcp-relay group dhcp-relay-group interface <client-facing-interface>
-  delete system services dhcp pool <subnet>
+  delete system services dhcp-local-server group <group-name> interface <client-facing-interface>
+  delete access address-assignment pool <pool-name>
   ```
 
   Example for external DHCP server at 10.1.1.100 serving clients on irb.0, removing the factory-default 192.168.2.0/24 pool:
@@ -287,7 +288,8 @@ The decision between fxp0 (dedicated out-of-band management interface) and a rev
   set forwarding-options dhcp-relay server-group external-dhcp 10.1.1.100
   set forwarding-options dhcp-relay group dhcp-relay-group active-server-group external-dhcp
   set forwarding-options dhcp-relay group dhcp-relay-group interface irb.0
-  delete system services dhcp pool 192.168.2.0/24
+  delete system services dhcp-local-server group jdhcp-group interface irb.0
+  delete access address-assignment pool junosDHCPPool2
   ```
 
   **Verification before confirming the commit:** After applying via `commit confirmed <minutes>` (see `references/write-safety.md` for timer default), test that a client can obtain a lease from the external server through the relay. If the lease test succeeds, confirm the commit. If it fails, do not confirm — the automatic rollback will restore the local DHCP server configuration.
@@ -296,7 +298,9 @@ The decision between fxp0 (dedicated out-of-band management interface) and a rev
 
   **Cross-reference to `factory.irb-dhcp-server`:** The `factory.irb-dhcp-server` gap in `references/factory-default-branch.md` documents the factory-default DHCP server as an element that can be adopted or removed. Assessment should record one of three outcomes for `factory.irb-dhcp-server`: (1) if the operator closes `mgmt.external-dhcp-configured` (adopts DHCP relay), record `factory.irb-dhcp-server` as handled by removal; (2) if the operator closes `mgmt.static-assignments` (moves to static addressing), record `factory.irb-dhcp-server` as handled by removal; (3) if the operator keeps the local DHCP server (adopts the factory default), record `factory.irb-dhcp-server` as adopted and leave both `mgmt.external-dhcp-configured` and `mgmt.static-assignments` open.
 
-  **Status:** UNVERIFIED. The DHCP relay syntax and configuration hierarchy are common patterns for Junos platforms, but exact syntax, server-group configuration options, and interface reference format should be verified against current Junos OS documentation for the target platform.
+  **Status:** PARTIALLY VERIFIED. The *local DHCP server* hierarchy is hardware-verified on SRX345 (Junos 21.2R3-S6.11, 2026-08-25): the factory default uses `access address-assignment pool junosDHCPPool1|junosDHCPPool2` together with `system services dhcp-local-server group jdhcp-group { interface fxp0.0; interface irb.0; }`. The legacy `system services dhcp pool <subnet>` hierarchy **does not exist** on this platform, and a `delete` against it is a silent no-op — it does not error loudly, so a gap written against it would report closed while the DHCP server kept running. Note also that `jdhcp-group` serves **two** interfaces; removing only `irb.0` deliberately leaves the `fxp0.0` server intact.
+
+  The *DHCP relay* half remains UNVERIFIED: relay syntax, server-group options, and interface reference format should still be checked against current Junos OS documentation for the target platform.
 
 ### `mgmt.static-assignments`
 

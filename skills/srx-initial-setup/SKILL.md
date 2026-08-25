@@ -1,7 +1,7 @@
 ---
 name: srx-initial-setup
-description: Bring a new or factory-reset Juniper SRX from its shipped state to a reachable, zoned, screened, and minimally policied device. Use when performing first-time setup or Day-0 and Day-1 bring-up on SRX300 or SRX400 Branch, SRX1600 or SRX4120 campus, or SRX4300, SRX4700, or SRX5000 datacenter platforms, when removing or adopting factory-default configuration, when establishing management access, NTP, DNS, and system services, when creating interfaces, zones, and host-inbound-traffic, when applying starter screens, or when reading which licensed feature sets are entitled, configured, and active. Not for chassis-cluster formation, ZTP, Junos upgrades, or full policy design.
-version: 1.1.0
+description: Bring a new or factory-reset Juniper SRX from its shipped state to a reachable, zoned, screened, and minimally policied device. Use when performing first-time setup or Day-0 and Day-1 bring-up on SRX300 or SRX400 Branch, SRX1600 or SRX4120 campus, or SRX4300, SRX4700, or SRX5000 datacenter platforms, when removing or adopting factory-default configuration, when establishing management access, NTP, DNS, and system services, when creating interfaces, zones, and host-inbound-traffic, when applying starter screens, or when reading which licensed feature sets are entitled, configured, and active. Not for chassis-cluster formation, ZTP-based provisioning, Junos upgrades, or full policy design.
+version: 1.3.0
 author:
   - fastrevmd-lab
   - Claude
@@ -61,7 +61,7 @@ Use this skill to bring a new or factory-reset Juniper SRX from its shipped stat
 
 **Every device write runs behind a per-stage approval gate** under confirmed commit with a rollback timer. If verification fails, the confirmed commit expires automatically and Junos rolls back to the pre-change configuration.
 
-**Validation status:** At 1.0.0 this skill is written from vendor documentation and existing verified repository references; no device validation has been performed. Validation against vSRX and against SRX345, SRX1600, and SRX4700 hardware is deferred to a later release. Platform scope: Branch SRX300/400, campus SRX1600/4120, datacenter SRX4300/4700/5000. SRX1500 is end-of-sale and is not a validation target.
+**Validation status:** At 1.3.0 this skill has been run end-to-end against a live **SRX345** (`srx345-dual-ac`, Junos 21.2R3-S6.11, 2026-08-25) from factory-default state through the baseline policy stage. Both the read path and the **write path** are hardware-validated: the gate protocol, `commit confirmed`, per-stage verification, and the confirming commit were exercised on every stage. Eleven claims were corrected — see the validation record in `references/factory-default-branch.md`. Four of the eleven were silent failures that would have reported a gap closed while changing nothing or while degrading the device. Still unvalidated on hardware: rollback-on-verification-failure (no stage failed verification during the run), the other Branch SKUs, and all campus and datacenter platforms. Platform scope: Branch SRX300/400, campus SRX1600/4120, datacenter SRX4300/4700/5000. SRX1500 is end-of-sale and is not a validation target.
 
 ## Scope and routing
 
@@ -73,7 +73,9 @@ Use this skill for first-time setup, Day-0 and Day-1 bring-up, factory-default r
 
 2. **Licensing mutation.** This skill reads feature entitlement and operational state (entitled, configured, active) but never installs, modifies, or removes licenses. All mutating license work routes to `srx-license-signature-maintenance`.
 
-3. **Policy design beyond the baseline.** This skill establishes the minimum security policy required to make the device usable: outbound DNS, web, and NTP, plus default-deny with logging. The baseline is generated using global policies; when a zone-pair exception applies, the policy stage routes to srx-policy for non-Branch platforms (see `references/stages/baseline-policy.md` for Branch limitations). Application-aware policies, URL filtering, intrusion prevention, and advanced security services route to `srx-policy` (non-Branch platforms only; Branch SRX zone-pair policy is unowned).
+3. **ZTP-based provisioning.** This skill does not provision devices *via* Zero Touch Provisioning, and it does not configure a ZTP server, DHCP options 43/66, or image staging. It does, however, **disable** the factory-default `chassis auto-image-upgrade` as a Day-0 gap — because on a Branch SRX that setting actively resets DHCP client state and can install an image and reboot unattended while setup is in progress. Turning ZTP off is in scope; using ZTP is not.
+
+4. **Policy design beyond the baseline.** This skill establishes the minimum security policy required to make the device usable: outbound DNS, web, and NTP, plus default-deny with logging. The baseline is generated using global policies; when a zone-pair exception applies, the policy stage routes to srx-policy for non-Branch platforms (see `references/stages/baseline-policy.md` for Branch limitations). Application-aware policies, URL filtering, intrusion prevention, and advanced security services route to `srx-policy` (non-Branch platforms only; Branch SRX zone-pair policy is unowned).
 
 ## Runtime intake
 
@@ -104,6 +106,7 @@ The skill ALWAYS opens with a read-only assessment that establishes current devi
 - `show version` — hostname, model, Junos OS version
 - `show chassis hardware` — chassis inventory, platform series
 - `show chassis cluster status` — cluster membership (stop and route away if detected)
+- `show configuration chassis` — phone-home ZTP (`auto-image-upgrade`); the strongest single factory-default signature, and a blocking gap if present
 - `show interfaces terse` — configured units and operational states
 - `show security zones` — zones, interface bindings, host-inbound-traffic
 - `show security screen ids-option` — screen profiles
@@ -135,7 +138,7 @@ A gap is a structured record of a single missing or incorrect configuration elem
 - `blocking` — later stages cannot proceed until this gap closes. Example: `mgmt.ntp-absent` is blocking because accurate timestamps are required for later stages.
 - `advisory` — recommended but not required for later stages. Example: timezone unset may be advisory if NTP is configured.
 
-**Dependency ordering:** Gaps close in dependency order. A gap whose `depends_on` is unsatisfied is not offered. All `factory.*` gaps depend on management-plane stage completion because factory-default removal is lockout-risk and the replacement management path must be established first.
+**Dependency ordering:** Gaps close in dependency order. A gap whose `depends_on` is unsatisfied is not offered. `factory.*` gaps depend on management-plane stage completion because factory-default removal is lockout-risk and the replacement management path must be established first. **One documented exception:** `factory.auto-image-upgrade` depends on nothing and closes first, because ZTP interferes with establishing the management plane itself and carries no lockout risk.
 
 **Gap namespaces:** `access.*`, `mgmt.*`, `zone.*`, `screen.*`, `policy.*`, `factory.*`. Each stage reference populates its own namespace.
 
@@ -259,13 +262,14 @@ When the entry-state assessment detects vendor-shipped factory-default configura
 
 **Factory-default elements on Branch platforms:**
 
+- `chassis auto-image-upgrade` (phone-home ZTP) enabled — resets DHCP client state and may install an image and reboot unattended
 - Permissive default policy (trust to untrust any/any permit)
-- IRB.0 DHCP server on VLAN trust (192.168.1.0/24 broadcast domain)
-- WAN interface ge-0/0/0.0 configured for DHCP client
-- System services enabled on untrust zone
-- fxp0 left unconfigured
+- IRB.0 DHCP server on VLAN trust (**192.168.2.0/24** broadcast domain; `irb.0` = 192.168.2.1/24)
+- WAN DHCP clients on `ge-0/0/0.0` **and** `ge-0/0/15.0`; `untrust` also binds `dl0.0`
+- System services enabled on untrust **per-interface** (HTTPS/DHCP/TFTP; SSH is not permitted from untrust)
+- **fxp0 configured** as `192.168.1.1/24` with a DHCP server on it — not left unconfigured
 
-**All `factory.*` gaps depend on management-plane stage completion.** The replacement management path must be established and verified before factory elements are removed.
+**`factory.*` gaps depend on management-plane stage completion**, except `factory.auto-image-upgrade` which closes first. The replacement management path must be established and verified before the remaining factory elements are removed.
 
 **Lockout risk:** All `factory.*` gaps carry `lockout_risk: true` because removal of factory elements can cost management reachability if the assessment's judgment about the management path was wrong.
 
@@ -370,6 +374,6 @@ Stage references (each defines gaps, lockout risk, verification commands, and su
 - [ ] If verification fails, confirming commit is NOT issued; timer expires and Junos rolls back automatically
 - [ ] Re-running against a finished device produces verification matrix and proposes no writes (idempotency)
 - [ ] No device credentials, raw license material, or internal addresses in chat output
-- [ ] All factory-default gaps depend on management-plane stage completion
+- [ ] All factory-default gaps depend on management-plane stage completion, except `factory.auto-image-upgrade`, which closes first and carries no lockout risk
 - [ ] All entitlement assessments check entitled/configured/active independently; license counter alone never treated as proof of enforcement
 - [ ] All routing boundaries respected: chassis cluster → route away, licensing mutation → route to srx-license-signature-maintenance, policy design → route to srx-policy

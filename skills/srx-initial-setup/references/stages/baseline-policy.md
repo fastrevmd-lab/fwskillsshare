@@ -155,6 +155,7 @@ The three named exceptions are:
 - **Lockout risk:** `false` (adding permit policies does not break existing flows; removing or changing them can)
 - **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when outbound DNS, HTTP, HTTPS, and NTP from trust to untrust are verified permitted by that party, whatever the policy structure.
 - **Evidence:** `show configuration security policies global` returns no policies, or existing policies do not permit trust-to-untrust outbound traffic for essential services (DNS, HTTP, HTTPS, NTP)
+- **Factory zone-pair interaction:** If — and only if — the `factory.permissive-policy` gap is **open**, **this gap does not run.** Key the handoff to that gap's state, not to the mere presence of any factory zone-pair policy: on a partial device where the broad trust-to-untrust permit-any was already removed but some other factory zone-pair rule survives, `factory.permissive-policy` is not generated (its evidence requires the broad policy), and a presence-based test would skip this gap too, leaving nothing owning creation of the outbound rules. Junos evaluates zone-pair policies before global ones, so adding global rules underneath a factory permit-any produces a table that verifies as configured but is never reached. In that state the cutover is owned end-to-end by `factory.permissive-policy` in `references/factory-default-branch.md`, which deletes the factory policies and creates these same global replacements in a single commit. Record this gap as closed by that commit rather than proposing the policies a second time.
 - **Proposal:**
 
   ```text
@@ -162,7 +163,7 @@ The three named exceptions are:
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS match to-zone untrust
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS match source-address any
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS match destination-address any
-  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match application junos-dns-udp
+  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match application [ junos-dns-udp junos-dns-tcp ]
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS then permit
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS then log session-close
 
@@ -186,11 +187,11 @@ The three named exceptions are:
 
   **Reasoning:** These three policies permit the minimum outbound traffic required for a functional Branch deployment:
 
-  - **DNS (junos-dns-udp):** Required for name resolution by the device and LAN clients.
+  - **DNS (`junos-dns-udp` and `junos-dns-tcp`):** Required for name resolution by the device and LAN clients. **Include TCP/53, not just UDP.** Resolvers fall back to TCP whenever a response is truncated (large RRsets, DNSSEC), so a UDP-only permit sitting above a default-deny produces intermittent resolution failures that look like flaky DNS rather than a policy problem.
   - **HTTP and HTTPS (junos-http, junos-https):** Required for web browsing by LAN clients and for the device to reach external services (software updates, cloud management, license activation).
   - **NTP (junos-ntp):** Required for time synchronization by the device and optionally by LAN clients.
 
-  **Why these applications:** The `junos-dns-udp`, `junos-http`, `junos-https`, and `junos-ntp` applications are predefined in Junos and match the standard port/protocol combinations for these services. Using predefined applications avoids custom application definitions for basic services.
+  **Why these applications:** The `junos-dns-udp`, `junos-dns-tcp`, `junos-http`, `junos-https`, and `junos-ntp` applications are predefined in Junos and match the standard port/protocol combinations for these services. Using predefined applications avoids custom application definitions for basic services.
 
   **Why `session-close` logging:** These are permit policies. Logging at session-close records completed sessions without flooding logs with session-init entries for every connection.
 
@@ -209,7 +210,9 @@ The three named exceptions are:
   **Source for predefined applications:** Juniper Networks, "Security Policy Applications and Application Sets" (Junos OS Security Policies), documented in `skills/srx-policy/SKILL.md` metadata sources, retrieved 2026-05-15 (as cited in srx-policy).
   URL: https://www.juniper.net/documentation/us/en/software/junos/security-policies/topics/topic-map/policy-application-sets-configuration.html
 
-  **Cross-reference to factory.permissive-policy:** This gap is the replacement for the factory-default trust-to-untrust permit-any policy documented in `skills/srx-initial-setup/references/factory-default-branch.md`. The factory policy allows all applications; this baseline allows only DNS, HTTP, HTTPS, and NTP. Closing `factory.permissive-policy` depends on this gap being closed first.
+  **Cross-reference to factory.permissive-policy:** This gap is the replacement for the factory-default trust-to-untrust permit-any policy documented in `skills/srx-initial-setup/references/factory-default-branch.md`. The factory policy allows all applications; this baseline allows only DNS, HTTP, HTTPS, and NTP.
+
+**Ownership runs the other way when `factory.permissive-policy` is open** — keyed to that gap's state, not to the mere presence of any factory policy, matching the handoff condition above. When it is open, `factory.permissive-policy` does **not** wait for this gap — it owns the whole cutover and emits the deletion together with this baseline in one commit, then this gap is recorded closed by that commit. The reverse ordering deadlocks: the deletion would wait on Stage 5, while Stage 5 cannot verify because the factory permit-any shadows every global rule, so Stage 5 rolls back and the deletion is never reached.
 
 ### `policy.default-deny-absent`
 
