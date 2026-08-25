@@ -1,5 +1,3 @@
-
-
 <!-- brand:header:start -->
 <p align="center">
   <picture>
