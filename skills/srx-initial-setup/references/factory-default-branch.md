@@ -203,7 +203,9 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
 
 - **Stage:** factory-default-removal
 - **Severity:** `blocking` (too permissive; violates least-privilege)
-- **Depends on:** `policy.explicit-outbound` (a gap proposing explicit application-aware policies)
+- **Depends on:** nothing directly. **This gap does not close on its own.** Its deletion is executed *inside* the Stage 5 `policy.explicit-outbound` commit, and it closes when that commit is confirmed.
+
+  **Why it cannot depend on `policy.explicit-outbound` the ordinary way.** A gap whose `depends_on` is unsatisfied is not offered, so declaring that dependency deadlocks the factory-default path: the deletion waits for Stage 5, while Stage 5 cannot verify — global policies never accumulate hit counts or logs while the factory zone-pair still shadows them — so Stage 5 rolls back and the deletion is never reached. The cutover is a single atomic operation with a single owner (Stage 5), not two gaps in sequence.
 - **Lockout risk:** `true` (if the assessment's judgment about management-plane path is wrong — e.g., operator is reaching the device via a trust-to-untrust hairpin or an unexpected policy dependency exists — removing the permissive policy can cut access. The risk is lower than other factory gaps because traffic destined to the device itself is governed by `host-inbound-traffic`, not transit security policies, but it is not zero.)
 - **Evidence:** `show security policies from-zone trust to-zone untrust` reports a default-permit or broad junos-defaults policy
 - **Proposal:** Replace with explicit **global** policies per required application, in **one atomic commit** with the deletion.
@@ -215,8 +217,14 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
 
   Example:
   ```text
-  delete security policies from-zone trust to-zone untrust
-  delete security policies from-zone trust to-zone trust
+  delete security policies from-zone trust to-zone untrust policy trust-to-untrust
+  delete security policies from-zone trust to-zone trust policy trust-to-trust
+  set security policies global policy 200-TRUST-INTRAZONE match from-zone trust
+  set security policies global policy 200-TRUST-INTRAZONE match to-zone trust
+  set security policies global policy 200-TRUST-INTRAZONE match source-address any
+  set security policies global policy 200-TRUST-INTRAZONE match destination-address any
+  set security policies global policy 200-TRUST-INTRAZONE match application any
+  set security policies global policy 200-TRUST-INTRAZONE then permit
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS match from-zone trust
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS match to-zone untrust
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS match source-address any
@@ -226,6 +234,12 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
   set security policies global policy 100-TRUST-TO-UNTRUST-DNS then log session-close
   ```
   Expand per deployment needs (NTP, ICMP, etc.). Use address objects instead of `any` for tighter control.
+
+  **Delete by policy name, never by hierarchy.** `delete security policies from-zone trust to-zone untrust` removes *every* policy in that zone pair, not just the factory one. On a `partial` device — factory remnants plus operator-added rules, which is the state this skill explicitly expects to find — that silently destroys the operator's custom access with nothing in the evidence to justify it. Enumerate the factory policy names from `show configuration security policies` and delete only those; migrate every other rule into the global table instead of dropping it.
+
+  On the validated SRX345 the factory names are `trust-to-untrust` and `trust-to-trust`; confirm them per device rather than assuming.
+
+  **Do not drop trust-to-trust without a replacement.** The factory `trust-to-trust` permit is what carries routed intra-LAN traffic between interfaces in the trust zone. Deleting it with no global equivalent turns intra-zone traffic over to the default deny. The `200-TRUST-INTRAZONE` policy above is that replacement and must be in the same commit.
 
 ### `factory.irb-dhcp-server`
 

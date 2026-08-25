@@ -97,7 +97,7 @@ set security screen ids-option STARTER-SCREENS tcp land
 set security screen ids-option STARTER-SCREENS tcp winnuke
 set security screen ids-option STARTER-SCREENS ip tear-drop
 
-set security zones security-zone untrust screen STARTER-SCREENS
+set security zones security-zone untrust screen STARTER-SCREENS-UNTRUST
 set security zones security-zone trust screen STARTER-SCREENS
 ```
 
@@ -120,7 +120,9 @@ The documentation provides configuration examples showing screens created under 
 - **Severity:** `advisory` (screens are defense-in-depth, not a blocker for basic connectivity)
 - **Depends on:** `zone.trust-absent`, `zone.untrust-absent`
 - **Lockout risk:** `false` (the starter profile contains only low-false-positive signature-based screens; it does not include aggressive threshold-based screens that might block legitimate traffic)
-- **Evidence:** `show configuration security screen` returns no `ids-option` configuration, or the starter profile does not exist
+- **Evidence:** `show configuration security screen` returns no `ids-option` configuration, **or** a required starter profile does not exist, **or** a starter profile exists but is missing any leaf this stage requires.
+
+  **The third condition is load-bearing and was added after a real miss.** A device configured by an earlier version of this skill already has `STARTER-SCREENS` created and bound, so a gap that only tests for *absence* stays closed and newly-required leaves are never proposed — leaving exactly the regression this stage exists to prevent, on precisely the devices it was written for. Compare each profile leaf by leaf against the target below and open this gap on any mismatch, not merely on absence. The same applies to every future addition to either profile.
 - **Proposal:**
 
   ```text
@@ -136,13 +138,31 @@ The documentation provides configuration examples showing screens created under 
   set security screen ids-option STARTER-SCREENS tcp syn-frag
   set security screen ids-option STARTER-SCREENS tcp land
   set security screen ids-option STARTER-SCREENS tcp winnuke
-  set security screen ids-option STARTER-SCREENS tcp syn-flood alarm-threshold 1024
-  set security screen ids-option STARTER-SCREENS tcp syn-flood attack-threshold 200
-  set security screen ids-option STARTER-SCREENS tcp syn-flood source-threshold 1024
-  set security screen ids-option STARTER-SCREENS tcp syn-flood destination-threshold 2048
-  set security screen ids-option STARTER-SCREENS tcp syn-flood timeout 20
   set security screen ids-option STARTER-SCREENS ip tear-drop
   ```
+
+  **Second profile, untrust only.** `STARTER-SCREENS` above is signature-only and safe to bind to any zone. Threshold-based screens are not, so they live in a separate profile that is bound **only to untrust**:
+
+  ```text
+  set security screen ids-option STARTER-SCREENS-UNTRUST ip source-route-option
+  set security screen ids-option STARTER-SCREENS-UNTRUST ip record-route-option
+  set security screen ids-option STARTER-SCREENS-UNTRUST ip timestamp-option
+  set security screen ids-option STARTER-SCREENS-UNTRUST ip bad-option
+  set security screen ids-option STARTER-SCREENS-UNTRUST ip tear-drop
+  set security screen ids-option STARTER-SCREENS-UNTRUST icmp ping-death
+  set security screen ids-option STARTER-SCREENS-UNTRUST icmp icmp-fragment
+  set security screen ids-option STARTER-SCREENS-UNTRUST tcp syn-fin
+  set security screen ids-option STARTER-SCREENS-UNTRUST tcp fin-no-ack
+  set security screen ids-option STARTER-SCREENS-UNTRUST tcp tcp-no-flag
+  set security screen ids-option STARTER-SCREENS-UNTRUST tcp syn-frag
+  set security screen ids-option STARTER-SCREENS-UNTRUST tcp land
+  set security screen ids-option STARTER-SCREENS-UNTRUST tcp winnuke
+  set security screen ids-option STARTER-SCREENS-UNTRUST tcp syn-flood <carry the observed factory thresholds>
+  ```
+
+  **Do not hard-code syn-flood thresholds, and do not bind them to internal zones.** This file classifies `syn-flood` as **Medium to High** false-positive risk and recommends baselining before tuning; on a busy LAN or server zone, WAN-derived thresholds can drop legitimate connection bursts. The values exist here only to avoid a *regression*: Junos allows one profile per zone, so binding a signature-only profile to `untrust` silently discards whatever threshold protection the factory `untrust-screen` already provided.
+
+  Therefore: read the existing untrust screen during assessment, carry **its** observed thresholds forward into `STARTER-SCREENS-UNTRUST`, and if the platform's factory config has no threshold screens, omit `syn-flood` entirely rather than inventing values. On the validated SRX345 the factory `untrust-screen` supplied `alarm-threshold 1024`, `attack-threshold 200`, `source-threshold 1024`, `destination-threshold 2048`, `timeout 20`.
 
   If IPv6 is deployed:
 
@@ -177,11 +197,11 @@ A purely signature-based starter profile therefore trades away syn-flood DoS pro
 - **Severity:** `advisory`
 - **Depends on:** `screen.starter-profile-absent`, `zone.untrust-absent`
 - **Lockout risk:** `false`
-- **Evidence:** The starter profile exists, but `show configuration security zones security-zone untrust` does not show `screen STARTER-SCREENS`
+- **Evidence:** The untrust profile exists, but `show configuration security zones security-zone untrust` does not show `screen STARTER-SCREENS-UNTRUST`
 - **Proposal:**
 
   ```text
-  set security zones security-zone untrust screen STARTER-SCREENS
+  set security zones security-zone untrust screen STARTER-SCREENS-UNTRUST
   ```
 
   **Reasoning:** The untrust zone faces the internet and is the most likely source of attacks. Applying screens here provides early filtering before policy lookup.
