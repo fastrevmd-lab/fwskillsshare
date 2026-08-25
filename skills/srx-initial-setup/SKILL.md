@@ -1,7 +1,7 @@
 ---
 name: srx-initial-setup
 description: Bring a new or factory-reset Juniper SRX from its shipped state to a reachable, zoned, screened, and minimally policied device. Use when performing first-time setup or Day-0 and Day-1 bring-up on SRX300 or SRX400 Branch, SRX1600 or SRX4120 campus, or SRX4300, SRX4700, or SRX5000 datacenter platforms, when removing or adopting factory-default configuration, when establishing management access, NTP, DNS, and system services, when creating interfaces, zones, and host-inbound-traffic, when applying starter screens, or when reading which licensed feature sets are entitled, configured, and active. Not for chassis-cluster formation, ZTP-based provisioning, Junos upgrades, or full policy design.
-version: 1.2.0
+version: 1.3.0
 author:
   - fastrevmd-lab
   - Claude
@@ -61,7 +61,7 @@ Use this skill to bring a new or factory-reset Juniper SRX from its shipped stat
 
 **Every device write runs behind a per-stage approval gate** under confirmed commit with a rollback timer. If verification fails, the confirmed commit expires automatically and Junos rolls back to the pre-change configuration.
 
-**Validation status:** At 1.2.0 the Branch factory-default model is **hardware-validated against an SRX345** (`srx345-dual-ac`, Junos 21.2R3-S6.11, 2026-08-25) in factory-default state. That run corrected seven claims — see the validation record in `references/factory-default-branch.md`. Everything else in this skill remains written from vendor documentation and existing verified repository references. Still unvalidated on hardware: the write path (gate protocol, confirmed commit, rollback-on-failure), the other Branch SKUs, and all campus and datacenter platforms. Platform scope: Branch SRX300/400, campus SRX1600/4120, datacenter SRX4300/4700/5000. SRX1500 is end-of-sale and is not a validation target.
+**Validation status:** At 1.3.0 this skill has been run end-to-end against a live **SRX345** (`srx345-dual-ac`, Junos 21.2R3-S6.11, 2026-08-25) from factory-default state through the baseline policy stage. Both the read path and the **write path** are hardware-validated: the gate protocol, `commit confirmed`, per-stage verification, and the confirming commit were exercised on every stage. Eleven claims were corrected — see the validation record in `references/factory-default-branch.md`. Four of the eleven were silent failures that would have reported a gap closed while changing nothing or while degrading the device. Still unvalidated on hardware: rollback-on-verification-failure (no stage failed verification during the run), the other Branch SKUs, and all campus and datacenter platforms. Platform scope: Branch SRX300/400, campus SRX1600/4120, datacenter SRX4300/4700/5000. SRX1500 is end-of-sale and is not a validation target.
 
 ## Scope and routing
 

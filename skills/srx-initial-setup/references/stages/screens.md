@@ -136,6 +136,11 @@ The documentation provides configuration examples showing screens created under 
   set security screen ids-option STARTER-SCREENS tcp syn-frag
   set security screen ids-option STARTER-SCREENS tcp land
   set security screen ids-option STARTER-SCREENS tcp winnuke
+  set security screen ids-option STARTER-SCREENS tcp syn-flood alarm-threshold 1024
+  set security screen ids-option STARTER-SCREENS tcp syn-flood attack-threshold 200
+  set security screen ids-option STARTER-SCREENS tcp syn-flood source-threshold 1024
+  set security screen ids-option STARTER-SCREENS tcp syn-flood destination-threshold 2048
+  set security screen ids-option STARTER-SCREENS tcp syn-flood timeout 20
   set security screen ids-option STARTER-SCREENS ip tear-drop
   ```
 
@@ -146,7 +151,23 @@ The documentation provides configuration examples showing screens created under 
   set security screen ids-option STARTER-SCREENS ipv6 ipv6-extension-header-limit 7
   ```
 
-  **Reasoning:** This profile includes only screens with very low or low false-positive risk. All are signature-based (detecting illegal flag combinations, malformed packets, or known attack patterns) rather than threshold-based.
+  **Reasoning:** Apart from `syn-flood`, this profile includes only screens with very low or low false-positive risk, all signature-based (illegal flag combinations, malformed packets, known attack patterns).
+
+**`syn-flood` is included deliberately, and omitting it is a regression.** Junos permits exactly **one** screen profile per zone, so binding `STARTER-SCREENS` to `untrust` *replaces* the factory `untrust-screen` rather than adding to it. On Branch SRX the factory `untrust-screen` contains threshold-based `syn-flood` protection:
+
+```text
+tcp {
+    syn-flood {
+        alarm-threshold 1024;
+        attack-threshold 200;
+        source-threshold 1024;
+        destination-threshold 2048;
+        timeout 20;
+    }
+}
+```
+
+A purely signature-based starter profile therefore trades away syn-flood DoS protection for signature checks — a **net security loss** on the internet-facing zone, and a silent one, since nothing errors and the zone still reports a screen bound. The thresholds above are carried forward from the factory default; verify them against the platform's factory config during assessment rather than assuming these values, and re-tune for the site's real traffic. Hardware-verified on SRX345, 2026-08-25.
 
   **Source:** Same as "Binding to zones" section above.
 

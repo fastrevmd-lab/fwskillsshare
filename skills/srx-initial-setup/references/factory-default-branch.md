@@ -206,15 +206,24 @@ These gaps populate the `factory.*` namespace. All have `lockout_risk: true` and
 - **Depends on:** `policy.explicit-outbound` (a gap proposing explicit application-aware policies)
 - **Lockout risk:** `true` (if the assessment's judgment about management-plane path is wrong — e.g., operator is reaching the device via a trust-to-untrust hairpin or an unexpected policy dependency exists — removing the permissive policy can cut access. The risk is lower than other factory gaps because traffic destined to the device itself is governed by `host-inbound-traffic`, not transit security policies, but it is not zero.)
 - **Evidence:** `show security policies from-zone trust to-zone untrust` reports a default-permit or broad junos-defaults policy
-- **Proposal:** Replace with explicit policies per required application. Example:
+- **Proposal:** Replace with explicit **global** policies per required application, in **one atomic commit** with the deletion.
+
+  **Two hardware-verified constraints (SRX345, 2026-08-25):**
+
+  1. **Use global policy syntax, not zone-pair.** `references/stages/baseline-policy.md` mandates `security policies global` and its verification explicitly requires *no* matches for `set security policies from-zone`. An earlier version of this gap proposed zone-pair replacements, which contradicted that mandate; express zones as `match from-zone` / `match to-zone` fields inside each global policy instead.
+  2. **Delete the factory zone-pair policies in the same commit that adds the global ones.** Junos evaluates zone-pair policies **before** global policies. Leaving the factory `trust-to-untrust` permit-any in place while adding a global baseline leaves that entire baseline **inert** — it is never reached, nothing errors, and the policy table looks correct. Splitting the other way is worse: deleting first and adding later opens a window where default deny-all drops production traffic.
+
+  Example:
   ```text
-  delete security policies from-zone trust to-zone untrust policy <factory-policy-name>
-  set security policies from-zone trust to-zone untrust policy allow-http match source-address any destination-address any application junos-http
-  set security policies from-zone trust to-zone untrust policy allow-http then permit
-  set security policies from-zone trust to-zone untrust policy allow-https match source-address any destination-address any application junos-https
-  set security policies from-zone trust to-zone untrust policy allow-https then permit
-  set security policies from-zone trust to-zone untrust policy allow-dns match source-address any destination-address any application junos-dns-udp
-  set security policies from-zone trust to-zone untrust policy allow-dns then permit
+  delete security policies from-zone trust to-zone untrust
+  delete security policies from-zone trust to-zone trust
+  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match from-zone trust
+  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match to-zone untrust
+  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match source-address any
+  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match destination-address any
+  set security policies global policy 100-TRUST-TO-UNTRUST-DNS match application [ junos-dns-udp junos-dns-tcp ]
+  set security policies global policy 100-TRUST-TO-UNTRUST-DNS then permit
+  set security policies global policy 100-TRUST-TO-UNTRUST-DNS then log session-close
   ```
   Expand per deployment needs (NTP, ICMP, etc.). Use address objects instead of `any` for tighter control.
 
@@ -304,6 +313,11 @@ This file documents factory-default configuration observed and documented for **
 | SSH from untrust | permitted | **not permitted** |
 | DHCP config hierarchy | `system services dhcp pool` | `access address-assignment` + `system services dhcp-local-server` |
 | `chassis auto-image-upgrade` | absent from this file | present and active |
+| untrust `host-inbound-traffic dhcp` delete | unconditional | breaks DHCP renewal unless the client is removed in the same commit |
+| `STARTER-SCREENS` on untrust | signature-only | replaces factory `untrust-screen`, discarding `syn-flood` unless carried forward |
+| `factory.permissive-policy` syntax | zone-pair | global policy, per `baseline-policy.md`'s own mandate |
+| policy replacement ordering | unspecified | zone-pair evaluated before global, so delete + add must be one commit |
+| NTP vs `commit confirmed` | unspecified | NTP sync steps the clock the rollback timer rides on |
 
 Remaining unvalidated on hardware: SRX300/320/340/380 (fxp0 presence varies by SKU), SRX400 series, and all campus and datacenter platforms.
 
