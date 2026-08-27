@@ -77,6 +77,85 @@ A bare FMC API response object (detected by presence of `items` or `paging` top-
 
 **Warning**: A single-response input yields a **partial parse**. The parser records a warning in `metadata.warnings` stating that only one endpoint was provided and cross-references cannot be fully resolved.
 
+## Collecting a Complete Configuration
+
+No single FMC REST API endpoint returns a complete firewall configuration. A complete parse requires collecting responses from many endpoints, and some collections cannot be retrieved until earlier calls provide the necessary IDs.
+
+### Collection Sequence
+
+The collection must proceed in dependency order across five phases:
+
+**Phase 1 — Domain Identification**
+
+The domain UUID is obtained from the authentication response headers (`DOMAIN_UUID`) and is required in all subsequent API paths: `/api/fmc_config/v1/domain/{domainUUID}/...`
+
+**Phase 2 — Object Collections**
+
+These endpoints can be called in any order once the domain UUID is known. They provide the objects that policies and rules reference:
+
+- **Network objects**: `object/networks`, `object/hosts`, `object/ranges`, `object/fqdns`
+- **Network groups**: `object/networkgroups`
+- **Service objects**: `object/protocolportobjects`, `object/icmpv4objects`, `object/icmpv6objects`
+- **Service groups**: `object/portobjectgroups`
+- **Security zones**: `object/securityzones`
+- **Application objects**: `object/applicationfilters`, `object/applications`, `object/applicationgroups`
+- **URL objects**: `object/urls`, `object/urlgroups`, `object/urlcategories`
+
+**Phase 3 — Policy Containers**
+
+These endpoints return policy metadata including the policy IDs (`id` or `containerUUID`) needed for Phase 4:
+
+- **Access control policies**: `policy/accesspolicies`
+- **Prefilter policies**: `policy/prefilterpolicies`
+- **NAT policies**: `policy/ftdnatpolicies`
+- **Intrusion policies**: `policy/intrusionpolicies`
+- **File policies**: `policy/filepolicies`
+
+**Phase 4 — Policy Child Collections (ID-Dependent)**
+
+These endpoints **cannot be called until Phase 3 provides the policy IDs**:
+
+- **Access rules**: `policy/accesspolicies/{containerUUID}/accessrules`
+- **Default actions**: `policy/accesspolicies/{containerUUID}/defaultactions`
+- **Prefilter rules**: `policy/prefilterpolicies/{containerUUID}/prefilterrules`
+- **NAT rules**: `policy/ftdnatpolicies/{containerUUID}/natrules`
+
+**Phase 5 — Device-Scoped Collections (ID-Dependent)**
+
+Device-specific configuration requires a two-step sequence:
+
+1. **Get device IDs**: `devices/devicerecords`
+2. **Per-device collections** (using `{deviceUUID}` from step 1):
+   - `devices/devicerecords/{deviceUUID}/physicalinterfaces`
+   - `devices/devicerecords/{deviceUUID}/subinterfaces`
+   - `devices/devicerecords/{deviceUUID}/routing/ipv4staticroutes`
+   - `devices/devicerecords/{deviceUUID}/routing/ipv6staticroutes`
+   - `devices/devicerecords/{deviceUUID}/redundancy` (HA/failover)
+
+### Completeness Checklist
+
+| Endpoint | Schema Section Populated | What Happens If You Skip It |
+|----------|-------------------------|------------------------------|
+| `object/securityzones` | `zones` | Zone references in rules resolve to empty names. Zone-scoped policy analysis (zone-pair matrices, zone-to-zone flows) produces meaningless results while appearing to succeed. |
+| `object/networks`, `object/hosts`, `object/ranges`, `object/fqdns` | `network_objects` | Address references in rules remain as IDs only. Any analysis requiring IP space (subnet overlap detection, RFC1918 checks, broad-scope identification) is impossible. |
+| `object/networkgroups` | `network_groups` | Group references in rules are unresolved. Group-based overly-permissive checks (any-group, large-group warnings) silently fail. |
+| `object/protocolportobjects`, `object/icmpv4objects`, `object/icmpv6objects` | `service_objects` | Service references in rules remain as IDs. Port-based analysis (common-service identification, non-standard-port detection) fails. |
+| `object/portobjectgroups` | `service_groups` | Service group references are unresolved. Service-group overly-permissive checks fail. |
+| `object/applicationfilters`, `object/applications` | `application_objects`, `application_groups` | Application references in rules are unresolved. L7 application analysis (SSL/TLS inspection requirements, risky-app detection) is impossible. |
+| `policy/accesspolicies` | `metadata.accessPolicy` (policy name) | You have no policy ID to retrieve access rules (Phase 4 fails). Parse produces zero rules. |
+| `policy/accesspolicies/{id}/accessrules` | `security_policies` | The parse contains zero access control rules. Every rule-based audit conclusion (shadowing, any/any detection, missing-logging) is wrong. |
+| `policy/accesspolicies/{id}/defaultactions` | `security_policies` (trailing implicit rule) | The default action is missing. Terminal-deny vs. terminal-allow analysis produces incorrect results. |
+| `policy/prefilterpolicies`, `policy/prefilterpolicies/{id}/prefilterrules` | `security_policies` (prefilter rules) | Prefilter fastpath rules are missing. Rule-order and shadowing analysis is incorrect because prefilter runs before ACP. |
+| `policy/ftdnatpolicies`, `policy/ftdnatpolicies/{id}/natrules` | `nat_rules` | NAT configuration is missing. Any NAT-related analysis (overlap detection, twice-NAT identification, PAT pool exhaustion) fails. |
+| `devices/devicerecords` | `interfaces` (device metadata) | You have no device IDs to retrieve interfaces or routing (Phase 5 fails). Interface and route sections remain empty. |
+| `devices/devicerecords/{id}/physicalinterfaces`, `.../subinterfaces` | `interfaces` | Interface configuration is missing. Zone-to-interface bindings, passive/inline mode detection, and interface-based routing analysis all fail. |
+| `devices/devicerecords/{id}/routing/ipv4staticroutes`, `.../ipv6staticroutes` | `static_routes` | Static routes are missing. Next-hop and egress-interface analysis for policy evaluation is incomplete. |
+| `devices/devicerecords/{id}/redundancy` | `ha_config` | HA/failover configuration is missing. HA-specific audit checks (asymmetric state-sync issues, failover-link validation) are skipped. |
+
+### Partial Pulls
+
+A **partial pull is legitimate** for focused questions (e.g., "list all any/any rules" needs only access rules and the default action, not NAT or interfaces). However, the partial nature **must be recorded**: the parser emits a `metadata.warnings` entry listing which expected endpoints were absent, and any audit findings must be qualified as incomplete. See the existing "Paging and Truncation" rule for the warning format.
+
 ## Paging and Truncation
 
 FMC API responses include a `paging` metadata block:
@@ -176,17 +255,17 @@ Common endpoint families verified from documentation and community examples:
 
 | Family | Resource Examples | Status |
 |--------|------------------|--------|
-| `policy` | `accesspolicies`, `accesspolicies/{id}/accessrules`, `prefilterpolicies`, `prefilterpolicies/{id}/prefilterrules`, `accesspolicies/{id}/defaultactions`, `intrusionpolicies` | Verified |
-| `object` | `networks`, `networkgroups`, `hosts`, `ranges`, `fqdns`, `portobjectgroups`, `protocolportobjects`, `icmpv4objects`, `icmpv6objects` | Partially verified |
-| `devices` | `devicerecords` | Verified |
+| `policy` | `accesspolicies`, `accesspolicies/{id}/accessrules`, `prefilterpolicies`, `prefilterpolicies/{id}/prefilterrules`, `accesspolicies/{id}/defaultactions`, `ftdnatpolicies`, `ftdnatpolicies/{id}/natrules`, `intrusionpolicies` | Verified |
+| `object` | `networks`, `networkgroups`, `hosts`, `ranges`, `fqdns`, `portobjectgroups`, `protocolportobjects`, `icmpv4objects`, `icmpv6objects`, `securityzones`, `applicationfilters` | Verified |
+| `devices` | `devicerecords`, `devicerecords/{id}/physicalinterfaces`, `devicerecords/{id}/subinterfaces` | Verified |
 | `audit` | `auditrecords` | Verified |
 
 **Unverified endpoint families** (mentioned in community code but not confirmed in accessible official docs):
 
 | Family | Resource Examples | Status |
 |--------|------------------|--------|
-| `object` | `applicationgroups`, `urlgroups`, `vlangroups`, `securityzones` | `[unverified]` |
-| `policy` | `natrules`, `filepolicies`, `malwarepolicies` | `[unverified]` |
+| `object` | `applicationgroups`, `urlgroups`, `vlangroups` | `[unverified]` |
+| `policy` | `filepolicies`, `malwarepolicies` | `[unverified]` |
 
 To verify additional endpoints, consult the API Explorer built into your FMC instance at:
 

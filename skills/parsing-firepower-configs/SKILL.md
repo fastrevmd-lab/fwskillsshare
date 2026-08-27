@@ -85,6 +85,10 @@ If a response's `paging.count` exceeds the actual number of items in `items`, th
 
 `.sfo` policy bundles (binary format, no published spec), PDF reports (presentation documents), and configuration backups via HTTPS export (undocumented serialization) are explicitly excluded. See `references/config-format.md` "Out of Scope" for rationale.
 
+### Collecting a Complete Pull
+
+No single FMC endpoint returns a complete configuration. A complete pull requires collecting many responses across five dependency phases: (1) domain UUID from auth token; (2) object collections (networks, zones, services, applications); (3) policy containers to learn policy IDs; (4) policy child collections using those IDs (access rules, prefilter rules, NAT rules, default actions); (5) device records to learn device IDs, then per-device interfaces, routing, and HA. Skipping an endpoint silently breaks downstream analysis — for example, omitting `securityzones` yields empty zone names, making zone-scoped policy audits meaningless while appearing to succeed. See `references/config-format.md` "Collecting a Complete Configuration" for the full dependency sequence and a completeness checklist showing what breaks when each endpoint is skipped.
+
 ## Extraction Pipeline
 
 Extract all major configuration sections into the shared schema. Each numbered subsection below corresponds to an intermediate schema section.
@@ -344,7 +348,7 @@ Schema sections not yet populated by this pipeline (e.g., `routing_contexts`) ar
 
 Before returning a parse, run these common quality gates and include the results in the response:
 
-1. **Format and scope detection** — report detected vendor (FMC/FDM), platform family (Firepower), config format (JSON), version clues, domain name, and whether input appears complete or partial (check `paging` metadata).
+1. **Format and scope detection** — report detected vendor (FMC/FDM), platform family (Firepower), config format (JSON), version clues, domain name, and whether input appears complete or partial (check `paging` metadata). List which endpoints were provided and which expected endpoints (per the completeness checklist in `references/config-format.md`) are absent.
 2. **Schema conformance** — emit the vendor-neutral JSON sections defined in `references/intermediate-schema.md`; use empty arrays/objects for absent sections rather than omitting expected top-level keys.
 3. **Object counts** — summarize counts for zones, interfaces, address objects/groups, service/application objects/groups, policies, NAT rules, routes, VPNs, HA, admin users, and residual blocks.
 4. **Reference resolution** — list unresolved object, service/application, zone/interface, profile, route, VPN, and NAT references with source rule/context where possible.
