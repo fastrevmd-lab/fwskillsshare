@@ -251,9 +251,9 @@ Install with `--family deployment`.
 
 ## Quality and Review
 
-**25 of the 29 skills** have passed independent technical review. The exceptions
-are `clearpass-proxmox-deploy`, which ships as a draft, and `srx-syslog-logging`,
-which has not yet been through the two-stage review. Four review rounds, the
+**26 of the 29 skills** have passed independent technical review. The exceptions
+are `clearpass-proxmox-deploy`, which ships as a draft, and `parsing-firepower-configs`
+and `srx-syslog-logging`, which have not yet been through the two-stage review. Four review rounds, the
 live-device validation runs, what those runs falsified, and the per-family table
 are recorded in **[QUALITY.md](./QUALITY.md)**.
 
