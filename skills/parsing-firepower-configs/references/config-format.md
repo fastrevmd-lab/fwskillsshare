@@ -137,11 +137,11 @@ Device-specific configuration requires a two-step sequence:
 | Endpoint | Schema Section Populated | What Happens If You Skip It |
 |----------|-------------------------|------------------------------|
 | `object/securityzones` | `zones` | Zone references in rules resolve to empty names. Zone-scoped policy analysis (zone-pair matrices, zone-to-zone flows) produces meaningless results while appearing to succeed. |
-| `object/networks`, `object/hosts`, `object/ranges`, `object/fqdns` | `network_objects` | Address references in rules remain as IDs only. Any analysis requiring IP space (subnet overlap detection, RFC1918 checks, broad-scope identification) is impossible. |
-| `object/networkgroups` | `network_groups` | Group references in rules are unresolved. Group-based overly-permissive checks (any-group, large-group warnings) silently fail. |
+| `object/networks`, `object/hosts`, `object/ranges`, `object/fqdns` | `address_objects` | Address references in rules remain as IDs only. Any analysis requiring IP space (subnet overlap detection, RFC1918 checks, broad-scope identification) is impossible. |
+| `object/networkgroups` | `address_groups` | Group references in rules are unresolved. Group-based overly-permissive checks (any-group, large-group warnings) silently fail. |
 | `object/protocolportobjects`, `object/icmpv4objects`, `object/icmpv6objects` | `service_objects` | Service references in rules remain as IDs. Port-based analysis (common-service identification, non-standard-port detection) fails. |
 | `object/portobjectgroups` | `service_groups` | Service group references are unresolved. Service-group overly-permissive checks fail. |
-| `object/applicationfilters`, `object/applications` | `application_objects`, `application_groups` | Application references in rules are unresolved. L7 application analysis (SSL/TLS inspection requirements, risky-app detection) is impossible. |
+| `object/applicationfilters`, `object/applications` | `applications`, `application_groups` | Application references in rules are unresolved. L7 application analysis (SSL/TLS inspection requirements, risky-app detection) is impossible. |
 | `policy/accesspolicies` | `metadata.accessPolicy` (policy name) | You have no policy ID to retrieve access rules (Phase 4 fails). Parse produces zero rules. |
 | `policy/accesspolicies/{id}/accessrules` | `security_policies` | The parse contains zero access control rules. Every rule-based audit conclusion (shadowing, any/any detection, missing-logging) is wrong. |
 | `policy/accesspolicies/{id}/defaultactions` | `security_policies` (trailing implicit rule) | The default action is missing. Terminal-deny vs. terminal-allow analysis produces incorrect results. |
