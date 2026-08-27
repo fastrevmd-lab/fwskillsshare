@@ -1,6 +1,6 @@
 # parsing-cisco-configs
 
-Claude Code skill for parsing and analyzing **Cisco ASA and FTD** firewall configurations.
+Claude Code skill for parsing and analyzing **Cisco ASA and FTD** LINA running configurations. For FMC/FDM JSON exports, use `parsing-firepower-configs`.
 
 ## What it does
 

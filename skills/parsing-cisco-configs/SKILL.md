@@ -1,6 +1,6 @@
 ---
 name: parsing-cisco-configs
-description: Parse Cisco ASA and FTD running configurations into the shared firewall schema. Use when input contains show running-config, access-list, access-group, object network, object-group, nameif, security-level, NAT, interfaces, or failover, including audit, conversion, diff, summary, and explanation tasks.
+description: Parse Cisco ASA and FTD LINA running configurations into the shared firewall schema. Use when input contains show running-config, access-list, access-group, object network, object-group, nameif, security-level, NAT, interfaces, or failover, including audit, conversion, diff, summary, and explanation tasks. For FMC- or FDM-managed Firepower policy exported as JSON, use parsing-firepower-configs instead.
 version: 1.1.5
 author:
   - fastrevmd-lab
@@ -23,6 +23,7 @@ metadata:
     - parsing-srx-configs
     - parsing-palo-configs
     - parsing-fortinet-configs
+    - parsing-firepower-configs
     - firewall-best-practices-audit
     - firewall-config-conversion
     - firewall-config-diff
@@ -34,11 +35,17 @@ metadata:
 
 Use this skill to parse Cisco ASA and ASA-style FTD running configurations into the shared vendor-neutral firewall intermediate schema. It focuses on line-oriented `show running-config` text with parent commands and indented subcommands, including interfaces/nameifs, ACLs/access-groups, network and service objects, object-groups, NAT, routes, VPN, failover, and system settings.
 
-Treat FMC-managed FTD exports and API data as adjacent but not identical inputs: parse what is present, preserve unresolved or unsupported structures in `residual_raw`, and call out assumptions rather than inventing missing policy context.
+FMC- and FDM-managed policy is **not** parsed here. An FMC or FDM JSON export has
+no syntactic overlap with LINA CLI — its policy lives in Access Control Policy
+rules, security-zone objects, and intrusion/file policies rather than in
+`access-list` and `access-group` lines. Route those exports to
+`parsing-firepower-configs`. If an FMC-managed device's LINA running-config is
+supplied, parse it here and warn that it is the compiled result of an FMC policy,
+not the policy source.
 
 ## Scope and routing
 
-Use only for Cisco ASA or FTD syntax. Hand off FortiOS `config/edit/next/end` blocks to `parsing-fortinet-configs`, PAN-OS XML or `set deviceconfig` to `parsing-palo-configs`, and Junos hierarchy or `set security` to `parsing-srx-configs`. Verify production-bound results against current device documentation and output. Downstream consumers are the audit, conversion, and diff skills.
+Use only for Cisco ASA or FTD syntax. Hand off FortiOS `config/edit/next/end` blocks to `parsing-fortinet-configs`, PAN-OS XML or `set deviceconfig` to `parsing-palo-configs`, and Junos hierarchy or `set security` to `parsing-srx-configs`. Hand off FMC or FDM JSON exports to `parsing-firepower-configs`. Verify production-bound results against current device documentation and output. Downstream consumers are the audit, conversion, and diff skills.
 
 ## Runtime intake
 
