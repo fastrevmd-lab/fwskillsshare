@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.4.0 — parsing-firepower-configs skill
+
+New skill: **[parsing-firepower-configs](./skills/parsing-firepower-configs/SKILL.md)** v0.1.0 — parses Cisco Secure Firewall (Firepower) FMC- and FDM-managed JSON exports into the shared vendor-neutral intermediate schema. The repository previously claimed FTD coverage but delivered it only for the ASA-style LINA form; this closes the NGFW-layer gap that `firewall-config-conversion` and `firewall-best-practices-audit` had both explicitly deferred. The split from `parsing-cisco-configs` is on **grammar, not product name** — both artifacts are "Cisco FTD" to a human, but an FMC JSON export and a LINA `show running-config` share no parseable syntax. `parsing-cisco-configs` keeps ASA and FTD-LINA and now hands off explicitly in both directions.
+
+Emits the existing shared schema unchanged. Firepower's Prefilter → Mandatory → Default → inheritance chain flattens into a single merged `_rule_index` with provenance in `metadata`, following the Panorama precedent, so there is no schema edit and no ripple into the audit, conversion, or diff skills. All five `intermediate-schema.md` copies remain byte-identical.
+
+- **Multi-endpoint collection guidance.** No single FMC endpoint returns a complete configuration. `references/config-format.md` documents a five-phase dependency-ordered sequence — `accesspolicies/{containerUUID}/accessrules` cannot be fetched before `accesspolicies` yields the `containerUUID`, and per-device interfaces and routing need the `deviceUUID` — plus a 15-row completeness checklist stating what silently breaks when each endpoint is skipped.
+- **MONITOR is non-terminal.** A MONITOR rule logs and continues; the shared schema has no non-terminal action. Every MONITOR rule emits a warning and the fixture asserts it, because a naive `allow` mapping tells downstream audit a rule matches and stops when it does not.
+- **Paging truncation is a first-class hazard.** A reported total exceeding the items present marks the collection incomplete rather than parsing page one as a whole rulebase.
+- **`.sfo` bundles and PDF policy reports are refused, not half-parsed** — undocumented for third-party parsing, so support cannot be claimed under the repository's evidence rule.
+- Ships **outside** the two-stage review, disclosed in README and QUALITY.md. Roughly 30% of the endpoint material carries inline `[unverified]` markers: cisco.com returned HTTP 403 to automated access, so sourcing fell back to DevNet and community documentation, and the reference separates what was attempted from what was actually consulted.
+
+**srx-initial-setup** reclassified as reviewed — **26 of 29** skills, up from 25. Validation was by execution rather than document review, on the precedent already set by `srx-chassis-cluster-proxmox`: an end-to-end run against a live SRX345 (`srx345-dual-ac`, Junos 21.2R3-S6.11, 2026-08-25) exercising both read and write paths, which found 23 defects and promoted the skill 1.1.0 → 1.3.0. Rollback-on-verification-failure, the other Branch SKUs, and all campus and datacenter platforms remain unvalidated on hardware. The catalog had still been describing the skill at 1.0.0 with no device validation performed.
+
+Catalog accuracy: skill counts corrected to the measured 29 across README, SKILLS.md, QUALITY.md, and a hardcoded literal in `scripts/check-installer.py` that reported a count it never computed. A second README count statement was contradicting the first, and its exceptions list had been understating what has not been reviewed.
+
+
 ## 1.3.0 — srx-initial-setup policy model opt-out
 
 **srx-initial-setup** v1.1.0 — adds explicit zone-to-zone policy opt-out to align with `srx-policy` skill's enforced global-policy contract. The baseline policy is generated as global policy; when a zone-pair exception applies (existing-estate compatibility, isolated exceptions clearer as zone-pair policies, or customer standards requiring zone-pair contexts), the policy stage routes to `srx-policy` for zone-pair design on non-Branch platforms (Branch SRX zone-pair policy is unowned). Adds runtime intake question `sis_policy_model` to confirm the architecture before generating the baseline.
