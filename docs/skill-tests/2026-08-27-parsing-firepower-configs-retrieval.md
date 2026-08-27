@@ -55,16 +55,14 @@ This document records a mechanical analysis of which skill description's trigger
 ```
 
 **Matched tokens in parsing-firepower-configs description:**
-- JSON
-- FMC
-- accessPolicy
-- securityZones
-- rules (as part of "accessrules")
+- JSON (format identifier)
+- accessPolicy (exact match as field name)
+- securityZones (exact match as field name)
 
 **Matched tokens in parsing-cisco-configs description:**
 - (none)
 
-**Predicted selection:** `parsing-firepower-configs` (5 matches vs 0)
+**Predicted selection:** `parsing-firepower-configs` (3 matches vs 0)
 
 **Result:** ✅ PASS
 
@@ -133,23 +131,23 @@ access-group OUTSIDE-IN in interface outside
 ```
 
 **Matched tokens in parsing-firepower-configs description:**
-- FTD
+- access-list (mentioned in hand-off clause: "For ASA-style LINA running-config text such as access-list...")
+- nameif (mentioned in hand-off clause)
+- object network (mentioned in hand-off clause)
 
 **Matched tokens in parsing-cisco-configs description:**
-- FTD
-- show running-config
-- access-list
-- access-group
-- object network
-- nameif
-- security-level
-- interfaces
+- FTD (appears in artifact header; appears in description as "Cisco ASA and FTD LINA")
+- access-list (appears multiple times in artifact)
+- access-group (appears in artifact)
+- object network (appears in artifact)
+- nameif (appears multiple times in artifact)
+- security-level (appears multiple times in artifact)
 
-**Predicted selection:** `parsing-cisco-configs` (8 matches vs 1)
+**Predicted selection:** `parsing-cisco-configs` (6 matches vs 3)
 
 **Result:** ✅ PASS
 
-**Note:** Although "FTD" appears in both descriptions, `parsing-cisco-configs` wins decisively on the strength of LINA-specific tokens (`show running-config`, `access-list`, `nameif`, `object network`).
+**Note:** This is the sharp case. The artifact is an FTD device's LINA-format running configuration. Although the Firepower description mentions `access-list`, `nameif`, and `object network` in its hand-off clause (directing such configs to parsing-cisco-configs), the Cisco description dominates with its FTD product token and full set of LINA syntax tokens. The standalone token "FTD" does NOT appear in the Firepower description (which lists "FMC and FDM", not "FTD"); the Firepower description contains only the compound endpoint name `ftdnatpolicies`, which is unrelated to the product token.
 
 ---
 
@@ -206,12 +204,12 @@ access-group OUTSIDE-IN in interface outside
 **Overall result:** 4 of 4 predictions correct (100%)
 
 All four artifacts were correctly classified by token overlap:
-- FMC JSON → `parsing-firepower-configs` (5 matches vs 0)
+- FMC JSON → `parsing-firepower-configs` (3 matches vs 0)
 - ASA access-list/nameif → `parsing-cisco-configs` (5 matches vs 2)
-- FTD LINA running-config → `parsing-cisco-configs` (8 matches vs 1)
+- FTD LINA running-config → `parsing-cisco-configs` (6 matches vs 3)
 - FDM accessrules JSON → `parsing-firepower-configs` (4 matches vs 0)
 
-The sharp case (Artifact 3, FTD LINA running-config) correctly predicted `parsing-cisco-configs` despite "FTD" appearing in both descriptions, because LINA-specific tokens (`show running-config`, `access-list`, `nameif`, `object network`) dominated the match count.
+The sharp case (Artifact 3, FTD LINA running-config) correctly predicted `parsing-cisco-configs` because the artifact's ASA-style LINA syntax (`access-list`, `access-group`, `object network`, `nameif`, `security-level`) matches the Cisco description's trigger tokens, while the Firepower description only mentions these same tokens in its negative hand-off clause directing such configs elsewhere. The Firepower description does not claim the standalone product token "FTD" (it lists "FMC and FDM" instead, with `ftdnatpolicies` being an unrelated JSON endpoint name).
 
 ## Conclusion
 
