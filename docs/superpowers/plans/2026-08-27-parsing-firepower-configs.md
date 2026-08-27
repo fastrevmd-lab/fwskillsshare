@@ -25,7 +25,7 @@ Copied verbatim from `AGENTS.md`, `skills/AGENTS.md`, and the validators. Every 
 - **Fixtures must be synthetic and secret-free.**
 - **Keep commits small — target ~80 lines.** `AGENTS.md` records that a ~1,300-line commit never returned a Codex verdict while ~80-line commits returned every time.
 - **A Codex run with no final `agent_message` is not a pass.** Use `scripts/codex-review.sh`, never `codex exec review` directly.
-- **Vendor claims require authoritative evidence or an explicit uncertain classification.** Do not assert FMC endpoint names or field spellings that were not checked against the FMC/FDM API Explorer for a named version.
+- **Vendor claims require authoritative evidence or an explicit uncertain classification.** There is no live FMC in this environment, so the evidence path is Cisco's published FMC/FDM REST API documentation. Do not assert an endpoint name or field spelling that was not checked against a named document and product version; mark everything else `unverified`.
 
 **Pre-existing count drift to correct, not propagate.** Measured on 2026-08-27: the repository has **28** skill directories, but the catalog documents disagree with each other. Six locations say 27 and two say 28:
 
@@ -394,7 +394,9 @@ The FMC/FDM JSON shape reference. **Pin the version you verify against and class
 
 - [ ] **Step 1: Verify endpoint and field names against a named version**
 
-Before writing a line, open the FMC API Explorer (or the FDM API Explorer) for a specific version and record that version at the top of the file. Any endpoint or field you cannot confirm gets marked `unverified` inline. Do not carry names over from memory.
+There is no live FMC in this environment, so the evidence path is Cisco's **published** FMC and FDM REST API documentation, reached with WebSearch/WebFetch. Record at the top of the file which document and which product version you consulted. Any endpoint or field you cannot confirm against that document gets marked `unverified` inline.
+
+Do not carry endpoint or field names over from memory. The repository's evidence rule accepts authoritative evidence **or** an explicit uncertain classification — the second branch is available and is the honest answer for anything the published docs do not settle.
 
 - [ ] **Step 2: Write the reference**
 
@@ -579,18 +581,22 @@ Expected: 600 or fewer. If over, move detail into `references/parsing-patterns.m
 - [ ] **Step 3: Verify every referenced path exists**
 
 Run: `python3 scripts/check-skill-packages.py`
-Expected: FAIL with `missing referenced path references/example-sample-parse.md` and `missing referenced path references/fixture-minimal-input.md` — those arrive in Tasks 7 and 8. Any *other* missing-path error is a real defect; fix it now.
+Expected: FAIL listing the reference paths SKILL.md cites that do not exist yet — `references/fixture-minimal-input.md`, `references/fixture-expected-output.json`, and `references/example-sample-parse.md`. Those three arrive in Tasks 7 and 8. Any *other* missing-path error is a real defect; fix it now.
 
-- [ ] **Step 4: Create the two placeholder targets so the gate is green at commit time**
+- [ ] **Step 4: Create the three placeholder targets so the gate is green at commit time**
+
+The validator requires every `references/...` path cited anywhere in `SKILL.md` to exist, and the Reference Files section cites all three. Two placeholders is not enough — the fixture JSON is cited too.
 
 ```bash
 printf '# Fixture: Minimal Firepower Input\n\nPopulated in Task 7.\n' \
   > skills/parsing-firepower-configs/references/fixture-minimal-input.md
+printf '{}\n' \
+  > skills/parsing-firepower-configs/references/fixture-expected-output.json
 printf '# Worked Example\n\nPopulated in Task 8.\n' \
   > skills/parsing-firepower-configs/references/example-sample-parse.md
 python3 scripts/check-skill-packages.py
 ```
-Expected: PASS.
+Expected: PASS. Tasks 7 and 8 overwrite all three placeholders with real content.
 
 - [ ] **Step 5: Commit**
 
@@ -672,8 +678,13 @@ Show the warnings block in full, including the MONITOR, unresolved-reference, an
 
 - [ ] **Step 2: Verify consistency with the fixture**
 
-Run: `diff <(python3 -c "import json,pathlib;d=json.loads(pathlib.Path('skills/parsing-firepower-configs/references/fixture-expected-output.json').read_text());print('\n'.join(sorted(d.keys())))") <(echo)`
-Expected: prints the schema's top-level keys. Confirm by eye that every key the worked example claims to emit appears in that list, and that the example's `_rule_index` sequence matches the fixture's.
+Run:
+```bash
+python3 -c "import json,pathlib; d=json.loads(pathlib.Path('skills/parsing-firepower-configs/references/fixture-expected-output.json').read_text()); print('\n'.join(sorted(d.keys())))"
+```
+Expected: the fixture's top-level schema keys print, one per line.
+
+Then confirm by eye, against that printed list: every key the worked example claims to emit appears in it, and the example's `_rule_index` sequence matches the fixture's. This is a read-and-compare step, not an automated assertion — the two documents are prose and JSON, so no diff command can check them against each other.
 
 - [ ] **Step 3: Run the package validator**
 
@@ -897,9 +908,9 @@ git commit -m "docs: add parsing-firepower-configs to catalog and correct skill 
 
 ---
 
-### Task 13: Retrieval and trigger-competition test
+### Task 13: Trigger-token overlap analysis
 
-The spec's risk 4. This is the test that the two Cisco descriptions do not compete.
+The spec's risk 4 — evidence that the two Cisco descriptions do not compete for the same artifacts.
 
 **Files:**
 - Create: `docs/skill-tests/2026-08-27-parsing-firepower-configs-retrieval.md`
@@ -913,18 +924,24 @@ The spec's risk 4. This is the test that the two Cisco descriptions do not compe
 Run: `python3 scripts/check-skill-packages.py`
 Expected: PASS. Record the combined-description character count from any warning line, and whether it crossed the 12,000 soft budget. If it did, note it in the test document — `AGENTS.md` says to prefer consolidating overlapping skills over trimming `Use when` clauses, so a crossing is a finding to report, not something to fix by shortening.
 
-- [ ] **Step 2: Run four clean-context retrieval prompts**
+- [ ] **Step 2: Run a trigger-token overlap analysis over four artifacts**
 
-In a fresh session with no prior context, present each artifact and record which skill is selected:
+This is **not** a live clean-context retrieval test — nothing in this environment can produce that condition, and the document must say so in its title and opening line. It is a mechanical analysis of which description's trigger tokens each artifact matches.
 
-1. An FMC access rule JSON snippet → must select `parsing-firepower-configs`
-2. An ASA `access-list` / `nameif` block → must select `parsing-cisco-configs`
-3. An FTD LINA `show running-config` excerpt → must select `parsing-cisco-configs`
-4. An FDM `accessrules` JSON snippet → must select `parsing-firepower-configs`
+For each artifact below, list the tokens it contains that appear in the `parsing-firepower-configs` description, and the tokens it contains that appear in the `parsing-cisco-configs` description. The skill with strictly more matched tokens is the predicted selection.
+
+1. An FMC access rule JSON snippet → must predict `parsing-firepower-configs`
+2. An ASA `access-list` / `nameif` block → must predict `parsing-cisco-configs`
+3. An FTD LINA `show running-config` excerpt → must predict `parsing-cisco-configs`
+4. An FDM `accessrules` JSON snippet → must predict `parsing-firepower-configs`
+
+Artifact 3 is the sharp case: it contains the word "FTD", which appears in *both* descriptions. It must still predict `parsing-cisco-configs` on the strength of `show running-config`, `access-list`, and `nameif`. If it does not, the Firepower description is over-claiming FTD and its trigger tokens need re-cutting.
 
 - [ ] **Step 3: Record the results**
 
-Write the four prompts, the selected skill for each, and pass/fail into the test document. A wrong selection is a description defect: re-cut the losing description's trigger tokens and re-run, rather than accepting the miss.
+Write the four artifacts, the matched-token lists for each, the predicted selection, and pass/fail into the test document. State plainly in the opening paragraph that this is token-overlap analysis and that a live clean-context retrieval test was not performed, so `QUALITY.md` does not overclaim what was verified.
+
+A wrong prediction is a description defect: re-cut the losing description's trigger tokens and re-run, rather than accepting the miss.
 
 - [ ] **Step 4: Verify all four passed**
 
