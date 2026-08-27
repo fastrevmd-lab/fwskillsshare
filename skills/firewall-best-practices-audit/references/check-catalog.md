@@ -45,6 +45,12 @@ evaluation population before sorting by numeric `_rule_index`:
 - PAN-OS uses `_vsys` and the parser's complete merged Panorama/local order;
   source/destination zones are match fields, not separate rulebases.
 - FortiGate uses `_vdom`; zones remain match fields in the VDOM rulebase.
+- Cisco Firepower (FMC/FDM) uses access control policy — a device is assigned
+  exactly one, so the policy is the evaluation population. Use the parser's
+  merged Prefilter-plus-ACP order via `_rule_index`. A `MONITOR` rule is
+  **non-terminal**: it logs and continues. Shadowing and `SEC-NO-DENY-ALL`
+  conclusions are unreliable across one, so report them as qualified rather than
+  confirmed when the parser warned about a MONITOR rule.
 - Cisco ASA may use a concrete parser-derived inbound binding/source zone. The
   schema has no ACL name/direction field, so do not flatten ambiguous bindings.
 

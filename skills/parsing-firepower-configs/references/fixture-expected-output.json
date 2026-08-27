@@ -1,0 +1,347 @@
+{
+  "zones": [
+    {
+      "name": "inside-zone",
+      "description": "",
+      "interfaces": [],
+      "zone_type": "layer3",
+      "host_inbound": {
+        "system_services": [],
+        "protocols": []
+      }
+    },
+    {
+      "name": "outside-zone",
+      "description": "",
+      "interfaces": [],
+      "zone_type": "layer3",
+      "host_inbound": {
+        "system_services": [],
+        "protocols": []
+      }
+    }
+  ],
+  "address_objects": [
+    {
+      "name": "server-net",
+      "type": "subnet",
+      "value": "192.0.2.0/24",
+      "description": "",
+      "tags": [],
+      "ip_version": "v4"
+    },
+    {
+      "name": "anon-1-host",
+      "type": "host",
+      "value": "198.51.100.1/32",
+      "description": "Anonymous object from literal in rule 'literal-address'",
+      "tags": [],
+      "ip_version": "v4"
+    }
+  ],
+  "address_groups": [
+    {
+      "name": "trusted-nets",
+      "members": [
+        "server-net"
+      ],
+      "description": "",
+      "tags": []
+    }
+  ],
+  "service_objects": [
+    {
+      "name": "custom-port",
+      "protocol": "tcp",
+      "port_range": "8080",
+      "source_port": "",
+      "description": ""
+    }
+  ],
+  "service_groups": [],
+  "security_policies": [
+    {
+      "name": "prefilter-fastpath",
+      "src_zones": [
+        "inside-zone"
+      ],
+      "dst_zones": [
+        "outside-zone"
+      ],
+      "src_addresses": [
+        "any"
+      ],
+      "dst_addresses": [
+        "any"
+      ],
+      "negate_source": false,
+      "negate_destination": false,
+      "applications": [],
+      "services": [
+        "any"
+      ],
+      "dynamic_applications": [],
+      "url_categories": [],
+      "app_groups": [],
+      "action": "allow",
+      "log_start": false,
+      "log_end": false,
+      "profile_group": "",
+      "security_profiles": {},
+      "description": "",
+      "tags": [],
+      "disabled": false,
+      "schedule": "",
+      "source_users": [],
+      "_rule_index": 1,
+      "_implicit": false,
+      "metadata": {
+        "section": "prefilter",
+        "policy": "prefilter-policy",
+        "original_action": "FASTPATH"
+      }
+    },
+    {
+      "name": "mandatory-allow",
+      "src_zones": [
+        "inside-zone"
+      ],
+      "dst_zones": [
+        "outside-zone"
+      ],
+      "src_addresses": [
+        "trusted-nets"
+      ],
+      "dst_addresses": [
+        "any"
+      ],
+      "negate_source": false,
+      "negate_destination": false,
+      "applications": [],
+      "services": [
+        "custom-port"
+      ],
+      "dynamic_applications": [],
+      "url_categories": [],
+      "app_groups": [],
+      "action": "allow",
+      "log_start": false,
+      "log_end": true,
+      "profile_group": "",
+      "security_profiles": {},
+      "description": "",
+      "tags": [],
+      "disabled": false,
+      "schedule": "",
+      "source_users": [],
+      "_rule_index": 2,
+      "_implicit": false,
+      "metadata": {
+        "section": "mandatory",
+        "category": "Mandatory",
+        "policy": "test-policy"
+      }
+    },
+    {
+      "name": "monitor-logging",
+      "src_zones": [
+        "any"
+      ],
+      "dst_zones": [
+        "any"
+      ],
+      "src_addresses": [
+        "any"
+      ],
+      "dst_addresses": [
+        "any"
+      ],
+      "negate_source": false,
+      "negate_destination": false,
+      "applications": [],
+      "services": [
+        "any"
+      ],
+      "dynamic_applications": [],
+      "url_categories": [],
+      "app_groups": [],
+      "action": "allow",
+      "log_start": false,
+      "log_end": true,
+      "profile_group": "",
+      "security_profiles": {},
+      "description": "",
+      "tags": [],
+      "disabled": false,
+      "schedule": "",
+      "source_users": [],
+      "_rule_index": 3,
+      "_implicit": false,
+      "metadata": {
+        "section": "default",
+        "category": "Default",
+        "policy": "test-policy",
+        "original_action": "MONITOR"
+      }
+    },
+    {
+      "name": "literal-address",
+      "src_zones": [
+        "any"
+      ],
+      "dst_zones": [
+        "any"
+      ],
+      "src_addresses": [
+        "any"
+      ],
+      "dst_addresses": [
+        "anon-1-host"
+      ],
+      "negate_source": false,
+      "negate_destination": false,
+      "applications": [],
+      "services": [
+        "any"
+      ],
+      "dynamic_applications": [],
+      "url_categories": [],
+      "app_groups": [],
+      "action": "allow",
+      "log_start": false,
+      "log_end": false,
+      "profile_group": "",
+      "security_profiles": {},
+      "description": "",
+      "tags": [],
+      "disabled": false,
+      "schedule": "",
+      "source_users": [],
+      "_rule_index": 4,
+      "_implicit": false,
+      "metadata": {
+        "section": "default",
+        "category": "Default",
+        "policy": "test-policy"
+      }
+    },
+    {
+      "name": "unresolved-ref",
+      "src_zones": [
+        "any"
+      ],
+      "dst_zones": [
+        "any"
+      ],
+      "src_addresses": [
+        "missing-object"
+      ],
+      "dst_addresses": [
+        "any"
+      ],
+      "negate_source": false,
+      "negate_destination": false,
+      "applications": [],
+      "services": [
+        "any"
+      ],
+      "dynamic_applications": [],
+      "url_categories": [],
+      "app_groups": [],
+      "action": "allow",
+      "log_start": false,
+      "log_end": false,
+      "profile_group": "",
+      "security_profiles": {},
+      "description": "",
+      "tags": [],
+      "disabled": false,
+      "schedule": "",
+      "source_users": [],
+      "_rule_index": 5,
+      "_implicit": false,
+      "metadata": {
+        "section": "default",
+        "category": "Default",
+        "policy": "test-policy"
+      }
+    },
+    {
+      "name": "default-deny",
+      "src_zones": [
+        "any"
+      ],
+      "dst_zones": [
+        "any"
+      ],
+      "src_addresses": [
+        "any"
+      ],
+      "dst_addresses": [
+        "any"
+      ],
+      "negate_source": false,
+      "negate_destination": false,
+      "applications": [],
+      "services": [
+        "any"
+      ],
+      "dynamic_applications": [],
+      "url_categories": [],
+      "app_groups": [],
+      "action": "deny",
+      "log_start": false,
+      "log_end": false,
+      "profile_group": "",
+      "security_profiles": {},
+      "description": "Implicit deny from default action BLOCK",
+      "tags": [],
+      "disabled": false,
+      "schedule": "",
+      "source_users": [],
+      "_rule_index": 6,
+      "_implicit": true,
+      "metadata": {
+        "policy": "test-policy"
+      }
+    }
+  ],
+  "nat_rules": [],
+  "applications": [],
+  "application_groups": [],
+  "schedules": [],
+  "security_profile_objects": [],
+  "interfaces": [],
+  "static_routes": [],
+  "virtual_routers": [],
+  "ospf_config": {},
+  "ospf3_config": {},
+  "bgp_config": {},
+  "ha_config": {},
+  "screen_config": [],
+  "vpn_tunnels": [],
+  "syslog_config": [],
+  "dhcp_config": [],
+  "admin_users": [],
+  "system": {},
+  "security_services": {},
+  "routing_contexts": [],
+  "residual_raw": [],
+  "metadata": {
+    "source_vendor": "firepower",
+    "source_version": "",
+    "export_date": "",
+    "rule_count": 6,
+    "nat_rule_count": 0,
+    "object_count": 4,
+    "zone_count": 2,
+    "interface_count": 0,
+    "ha_enabled": false,
+    "warnings": [
+      "Prefilter rule 'prefilter-fastpath' uses FASTPATH action (bypasses Snort entirely) - mapped to allow",
+      "Rule 'monitor-logging' uses MONITOR action (non-terminal) - mapped to allow but evaluation continues to next rule",
+      "Rule 'unresolved-ref' references object id 'net-9999-9999-9999-999999999999' which could not be resolved",
+      "Truncated collection detected: protocolportobjects reports 5 total items but only 1 provided (offset 0). Policy parse is INCOMPLETE."
+    ]
+  }
+}

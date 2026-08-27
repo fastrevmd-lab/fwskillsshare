@@ -79,6 +79,12 @@ populations:
   containers.
 - **FortiGate:** partition by `_vdom`; zones remain match fields within the
   ordered VDOM rulebase.
+- **Cisco Firepower (FMC/FDM):** partition by access control policy — a device is
+  assigned exactly one, so the policy is the evaluation population. Use the
+  parser's merged Prefilter-plus-ACP order via `_rule_index`. A `MONITOR` rule is
+  **non-terminal**: it logs and continues. Shadowing and `SEC-NO-DENY-ALL`
+  conclusions are unreliable across one, so report them as qualified rather than
+  confirmed when the parser warned about a MONITOR rule.
 - **Cisco ASA:** only use a concrete parser-derived inbound binding/source zone
   as the available rulebase boundary. The shared schema has no ACL name or
   direction field, so an absent or ambiguous binding is not safe to flatten.

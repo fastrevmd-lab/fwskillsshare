@@ -11,8 +11,8 @@ SCHEMA_PATHS = sorted(ROOT.glob("skills/parsing-*/references/intermediate-schema
 
 
 def main() -> int:
-    if len(SCHEMA_PATHS) != 4:
-        print(f"Expected 4 parsing schema files, found {len(SCHEMA_PATHS)}", file=sys.stderr)
+    if len(SCHEMA_PATHS) != 5:
+        print(f"Expected 5 parsing schema files, found {len(SCHEMA_PATHS)}", file=sys.stderr)
         for path in SCHEMA_PATHS:
             print(path.relative_to(ROOT), file=sys.stderr)
         return 2

@@ -13,6 +13,7 @@ INSTALLER = ROOT / "install.sh"
 EXPECTED_FAMILIES = {
     "parsers": {
         "parsing-cisco-configs",
+        "parsing-firepower-configs",
         "parsing-fortinet-configs",
         "parsing-palo-configs",
         "parsing-srx-configs",
@@ -166,7 +167,7 @@ def main() -> int:
 
     print(
         "OK: installer/package inventories match; installer lists and installs "
-        "28 skills with byte-identical required artifacts across 5 families "
+        "29 skills with byte-identical required artifacts across 5 families "
         "and explicit selections"
     )
     return 0

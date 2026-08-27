@@ -2,9 +2,9 @@
 
 Round-by-round review history for the skills in this repository. Summary and caveat live in the [README](./README.md#quality-and-review).
 
-**25 of the 28 skills** have passed independent technical review. The exceptions
+**26 of the 29 skills** have passed independent technical review. The exceptions
 are `clearpass-proxmox-deploy`, which ships as a draft and is described at the end
-of this page, and `srx-syslog-logging` and `srx-initial-setup`, which have not yet been through the
+of this page, and `parsing-firepower-configs` and `srx-syslog-logging`, which have not yet been through the
 two-stage review described below. The original 21
 were first reviewed on 2026-06-30, then re-reviewed on 2026-07-02 with a
 two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax
@@ -21,14 +21,16 @@ A third round on 2026-07-04/05 applied an authoring-quality pass across those or
 
 The 25th skill, `srx-chassis-cluster-proxmox`, was validated on 2026-08-11 by a different method: instead of a document review, it was executed. A second chassis cluster was built from a factory template on a separate host by following the skill's own procedure, on a different Junos release (26.2R1.7) than the reference build (24.4R1.9). The run confirmed the skill's NIC-mapping rule and reth MAC formula on both releases, and **falsified its fabric-MTU claim** — forcing the fabric segment to 1500 broke nothing observable, which established that the fault is latent rather than immediate. That correction and two others were folded in before release. The throwaway cluster was destroyed afterwards.
 
+The 26th skill, `srx-initial-setup`, was validated on 2026-08-25 by execution rather than document review. It was run end-to-end against a live SRX345 (`srx345-dual-ac`, Junos 21.2R3-S6.11) from factory-default state through the baseline policy stage. Both read and write paths were exercised: the gate protocol, `commit confirmed`, per-stage verification, and the confirming commit were all validated on hardware. The run found 23 defects, promoted the skill from 1.1.0 to 1.3.0 (PR #58, commit b5a4ee7), and corrected four silent failures that would have reported gaps closed while changing nothing or degrading the device. Still unvalidated on hardware: rollback-on-verification-failure, the other Branch SKUs, and all campus and datacenter platforms.
+
 | Family | Skills | Reviewed |
 |--------|-------:|:--------:|
-| Config parsers | 4 | 4 / 4 |
-| SRX operational playbooks | 12 | 10 / 12 |
+| Config parsers | 5 | 4 / 5 |
+| SRX operational playbooks | 12 | 11 / 12 |
 | NGFW compliance and STIG playbooks | 7 | 7 / 7 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
 | Security management and NAC deployment | 2 | 1 / 2 |
-| **Total** | **28** | **25 / 28** |
+| **Total** | **29** | **26 / 29** |
 
 The later `srx-disa-stig-compliance` addition completed an independent review on
 2026-07-22. That review verified the NIST checklist 657 / DISA Y25M01 artifact,
