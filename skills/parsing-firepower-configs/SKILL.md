@@ -75,7 +75,7 @@ Detect Firepower FMC/FDM JSON by presence of:
 
 ### FMC vs FDM Differences
 
-**FMC** uses `/api/fmc_config/v1/domain/{uuid}/...`, `action` field, `logBegin`/`logEnd` booleans, policy sections (Mandatory/Standard/Default), and policy inheritance. **FDM** uses `/api/fdm/v6/...`, `ruleAction` field, `eventLogAction`, and has no policy sections or inheritance. See `references/config-format.md` "FDM Differences" for complete field mappings.
+**FMC** uses `/api/fmc_config/v1/domain/{uuid}/...`, `action` field, `logBegin`/`logEnd` booleans, policy sections (Mandatory and Default), and policy inheritance. **FDM** uses `/api/fdm/v6/...`, `ruleAction` field, `eventLogAction`, and has no policy sections or inheritance. See `references/config-format.md` "FDM Differences" for complete field mappings.
 
 ### Paging Hazard
 
@@ -317,9 +317,8 @@ Capture unrecognized or unsupported objects in `residual_raw` with categorizatio
 Firepower evaluates rules in this order:
 1. Prefilter policy
 2. Access Control Policy Mandatory section
-3. Access Control Policy Standard section (child policy rules, then parent policy rules if inherited)
-4. Access Control Policy Default section (parent policy rules, then child policy rules if inherited)
-5. ACP default action (implicit)
+3. Access Control Policy Default section
+4. ACP default action (implicit)
 
 Flatten all rules into one continuous `_rule_index` starting at 1. Record provenance (policy name, section, category, inheriting ancestor) in `metadata`, not in a new schema field. The ACP default action becomes the single trailing policy with `_implicit: true`.
 

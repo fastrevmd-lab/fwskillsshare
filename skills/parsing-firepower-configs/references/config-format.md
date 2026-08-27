@@ -217,7 +217,7 @@ Verified from DevNet examples and community posts:
 
 ### 4. No Policy Sections `[unverified]`
 
-FMC access policies have Mandatory, Standard, and Default sections. FDM does not appear to use this three-tier structure (based on community migration discussions).
+FMC access policies have Mandatory and Default sections. FDM does not appear to use this two-section structure (based on community migration discussions).
 
 ### 5. No Policy Inheritance `[unverified]`
 
