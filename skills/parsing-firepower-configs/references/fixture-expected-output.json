@@ -34,7 +34,7 @@
       "name": "anon-1-host",
       "type": "host",
       "value": "198.51.100.1/32",
-      "description": "Anonymous object from literal",
+      "description": "Anonymous object from literal in rule 'literal-address'",
       "tags": [],
       "ip_version": "v4"
     }

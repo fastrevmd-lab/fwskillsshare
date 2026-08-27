@@ -160,55 +160,6 @@ The input uses the keyed envelope format from `config-format.md`:
         "items": [
           {
             "type": "AccessRule",
-            "id": "rule-1111-1111-1111-111111111111",
-            "name": "mandatory-allow",
-            "action": "ALLOW",
-            "enabled": true,
-            "section": "mandatory",
-            "category": "Mandatory",
-            "sourceZones": {
-              "objects": [
-                {
-                  "type": "SecurityZone",
-                  "id": "zone-1111-1111-1111-111111111111",
-                  "name": "inside-zone"
-                }
-              ]
-            },
-            "destinationZones": {
-              "objects": [
-                {
-                  "type": "SecurityZone",
-                  "id": "zone-2222-2222-2222-222222222222",
-                  "name": "outside-zone"
-                }
-              ]
-            },
-            "sourceNetworks": {
-              "objects": [
-                {
-                  "type": "NetworkGroup",
-                  "id": "netg-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                  "name": "trusted-nets"
-                }
-              ]
-            },
-            "destinationNetworks": {
-              "objects": []
-            },
-            "destinationPorts": {
-              "objects": [
-                {
-                  "type": "ProtocolPortObject",
-                  "id": "port-cccc-cccc-cccc-cccccccccccc",
-                  "name": "custom-port"
-                }
-              ]
-            },
-            "logEnd": true
-          },
-          {
-            "type": "AccessRule",
             "id": "rule-2222-2222-2222-222222222222",
             "name": "monitor-logging",
             "action": "MONITOR",
@@ -272,6 +223,55 @@ The input uses the keyed envelope format from `config-format.md`:
               ]
             },
             "logEnd": false
+          },
+          {
+            "type": "AccessRule",
+            "id": "rule-1111-1111-1111-111111111111",
+            "name": "mandatory-allow",
+            "action": "ALLOW",
+            "enabled": true,
+            "section": "mandatory",
+            "category": "Mandatory",
+            "sourceZones": {
+              "objects": [
+                {
+                  "type": "SecurityZone",
+                  "id": "zone-1111-1111-1111-111111111111",
+                  "name": "inside-zone"
+                }
+              ]
+            },
+            "destinationZones": {
+              "objects": [
+                {
+                  "type": "SecurityZone",
+                  "id": "zone-2222-2222-2222-222222222222",
+                  "name": "outside-zone"
+                }
+              ]
+            },
+            "sourceNetworks": {
+              "objects": [
+                {
+                  "type": "NetworkGroup",
+                  "id": "netg-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                  "name": "trusted-nets"
+                }
+              ]
+            },
+            "destinationNetworks": {
+              "objects": []
+            },
+            "destinationPorts": {
+              "objects": [
+                {
+                  "type": "ProtocolPortObject",
+                  "id": "port-cccc-cccc-cccc-cccccccccccc",
+                  "name": "custom-port"
+                }
+              ]
+            },
+            "logEnd": true
           }
         ],
         "paging": {
@@ -295,11 +295,12 @@ This fixture exercises:
 - **One network group**: `trusted-nets` containing `server-net`
 - **One port object**: `custom-port` (TCP/8080)
 - **Access control policy** with:
-  - Mandatory rule: `mandatory-allow`
   - Default rule with MONITOR action: `monitor-logging`
   - Default rule with literal address: `literal-address`
   - Default rule with unresolved reference: `unresolved-ref`
+  - Mandatory rule: `mandatory-allow`
   - Default action: BLOCK
+  - **Note**: Rules are presented out of evaluation order to test parser sorting
 - **Prefilter policy** with one FASTPATH rule
 - **Truncated paging**: `protocolportobjects` reports `count: 5` but provides only 1 item
 - **Unresolved reference**: rule `unresolved-ref` references `net-9999-9999-9999-999999999999` which does not exist
