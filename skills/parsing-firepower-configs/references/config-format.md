@@ -1,17 +1,26 @@
 # Cisco FMC and FDM REST API JSON Format Reference
 
-## Verified Against
+## Documentation Sources
 
-This reference was verified against Cisco's published REST API documentation for:
+### Attempted Sources (Inaccessible — HTTP 403)
 
-- **Firepower Management Center (FMC)**: Version 7.0-10.0 REST API Quick Start Guides
-  - Latest: [FMC REST API Quick Start Guide v10.0](https://www.cisco.com/c/en/us/td/docs/security/firepower/10-0/API/REST/firepower_management_center_rest_api_quick_start_guide_10_0/About_The_Firewall_Management_Center_REST_API.html)
-  - DevNet: [Firepower Management Center API](https://developer.cisco.com/secure-firewall/management-center/)
-- **Firepower Threat Defense (FTD/FDM)**: REST API Guide and DevNet References
-  - [FTD REST API Guide](https://www.cisco.com/c/en/us/td/docs/security/firepower/ftd-api/guide/ftd-rest-api.html)
-  - DevNet: [FTD API Reference v6.2 (FTD v7.2)](https://developer.cisco.com/docs/ftd-api-reference/latest/)
+The following official Cisco documentation pages were identified but returned 403 Forbidden errors during automated access attempts:
 
-**Note**: Cisco's official documentation pages returned 403 Forbidden errors during automated access attempts. Information was gathered from accessible DevNet resources, community documentation, and search result excerpts. Sections marked `[unverified]` could not be confirmed against official documentation and require validation against a live API Explorer or official API documentation.
+- [FMC REST API Quick Start Guide v10.0](https://www.cisco.com/c/en/us/td/docs/security/firepower/10-0/API/REST/firepower_management_center_rest_api_quick_start_guide_10_0/About_The_Firewall_Management_Center_REST_API.html)
+- [FTD REST API Guide](https://www.cisco.com/c/en/us/td/docs/security/firepower/ftd-api/guide/ftd-rest-api.html)
+- Multiple FMC Quick Start Guides (v7.0, v7.2, v7.3, v7.4, v7.6, v7.7)
+
+### Sources Actually Consulted
+
+Information in this reference was gathered from:
+
+- **Cisco DevNet Resources**:
+  - [Firepower Management Center API](https://developer.cisco.com/secure-firewall/management-center/) — landing page with general API structure
+  - [FTD API Reference v6.2 (FTD v7.2)](https://developer.cisco.com/docs/ftd-api-reference/latest/) — base URL and JSON format information
+- **Community Documentation**: GitHub repositories (PowerFMC, Net::Cisco::FMC, fmc-rest-client) with endpoint path examples
+- **Search Result Excerpts**: Partial content from cisco.com pages accessible via search engine result previews
+
+**Verification Limitation**: Without access to complete official API documentation, sections marked `[unverified]` could not be confirmed and require validation against a live API Explorer (`https://{fmc-or-ftd}/api/api-explorer`) or official documentation.
 
 ## Input Packaging
 
