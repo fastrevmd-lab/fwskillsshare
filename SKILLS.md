@@ -2,7 +2,7 @@
 
 Extended notes on the compliance and SRX operational playbooks that have them — what
 each one covers, and when to reach for it. This is not the full inventory: the complete
-one-line catalog of all 27 skills across every family is the
+one-line catalog of all 29 skills across every family is the
 [Reference](./README.md#reference) section of the README, and every skill, listed here
 or not, documents itself in its own `SKILL.md`. For the review record, see
 [QUALITY.md](./QUALITY.md).

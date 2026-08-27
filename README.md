@@ -17,8 +17,8 @@
 <em>a mechub project — sovereign network-security automation</em></p>
 
 <p align="center">
-  <img alt="skills" src="https://img.shields.io/badge/skills-27-0D9488">
-  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-25%2F27-262B38">
+  <img alt="skills" src="https://img.shields.io/badge/skills-29-0D9488">
+  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-25%2F29-262B38">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-262B38">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper%20%C2%B7%20HPE%20Aruba-262B38">
 </p>
@@ -28,7 +28,7 @@ Agent skills for the firewall work you actually do — parsing, auditing, conver
 
 Firewall work is unforgiving. A confidently wrong `access-list` line, a Junos stanza that won't commit, a compliance claim you can't back up in an audit — these aren't cosmetic. Coding agents are astonishingly good at producing *plausible* firewall config and astonishingly bad at knowing when it's wrong.
 
-These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 27. Hack around with them. Make them your own.
+These skills exist to close that gap. They pin the agent to vendor syntax that's been checked against real devices, to one shared schema so four vendors speak the same language, and to control-to-evidence maps that don't overpromise. They're small, self-contained, and composable — copy the two you need or all 29. Hack around with them. Make them your own.
 
 <!-- brand:disclaimer:start -->
 > **Unofficial / community project.** Not affiliated with, endorsed by, or supported by Cisco, Fortinet, Palo Alto Networks, Juniper Networks, or HPE. See [License and Provenance](#license-and-provenance) for the full notice and the trademark disclaimer.
@@ -103,7 +103,7 @@ invoked, so what an installed-but-unused skill costs you is its description sitt
 in the discovery surface. How much that costs depends on the runtime and version —
 Codex 0.147.0 routes discovery through a dynamic selector and treats a flat
 concatenated list as a fallback, truncating metadata to fit its budget rather than
-failing — so the direct token cost is modest and not worth optimizing: all 27
+failing — so the direct token cost is modest and not worth optimizing: all 29
 descriptions together are only ~8,400 characters. The cost that matters is
 **selection**: the more overlapping descriptions compete, the likelier your agent
 reaches for a near-miss instead of the right skill, and truncation degrades that
@@ -189,7 +189,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**28 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem or ClearPass deployment request, or compliance language in your message or a pasted config. 25 of the 28 packages have completed the review record below; `clearpass-proxmox-deploy` is a draft and `srx-syslog-logging` and `srx-initial-setup` have not yet been reviewed. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
+**29 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem or ClearPass deployment request, or compliance language in your message or a pasted config. 25 of the 29 packages have completed the review record below; `clearpass-proxmox-deploy` is a draft and `parsing-firepower-configs`, `srx-syslog-logging`, and `srx-initial-setup` have not yet been reviewed. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 Extended notes on the compliance and SRX playbooks — what they cover and when to reach for one — are in **[SKILLS.md](./SKILLS.md)**. Every skill also documents itself in its own `SKILL.md`, linked above.
 
@@ -198,6 +198,7 @@ Extended notes on the compliance and SRX playbooks — what they cover and when 
 Normalize a vendor config into the shared intermediate schema. Everything else composes on top.
 
 - **[parsing-cisco-configs](./skills/parsing-cisco-configs/SKILL.md)** — Cisco ASA & FTD (`show running-config`): access-lists, object/object-group, NAT, failover, port-to-app inference.
+- **[parsing-firepower-configs](./skills/parsing-firepower-configs/SKILL.md)** — Cisco Secure Firewall / Firepower (FMC & FDM JSON exports): access control policies, security zones, prefilter, intrusion & file policies, FTD NAT.
 - **[parsing-fortinet-configs](./skills/parsing-fortinet-configs/SKILL.md)** — FortiGate / FortiOS (`show full-configuration`): the config/edit/set block format, VDOMs, UTM profiles, compound IPsec proposals.
 - **[parsing-palo-configs](./skills/parsing-palo-configs/SKILL.md)** — Palo Alto PAN-OS & Panorama: XML *or* flat set-format, vsys, app-default decomposition, device-groups.
 - **[parsing-srx-configs](./skills/parsing-srx-configs/SKILL.md)** — Juniper SRX / Junos: `display set` or curly-brace, address-book migration to global, `junos-*` app mapping, routing-instances.
@@ -250,7 +251,7 @@ Install with `--family deployment`.
 
 ## Quality and Review
 
-**25 of the 27 skills** have passed independent technical review. The exceptions
+**25 of the 29 skills** have passed independent technical review. The exceptions
 are `clearpass-proxmox-deploy`, which ships as a draft, and `srx-syslog-logging`,
 which has not yet been through the two-stage review. Four review rounds, the
 live-device validation runs, what those runs falsified, and the per-family table
