@@ -13,6 +13,7 @@ INSTALLER = ROOT / "install.sh"
 EXPECTED_FAMILIES = {
     "parsers": {
         "parsing-cisco-configs",
+        "parsing-firepower-configs",
         "parsing-fortinet-configs",
         "parsing-palo-configs",
         "parsing-srx-configs",

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parsing Firepower Configs"
+  short_description: "Parse Cisco Firepower FMC and FDM policy exports"
+  default_prompt: "Use $parsing-firepower-configs to parse this Cisco FMC or FDM export into the shared schema."

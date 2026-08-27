@@ -43,6 +43,7 @@ EXPECTED_SKILL_NAMES = frozenset(
         "hipaa-ngfw-compliance",
         "iso27001-ngfw-compliance",
         "parsing-cisco-configs",
+        "parsing-firepower-configs",
         "parsing-fortinet-configs",
         "parsing-palo-configs",
         "parsing-srx-configs",

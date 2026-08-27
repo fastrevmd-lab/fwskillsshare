@@ -24,6 +24,7 @@ set -euo pipefail
 # Skill inventory
 declare -a PARSERS=(
     "parsing-cisco-configs"
+    "parsing-firepower-configs"
     "parsing-fortinet-configs"
     "parsing-palo-configs"
     "parsing-srx-configs"
