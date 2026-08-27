@@ -64,7 +64,7 @@ before configuration, commit, upgrade, reboot, delete, or failover actions.
 
 ## Input Format
 
-This skill accepts FMC and FDM REST API JSON in three packaging forms: keyed envelope (preferred), bundle format, and single response. See `references/config-format.md` for complete packaging details and examples.
+Input arrives as **multiple API responses** (zones, policies, objects, NAT rules), not a single document. This skill accepts three packaging forms: **keyed envelope** (responses object with endpoint-suffix keys), **bundle format** (array of endpoint/response pairs), or **single response** (one bare API response, yields a partial parse). See `references/config-format.md` for packaging details, JSON examples, and endpoint families.
 
 ### Detection Discriminators
 
@@ -73,33 +73,17 @@ Detect Firepower FMC/FDM JSON by presence of:
 - Metadata: `metadata.accessPolicy`, `metadata.section`
 - Endpoint paths: `/api/fmc_config/v1/domain/`, `/api/fdm/`
 
-### FMC vs FDM
+### FMC vs FDM Differences
 
-**FMC** uses:
-- Base URL: `/api/fmc_config/v1/domain/{domainUUID}/...`
-- Action field: `action` (e.g., `"action": "ALLOW"`)
-- Logging: `logBegin`/`logEnd` boolean fields
-- Policy sections: Mandatory, Standard, Default
-- Policy inheritance: parent/child relationships
+**FMC** uses `/api/fmc_config/v1/domain/{uuid}/...`, `action` field, `logBegin`/`logEnd` booleans, policy sections (Mandatory/Standard/Default), and policy inheritance. **FDM** uses `/api/fdm/v6/...`, `ruleAction` field, `eventLogAction`, and has no policy sections or inheritance. See `references/config-format.md` "FDM Differences" for complete field mappings.
 
-**FDM** uses:
-- Base URL: `/api/fdm/v6/...` (version varies)
-- Action field: `ruleAction` (e.g., `"ruleAction": "PERMIT"`)
-- Logging: `eventLogAction` (e.g., `"eventLogAction": "LOG_FLOW_END"`)
-- No policy sections or inheritance
+### Paging Hazard
 
-### Paging and Truncation
-
-FMC API responses include a `paging` metadata block with `count`, `limit`, `offset`, and `pages`. If `paging.count` exceeds the actual number of items in the `items` array, the collection is **TRUNCATED**. Record a `metadata.warnings` entry and qualify all downstream audit findings as incomplete.
-
-A truncated collection is never treated as a complete object set. See `references/config-format.md` "Paging and Truncation" for details.
+If a response's `paging.count` exceeds the actual number of items in `items`, the collection is **truncated** and the parse is incomplete. Record a `metadata.warnings` entry and qualify all audit findings. See `references/config-format.md` "Paging and Truncation" for the detection rule.
 
 ### Out of Scope
 
-The following formats are explicitly excluded:
-- **`.sfo` policy bundles** — binary/proprietary format with no published specification
-- **PDF policy reports** — presentation documents, not structured data
-- **Configuration backups via HTTPS export** — undocumented serialization format
+`.sfo` policy bundles (binary format, no published spec), PDF reports (presentation documents), and configuration backups via HTTPS export (undocumented serialization) are explicitly excluded. See `references/config-format.md` "Out of Scope" for rationale.
 
 ## Extraction Pipeline
 
