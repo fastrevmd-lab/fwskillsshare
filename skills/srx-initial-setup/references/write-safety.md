@@ -42,6 +42,8 @@ A backward step is benign — it lengthens the window. **A forward step is not:*
 
 **Rule: never enable NTP in the same commit whose rollback timer you are relying on.** Enable NTP in its own commit, let the clock settle, and only then run lockout-risk changes under a short timer. If the device's clock is known to be wrong at the start of a session, treat every timer as unreliable until NTP has stepped and settled.
 
+This applies to `set system processes ntp enable` as much as to `set system ntp server` — on a device where the daemon was suppressed, that statement is the one that starts the clock moving.
+
 ## Confirming the commit
 
 To keep the new configuration active after verifying it works correctly, issue one of these commands within the timer window:

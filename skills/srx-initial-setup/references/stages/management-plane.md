@@ -91,12 +91,13 @@ The decision between fxp0 (dedicated out-of-band management interface) and a rev
 
 - **Stage:** management-plane
 - **Severity:** `blocking` (accurate time is required for log correlation, security event analysis, and certificate validation)
-- **Depends on:** `mgmt.dns-absent` (if using domain names for NTP servers)
+- **Depends on:** `mgmt.dns-absent` (if using domain names for NTP servers), `mgmt.default-route-absent` (the device must be able to reach the servers)
 - **Lockout risk:** `false`
-- **Evidence:** `show configuration system ntp` returns no configured NTP servers
+- **Evidence:** `show configuration system ntp` returns no configured NTP servers, or `show ntp associations` shows no peer prefixed `*`
 - **Proposal:**
 
   ```text
+  set system processes ntp enable
   set system ntp server 0.pool.ntp.org
   set system ntp server 1.pool.ntp.org
   ```
@@ -104,11 +105,14 @@ The decision between fxp0 (dedicated out-of-band management interface) and a rev
   Or, using IP addresses:
 
   ```text
+  set system processes ntp enable
   set system ntp server 216.239.35.0
   set system ntp server 216.239.35.4
   ```
 
   Configure at least two NTP servers for redundancy. If DNS is configured, domain names can be used instead of IP addresses.
+
+  When the device sources NTP from a specific management identity — a loopback, or a revenue interface rather than `fxp0` — add `set system ntp source-address <address>` so the servers reply to an address the device can actually receive on.
 
   **Source:** Juniper Networks, "NTP Configuration" (Junos OS Time Management), retrieved 2026-08-20.
   URL: https://www.juniper.net/documentation/us/en/software/junos/time-mgmt/topics/example/ntp-configuration.html
@@ -117,6 +121,38 @@ The decision between fxp0 (dedicated out-of-band management interface) and a rev
   URL: https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/statement/server-edit-system-ntp.html
 
   The documentation states: "To configure NTP, use the `set server` command with either a name or IP-address at the [edit system ntp] hierarchy level."
+
+#### `set system processes ntp enable` — the hidden statement
+
+`[edit system processes]` is hidden from CLI completion. `set system processes ntp enable` does not tab-complete and does not appear in `?` output, which is exactly why it gets omitted — but it is a valid, committable statement, and it is what makes the NTP daemon's enabled state explicit and auditable in the configuration rather than implicit.
+
+**Validated on hardware and on vSRX, 2026-08-27** (`docs/skill-tests/2026-08-27-srx-ntp-process-enable-live-validation.md`): commit-check accepted `set system processes ntp enable` on SRX345 hardware running Junos 24.2R2-S5.3 and on vSRX 24.4R1.9, and accepted the opposing `set system processes ntp disable` on vSRX 26.2R1.7 — so it is a real enable/disable toggle, not a no-op alias, across 24.2 through 26.2.
+
+Read the configured state as follows:
+
+| Configured state | Meaning | Action |
+|---|---|---|
+| `set system processes ntp enable` present | Daemon explicitly enabled | Correct state — leave it |
+| Statement absent | **Not** the same as disabled | Add it for explicitness, but do not report NTP broken on this basis alone |
+| `set system processes ntp disable` present | Daemon explicitly suppressed | Fatal for time sync — replace with `enable` |
+
+**Absence is not a failed check.** On Junos 24.2R2-S5.3 (SRX345 hardware) and 24.4R1.9 (vSRX), devices carrying no `system processes` configuration at all were running `ntpd` and were synchronized to a `*` peer at `reach 377` with sub-millisecond offset. A blanket "Junos 24 and later will not synchronize without this statement" did not reproduce on the tested devices, so this skill does not gate on the statement's presence — it gates on `show ntp associations`. Every 25.4R1.12 and 26.2R1.7 device in the surveyed fleet already carried the statement, so the counterfactual could not be tested on those releases; on a 25.4-or-later device that will not synchronize with reachability already proven, adding this statement is the first thing to try.
+
+**Enable NTP in its own commit.** First synchronization can step the clock, and a `commit confirmed` rollback deadline is wall-clock. See `references/write-safety.md` — the hazard is documented there and observed on hardware.
+
+#### NTP configured but never synchronizes
+
+`show ntp associations` showing every peer at `.INIT.` with `reach 0`, alongside `show system uptime` reporting `Time Source: LOCAL CLOCK`, means no NTP packet has ever completed a round trip. Work the path before suspecting the daemon — in every observed case in the 2026-08-27 survey the cause was reachability, not configuration:
+
+1. **Route.** `show route <ntp-server>`. Three lab devices returned no route at all to their configured servers, having no default route present. That is `mgmt.default-route-absent`, not an NTP fault, and it must be closed first.
+2. **Reachability.** `ping <ntp-server>`. `ping: sendto: No route to host` confirms the same condition.
+3. **Return path.** UDP/123 must survive in both directions. When the device sources NTP from a loopback behind a transit firewall performing source NAT, that loopback prefix must appear in the NAT **source** match. The NTP servers' own addresses are destinations and do not belong in a source-address match — a frequent misconfiguration that silently breaks only the return path.
+4. **Host-inbound-traffic.** The zone carrying the NTP path must accept the traffic; see `references/stages/interfaces-and-zones.md`.
+5. **Daemon.** `show system processes extensive | match " ntpd"`. Only when `ntpd` is genuinely absent, or `set system processes ntp disable` is present in the configuration, is the process statement itself the fault.
+
+#### Why this gap is `blocking` for downstream log management
+
+A device whose clock is skewed still completes mTLS to a log collector and still has its payloads acknowledged, so every transport-level check passes while the logs never surface in the GUI. This has been observed in a live Security Director On-Prem deployment: several SRXs ran roughly 375 s behind, their streams connected and were acknowledged, and their traffic logs were simply absent until NTP was corrected and fresh traffic was generated. Prove synchronization here, in Stage 2, before any device is onboarded to Security Director Cloud or Security Director On-Prem — see `sd-onprem-proxmox-deploy` §4a and `srx-syslog-logging`.
 
 ### `mgmt.timezone-unset`
 
@@ -352,14 +388,25 @@ After this stage closes, verify:
 
    Expect the configured DNS servers in the configuration, and successful DNS resolution of `pool.ntp.org` (or another known domain).
 
-3. **NTP synchronized:**
+3. **NTP synchronized — `show ntp associations` is authoritative:**
 
    ```text
-   show ntp associations
+   show configuration system processes | display set | match ntp
+   show ntp associations no-resolve
+   show system processes extensive | match " ntpd"
+   show system uptime | match "Current time|Time Source"
    show ntp status
    ```
 
-   Expect at least one NTP server showing `*` (synchronized) and the system clock offset within acceptable range (typically < 1000ms).
+   | Evidence | Role | Expected |
+   |---|---|---|
+   | `show ntp associations` | **the gate** | at least one peer prefixed `*`, `reach` non-zero (`377` is fully reached), `offset` within tolerance (typically < 1000 ms) |
+   | `show system processes extensive` | supporting | `ntpd` running |
+   | `show configuration system processes` | supporting | `ntp enable` present, and `ntp disable` **not** present |
+   | `show system uptime` | corroborating | `Time Source: NTP CLOCK` |
+   | `show ntp status` | corroborating | `leap_none`, `sync_ntp`; `clock_sync` once settled |
+
+   **Pass or fail on the associations table, not on the status word.** `sync_ntp` appears alongside `no_sys_peer` — no peer currently selected — so it is not by itself proof of synchronization; and a device reporting `no_sys_peer` may show a `*` peer at `reach 377` moments later, so requiring `clock_sync` would fail a healthy device. `Time Source: NTP CLOCK` appears in both states and cannot settle it. A `*` peer with non-zero reach and an acceptable offset is a pass; no `*` peer, or `reach 0`, is a fail.
 
 4. **Management interface reachable:**
 

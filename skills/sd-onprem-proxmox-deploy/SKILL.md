@@ -1,7 +1,7 @@
 ---
 name: sd-onprem-proxmox-deploy
 description: Deploy and validate Juniper Security Director On-Prem 25/26 as a Proxmox VE KVM guest. Use when planning, installing, rebuilding, validating network connectivity or first-boot seed data, and onboarding SRX/Junos devices. Not for Junos Space Security Director or Security Director Cloud.
-version: 1.1.0
+version: 1.2.0
 author:
   - fastrevmd-lab
   - Claude
@@ -277,9 +277,26 @@ set system ntp server <secondary-server>
 set system ntp source-address <reachable-source-address>
 ```
 
-**`set system processes ntp enable` is hidden from CLI completion but is valid
-and required** — it will not tab-complete, which is why it gets skipped. Verified
-present on production SRXs running Junos 26.2R1.
+**`set system processes ntp enable` is hidden from CLI completion but is valid**
+— it will not tab-complete, which is why it gets skipped. Set it on every device
+being onboarded, so the daemon's enabled state is explicit and auditable.
+
+Its configured state reads three ways, and only one of them is a fault:
+
+| Configured state | Meaning | Action |
+|---|---|---|
+| `ntp enable` present | daemon explicitly enabled | correct state — leave it |
+| statement absent | **not** the same as disabled | add it, but do not fail the device on this alone |
+| `ntp disable` present | daemon explicitly suppressed | fatal — replace with `enable` |
+
+**Verified 2026-08-27** across 13 reachable lab and production SRX/vSRX devices
+(`docs/skill-tests/2026-08-27-srx-ntp-process-enable-live-validation.md`):
+commit-check accepted `ntp enable` on SRX345 hardware running Junos 24.2R2-S5.3
+and on vSRX 24.4R1.9, and accepted `ntp disable` on vSRX 26.2R1.7, so the toggle
+is real across 24.2–26.2. But SRX345 on 24.2R2-S5.3 and a vSRX on 24.4R1.9 with
+**no `system processes` configuration at all** were both running `ntpd` and
+synchronized to a `*` peer at `reach 377`. So the statement's absence must not be
+read as "NTP is off", and it is not by itself a reason to hold up onboarding.
 
 **Verify sync before onboarding — `show ntp associations` is authoritative:**
 
@@ -296,7 +313,7 @@ Required state:
 | Evidence | Role | Required |
 |---|---|---|
 | `show ntp associations` | **the gate** | at least one peer prefixed `*` (selected system peer), `reach` non-zero — `377` is fully reached — and `offset` within deployment tolerance |
-| `show configuration system processes` | gate | `set system processes ntp enable` present |
+| `show configuration system processes` | supporting | `ntp enable` present; **`ntp disable` present is a hard fail** — absence alone is not |
 | `show system processes extensive` | gate | `ntpd` running |
 | `show system uptime` | corroborating | `Time Source: NTP CLOCK` |
 | `show ntp status` | corroborating | `leap_none`, `sync_ntp`; `clock_sync` when settled |

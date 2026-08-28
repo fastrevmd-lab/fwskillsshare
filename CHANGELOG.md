@@ -1,5 +1,57 @@
 # Changelog
 
+## 1.5.0 — SRX NTP process statement
+
+**srx-initial-setup** v1.4.0 and **sd-onprem-proxmox-deploy** v1.2.0 — the hidden
+`set system processes ntp enable` statement, and the correct way to read it.
+Backed by a live run across 13 reachable SRX/vSRX devices on Junos 24.2R2-S5.3
+(SRX345 hardware), 24.4R1.9, 25.4R1.12, and 26.2R1.7, documented in
+[the NTP process validation](./docs/skill-tests/2026-08-27-srx-ntp-process-enable-live-validation.md).
+Read-only operational commands plus non-activating `commit check`; no
+configuration was activated on any device.
+
+`srx-initial-setup` did not mention the statement at all. It configured NTP
+servers, then asserted at Stage 2 verification that an association should show
+`*` — with no branch for the case where it never does. `mgmt.ntp-absent` is
+`blocking`, so an operator hitting that had the run stall with no remedy in the
+document. It now proposes `set system processes ntp enable` alongside the
+servers, explains that `[edit system processes]` is hidden from CLI completion
+(it does not tab-complete, which is why it gets skipped), and adds a
+path-first troubleshooting sequence — route, ping, return path through source
+NAT, host-inbound-traffic, and only then the daemon.
+
+**The statement's absence is not the same as `disable`, and the skills no longer
+gate on its presence.** The validation run set out to confirm that Junos 24 and
+later require it, and did not reproduce that: `srx345` on 24.2R2-S5.3 and
+`vsrx-ci` on 24.4R1.9 carry no `system processes` configuration at all, run
+`ntpd`, and hold a selected peer at `reach 377` with sub-millisecond offset.
+Three 24.4 devices that were *not* synchronizing looked like corroboration until
+the path was checked — all three had no default route and returned
+`ping: sendto: No route to host`, making them `mgmt.default-route-absent` rather
+than an NTP fault. What the run does establish is that the statement is a real
+enable/disable toggle across 24.2–26.2: `commit check` accepted `ntp enable` on
+SRX345 hardware and on 24.4R1.9, and the opposing `ntp disable` on 26.2R1.7.
+So three configured states get three readings — `enable` present is correct,
+absent is unset and must not be reported as broken, and `disable` present is
+fatal.
+
+`sd-onprem-proxmox-deploy` already carried the statement in its §4a onboarding
+gate and described it as "required", listing its presence as a hard gate. That
+would have failed both devices above while they were genuinely synchronized —
+the same false-negative the skill already warns about for `clock_sync`.
+Reclassified to supporting evidence, with `ntp disable` present as the hard
+fail. The pass/fail gate in both skills is `show ntp associations`: a `*` peer
+with non-zero reach and an acceptable offset.
+
+Stage 2 verification in `srx-initial-setup` gains the evidence table and the
+rule that `sync_ntp` alongside `no_sys_peer` is not proof of synchronization.
+Entry-state assessment now reads `system processes` separately, because
+`show configuration system` alone will not prompt an operator to look for a
+hidden hierarchy. `write-safety.md` notes that its existing "never enable NTP in
+the commit whose rollback timer you are relying on" rule covers this statement
+too — on a device where the daemon was suppressed, this is the statement that
+starts the clock moving.
+
 ## 1.4.0 — parsing-firepower-configs skill
 
 New skill: **[parsing-firepower-configs](./skills/parsing-firepower-configs/SKILL.md)** v0.1.0 — parses Cisco Secure Firewall (Firepower) FMC- and FDM-managed JSON exports into the shared vendor-neutral intermediate schema. The repository previously claimed FTD coverage but delivered it only for the ASA-style LINA form; this closes the NGFW-layer gap that `firewall-config-conversion` and `firewall-best-practices-audit` had both explicitly deferred. The split from `parsing-cisco-configs` is on **grammar, not product name** — both artifacts are "Cisco FTD" to a human, but an FMC JSON export and a LINA `show running-config` share no parseable syntax. `parsing-cisco-configs` keeps ASA and FTD-LINA and now hands off explicitly in both directions.
