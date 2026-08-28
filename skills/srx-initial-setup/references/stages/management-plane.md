@@ -93,7 +93,7 @@ The decision between fxp0 (dedicated out-of-band management interface) and a rev
 - **Severity:** `blocking` (accurate time is required for log correlation, security event analysis, and certificate validation)
 - **Depends on:** `mgmt.dns-absent` (if using domain names for NTP servers), `mgmt.default-route-absent` (the device must be able to reach the servers)
 - **Lockout risk:** `false`
-- **Evidence:** `show configuration system ntp` returns no configured NTP servers, or `show ntp associations` shows no peer prefixed `*`
+- **Evidence:** `show configuration system ntp` returns no configured NTP servers
 - **Proposal:**
 
   ```text
@@ -112,6 +112,8 @@ The decision between fxp0 (dedicated out-of-band management interface) and a rev
 
   Configure at least two NTP servers for redundancy. If DNS is configured, domain names can be used instead of IP addresses.
 
+  **This gap is absent configuration only.** A device that already has servers configured but is not synchronizing is **not** `mgmt.ntp-absent`, and must not be "fixed" by adding public pool servers on top of an enterprise NTP configuration — that changes the time source instead of repairing the path to it. Synchronization failure on a configured device is a Stage 2 verification failure; work it through "NTP configured but never synchronizes" below.
+
   When the device sources NTP from a specific management identity — a loopback, or a revenue interface rather than `fxp0` — add `set system ntp source-address <address>` so the servers reply to an address the device can actually receive on.
 
   **Source:** Juniper Networks, "NTP Configuration" (Junos OS Time Management), retrieved 2026-08-20.
@@ -126,7 +128,9 @@ The decision between fxp0 (dedicated out-of-band management interface) and a rev
 
 `[edit system processes]` is hidden from CLI completion. `set system processes ntp enable` does not tab-complete and does not appear in `?` output, which is exactly why it gets omitted — but it is a valid, committable statement, and it is what makes the NTP daemon's enabled state explicit and auditable in the configuration rather than implicit.
 
-**Validated on hardware and on vSRX, 2026-08-27** (`docs/skill-tests/2026-08-27-srx-ntp-process-enable-live-validation.md`): commit-check accepted `set system processes ntp enable` on SRX345 hardware running Junos 24.2R2-S5.3 and on vSRX 24.4R1.9, and accepted the opposing `set system processes ntp disable` on vSRX 26.2R1.7 — so it is a real enable/disable toggle, not a no-op alias, across 24.2 through 26.2.
+**Validated on hardware and on vSRX, 2026-08-27** (`docs/skill-tests/2026-08-27-srx-ntp-process-enable-live-validation.md`): commit-check accepted `set system processes ntp enable` on SRX345 hardware running Junos 24.2R2-S5.3 and on vSRX 24.4R1.9, and accepted the opposing `set system processes ntp disable` on vSRX 26.2R1.7, whose diff replaced `ntp enable;` with `ntp disable;`. So the schema carries both values across 24.2 through 26.2, and `disable` is a real configured state rather than unrecognized syntax.
+
+**What that run does not establish [inferred]:** no activating write was performed on any device, so the *runtime* effect — that `disable` actually suppresses `ntpd` — is inferred from the statement's semantics, not measured. Treat `disable` as a fault to correct, but confirm on the device with `show system processes extensive | match " ntpd"` rather than reporting the daemon down from the configuration alone.
 
 Read the configured state as follows:
 
@@ -134,7 +138,7 @@ Read the configured state as follows:
 |---|---|---|
 | `set system processes ntp enable` present | Daemon explicitly enabled | Correct state — leave it |
 | Statement absent | **Not** the same as disabled | Add it for explicitness, but do not report NTP broken on this basis alone |
-| `set system processes ntp disable` present | Daemon explicitly suppressed | Fatal for time sync — replace with `enable` |
+| `set system processes ntp disable` present | Daemon explicitly suppressed (runtime effect inferred, not measured) | Replace with `enable`, and confirm `ntpd` state on the device |
 
 **Absence is not a failed check.** On Junos 24.2R2-S5.3 (SRX345 hardware) and 24.4R1.9 (vSRX), devices carrying no `system processes` configuration at all were running `ntpd` and were synchronized to a `*` peer at `reach 377` with sub-millisecond offset. A blanket "Junos 24 and later will not synchronize without this statement" did not reproduce on the tested devices, so this skill does not gate on the statement's presence — it gates on `show ntp associations`. Every 25.4R1.12 and 26.2R1.7 device in the surveyed fleet already carried the statement, so the counterfactual could not be tested on those releases; on a 25.4-or-later device that will not synchronize with reachability already proven, adding this statement is the first thing to try.
 

@@ -289,11 +289,13 @@ Its configured state reads three ways, and only one of them is a fault:
 | statement absent | **not** the same as disabled | add it, but do not fail the device on this alone |
 | `ntp disable` present | daemon explicitly suppressed | fatal — replace with `enable` |
 
-**Verified 2026-08-27** across 13 reachable lab and production SRX/vSRX devices
+**Verified 2026-08-27** across 18 reachable lab and production SRX/vSRX devices
 (`docs/skill-tests/2026-08-27-srx-ntp-process-enable-live-validation.md`):
 commit-check accepted `ntp enable` on SRX345 hardware running Junos 24.2R2-S5.3
-and on vSRX 24.4R1.9, and accepted `ntp disable` on vSRX 26.2R1.7, so the toggle
-is real across 24.2–26.2. But SRX345 on 24.2R2-S5.3 and a vSRX on 24.4R1.9 with
+and on vSRX 24.4R1.9, and accepted `ntp disable` on vSRX 26.2R1.7, so the schema
+carries both values across 24.2–26.2. No activating write was performed, so the
+runtime effect of `disable` is inferred, not measured — confirm with
+`show system processes extensive | match " ntpd"`. But SRX345 on 24.2R2-S5.3 and a vSRX on 24.4R1.9 with
 **no `system processes` configuration at all** were both running `ntpd` and
 synchronized to a `*` peer at `reach 377`. So the statement's absence must not be
 read as "NTP is off", and it is not by itself a reason to hold up onboarding.

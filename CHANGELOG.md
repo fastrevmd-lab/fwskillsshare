@@ -4,7 +4,7 @@
 
 **srx-initial-setup** v1.4.0 and **sd-onprem-proxmox-deploy** v1.2.0 — the hidden
 `set system processes ntp enable` statement, and the correct way to read it.
-Backed by a live run across 13 reachable SRX/vSRX devices on Junos 24.2R2-S5.3
+Backed by a live run across 18 reachable SRX/vSRX devices on Junos 24.2R2-S5.3
 (SRX345 hardware), 24.4R1.9, 25.4R1.12, and 26.2R1.7, documented in
 [the NTP process validation](./docs/skill-tests/2026-08-27-srx-ntp-process-enable-live-validation.md).
 Read-only operational commands plus non-activating `commit check`; no
@@ -32,8 +32,9 @@ than an NTP fault. What the run does establish is that the statement is a real
 enable/disable toggle across 24.2–26.2: `commit check` accepted `ntp enable` on
 SRX345 hardware and on 24.4R1.9, and the opposing `ntp disable` on 26.2R1.7.
 So three configured states get three readings — `enable` present is correct,
-absent is unset and must not be reported as broken, and `disable` present is
-fatal.
+absent is unset and must not be reported as broken, and `disable` present is a
+fault to correct. No activating write was performed, so the runtime effect of
+`disable` is carried as inferred rather than measured.
 
 `sd-onprem-proxmox-deploy` already carried the statement in its §4a onboarding
 gate and described it as "required", listing its presence as a hard gate. That

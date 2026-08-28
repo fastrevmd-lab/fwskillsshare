@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-27
 **Method:** read-only operational commands plus non-activating `commit check` over NETCONF, via `rust-junosmcp`.
-**Devices:** 13 reachable of 41 in inventory (one physical SRX345, twelve vSRX). No configuration was activated on any device.
+**Devices:** 27 of the 41 in inventory were queried; **18 answered** — one physical SRX345 and seventeen vSRX. By release: 24.2R2-S5.3 ×1 (hardware), 24.4R1.9 ×4, 25.4R1.12 ×1, 26.2R1.7 ×12. No configuration was activated on any device.
 
 ## Question
 
@@ -75,9 +75,12 @@ them as evidence for the process statement would have been wrong.
 - **No behavioral toggle test.** Whether committing `ntp disable` actually stops
   `ntpd` was not tested — the MCP surface exposes `commit check` only, and no
   device was a candidate for an activating write. Schema validity is proven;
-  runtime effect is inferred from the statement's semantics.
-- 4 of 41 inventory devices were unreachable (`No route to host`) and
-  `vsrx-isp-a` failed on a `known_hosts` key mismatch; none were sampled.
+  runtime effect is inferred from the statement's semantics and is marked as
+  inferred where the skills rely on it.
+- **Sampling was partial.** 27 of 41 inventory devices were queried; the
+  remaining 14 were not attempted. Of the 27, eight returned
+  `No route to host` and `vsrx-isp-a` failed on a `known_hosts` key mismatch,
+  leaving the 18 in the table above.
 
 ## Changes made
 
