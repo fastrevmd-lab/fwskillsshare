@@ -223,6 +223,16 @@ def transform_quality(dest: Path) -> None:
     path.write_text(repoint_docs_links(path.read_text(encoding="utf-8")), encoding="utf-8")
 
 
+def transform_changelog(dest: Path) -> None:
+    """Repoint the changelog's skill-test links; it carries no brand blocks.
+
+    Release notes cite validation records under docs/, which is upstream-only,
+    for the same reason QUALITY.md does. Without this the gate fails the run.
+    """
+    path = dest / "CHANGELOG.md"
+    path.write_text(repoint_docs_links(path.read_text(encoding="utf-8")), encoding="utf-8")
+
+
 def pad_to_width(line: str, old: str, new: str) -> str:
     """Swap old->new inside a box-drawn banner line, preserving its display width.
 
@@ -585,6 +595,7 @@ def main() -> int:
         skills = sorted(p.name for p in (staged / "skills").iterdir() if p.is_dir())
         transform_readme(staged, args.repo_slug, len(skills))
         transform_quality(staged)
+        transform_changelog(staged)
         transform_install(staged, args.repo_slug)
         transform_skill_frontmatter(staged, args.author)
         transform_skill_checker(staged, args.author)
