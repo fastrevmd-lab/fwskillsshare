@@ -112,10 +112,13 @@ Alternative approach (also UNVERIFIED):
 show configuration system root-authentication
 show configuration system name-server
 show configuration system ntp
+show configuration system processes | display set | match ntp
 show configuration system services
 ```
 
 These per-hierarchy commands may provide more focused output for specific management-plane elements.
+
+`show configuration system processes` reads the hidden `[edit system processes]` hierarchy. It is worth reading separately during assessment because `show configuration system` alone will not prompt the operator to look for it: `set system processes ntp disable` suppresses the NTP daemon outright, and empty output means the statement is simply absent — which is **not** the same as disabled. Record which of the three states the device is in; `references/stages/management-plane.md` defines how to act on each.
 
 ### Entitlement state
 

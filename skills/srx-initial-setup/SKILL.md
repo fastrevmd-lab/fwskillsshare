@@ -1,7 +1,7 @@
 ---
 name: srx-initial-setup
 description: Bring a new or factory-reset Juniper SRX from its shipped state to a reachable, zoned, screened, and minimally policied device. Use when performing first-time setup or Day-0 and Day-1 bring-up on SRX300 or SRX400 Branch, SRX1600 or SRX4120 campus, or SRX4300, SRX4700, or SRX5000 datacenter platforms, when removing or adopting factory-default configuration, when establishing management access, NTP, DNS, and system services, when creating interfaces, zones, and host-inbound-traffic, when applying starter screens, or when reading which licensed feature sets are entitled, configured, and active. Not for chassis-cluster formation, ZTP-based provisioning, Junos upgrades, or full policy design.
-version: 1.3.0
+version: 1.4.0
 author:
   - fastrevmd-lab
   - Claude
@@ -182,11 +182,13 @@ Establishes system identity, time synchronization, name resolution, and manageme
 **What this stage establishes:**
 
 - System identity (hostname and domain name)
-- Time synchronization (NTP configured and operational)
+- Time synchronization (NTP configured and operational, including the hidden `set system processes ntp enable` statement)
 - Name resolution (DNS name servers configured)
 - Management addressing (fxp0 or chosen revenue interface with routable address)
 
 **Gaps:** `mgmt.hostname-absent`, `mgmt.domain-absent`, `mgmt.dns-absent`, `mgmt.ntp-absent`, `mgmt.timezone-unset`.
+
+**NTP is where downstream log management silently fails.** A skewed clock still completes mTLS to a log collector and still gets its payloads acknowledged, so transport checks pass while the logs never appear in Security Director. Prove synchronization here, before onboarding. `set system processes ntp enable` is hidden from CLI completion — it will not tab-complete, which is why it gets skipped — and is a valid statement on Junos 24.2 through 26.2; its **absence is not the same as disabled**, and the gate is `show ntp associations`, not the statement. See `references/stages/management-plane.md`.
 
 **All gaps are blocking** for the `factory.*` stage. Factory-default removal is lockout-risk; the replacement management path must be established and verified first.
 
@@ -300,7 +302,7 @@ Every stage requires verification after its gaps close. Verification proves the 
 **Per-stage verification:**
 
 - **Stage 1:** Root and named admin authentication work; NETCONF connection succeeds (if enabled); operator confirms console or equivalent recovery access
-- **Stage 2:** Hostname and domain configured; DNS resolution works; NTP synchronized (at least one server shows `*` with offset < 1000ms); management interface reachable; default route active
+- **Stage 2:** Hostname and domain configured; DNS resolution works; NTP synchronized — `show ntp associations` shows a `*` peer with non-zero reach and offset < 1000 ms, and `ntp disable` is absent from `system processes`; management interface reachable; default route active
 - **Stage 3:** All zones exist; interfaces assigned to zones; host-inbound-traffic configured correctly; management access still works from management network
 - **Stage 4:** Starter profile exists; screens bound to zones; screen statistics show expected behavior; logs show screen hits only for actual attacks
 - **Stage 5:** Global policy table exists with correct ordering; policy hit counts reflect traffic; session logging working (see `references/verification.md` for external connectivity test requirements)
