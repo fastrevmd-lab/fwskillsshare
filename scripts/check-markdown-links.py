@@ -16,11 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 # title in double quotes, single quotes, or parentheses. Parsing the title
 # separately matters: folding it into the destination turns a perfectly good
 # [readme](README.md "Overview") into a hunt for a file named 'README.md "Overview"'.
+# The bare destination part is parsed via _parse_bare_destination to handle
+# balanced parens and escaped parens as CommonMark requires.
 INLINE_LINK_RE = re.compile(
-    r"""!?\[(?:[^\]\\]|\\.)*\]\(\s*
-        (<[^<>\n]*>|[^\s()]*)
-        (?:\s+(?:"[^"]*"|'[^']*'|\([^()]*\)))?
-        \s*\)""",
+    r"""!?\[(?:[^\]\\]|\\.)*\]\(""",
     re.VERBOSE,
 )
 REFERENCE_LINK_RE = re.compile(r"^\[(?:[^\]\\]|\\.)+\]:\s+(<[^<>\n]*>|\S+)")
@@ -32,6 +31,9 @@ FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 # may cross lines.
 CODE_SPAN_RE = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)", re.DOTALL)
 SKIPPED_SCHEMES = ("http://", "https://", "mailto:", "#")
+ASCII_PUNCTUATION = set("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
+# CommonMark: a backslash may escape any ASCII punctuation.
+BACKSLASH_ESCAPE_RE = re.compile(r"\\([!-/:-@\[-`{-~])")
 
 
 def mask_code_spans(text: str) -> str:
@@ -42,11 +44,105 @@ def mask_code_spans(text: str) -> str:
     return CODE_SPAN_RE.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), text)
 
 
+def _parse_bare_destination(text: str, start: int) -> tuple[str, int] | None:
+    """Parse a bare link destination starting at position start.
+
+    Returns (destination, end_position) or None if no valid destination found.
+    Handles balanced parentheses and backslash-escaped characters per CommonMark.
+    """
+    i = start
+    dest = []
+    paren_depth = 0
+
+    while i < len(text):
+        ch = text[i]
+
+        # CommonMark bare destinations cannot hold unescaped angle brackets.
+        # Accepting them lets malformed text such as `[o](<bad<[r](x.md)>)`
+        # be swallowed whole: the scan invents a target that cannot exist AND
+        # advances past the genuine link nested inside it.
+        if ch in "<>":
+            return None
+
+        # Whitespace always ends a bare destination. A backslash cannot escape
+        # it: CommonMark allows backslash escapes only before ASCII
+        # punctuation, so `[a](missing\\ file.md)` is prose, not a link, and
+        # swallowing the space reports a broken file that was never linked.
+        if ch in " \t\n\r\f\v":
+            break
+
+        if ch == "\\":
+            if i + 1 < len(text) and text[i + 1] in ASCII_PUNCTUATION:
+                dest.append(ch)
+                dest.append(text[i + 1])
+                i += 2
+                continue
+            # A backslash before anything else is a literal backslash.
+            dest.append(ch)
+            i += 1
+            continue
+
+        # Track paren depth
+        if ch == "(":
+            paren_depth += 1
+            dest.append(ch)
+            i += 1
+        elif ch == ")":
+            if paren_depth > 0:
+                paren_depth -= 1
+                dest.append(ch)
+                i += 1
+            else:
+                # Closing paren for the link itself
+                break
+        else:
+            dest.append(ch)
+            i += 1
+
+    if not dest:
+        return None
+
+    # An unmatched "(" means this was never a well-formed destination --
+    # `[a](missing( )` is ordinary text. Returning `missing(` invents a broken
+    # link and fails the gate on a document that has none.
+    if paren_depth != 0:
+        return None
+
+    return "".join(dest), i
+
+
+def _parse_angle_destination(text: str, start: int) -> tuple[str, int] | None:
+    """Parse an angle-bracketed destination <...>.
+
+    Returns (destination, end_position) or None.
+    """
+    if start >= len(text) or text[start] != "<":
+        return None
+
+    i = start + 1
+    while i < len(text):
+        ch = text[i]
+        if ch == ">":
+            return text[start + 1 : i], i + 1
+        if ch == "\n" or ch == "<":
+            return None
+        i += 1
+
+    return None
+
+
 def clean_destination(target: str) -> str:
-    """Strip Markdown destination delimiters from a captured link target."""
+    r"""Strip Markdown destination delimiters and unescape backslash escapes.
+
+    CommonMark allows backslash to escape any ASCII punctuation; those escapes
+    must be removed before resolving the path, or [link](file\(1\).md) fails
+    to resolve to file(1).md.
+    """
     target = target.strip()
     if target.startswith("<") and target.endswith(">"):
         target = target[1:-1].strip()
+    # Unescape backslash-escaped ASCII punctuation
+    target = BACKSLASH_ESCAPE_RE.sub(r"\1", target)
     return target
 
 
@@ -104,29 +200,235 @@ def extract_links(content: str) -> list[tuple[int, str]]:
     for run in runs:
         if not run:
             continue
+        # Build position-to-line-number map for this run
+        line_map: list[tuple[int, int]] = []  # (offset, line_number)
+        offset = 0
+        for line_number, line in run:
+            line_map.append((offset, line_number))
+            offset += len(line) + 1  # +1 for the newline
+
         # Mask each unfenced run as one block so a code span may cross lines
-        # without ever seeing a fence marker.
-        masked = mask_code_spans("\n".join(line for _, line in run)).splitlines()
-        for (line_number, _), text in zip(run, masked):
-            links.extend(_links_in_line(line_number, text))
+        # without ever seeing a fence marker, and so link destinations can
+        # span lines per CommonMark.
+        masked = mask_code_spans("\n".join(line for _, line in run))
+        links.extend(_links_in_text(masked, line_map))
 
     return links
 
 
-def _links_in_line(line_number: int, raw_line: str) -> list[tuple[int, str]]:
-    """Extract checkable relative links from one already-masked line."""
+BLOCK_START_RE = re.compile(
+    r"""^[ ]{0,3}(?:
+        \#{1,6}(?:\s|$)      # ATX heading
+      | >                    # blockquote
+      | (?:[-*+])\s          # bullet list
+      | \d{1,9}[.)]\s        # ordered list
+      | (?:`{3,}|~{3,})      # fence
+      | (?:=+|-+)[ ]*$       # setext heading underline (any length, = or -)
+      | (?:\*\s*){3,}$       # thematic break
+      | (?:-\s*){3,}$
+      | (?:_\s*){3,}$
+    )""",
+    re.VERBOSE,
+)
+
+
+def _starts_new_block(text: str, pos: int) -> bool:
+    """True if the line beginning at pos starts a new Markdown block."""
+    end = text.find("\n", pos)
+    line = text[pos:] if end == -1 else text[pos:end]
+    return bool(BLOCK_START_RE.match(line))
+
+
+def _crosses_block_boundary(text: str) -> bool:
+    """True if the text spans a blank line or a line that starts a new block.
+
+    Applied to labels for the same reason it is applied to titles: a heading or
+    list interrupts the paragraph, so `[text\n# heading](missing.md)` is prose
+    plus a heading, not a link, and reporting its "target" fails a document
+    that has nothing wrong with it.
+    """
+    if _crosses_blank_line(text):
+        return True
+    pos = text.find("\n")
+    while pos != -1:
+        if _starts_new_block(text, pos + 1):
+            return True
+        pos = text.find("\n", pos + 1)
+    return False
+
+
+def _crosses_blank_line(text: str) -> bool:
+    """True if the text contains a blank line, which ends a Markdown block."""
+    newlines = 0
+    for ch in text:
+        if ch == "\n":
+            newlines += 1
+            if newlines >= 2:
+                return True
+        elif not ch.isspace():
+            newlines = 0
+    return False
+
+
+def _skip_link_whitespace(text: str, pos: int) -> int | None:
+    """Advance past whitespace inside a link, refusing to cross a blank line.
+
+    A blank line ends the Markdown block, so a "[" before it and a ")" after it
+    are not parts of one link. Skipping newlines without bound makes ordinary
+    prose parse as a multi-line link and reports a broken target that was never
+    a link — `[a](` followed by a blank line and some text is not a link.
+    """
+    newlines = 0
+    while pos < len(text) and text[pos] in " \t\n\r\f\v":
+        if text[pos] == "\n":
+            newlines += 1
+            if newlines >= 2:
+                return None
+        pos += 1
+    return pos
+
+
+def _position_to_line(pos: int, line_map: list[tuple[int, int]]) -> int:
+    """Map a character position in joined text to its source line number."""
+    for i in range(len(line_map) - 1, -1, -1):
+        offset, line_number = line_map[i]
+        if pos >= offset:
+            return line_number
+    return line_map[0][1] if line_map else 1
+
+
+def _links_in_text(
+    text: str, line_map: list[tuple[int, int]]
+) -> list[tuple[int, str]]:
+    """Extract checkable relative links from already-masked text.
+
+    Handles multi-line links by matching across the entire text and mapping
+    match positions back to source line numbers.
+    """
     links: list[tuple[int, str]] = []
 
-    for match in INLINE_LINK_RE.finditer(raw_line):
-        target = clean_destination(match.group(1))
-        if target and not target.startswith(SKIPPED_SCHEMES):
-            links.append((line_number, target))
+    # Find inline/image links: ![label](destination) or [label](destination)
+    #
+    # Uses an explicit cursor rather than finditer. finditer resumes just after
+    # the label's "](", so the destination and title it just consumed get
+    # rescanned as Markdown: the title in
+    # [outer](README.md "See [example](missing.md)") would yield a spurious
+    # missing.md and fail a document that has no broken link at all.
+    pos = 0
+    while True:
+        match = INLINE_LINK_RE.search(text, pos)
+        if not match:
+            break
 
-    reference = REFERENCE_LINK_RE.match(raw_line)
-    if reference:
-        target = clean_destination(reference.group(1))
-        if target and not target.startswith(SKIPPED_SCHEMES):
-            links.append((line_number, target))
+        line_number = _position_to_line(match.start(), line_map)
+        # Fail-safe cursor. Every rejection path below leaves `pos` here, just
+        # inside the opening bracket, so a candidate that turns out not to be a
+        # link can never carry the scan past text it did not consume. Advancing
+        # to match.end() instead lets one piece of malformed prose swallow a
+        # genuine broken link further along -- the parser goes quiet exactly
+        # where it failed. Only an accepted link advances past itself.
+        pos = match.start() + 1
+
+        # The label is subject to the same blank-line rule as the destination
+        # and title. Matching across a whole unfenced run means the pattern can
+        # otherwise span paragraphs: `[text\n\n](missing.md)` is two blocks of
+        # ordinary prose, not a link to a missing file.
+        if _crosses_block_boundary(match.group(0)):
+            continue
+
+        start_pos = _skip_link_whitespace(text, match.end())
+        if start_pos is None or start_pos >= len(text):
+            continue
+
+        result = _parse_angle_destination(text, start_pos)
+        if not result:
+            result = _parse_bare_destination(text, start_pos)
+        if not result:
+            continue
+        target, end_pos = result
+
+        after = _skip_link_whitespace(text, end_pos)
+        if after is None:
+            continue
+        had_whitespace = after != end_pos
+        end_pos = after
+
+        # Optional title: "...", '...', or (...). CommonMark requires
+        # whitespace between the destination and the title; without that check
+        # `[a](<README.md>"...")` parses as a titled link and the scan jumps
+        # past a real link nested in that text.
+        if end_pos < len(text) and text[end_pos] in "\"'(" and had_whitespace:
+            close = {'"': '"', "'": "'", "(": ")"}[text[end_pos]]
+            end_pos += 1
+            # A title cannot span a blank line. Letting it run past one lets
+            # malformed prose swallow whatever follows -- including a real
+            # broken link, which the checker would then never report. A false
+            # negative here is worse than a false positive: the gate goes
+            # quiet exactly when it has stopped looking.
+            blank_run = 0
+            invalid_title = False
+            while end_pos < len(text) and text[end_pos] != close:
+                ch = text[end_pos]
+                # A backslash escapes only ASCII punctuation. Letting it
+                # consume a newline hides that newline from blank-line
+                # detection, so a malformed title runs on and swallows any
+                # real link inside it.
+                if (
+                    ch == "\\"
+                    and end_pos + 1 < len(text)
+                    and text[end_pos + 1] in ASCII_PUNCTUATION
+                ):
+                    end_pos += 2
+                    blank_run = 0
+                    continue
+                # CommonMark forbids an unescaped "(" inside a (...) title, so
+                # the whole construct is not a link. Accepting it would skip
+                # past a real link nested in that text and never report it.
+                if ch == "(" and close == ")":
+                    invalid_title = True
+                    break
+                if ch == "\n":
+                    blank_run += 1
+                    if blank_run >= 2:
+                        break
+                    # A heading, list item, blockquote or fence interrupts the
+                    # paragraph, so the title ended at the previous line and
+                    # anything after it -- including a real link -- is not part
+                    # of this construct.
+                    if _starts_new_block(text, end_pos + 1):
+                        invalid_title = True
+                        break
+                elif not ch.isspace():
+                    blank_run = 0
+                end_pos += 1
+            if invalid_title or end_pos >= len(text) or text[end_pos] != close:
+                continue
+            end_pos += 1
+            after = _skip_link_whitespace(text, end_pos)
+            if after is None:
+                continue
+            end_pos = after
+
+        if end_pos < len(text) and text[end_pos] == ")":
+            # Resume after the whole link so its own title is never rescanned.
+            pos = end_pos + 1
+            target = clean_destination(target)
+            if target and not target.startswith(SKIPPED_SCHEMES):
+                links.append((line_number, target))
+
+    # Find reference-style links: [label]: destination
+    for line_start, line_number in line_map:
+        # Find the line end
+        line_end = text.find("\n", line_start)
+        if line_end == -1:
+            line_end = len(text)
+
+        line_text = text[line_start:line_end]
+        reference = REFERENCE_LINK_RE.match(line_text)
+        if reference:
+            target = clean_destination(reference.group(1))
+            if target and not target.startswith(SKIPPED_SCHEMES):
+                links.append((line_number, target))
 
     return links
 
@@ -179,7 +481,20 @@ def main() -> int:
             continue
 
         for line_number, target in extract_links(md_file.read_text(encoding="utf-8")):
-            target_path = unquote(target.split("#", 1)[0])
+            # Strip fragment (#...) and query string (?...) before resolution.
+            # Query strings and fragments are used by browsers/renderers but don't
+            # affect filesystem paths. A literal ? in a filename is rare; if needed,
+            # it should be percent-encoded in the link.
+            target_path = target
+            # Strip fragment first
+            if "#" in target_path:
+                target_path = target_path.split("#", 1)[0]
+            # Strip query string
+            if "?" in target_path:
+                target_path = target_path.split("?", 1)[0]
+            # URL-decode
+            target_path = unquote(target_path)
+
             if not target_path:
                 continue
 
