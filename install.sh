@@ -228,11 +228,47 @@ get_family_skills() {
 
 skill_exists() {
     local needle="$1"
-    local -a all_skills=($(get_all_skills))
+    local -a all_skills
+    read -r -a all_skills <<< "$(get_all_skills)"
     for skill in "${all_skills[@]}"; do
         if [[ "$skill" == "$needle" ]]; then
             return 0
         fi
+    done
+    return 1
+}
+
+# Literal (non-regex) membership test for an array.
+# Avoids SC2076 false positives when values contain regex metacharacters.
+# Sort and de-duplicate skill names into SELECTED_SKILLS.
+#
+# Deliberately a read loop rather than `mapfile`: mapfile is a Bash 4 builtin,
+# and the documented `curl ... | bash` install path runs under whatever bash
+# the machine ships. macOS still ships 3.2, where mapfile aborts the run with
+# "mapfile: command not found" before a single skill is copied.
+set_selected_skills_sorted() {
+    if [[ $# -eq 0 ]]; then
+        SELECTED_SKILLS=()
+        return 0
+    fi
+    local -a deduped=()
+    local entry
+    while IFS= read -r entry; do
+        [[ -n "$entry" ]] && deduped+=("$entry")
+    done < <(printf '%s\n' "$@" | sort -u)
+    if [[ ${#deduped[@]} -eq 0 ]]; then
+        SELECTED_SKILLS=()
+    else
+        SELECTED_SKILLS=("${deduped[@]}")
+    fi
+}
+
+contains_element() {
+    local needle=$1
+    shift
+    local element
+    for element in "$@"; do
+        [[ $element == "$needle" ]] && return 0
     done
     return 1
 }
@@ -350,7 +386,7 @@ interactive_skill_selection() {
             read -r input < /dev/tty || true
         else
             echo -e "${C_YELLOW}Note: /dev/tty not available, installing all skills${C_RESET}" >&2
-            SELECTED_SKILLS=($(get_all_skills))
+            read -r -a SELECTED_SKILLS <<< "$(get_all_skills)"
             return 0
         fi
 
@@ -397,7 +433,7 @@ interactive_skill_selection() {
 
             if [[ "$valid" == true && ${#result[@]} -gt 0 ]]; then
                 # Remove duplicates
-                SELECTED_SKILLS=($(printf '%s\n' "${result[@]}" | sort -u))
+                set_selected_skills_sorted "${result[@]}"
                 return 0
             fi
         fi
@@ -533,7 +569,7 @@ uninstall_skill() {
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --all)
-            SELECTED_SKILLS=($(get_all_skills))
+            read -r -a SELECTED_SKILLS <<< "$(get_all_skills)"
             shift
             ;;
         --skill)
@@ -553,7 +589,14 @@ while [[ $# -gt 0 ]]; do
                 echo -e "${C_RED}Error: --family requires a family name${C_RESET}" >&2
                 exit 1
             fi
-            SELECTED_SKILLS+=($(get_family_skills "$2"))
+            # get_family_skills exits non-zero on an unknown family. Capture it
+            # in its own assignment so that status is still visible: inside a
+            # here-string the substitution's status is discarded and an invalid
+            # family would be silently accepted.
+            family_skills=$(get_family_skills "$2") || exit 1
+            declare -a _tmp_family_skills
+            read -r -a _tmp_family_skills <<< "$family_skills"
+            SELECTED_SKILLS+=("${_tmp_family_skills[@]}")
             shift 2
             ;;
         --target)
@@ -627,7 +670,7 @@ print_banner
 if [[ ${#SELECTED_SKILLS[@]} -eq 0 ]]; then
     if [[ "$NON_INTERACTIVE" == true ]]; then
         # With -y and no selection, install all
-        SELECTED_SKILLS=($(get_all_skills))
+        read -r -a SELECTED_SKILLS <<< "$(get_all_skills)"
     else
         # Interactive selection
         interactive_skill_selection
@@ -635,7 +678,7 @@ if [[ ${#SELECTED_SKILLS[@]} -eq 0 ]]; then
 fi
 
 # Remove duplicates from selected skills
-SELECTED_SKILLS=($(printf '%s\n' "${SELECTED_SKILLS[@]}" | sort -u))
+set_selected_skills_sorted "${SELECTED_SKILLS[@]}"
 
 # Determine install targets
 if [[ -n "$EXPLICIT_DIR" ]]; then
@@ -721,13 +764,13 @@ done
 if [[ "$MODE" == "install" && $installed -gt 0 ]]; then
     echo ""
     echo -e "${C_BOLD}Next steps:${C_RESET}"
-    if [[ " ${INSTALL_TARGETS[*]} " =~ " $CLAUDE_SKILLS_DIR " ]]; then
+    if contains_element "$CLAUDE_SKILLS_DIR" "${INSTALL_TARGETS[@]}"; then
         echo "  • Restart Claude Code — skills auto-trigger on vendor keywords / pasted configs"
     fi
-    if [[ " ${INSTALL_TARGETS[*]} " =~ " $CODEX_SKILLS_DIR " ]]; then
+    if contains_element "$CODEX_SKILLS_DIR" "${INSTALL_TARGETS[@]}"; then
         echo "  • Codex detects skill changes automatically; restart Codex if they do not appear"
     fi
-    if [[ " ${INSTALL_TARGETS[*]} " =~ " $HERMES_SKILLS_DIR " ]]; then
+    if contains_element "$HERMES_SKILLS_DIR" "${INSTALL_TARGETS[@]}"; then
         echo "  • Run 'hermes skills list' to verify installation"
     fi
 fi
