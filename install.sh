@@ -22,6 +22,7 @@
 set -euo pipefail
 
 # Skill inventory
+# BEGIN generated-inventory
 declare -a PARSERS=(
     "parsing-cisco-configs"
     "parsing-firepower-configs"
@@ -65,6 +66,7 @@ declare -a DEPLOYMENT=(
     "clearpass-proxmox-deploy"
     "sd-onprem-proxmox-deploy"
 )
+# END generated-inventory
 
 TOTAL_SKILLS=$((
     ${#PARSERS[@]} +

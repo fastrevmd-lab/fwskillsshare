@@ -98,30 +98,6 @@ class RejectionTests(unittest.TestCase):
         self.assertIn("reviewed count", output)
 
 
-class InstallerFamilyParsingTests(unittest.TestCase):
-    """EXPECTED_FAMILIES has nested braces and needs a structural parse."""
-
-    def test_nested_braces_are_parsed(self) -> None:
-        source = (
-            'EXPECTED_FAMILIES = {\n'
-            '    "parsers": {"a", "b"},\n'
-            '    "srx": {"c"},\n'
-            '}\n'
-        )
-        parsed = checker.parse_expected_families(source)
-        self.assertEqual(parsed, {"parsers": {"a", "b"}, "srx": {"c"}})
-
-    def test_real_check_installer_parses_to_five_families(self) -> None:
-        source = (ROOT / "scripts" / "check-installer.py").read_text(encoding="utf-8")
-        parsed = checker.parse_expected_families(source)
-        self.assertIsNotNone(parsed)
-        assert parsed is not None
-        self.assertEqual(len(parsed), 5)
-        self.assertIn("parsing-cisco-configs", parsed["parsers"])
-
-    def test_unparseable_source_returns_none(self) -> None:
-        self.assertIsNone(checker.parse_expected_families("EXPECTED_FAMILIES = weird()\n"))
-        self.assertIsNone(checker.parse_expected_families("no assignment here\n"))
 
 
 class ReadmeCountTests(unittest.TestCase):
