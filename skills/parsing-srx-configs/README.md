@@ -39,14 +39,41 @@ Extracts:
 
 ## Manual invocation
 
-```
-/parsing-srx-configs
-```
+- **Claude Code / Hermes**: `/parsing-srx-configs`
+- **Codex**: `$parsing-srx-configs`
 
 ## Installation
 
+Use the repository installer to install into one or more runtimes:
+
 ```bash
+# Install to Claude Code
+./install.sh --skill parsing-srx-configs --target claude
+
+# Install to Codex
+./install.sh --skill parsing-srx-configs --target codex
+
+# Install to Hermes
+./install.sh --skill parsing-srx-configs --target hermes
+
+# Install to all three
+./install.sh --skill parsing-srx-configs --target all
+
+# Or install the whole parsers family
+./install.sh --family parsers --target all
+```
+
+Manual installation (copy the skill directory to the runtime's skills directory):
+
+```bash
+# Claude Code
 cp -r parsing-srx-configs ~/.claude/skills/
+
+# Codex
+cp -r parsing-srx-configs ~/.agents/skills/
+
+# Hermes
+cp -r parsing-srx-configs ~/.hermes/skills/devops/
 ```
 
 ## Security audit checks
@@ -65,10 +92,13 @@ cp -r parsing-srx-configs ~/.claude/skills/
 ```
 parsing-srx-configs/
 ├── SKILL.md                          # Main skill instructions
+├── agents/
+│   └── openai.yaml                   # Codex agent manifest
 └── references/
     ├── config-format.md              # Vendor config syntax reference
     ├── intermediate-schema.md        # Vendor-neutral output schema
     ├── parsing-patterns.md           # Edge cases, port mappings
+    ├── runtime-intake.md             # Interactive question catalog for ambiguous requests
     ├── example-sample-parse.md       # Worked example with input/output
     ├── fixture-minimal-input.md      # Minimal test fixture (input)
     └── fixture-expected-output.json  # Minimal test fixture (expected output)

@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.0 — SRX NTP process statement
+## 1.5.0 — SRX NTP process statement, documentation integrity, inventory enforcement
 
 **srx-initial-setup** v1.4.0 and **sd-onprem-proxmox-deploy** v1.2.0 — the hidden
 `set system processes ntp enable` statement, and the correct way to read it.
@@ -52,6 +52,55 @@ hidden hierarchy. `write-safety.md` notes that its existing "never enable NTP in
 the commit whose rollback timer you are relying on" rule covers this statement
 too — on a device where the daemon was suppressed, this is the statement that
 starts the clock moving.
+
+### Documentation integrity and inventory enforcement
+
+Repository maintenance, landed alongside the NTP work. No skill body changed;
+every package is byte-identical apart from the five parser README files.
+
+**Six documented counts had drifted from the repository they describe.** The
+README review badge said 25/29 while its own catalog body said 26 of 29; the
+reproduced installer help said "Install all 24 skills" against a real 29; the
+combined description surface was pinned at ~8,400 characters and measures
+9,719; and QUALITY.md, `skills/SHARED-SCHEMA.md` and all five schema preambles
+still described four parser schemas when `scripts/check-shared-schema.py` has
+been comparing five since `parsing-firepower-configs` landed. SHARED-SCHEMA.md
+also omitted Firepower from its synchronization instructions, telling
+maintainers to update four of the five copies.
+
+**The five parser READMEs were Claude-Code-only.** Each showed one `/name`
+invocation and a single `cp -r` into `~/.claude/skills`, though the installer
+has supported Codex and Hermes for several releases. They now name the
+invocation per runtime, lead with `./install.sh --skill`, and carry file trees
+regenerated from disk — every package ships `agents/openai.yaml` and
+`references/runtime-intake.md`, and none of the five listed either.
+`parsing-firepower-configs` additionally pointed at a
+`fixture-minimal-input.json` that has always been `.md`.
+
+**`skills/inventory.json` is now the authoritative inventory.** One entry per
+skill with its family and reviewed status, no totals written down, and
+`scripts/check-inventory.py` fails when it disagrees with the directories on
+disk, `install.sh`, `check-installer.py`, the README badge and body, the
+parser and schema counts, or `install.sh --help`. `check-skill-packages.py`
+reads its expected names from it, which removed a duplicate
+`sd-onprem-proxmox-deploy` that a `frozenset` had been hiding.
+
+**`install.sh` is shellcheck-clean and still Bash 3.2-compatible.** Seven
+SC2207 array assignments and three SC2076 membership tests are resolved. The
+membership tests became a literal `contains_element` helper rather than
+unquoted regexes, which would have matched `.` in filesystem paths as any
+character. Deduplication uses a read loop, not `mapfile`: mapfile is a Bash 4
+builtin, and the documented `curl … | bash` path still runs under macOS's
+stock Bash 3.2.
+
+**New checks.** `scripts/check-markdown-links.py` resolves relative links in
+tracked Markdown while deliberately ignoring fenced blocks and inline code,
+since historical plans embed snippets whose targets belong to another file.
+`just lint` gains the inventory and link checks, `just test` gains their unit
+tests, and a new `just shell` recipe runs shellcheck; `guard` now includes it.
+
+Validated with `just fmt`, `lint`, `test`, `shell`, `guard`, `security`,
+`release-check` and `e2e`, all exiting 0.
 
 ## 1.4.0 — parsing-firepower-configs skill
 

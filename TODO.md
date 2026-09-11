@@ -36,49 +36,64 @@ gaps. Complete the existing-skill work below before adding a 30th package.
     recording platform, Junos release, mode, routing instance, interface,
     transport, and collector evidence.
 
-### P1 — repair documentation drift
+### P1 — repair documentation drift — COMPLETE 2026-09-11
 
-- [ ] Correct README inventory values.
-  - Review badge: `25/29` -> `26/29`.
-  - Installer help example: `Install all 24 skills` -> `Install all 29 skills`.
-  - Combined description surface: `~8,400` -> measured `9,719`, or remove the
-    mutable literal and point readers to `scripts/check-skill-packages.py`.
-  - Intermediate-schema wording: four parsers -> five parsers. Keep the
-    separate "four vendors" statement because Firepower is another Cisco
-    grammar, not a fifth vendor.
-- [ ] Update `QUALITY.md` to say that five schema copies are checked.
-- [ ] Update `skills/SHARED-SCHEMA.md` and every copied schema preamble to list
-  all five parsers and include `parsing-firepower-configs` in the synchronization
-  instructions.
-- [ ] Modernize all five parser READMEs.
-  - Describe Claude Code, Codex, and Hermes installation/invocation.
-  - Include `agents/openai.yaml` and `references/runtime-intake.md` in each file
-    tree.
-  - Correct the Firepower fixture name from `fixture-minimal-input.json` to
-    `fixture-minimal-input.md`.
-- [ ] Resolve release metadata ambiguity: the repository declares 1.5.0 while
-  the latest tag and GitHub release are v1.3.0. Either publish v1.5.0 or move
-  post-v1.3.0 entries beneath an explicit `Unreleased` heading.
+All five items landed. See CHANGELOG 1.5.0, "Documentation integrity and
+inventory enforcement".
 
-### P2 — strengthen automated documentation checks
+- [x] Correct README inventory values — badge `25/29` -> `26/29`; installer
+  help block reconciled against real `./install.sh --help` output (`24` -> `29`);
+  the `~8,400` literal replaced with a pointer to
+  `scripts/check-skill-packages.py`, which reports the measured figure
+  (9,719 today) so the number cannot go stale again. The "four vendors"
+  statement was deliberately kept — Firepower is a second Cisco grammar.
+- [x] Update `QUALITY.md` to say five schema copies are checked.
+- [x] Update `skills/SHARED-SCHEMA.md` and all five copied schema preambles to
+  list five parsers and include `parsing-firepower-configs` in the
+  synchronization instructions.
+- [x] Modernize all five parser READMEs — per-runtime invocation and
+  installation, `agents/openai.yaml` and `references/runtime-intake.md` added
+  to every file tree, Firepower fixture corrected to
+  `fixture-minimal-input.md`.
+- [x] Release metadata: VERSION 1.5.0 published as tag v1.5.0. v1.4.0 was
+  deliberately not tagged retroactively; its CHANGELOG section remains.
 
-- [ ] Add one authoritative inventory manifest and derive or validate the
-  package total, family counts, reviewed count, parser/schema count, and
-  installer help examples from it.
-- [ ] Make duplicate inventory entries fail validation. Remove the duplicate
-  `sd-onprem-proxmox-deploy` entry currently hidden by the `frozenset` in
-  `scripts/check-skill-packages.py`.
-- [ ] Add a Markdown link checker for current user-facing documentation. Repair
-  the broken skill-table links in the historical audit, conversion, and diff
-  implementation plans when those plans are included in the check.
-- [ ] Add `shellcheck` to linting or document intentional suppressions.
-  - Replace seven SC2207 command-substitution array assignments with `mapfile`
-    or another whitespace-safe implementation.
-  - Replace or explicitly justify the three SC2076 quoted `=~` membership
-    tests.
-- [ ] Clarify the `just security` result: Trivy currently scans secrets, but it
-  finds no supported dependency or configuration files for vulnerability or
-  misconfiguration scanning.
+### P2 — strengthen automated documentation checks — COMPLETE 2026-09-11
+
+- [x] One authoritative inventory manifest: `skills/inventory.json`, validated
+  by `scripts/check-inventory.py` against the directories on disk,
+  `install.sh`, `check-installer.py`, the README badge and body counts, the
+  parser and schema counts, and `install.sh --help`.
+- [x] Duplicate inventory entries now fail validation. The duplicate
+  `sd-onprem-proxmox-deploy` hidden by the `frozenset` in
+  `scripts/check-skill-packages.py` is gone; that script reads the manifest.
+- [x] Markdown link checker: `scripts/check-markdown-links.py`. It ignores
+  fenced blocks and inline code by design — the historical plans embed
+  snippets whose link targets belong to README.md at the repository root, so
+  "repairing" them against the plan's own directory corrupts the instruction.
+  No repairs were needed; the repository has zero broken navigational links.
+- [x] `shellcheck` added to linting as `just shell`, included in `guard`.
+  Seven SC2207 sites use `read -r -a` or a read-loop helper as the producer
+  requires; three SC2076 sites use a literal `contains_element` helper rather
+  than unquoted regexes over filesystem paths.
+- [x] `just security` scope clarified in QUALITY.md: Trivy runs all three
+  scanners but only the secret scanner has anything to act on here.
+
+#### Follow-ups opened by this work
+
+- [ ] `check-installer.py` does not exercise `--all -y --dir`. A refactor that
+  made `./install.sh --all -y` install **zero** skills and exit 1 still passed
+  this check. Add coverage for `--all` and for invalid-family rejection.
+- [ ] `check-markdown-links.py` has three known parsing gaps, none of which
+  occur in this repository today (verified by grep):
+  - balanced parentheses in destinations, `[a](x(1).md)`, are not matched, so
+    a broken target is silently skipped;
+  - a query string, `[a](README.md?raw=1)`, is not stripped before resolution,
+    producing a false positive;
+  - a link whose destination sits on the following line is not matched.
+- [ ] Consider deriving `install.sh`'s family arrays and
+  `check-installer.py`'s `EXPECTED_FAMILIES` from `skills/inventory.json`
+  rather than validating three hand-maintained copies against each other.
 
 ### P3 — close known package review debt
 
@@ -124,12 +139,15 @@ gaps. Complete the existing-skill work below before adding a 30th package.
 
 ### Review verification record
 
-- `just fmt`, `just lint`, `just test`, `just guard`, `just security`,
-  `just release-check`, and `just e2e` exited successfully on 2026-09-11.
-- The validation included 189 Python tests, 29 package inventories, 29 runtime
+- Original review: `just fmt`, `just lint`, `just test`, `just guard`,
+  `just security`, `just release-check`, and `just e2e` exited successfully on
+  2026-09-11, covering 189 Python tests, 29 package inventories, 29 runtime
   intake catalogs, and byte-identity checking of five schema copies.
-- Supplemental `shellcheck install.sh scripts/*.sh` exited 1 with the ten
-  warnings recorded under P2; Bash syntax validation passed.
+- Supplemental `shellcheck install.sh scripts/*.sh` exited 1 with ten warnings.
+  All ten are now resolved and shellcheck runs as `just shell` inside `guard`.
+- After the P1/P2 work: `just lint`, `test`, `shell`, `guard`, `security`,
+  `release-check` and `e2e` all exit 0, now additionally running the inventory
+  manifest check, the Markdown link check, and their unit suites.
 
 ## Tracked validation
 

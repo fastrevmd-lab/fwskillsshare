@@ -123,4 +123,6 @@ These are research/operational and assessment-support skills, not certified prod
 
 Each skill also includes optional `agents/openai.yaml` UI metadata for Codex. Claude Code and Hermes continue to use the portable `SKILL.md` content and ignore that product-specific folder.
 
-Run `python3 scripts/check-skill-packages.py` to validate portable frontmatter, reference paths, the combined Codex discovery budget, and all Codex UI metadata. Run `python3 scripts/check-shared-schema.py` to verify the four parser schemas remain byte-identical.
+Run `python3 scripts/check-skill-packages.py` to validate portable frontmatter, reference paths, the combined Codex discovery budget, and all Codex UI metadata. Run `python3 scripts/check-shared-schema.py` to verify the five parser schemas remain byte-identical.
+
+`just security` runs Trivy with the `vuln`, `misconfig`, and `secret` scanners enabled, but only the secret scanner has anything to act on here: this is a Markdown-first repository with no dependency manifests and no configuration files that Trivy's vulnerability or misconfiguration scanners recognize. A clean `just security` run therefore attests to secret hygiene, not to dependency or configuration posture.
