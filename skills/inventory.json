@@ -1,0 +1,147 @@
+[
+  {
+    "name": "parsing-cisco-configs",
+    "family": "parsers",
+    "reviewed": true
+  },
+  {
+    "name": "parsing-firepower-configs",
+    "family": "parsers",
+    "reviewed": false
+  },
+  {
+    "name": "parsing-fortinet-configs",
+    "family": "parsers",
+    "reviewed": true
+  },
+  {
+    "name": "parsing-palo-configs",
+    "family": "parsers",
+    "reviewed": true
+  },
+  {
+    "name": "parsing-srx-configs",
+    "family": "parsers",
+    "reviewed": true
+  },
+  {
+    "name": "srx-initial-setup",
+    "family": "srx",
+    "reviewed": true
+  },
+  {
+    "name": "srx-dynamic-ip-feed",
+    "family": "srx",
+    "reviewed": true
+  },
+  {
+    "name": "srx-mpls-in-flow",
+    "family": "srx",
+    "reviewed": true
+  },
+  {
+    "name": "srx-mnha",
+    "family": "srx",
+    "reviewed": true
+  },
+  {
+    "name": "srx-nat",
+    "family": "srx",
+    "reviewed": true
+  },
+  {
+    "name": "srx-policy",
+    "family": "srx",
+    "reviewed": true
+  },
+  {
+    "name": "srx-autovpn-full-tunnel",
+    "family": "srx",
+    "reviewed": true
+  },
+  {
+    "name": "srx-ipsec-hub-spoke",
+    "family": "srx",
+    "reviewed": true
+  },
+  {
+    "name": "srx-license-signature-maintenance",
+    "family": "srx",
+    "reviewed": true
+  },
+  {
+    "name": "srx-advpn",
+    "family": "srx",
+    "reviewed": true
+  },
+  {
+    "name": "srx-chassis-cluster-proxmox",
+    "family": "srx",
+    "reviewed": true
+  },
+  {
+    "name": "srx-syslog-logging",
+    "family": "srx",
+    "reviewed": false
+  },
+  {
+    "name": "firewall-best-practices-audit",
+    "family": "tooling",
+    "reviewed": true
+  },
+  {
+    "name": "firewall-config-conversion",
+    "family": "tooling",
+    "reviewed": true
+  },
+  {
+    "name": "firewall-config-diff",
+    "family": "tooling",
+    "reviewed": true
+  },
+  {
+    "name": "pci-ngfw-compliance",
+    "family": "compliance",
+    "reviewed": true
+  },
+  {
+    "name": "hipaa-ngfw-compliance",
+    "family": "compliance",
+    "reviewed": true
+  },
+  {
+    "name": "cmmc-nist-800-171-ngfw-compliance",
+    "family": "compliance",
+    "reviewed": true
+  },
+  {
+    "name": "cis-controls-ngfw-compliance",
+    "family": "compliance",
+    "reviewed": true
+  },
+  {
+    "name": "iso27001-ngfw-compliance",
+    "family": "compliance",
+    "reviewed": true
+  },
+  {
+    "name": "soc2-ngfw-compliance",
+    "family": "compliance",
+    "reviewed": true
+  },
+  {
+    "name": "srx-disa-stig-compliance",
+    "family": "compliance",
+    "reviewed": true
+  },
+  {
+    "name": "clearpass-proxmox-deploy",
+    "family": "deployment",
+    "reviewed": false
+  },
+  {
+    "name": "sd-onprem-proxmox-deploy",
+    "family": "deployment",
+    "reviewed": true
+  }
+]

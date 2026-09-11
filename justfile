@@ -11,7 +11,9 @@ fmt:
     git diff --check
 
 lint:
+    python3 scripts/check-inventory.py
     python3 scripts/check-skill-packages.py
+    python3 scripts/check-markdown-links.py
     python3 scripts/test-runtime-intake-validator.py
     python3 scripts/check-runtime-intake.py
     python3 scripts/check-runtime-intake-safety.py
@@ -19,6 +21,8 @@ lint:
     python3 scripts/check-readme-branding.py
 
 test:
+    python3 scripts/test-inventory.py
+    python3 scripts/test-markdown-links.py
     python3 scripts/check-shared-schema.py
     python3 scripts/check-installer.py
     python3 scripts/check-sd-bundle-server.py
@@ -28,7 +32,7 @@ test:
     python3 scripts/check-srx-stig-behavior.py
     python3 scripts/check-srx-license-signature-contract.py
 
-guard: lint test
+guard: lint test shell
 
 # Stage a de-branded copy for the downstream org and verify it. Dry run by
 # default; pass --target <clone> --commit to land it. Never pushes.
@@ -53,6 +57,14 @@ e2e:
     python3 scripts/test-installer.py
     python3 scripts/check-installer.py
 
+# Shell linting. install.sh is the only shell in the tree besides the codex
+# review wrapper; both are expected to stay shellcheck-clean.
+shell:
+    shellcheck install.sh scripts/*.sh
+
+# Trivy runs all three scanners, but this repository has no dependency
+# manifests or configuration files the vuln/misconfig scanners recognize, so a
+# clean run attests to secret hygiene only. See QUALITY.md.
 security:
     trivy fs --scanners vuln,misconfig,secret --exit-code 1 .
 

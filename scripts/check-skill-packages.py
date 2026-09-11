@@ -12,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = ROOT / "skills"
+MANIFEST = ROOT / "skills" / "inventory.json"
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---(?:\n|$)", re.DOTALL)
 EXPECTED_AUTHORS = ["fastrevmd-lab", "Claude", "GPT"]
@@ -32,40 +33,13 @@ OBSOLETE_LICENSE_MARKERS = (
     "source-derived-summary-local-use",
     "CC-BY-NC-SA-4.0-source-derived-summary",
 )
-EXPECTED_SKILL_NAMES = frozenset(
-    {
-        "cis-controls-ngfw-compliance",
-        "clearpass-proxmox-deploy",
-        "cmmc-nist-800-171-ngfw-compliance",
-        "firewall-best-practices-audit",
-        "firewall-config-conversion",
-        "firewall-config-diff",
-        "hipaa-ngfw-compliance",
-        "iso27001-ngfw-compliance",
-        "parsing-cisco-configs",
-        "parsing-firepower-configs",
-        "parsing-fortinet-configs",
-        "parsing-palo-configs",
-        "parsing-srx-configs",
-        "pci-ngfw-compliance",
-        "sd-onprem-proxmox-deploy",
-        "soc2-ngfw-compliance",
-        "sd-onprem-proxmox-deploy",
-        "srx-disa-stig-compliance",
-        "srx-advpn",
-        "srx-autovpn-full-tunnel",
-        "srx-chassis-cluster-proxmox",
-        "srx-dynamic-ip-feed",
-        "srx-initial-setup",
-        "srx-ipsec-hub-spoke",
-        "srx-license-signature-maintenance",
-        "srx-mnha",
-        "srx-mpls-in-flow",
-        "srx-nat",
-        "srx-policy",
-        "srx-syslog-logging",
-    }
-)
+
+
+def load_expected_skill_names() -> frozenset[str]:
+    """Load expected skill names from the inventory manifest."""
+    with MANIFEST.open(encoding="utf-8") as f:
+        manifest = json.load(f)
+    return frozenset(skill["name"] for skill in manifest)
 
 
 def parse_scalar(value: str) -> str:
@@ -135,8 +109,9 @@ def main() -> int:
     skill_files = sorted(SKILLS_DIR.glob("*/SKILL.md"))
     actual_skill_names = {skill_file.parent.name for skill_file in skill_files}
 
-    missing_skills = sorted(EXPECTED_SKILL_NAMES - actual_skill_names)
-    unexpected_skills = sorted(actual_skill_names - EXPECTED_SKILL_NAMES)
+    expected_skill_names = load_expected_skill_names()
+    missing_skills = sorted(expected_skill_names - actual_skill_names)
+    unexpected_skills = sorted(actual_skill_names - expected_skill_names)
     if missing_skills:
         errors.append(f"missing expected skills: {', '.join(missing_skills)}")
     if unexpected_skills:
