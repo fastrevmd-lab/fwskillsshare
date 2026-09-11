@@ -33,14 +33,41 @@ Parses the hierarchical `config/edit/set/next/end` block format from `show full-
 
 ## Manual invocation
 
-```
-/parsing-fortinet-configs
-```
+- **Claude Code / Hermes**: `/parsing-fortinet-configs`
+- **Codex**: `$parsing-fortinet-configs`
 
 ## Installation
 
+Use the repository installer to install into one or more runtimes:
+
 ```bash
+# Install to Claude Code
+./install.sh --skill parsing-fortinet-configs --target claude
+
+# Install to Codex
+./install.sh --skill parsing-fortinet-configs --target codex
+
+# Install to Hermes
+./install.sh --skill parsing-fortinet-configs --target hermes
+
+# Install to all three
+./install.sh --skill parsing-fortinet-configs --target all
+
+# Or install the whole parsers family
+./install.sh --family parsers --target all
+```
+
+Manual installation (copy the skill directory to the runtime's skills directory):
+
+```bash
+# Claude Code
 cp -r parsing-fortinet-configs ~/.claude/skills/
+
+# Codex
+cp -r parsing-fortinet-configs ~/.agents/skills/
+
+# Hermes
+cp -r parsing-fortinet-configs ~/.hermes/skills/devops/
 ```
 
 ## Security audit checks
@@ -60,10 +87,13 @@ cp -r parsing-fortinet-configs ~/.claude/skills/
 ```
 parsing-fortinet-configs/
 ├── SKILL.md                          # Main skill instructions
+├── agents/
+│   └── openai.yaml                   # Codex agent manifest
 └── references/
     ├── config-format.md              # Vendor config syntax reference
     ├── intermediate-schema.md        # Vendor-neutral output schema
     ├── parsing-patterns.md           # Edge cases, port mappings
+    ├── runtime-intake.md             # Interactive question catalog for ambiguous requests
     ├── example-sample-parse.md       # Worked example with input/output
     ├── fixture-minimal-input.md      # Minimal test fixture (input)
     └── fixture-expected-output.json  # Minimal test fixture (expected output)
