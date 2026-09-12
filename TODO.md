@@ -12,29 +12,45 @@ five parser schemas are byte-identical, and the required checks pass. The
 remaining work is documentation integrity, technical review debt, and coverage
 gaps. Complete the existing-skill work below before adding a 30th package.
 
-### P0 — correct technical guidance
+### P0 — correct technical guidance — COMPLETE 2026-09-12
 
-- [ ] Expand and independently review `srx-syslog-logging`.
-  - Make source-interface guidance mode-aware. The current blanket statement
-    that security logs always require a revenue interface is documented only
-    for `mode stream`; `event` uses the control plane and `stream-event` uses
-    both planes.
-  - Cover UDP, TCP, and TLS stream transport, including `tls-profile` and
-    transport-specific verification.
-  - Prefer `show security log transport` on Junos 25.4R1 and later for
-    delivered and undelivered transport counters.
-  - Require explicit approval before generating a commit as a test event, or
-    use an already-occurring non-mutating event.
-  - Add the authoritative Juniper sources to the package metadata:
-    - [Security log modes](https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/statement/security-edit-mode-security-logging.html)
-    - [Security log stream transport](https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/statement/security-edit-stream-security-log.html)
-    - [`show security log`](https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/command/show-security-log.html)
-  - Before live validation, create or link a GitHub issue that records the
-    read/write boundary, test events, collector handling, cleanup, evidence,
-    and acceptance criteria.
-  - Validate the corrected decision tree on vSRX and at least one Branch SRX,
-    recording platform, Junos release, mode, routing instance, interface,
-    transport, and collector evidence.
+- [x] Expand `srx-syslog-logging` (1.0.0 -> 1.1.0). Live-validated read-only
+  plus non-activating `commit check` across SRX345 hardware (26.2R1.7) and
+  vSRX on 24.4R1.9, 25.4R1.12 and 26.2R1.7 —
+  [validation record](docs/skill-tests/2026-09-12-srx-syslog-logging-mode-and-transport.md).
+
+  **This item's premise was wrong, and the devices disproved it.** It asserted
+  that the blanket "security logs need a revenue interface" claim was
+  stream-only and should be relaxed for `mode event`. Junos rejects
+  `security log source-interface fxp0.0` *irrespective of mode* — measured on
+  both SRX345 and vSRX — with `This interface cannot be configured for log,
+  only revenue port is allowed`. Implementing this item as written would have
+  told operators to do something the CLI refuses.
+
+  The real mode-awareness is about **which statement governs delivery**:
+  `security log source-interface` is a forwarding-plane knob that never accepts
+  fxp0, while in `mode event` the RE delivers over the system syslog path where
+  `system syslog source-address` applies. Juniper's CLI reference scopes the
+  fxp0 prohibition to stream mode, so the CLI is stricter than the docs; both
+  facts are now in the skill.
+
+  Also delivered: UDP/TCP/TLS stream transport with `tls-profile` (and the
+  `SSL profile must be defined under [services ssl initiation profile]`
+  rejection); the `show security log transport` 25.4R1+ gate, **with the
+  measured caveat that it returns empty under `mode stream` on 25.4 and 26.2**
+  while `show security log statistics` returns real counters; explicit approval
+  now required before generating a test event, with a passive alternative
+  preferred; and the three authoritative Juniper sources in package metadata.
+
+- [ ] **Independent technical review of `srx-syslog-logging` remains open.**
+  This work was expansion and live validation, not review. The README review
+  count stays 26/29 and the skill is still listed as not independently
+  reviewed.
+
+- [ ] Unresolved from the validation: why `show security log transport` reports
+  nothing under `mode stream` on 25.4R1.12 and 26.2R1.7. Needs either
+  documentation on the counter's scope or an activated `mode event`
+  configuration, which was outside the read-only + `commit check` authorization.
 
 ### P1 — repair documentation drift — COMPLETE 2026-09-11
 
@@ -112,21 +128,27 @@ inventory enforcement".
   `just lint`. The now-circular manifest-versus-`check-installer.py`
   comparison was removed rather than left as dead weight.
 
-### P3 — close known package review debt
+### P3 — close known package review debt — COMPLETE 2026-09-12
 
-- [ ] Re-source and validate `parsing-firepower-configs`.
-  - Replace the obsolete statement that Cisco's official documentation is
-    inaccessible where the current documentation is now retrievable.
-  - Verify pagination, expansion, endpoint families, literal objects, policy
-    inheritance, and FMC-versus-FDM structural differences against current
-    official documentation and sanitized FMC/FDM API Explorer exports.
-  - Retain an explicit unsupported or unverified classification wherever live
-    evidence is unavailable.
-  - Starting reference: [Cisco FMC REST API object model](https://www.cisco.com/c/en/us/td/docs/security/firepower/10-0/API/REST/firepower_management_center_rest_api_quick_start_guide_10_0/Objects_In_The_REST_API.html).
-- [ ] Add the remaining `firewall-best-practices-audit` follow-ups:
-  - Detect rule names that contradict their configured action.
-  - Detect plaintext threat-feed transport and report it with appropriate
-    platform and parser confidence.
+- [x] Re-source and validate `parsing-firepower-configs`. Cisco's documentation
+  is retrievable again; the obsolete "403 Forbidden / inaccessible" statement is
+  replaced with the guides actually retrieved on 2026-09-12 —
+  [verification record](docs/skill-tests/2026-09-12-parsing-firepower-configs-documentation-verification.md).
+  Pagination, expansion, endpoint families, policy inheritance and the FMC/FDM
+  structural differences are now documentation-verified with citations.
+  **Literal objects remain `[unverified]`** along with mixed reference/literal
+  containers and some endpoint families — those need a live FMC/FDM or
+  sanitized API Explorer exports, which were not available. Unverified markers
+  went from 14 to 8: six upgraded on evidence, eight deliberately retained.
+
+- [x] `firewall-best-practices-audit` follow-ups (1.2.0 -> 1.3.0):
+  `SEC-NAME-ACTION-MISMATCH` detects rule names that contradict their action,
+  with whole-word matching that excludes negations ("do-not-deny") and names
+  containing both verbs; `SEC-PLAINTEXT-FEED-TRANSPORT` detects threat feeds
+  fetched over `http://`, definitive for SRX and classified per-platform
+  elsewhere. Both proven to fire on contradictions and stay silent on clean and
+  edge-case inputs —
+  [test record](docs/skill-tests/2026-09-12-audit-name-action-and-plaintext-feed-checks.md).
 
 ### Recommended next new skill
 

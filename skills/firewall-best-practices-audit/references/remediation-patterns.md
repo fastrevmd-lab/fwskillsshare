@@ -610,6 +610,138 @@ Verify (SRX): `show configuration system login | display set`.
   log-end + log-forwarding profile on rules; FortiGate: `set logtraffic all` +
   `config log syslogd setting`.
 
+## SEC-NAME-ACTION-MISMATCH — Rule name contradicts action
+
+Vendor-neutral: a rule whose name asserts "deny" or "block" but whose configured action
+is permit (or vice versa) is a real-world misconfiguration that misleads reviewers. Confirm
+the intended behavior, then either change the action to match the name, or rename the rule
+to match its action. Always add logging.
+
+- **Cisco ASA/FTD:** to fix a rule named "DENY-X" that incorrectly permits, change the
+  ACE to deny and add logging; or rename the ACL entry to "ALLOW-X" if permit was intended:
+  ```
+  ! Capture the ACE's line number FIRST — a plain re-add appends to the end of the
+  ! ACL, so if the misnamed permit sat before a broader permit, the new deny lands
+  ! after it and the traffic stays allowed:
+  !   show access-list OUTSIDE_IN | include <match>
+  ! Then replace in place, preserving the position:
+  no access-list OUTSIDE_IN extended permit tcp object SRC object DST eq <port>
+  access-list OUTSIDE_IN line <number> extended deny tcp object SRC object DST eq <port> log
+
+  ! Or rename/add a new ACE if permit was intended (ASA ACLs have no rename):
+  access-list OUTSIDE_IN remark Rule was misnamed; correct name is ALLOW-X
+  ```
+- **Palo PAN-OS:** change the action or rename the rule:
+  ```
+  # Fix the action:
+  set rulebase security rules <rule-name> action deny log-end yes
+
+  # Or rename if permit was intended:
+  rename rulebase security rules <old-name> to <new-name>
+  set rulebase security rules <new-name> description "Corrected from deny to allow"
+  ```
+- **FortiGate:** change the policy action or edit its name:
+  ```
+  config firewall policy
+      edit <id>
+          set action deny     ! or: set action accept
+          set logtraffic all
+          set name "CORRECTED-NAME"
+      next
+  end
+  ```
+- **Juniper SRX:** change the action or rename the policy:
+  ```
+  # Fix the action to deny (matching the name). Junos treats permit/deny/reject
+  # as mutually exclusive, so setting deny REPLACES an existing permit — verified
+  # by commit check against a committed permit policy, which produced
+  # `- permit;` / `+ deny;` and a valid outcome. No explicit delete is needed.
+  set security policies global policy <name> then deny
+  set security policies global policy <name> then log session-init
+  # Validate before committing:
+  #   commit check
+
+  # Or rename if permit was intended:
+  rename security policies global policy <old-name> to <new-name>
+  set security policies global policy <new-name> description "Action is permit, not deny"
+  ```
+
+Verify: read the rule back and confirm the name now matches its action, and logging is enabled.
+
+---
+
+## SEC-PLAINTEXT-FEED-TRANSPORT — Threat feed over HTTP
+
+Vendor-neutral: a threat feed, GeoIP feed, or dynamic-address feed fetched over plaintext
+HTTP is tamperable on the wire and should not drive deny/block decisions. Change the feed
+server URL to HTTPS, or if the feed server offers no HTTPS endpoint, find an alternate
+feed source that does.
+
+- **Cisco ASA/FTD:** Cisco ASA/FTD dynamic objects do not support external feed URLs;
+  they reference Security Intelligence feeds configured in Firepower/FMC, which are served
+  over HTTPS by default. If manually configuring a feed source in FMC, ensure the URL
+  is HTTPS.
+- **Palo PAN-OS:** external dynamic lists (EDLs) for URL/IP categories must use HTTPS:
+  ```
+  set external-list <name> type <ip|domain|url> url https://<feed-server>/<path>
+  set external-list <name> type <ip|domain|url> recurring hourly
+  ```
+  `objects` is a GUI category, not the configuration CLI parent, and `recurring` sits
+  under the selected list type rather than beside it. Confirm the exact hierarchy for
+  your PAN-OS release before applying.
+
+  Verify: `show external-list` (configuration mode) and confirm `url` starts with
+  `https://`.
+- **FortiGate:** external threat feeds and IP reputation feeds must use HTTPS:
+  ```
+  config system external-resource
+      edit "<feed-name>"
+          set type address
+          set resource "https://<feed-server>/<path>"
+          set refresh-rate 60
+      next
+  end
+  ```
+  Verify: `show system external-resource` and confirm resource URL is HTTPS.
+- **Juniper SRX:** change the feed-server URL to HTTPS **and** authenticate the
+  server. HTTPS alone only encrypts the transport; without a trusted-CA profile and
+  hostname validation the device will accept any certificate, so the feed is still
+  spoofable. There is no separate `hostname` statement — the server authority belongs
+  in the URL:
+  ```
+  set security dynamic-address feed-server <name> url https://<feed-server>/<path>/bundle.tgz
+  set security dynamic-address feed-server <name> update-interval 60
+  set security dynamic-address feed-server <name> tls-profile <tls-profile-name>
+  set security dynamic-address feed-server <name> validate-certificate-attributes subject-or-subject-alternative-names
+  ```
+  With `validate-certificate-attributes subject-or-subject-alternative-names`, the
+  hostname in the URL must match the certificate CN or SAN, so the URL and the
+  certificate have to agree. This is the shape validated in `srx-dynamic-ip-feed`.
+
+  A `tls-profile` authenticates the **transport peer**. It does not verify a bundle
+  signature, and the two are not substitutes for one another.
+
+  Verify (SRX): `show configuration security dynamic-address feed-server | display set`
+  and confirm the URL starts with `https://` and that both `tls-profile` and
+  `validate-certificate-attributes` are present.
+
+**Platform-specific notes:**
+- SRX: As of Junos 18.4R1, dynamic-address feed servers support TLS with `tls-profile`.
+  If your device's Junos release predates this, upgrade to a supported release that
+  includes HTTPS feed support, or source the feed from a trusted internal mirror over
+  an authenticated path.
+- PAN-OS: EDL certificate validation is enabled via `certificate-profile` (PAN-OS 9.0+);
+  always set one to prevent MITM.
+- FortiGate: `cert-chain-max` sets the maximum **certificate-chain depth**; it does
+  **not** enable feed-server identity verification, and configuring it does not protect
+  an external resource against a spoofed feed server. The setting that validates the
+  server's identity is release-dependent — confirm the correct statement (for example
+  `server-identity-check` on releases that support it) against FortiOS documentation
+  for the release in use, and treat identity verification as **unverified here** until
+  you have. `[unverified: exact FortiOS statement not confirmed against a live device]`
+
+---
+
 ## Notes
 
 - These are change templates, not turnkey configs — confirm interface names, zone

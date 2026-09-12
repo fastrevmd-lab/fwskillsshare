@@ -90,6 +90,8 @@ schema has no generic phase/origin field, so do not invent one.
 
 - SEC-NO-DESC — explicit rule (enabled or disabled) missing description/owner — `explicit_rules[].description` — INFO — definitive
 
+- SEC-NAME-ACTION-MISMATCH — explicit rule (enabled or disabled) whose name contradicts its configured action — `explicit_rules[].name`, `explicit_rules[].action` — HIGH — definitive. Detect rules where the name asserts a deny (name contains "deny", "block", "drop", "reject", case-insensitive) but `action` is `allow`, or where the name asserts an allow (name contains "allow", "permit", case-insensitive) but `action` is `deny`/`drop`/`reset-both`. Conservative matching to avoid false positives: whole-word boundaries treating hyphens and underscores as separators (matches "deny" in "foo-deny-bar" or "foo_deny_bar" but not "foodenyphobia"); exclude negations ("do-not-deny", "no-allow", "not-deny"); skip rules whose names mention both actions ("deny-or-allow"). A rule whose name asserts the opposite of its configured action is a real-world misconfiguration and an audit-evidence signal — reviewers reading rulebase exports will see a deny where a permit is programmed.
+
 - SEC-EXPOSED-MGMT — device management service reachable through an enabled explicit rule from untrusted/any — `enabled_explicit_rules`, `zones`, `service_objects` — HIGH — definitive
 
 - SEC-EXPOSED-RISKY — risky services (RDP/SMB/DB/telnet) reachable through an enabled explicit rule from untrusted/any — `enabled_explicit_rules`, `service_objects`, `zones` — HIGH — definitive
@@ -105,6 +107,8 @@ schema has no generic phase/origin field, so do not invent one.
 - SEC-WEAK-IPSEC — weak IPsec (no PFS, weak ESP enc/auth) — `vpn_tunnels[].ipsec` (`ipsec.proposal.dh_group`, `ipsec.proposal.encryption`, `ipsec.proposal.integrity`) — MEDIUM — definitive
 
 - SEC-PSK-WEAK — reused/weak PSK indicators where visible — `vpn_tunnels[].ike.psk` — MEDIUM — heuristic
+
+- SEC-PLAINTEXT-FEED-TRANSPORT — threat-feed or dynamic-address feed fetched over plaintext HTTP instead of HTTPS — `address_objects[].dynamic_source.feed_url`, `address_objects[].dynamic_source.feed_transport` — HIGH — definitive/heuristic. A threat feed driving deny or GeoIP/tagging decisions that is retrieved without TLS or authentication is tamperable on the wire. Definitively detectable from `feed_transport == "http"` or `feed_url` starting with `http://`; if the parser populated neither field for a `type: "dynamic"` object with `kind: "feed"`, the check is unverifiable for that vendor and must be classified as heuristic or skipped, with an explicit unsupported/uncertain note. Report per vendor and parser confidence: supported (SRX `security dynamic-address feed-server`, parser v1.4.0+); heuristic or unsupported for other vendors depending on whether their parsers capture feed configuration at all.
 
 - SEC-SSH-ROOT-LOGIN — SSH permits root login or uses weak ciphers / no rate-limit — `system.ssh` (`root_login`, `ciphers`, `rate_limit`) — HIGH — definitive
 

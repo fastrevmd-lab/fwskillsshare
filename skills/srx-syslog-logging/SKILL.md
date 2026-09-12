@@ -1,7 +1,7 @@
 ---
 name: srx-syslog-logging
 description: Configure and troubleshoot Juniper SRX/vSRX logging to an external collector or SIEM. Use when system syslog or security logs are not arriving, when choosing between fxp0 and a revenue interface as the log source, when working with mgmt_junos, or when onboarding to Security Director Cloud. Covers the RE vs PFE logging split and why a non-default syslog port can silently fail.
-version: 1.0.0
+version: 1.1.0
 author:
   - fastrevmd-lab
   - Claude
@@ -14,6 +14,12 @@ metadata:
   sources:
     - title: "fxp0, management VRF, and syslog — background notes"
       local: references/fxp0-and-management-vrf.md
+    - title: "Junos CLI: security log mode (event / stream / stream-event)"
+      url: https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/statement/security-edit-mode-security-logging.html
+    - title: "Junos CLI: security log stream transport"
+      url: https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/statement/security-edit-stream-security-log.html
+    - title: "Junos CLI: show security log"
+      url: https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/command/show-security-log.html
     - title: "Field notes: system syslog silently dropped on a non-default port"
       local: references/field-notes-non-default-port.md
       note: "Empirical, observed on vSRX 25.4R1.12; verify against your platform and release"
@@ -92,15 +98,60 @@ than by port.
 Treat this as platform- and release-specific. Verify with the two-host test below
 before designing around it.
 
-## Choosing the source interface
+## Security log mode decides which knob applies
 
-Decide per log type, not per device:
+`set security log mode` selects the plane that processes security logs, and the
+plane decides which source statement is even relevant. Juniper documents the
+three values as:
+
+| Mode | Juniper's wording | Plane |
+|---|---|---|
+| `event` | "Process security logs in the control plane." | Routing Engine |
+| `stream` | "Process security logs directly in the forwarding plane." | PFE |
+| `stream-event` | "Process security logs in the control and forwarding plane." | both |
+
+`mode stream` is the default posture for SIEM delivery and is what every device
+in the validation set below actually runs.
+
+**In `mode stream`, `security log source-interface` must name a revenue
+interface.** Junos rejects fxp0 outright:
+
+```
+set security log mode event
+set security log source-interface fxp0.0
+→ source-interface: 'fxp0.0': This interface cannot be configured for log,
+  only revenue port is allowed
+```
+
+Read that rejection carefully, because it is stricter than the documentation.
+Juniper scopes the prohibition to stream mode — "You cannot use fxp0 interface
+for stream mode irrespective of whether the fxp0 interface is part of the
+default routing instance or mgmt_junos routing instance" — but the CLI refuses
+`security log source-interface fxp0.0` **whatever `mode` is set to**. Measured
+on SRX345 hardware (26.2R1.7) and vSRX (24.4R1.9); the mode statement in the
+same candidate made no difference.
+
+The two facts are consistent once you see that they describe different things.
+`security log source-interface` is a forwarding-plane concept, so Junos never
+accepts fxp0 for it. In `mode event` the Routing Engine processes the logs and
+they leave over the **system syslog** path, where the relevant knob is
+`system syslog source-address` — a different statement, which does accept a
+management address.
+
+So decide per log type and per mode, not per device:
 
 - **System syslog** → fxp0 suits it well: low volume, RE-generated, bypasses flow
   processing. If fxp0 is in `mgmt_junos`, every reference needs
   `routing-instance mgmt_junos` or it silently fails to route.
-- **Security logs** → a revenue interface, always. Required by the architecture,
-  and by Security Director Cloud.
+- **Security logs in `mode stream` or `stream-event`** → a revenue interface,
+  always. Enforced by the CLI, and required by Security Director Cloud.
+- **Security logs in `mode event`** → delivery follows the system syslog path.
+  Configure `system syslog`, not `security log source-interface`.
+
+Both source forms appear in the field and are not interchangeable:
+`set security log source-interface ge-0/0/0.0` names an interface, while
+`set security log source-address 192.168.1.240` names an address. Devices in the
+validation set use each.
 
 **Keep fxp0 on its own logical network.** Do not address it into a subnet a
 revenue interface already owns. Junos does not install cross-routes between the
@@ -111,6 +162,91 @@ failed, which is easy to misread as "that wasn't the problem".
 That constraint has a hard consequence: **if the collector sits on a subnet a
 revenue interface already owns, fxp0 cannot reach it**, so system syslog must use
 the revenue path — which brings the non-default-port rule into play.
+
+## Stream transport: UDP, TCP, TLS
+
+`set security log stream <name> transport protocol` takes `udp` (the default),
+`tcp`, or `tls`. UDP and TCP need nothing else; both validate on their own.
+
+TLS additionally requires a profile, and the failure mode is worth memorising
+because the error names the hierarchy you actually have to go fix:
+
+```
+set security log stream s transport protocol tls
+set security log stream s transport tls-profile does-not-exist
+→ SSL profile must be defined under [services ssl initiation profile]
+```
+
+The profile is an **SSL initiation** profile — the device is the client
+connecting outward to the collector. A working shape, as deployed against
+Security Director Cloud in the validation set:
+
+```
+set security log stream sd-cloud-logs host <collector>
+set security log stream sd-cloud-logs host port 6514
+set security log stream sd-cloud-logs transport protocol tls
+set security log stream sd-cloud-logs transport tls-profile <profile>
+set security log stream sd-cloud-logs transport division line-based
+set security log stream sd-cloud-logs format sd-syslog
+```
+
+`transport division line-based` controls how records are framed inside the
+stream. TLS collectors commonly expect 6514 rather than 514, and that port is
+not subject to the non-default-port trap above, because the trap is a
+flow-processing behaviour on UDP syslog rather than a property of the number.
+
+Verify transport per protocol, not generically:
+
+| Protocol | What proves it is working |
+|---|---|
+| `udp` | packets on the wire at the collector or an upstream capture; no device-side delivery confirmation exists |
+| `tcp` | an established session to the collector port |
+| `tls` | an established session **plus** a completed handshake; a profile error surfaces at commit, a trust failure only at runtime |
+
+## Checking delivery on the device
+
+`show security log transport` reports transport state from **Junos 25.4R1
+onward**. The version gate is real and was measured:
+
+| Device | Junos | `show security log transport` |
+|---|---|---|
+| vSRX | 24.4R1.9 | `syntax error, expecting <command>` |
+| vSRX | 25.4R1.12 | accepted |
+| vSRX | 26.2R1.7 | accepted |
+| SRX345 | 26.2R1.7 | accepted |
+
+Measured 2026-09-12. The full record, including the mode and transport
+`commit check` results, is in
+`docs/skill-tests/2026-09-12-srx-syslog-logging-mode-and-transport.md`.
+
+**Accepted is not the same as populated.** On every device in the validation
+set the command returned *empty*, including its `statistics` and `status`
+forms, while those devices were in `mode stream` and demonstrably generating
+logs. Do not read an empty result as "no logs" — on these releases it did not
+report stream-mode transport at all.
+
+What did return real data on the same devices:
+
+```
+show security log statistics
+```
+
+```
+Log Module Statistics
+Name               Generated       Discarded
+SCREEN             111913          0
+FLOW               3275            0
+```
+
+Use `show security log statistics` to establish that the device is *generating*
+events, then prove *delivery* on the wire or at the collector. Treat
+`show security log transport` as supplementary until you have seen it populate
+on your own platform and release.
+
+`show security log report` does **not** exist on 24.4R1.9, 25.4R1.12 or
+26.2R1.7 — it returns a syntax error even on a device where
+`set security log report` is configured. The configuration statement and the
+operational command are not a pair.
 
 ## Diagnosing "logs are not arriving"
 
@@ -141,7 +277,23 @@ Two traps produce false negatives here:
   limit with mDNS and multicast noise in milliseconds and never sees syslog.
 - **Ensure an event actually occurs inside the window.** Automation and MCP
   tooling commonly pool NETCONF sessions, so read-only commands generate no
-  syslog at all. Force a real event — a commit, or a failed SSH attempt.
+  syslog at all, so a capture taken during a purely read-only session sees
+  nothing and proves nothing.
+
+  **Prefer an event that is already happening.** On a device with screens or
+  policy logging active, `RT_SCREEN` and `RT_FLOW` records arrive continuously
+  — confirm with `show security log statistics` that a counter is climbing, and
+  capture against that. No device state changes.
+
+  **Generating an event on purpose is a device write and needs explicit
+  approval before you do it**, even though a commit looks harmless. A commit
+  emits `UI_COMMIT_COMPLETED` and is the usual suggestion, but it activates
+  configuration and is not reversible by simply waiting. A failed SSH attempt
+  emits `SSHD_LOGIN_FAILED` without touching configuration and is the milder
+  option where an authentication log is sufficient. Ask first, say which event
+  you intend to generate and why the passive route will not do, and prefer
+  `commit check` — which validates without activating — whenever the question
+  is syntax rather than delivery.
 
 **3. Compare the two subsystems on the same device.**
 

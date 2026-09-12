@@ -50,11 +50,18 @@ no such field and downstream consumers ignore unknown `_`-prefixed keys.
 
 The ACP default action becomes the single trailing policy with `_implicit: true`.
 
-**Unresolved at authoring time:** the exact nesting direction of inherited
-Default-section rules across a multi-level hierarchy. The general shape —
-ancestor Mandatory before the child's rules, ancestor Default after them — is
-established. Confirm the multi-level interleaving against current Cisco
-documentation and record the version consulted before relying on it.
+**Multi-level inheritance nesting** (verified 2026-09-12 from Cisco official documentation):
+An access control policy's rules are nested between its parent policy's Mandatory
+and Default rule sections. For multi-level hierarchies, this nesting applies
+recursively: the system evaluates rules from ancestor Mandatory sections, then the
+current policy's rules, then ancestor Default sections, with rules numbered
+sequentially across all levels. "Rules are numbered, starting at 1, including
+rules inherited from ancestor policies. The system matches traffic to rules from
+the top down, ascending by rule number."
+
+Source: Cisco Secure Firewall Management Center Device Configuration Guide v7.6,
+Access Control Policies chapter; Inheritance in Multidomain Environment in FTD
+support document.
 
 ## Reference resolution
 
