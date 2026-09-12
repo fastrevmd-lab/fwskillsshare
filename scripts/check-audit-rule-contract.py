@@ -861,6 +861,11 @@ def documentation_errors() -> list[str]:
             "address overlap",
         ),
         "SEC-DISABLED": ("disabled_explicit_rules",),
+        "SEC-NAME-ACTION-MISMATCH": ("explicit_rules",),
+        "SEC-PLAINTEXT-FEED-TRANSPORT": (
+            "feed_url",
+            "feed_transport",
+        ),
         "OPS-CONSOLIDATE": (
             "enabled_explicit_rules",
             "vendor evaluation population",
