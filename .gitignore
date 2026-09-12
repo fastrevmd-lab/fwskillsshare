@@ -29,3 +29,6 @@ build/
 .worktrees/
 # Scratch dirs from test scripts whose TemporaryDirectory() lands in cwd
 tmp*/
+
+# Agent worktrees (Claude Code isolation mode)
+.claude/worktrees/
