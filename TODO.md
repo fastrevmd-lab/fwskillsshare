@@ -79,21 +79,38 @@ inventory enforcement".
 - [x] `just security` scope clarified in QUALITY.md: Trivy runs all three
   scanners but only the secret scanner has anything to act on here.
 
-#### Follow-ups opened by this work
+#### Follow-ups opened by this work — COMPLETE 2026-09-11
 
-- [ ] `check-installer.py` does not exercise `--all -y --dir`. A refactor that
-  made `./install.sh --all -y` install **zero** skills and exit 1 still passed
-  this check. Add coverage for `--all` and for invalid-family rejection.
-- [ ] `check-markdown-links.py` has three known parsing gaps, none of which
-  occur in this repository today (verified by grep):
-  - balanced parentheses in destinations, `[a](x(1).md)`, are not matched, so
-    a broken target is silently skipped;
-  - a query string, `[a](README.md?raw=1)`, is not stripped before resolution,
-    producing a false positive;
-  - a link whose destination sits on the following line is not matched.
-- [ ] Consider deriving `install.sh`'s family arrays and
-  `check-installer.py`'s `EXPECTED_FAMILIES` from `skills/inventory.json`
-  rather than validating three hand-maintained copies against each other.
+- [x] `check-installer.py` now exercises `--all -y --dir`, rejection of an
+  unknown `--family` and an unknown `--skill`, and the `--all` uninstall path.
+  Both original defects were reproduced to prove the new assertions bite:
+  collapsing the `--all` array assignment makes the installer exit 1 with an
+  empty target, and making an unknown family return the parsers list trips
+  "unknown installer family was not rejected". Both previously passed.
+- [x] `check-markdown-links.py` parses balanced and escaped parentheses in
+  destinations, strips `?query` as well as `#fragment`, and matches a
+  destination on the line following its label. 62 tests, each gap covered in
+  both directions. The link count is unchanged at 101, as expected — none of
+  the three constructs occurs in this repository.
+
+  Matching across a run rather than a line means the scan can walk past text,
+  so the parser is built around two rules: a rejected candidate resumes inside
+  its own opening bracket and can never skip what follows, and each part of a
+  link is bounded the way CommonMark bounds it rather than accepted loosely.
+  Seven review rounds went into those bounds and every finding was the same
+  shape — malformed input hiding or inventing a link. **This was stopped
+  deliberately, not because the surface was exhausted.** Every repository link
+  is a plain `[text](path.md)`; not one finding across those rounds
+  corresponded to anything in this repository or to anything a person would
+  plausibly write. Treat further adversarial Markdown edge cases as out of
+  scope unless a real document trips one.
+- [x] The inventory is derived rather than compared. `check-installer.py`
+  loads its families from `skills/inventory.json` at runtime, so that copy is
+  gone. `install.sh` cannot derive at runtime — it is curl-able standalone and
+  `--list` works before anything is downloaded — so its arrays are generated
+  by `scripts/sync-installer-inventory.py`, whose `--check` mode runs in
+  `just lint`. The now-circular manifest-versus-`check-installer.py`
+  comparison was removed rather than left as dead weight.
 
 ### P3 — close known package review debt
 

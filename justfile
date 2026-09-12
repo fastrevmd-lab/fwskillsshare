@@ -11,6 +11,7 @@ fmt:
     git diff --check
 
 lint:
+    python3 scripts/sync-installer-inventory.py --check
     python3 scripts/check-inventory.py
     python3 scripts/check-skill-packages.py
     python3 scripts/check-markdown-links.py

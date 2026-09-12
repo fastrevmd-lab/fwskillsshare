@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import ast
 import json
 import re
 import subprocess
@@ -51,30 +50,6 @@ def get_installer_families() -> dict[str, set[str]]:
     return families
 
 
-def parse_expected_families(source: str) -> dict[str, set[str]] | None:
-    """Return check-installer.py's EXPECTED_FAMILIES, parsed structurally.
-
-    Uses ast so nested braces are handled; a regex cannot match this shape.
-    """
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return None
-
-    for node in tree.body:
-        if not isinstance(node, ast.Assign):
-            continue
-        targets = [t.id for t in node.targets if isinstance(t, ast.Name)]
-        if "EXPECTED_FAMILIES" not in targets:
-            continue
-        try:
-            value = ast.literal_eval(node.value)
-        except (ValueError, SyntaxError):
-            return None
-        if not isinstance(value, dict):
-            return None
-        return {str(family): set(skills) for family, skills in value.items()}
-    return None
 
 
 def get_installer_help_total() -> int | None:
@@ -171,26 +146,10 @@ def main() -> int:
                 f"family {family!r} mismatch between manifest and install.sh: {sorted(diff)}"
             )
 
-    # Check against check-installer.py EXPECTED_FAMILIES
-    check_installer = ROOT / "scripts" / "check-installer.py"
-    check_installer_text = check_installer.read_text(encoding="utf-8")
-
-    # Parse EXPECTED_FAMILIES with ast rather than a regex. A nested brace
-    # structure cannot be matched with [^}]+: it stops at the first inner
-    # closing brace, the family-block pattern then finds nothing, and the
-    # comparison below silently never runs.
-    expected_families = parse_expected_families(check_installer_text)
-    if expected_families is None:
-        errors.append("could not parse EXPECTED_FAMILIES from check-installer.py")
-    else:
-        for family_name in sorted(set(expected_families) | set(manifest_families)):
-            expected_skills = expected_families.get(family_name, set())
-            manifest_set = manifest_families.get(family_name, set())
-            if manifest_set != expected_skills:
-                diff = manifest_set ^ expected_skills
-                errors.append(
-                    f"family {family_name!r} mismatch between manifest and check-installer.py: {sorted(diff)}"
-                )
+    # check-installer.py now derives its families from this manifest at runtime,
+    # so comparing them would be circular. The install.sh arrays are validated
+    # by sync-installer-inventory.py --check (wired into `just lint`), which
+    # exits non-zero on drift.
 
     # Check reviewed count
     reviewed_count = sum(1 for skill in manifest if skill.get("reviewed", False))
