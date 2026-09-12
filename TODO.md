@@ -5,155 +5,33 @@ that have not yet been built. Completed work belongs in the repository history
 and release notes; live-device validation work should also have a GitHub issue
 with its safety boundary and acceptance criteria.
 
-## Repository review follow-ups — 2026-09-11
+## Open work
 
-The repository is structurally healthy: all 29 skill packages validate, all
-five parser schemas are byte-identical, and the required checks pass. The
-remaining work is documentation integrity, technical review debt, and coverage
-gaps. Complete the existing-skill work below before adding a 30th package.
+Ordered by readiness, not importance. Each entry says what unblocks it.
 
-### P0 — correct technical guidance — COMPLETE 2026-09-12
+### Ready now
 
-- [x] Expand `srx-syslog-logging` (1.0.0 -> 1.1.0). Live-validated read-only
-  plus non-activating `commit check` across SRX345 hardware (26.2R1.7) and
-  vSRX on 24.4R1.9, 25.4R1.12 and 26.2R1.7 —
-  [validation record](docs/skill-tests/2026-09-12-srx-syslog-logging-mode-and-transport.md).
+- [ ] **Independent technical review of `srx-syslog-logging` 1.1.0.** The
+  2026-09-12 work was expansion and live validation, which is not review. The
+  README count stays 26/29 until someone other than its author reviews it.
+- [ ] **Why `show security log transport` reports nothing under `mode stream`**
+  on 25.4R1.12 and 26.2R1.7, while `show security log statistics` returns real
+  counters. Needs either documentation on the counter's scope or an activated
+  `mode event` configuration — the latter is a device write and outside the
+  read-only + `commit check` boundary used so far.
+- [ ] **`srx-license-signature-maintenance` mutating paths.**
+  `request system license add` and `security-package install` remain
+  unexercised against hardware. That is the only outstanding work on a skill
+  that otherwise reached 1.0.0 on 2026-08-05 after independent review and a
+  read-only live validation across 9 devices / 10 node records —
+  [skill-test record](docs/skill-tests/2026-08-05-srx-license-signature-live-validation.md).
 
-  **This item's premise was wrong, and the devices disproved it.** It asserted
-  that the blanket "security logs need a revenue interface" claim was
-  stream-only and should be relaxed for `mode event`. Junos rejects
-  `security log source-interface fxp0.0` *irrespective of mode* — measured on
-  both SRX345 and vSRX — with `This interface cannot be configured for log,
-  only revenue port is allowed`. Implementing this item as written would have
-  told operators to do something the CLI refuses.
+### Next new skill — unblocked 2026-09-12
 
-  The real mode-awareness is about **which statement governs delivery**:
-  `security log source-interface` is a forwarding-plane knob that never accepts
-  fxp0, while in `mode event` the RE delivers over the system syslog path where
-  `system syslog source-address` applies. Juniper's CLI reference scopes the
-  fxp0 prohibition to stream mode, so the CLI is stricter than the docs; both
-  facts are now in the skill.
+- [ ] Build `firewall-policy-path`. It was gated on the P0 correction and the
+  P3 review debt; both closed on 2026-09-12, so nothing blocks it now. The
+  scope below is unchanged from when it was written.
 
-  Also delivered: UDP/TCP/TLS stream transport with `tls-profile` (and the
-  `SSL profile must be defined under [services ssl initiation profile]`
-  rejection); the `show security log transport` 25.4R1+ gate, **with the
-  measured caveat that it returns empty under `mode stream` on 25.4 and 26.2**
-  while `show security log statistics` returns real counters; explicit approval
-  now required before generating a test event, with a passive alternative
-  preferred; and the three authoritative Juniper sources in package metadata.
-
-- [ ] **Independent technical review of `srx-syslog-logging` remains open.**
-  This work was expansion and live validation, not review. The README review
-  count stays 26/29 and the skill is still listed as not independently
-  reviewed.
-
-- [ ] Unresolved from the validation: why `show security log transport` reports
-  nothing under `mode stream` on 25.4R1.12 and 26.2R1.7. Needs either
-  documentation on the counter's scope or an activated `mode event`
-  configuration, which was outside the read-only + `commit check` authorization.
-
-### P1 — repair documentation drift — COMPLETE 2026-09-11
-
-All five items landed. See CHANGELOG 1.5.0, "Documentation integrity and
-inventory enforcement".
-
-- [x] Correct README inventory values — badge `25/29` -> `26/29`; installer
-  help block reconciled against real `./install.sh --help` output (`24` -> `29`);
-  the `~8,400` literal replaced with a pointer to
-  `scripts/check-skill-packages.py`, which reports the measured figure
-  (9,719 today) so the number cannot go stale again. The "four vendors"
-  statement was deliberately kept — Firepower is a second Cisco grammar.
-- [x] Update `QUALITY.md` to say five schema copies are checked.
-- [x] Update `skills/SHARED-SCHEMA.md` and all five copied schema preambles to
-  list five parsers and include `parsing-firepower-configs` in the
-  synchronization instructions.
-- [x] Modernize all five parser READMEs — per-runtime invocation and
-  installation, `agents/openai.yaml` and `references/runtime-intake.md` added
-  to every file tree, Firepower fixture corrected to
-  `fixture-minimal-input.md`.
-- [x] Release metadata: VERSION 1.5.0 published as tag v1.5.0. v1.4.0 was
-  deliberately not tagged retroactively; its CHANGELOG section remains.
-
-### P2 — strengthen automated documentation checks — COMPLETE 2026-09-11
-
-- [x] One authoritative inventory manifest: `skills/inventory.json`, validated
-  by `scripts/check-inventory.py` against the directories on disk,
-  `install.sh`, `check-installer.py`, the README badge and body counts, the
-  parser and schema counts, and `install.sh --help`.
-- [x] Duplicate inventory entries now fail validation. The duplicate
-  `sd-onprem-proxmox-deploy` hidden by the `frozenset` in
-  `scripts/check-skill-packages.py` is gone; that script reads the manifest.
-- [x] Markdown link checker: `scripts/check-markdown-links.py`. It ignores
-  fenced blocks and inline code by design — the historical plans embed
-  snippets whose link targets belong to README.md at the repository root, so
-  "repairing" them against the plan's own directory corrupts the instruction.
-  No repairs were needed; the repository has zero broken navigational links.
-- [x] `shellcheck` added to linting as `just shell`, included in `guard`.
-  Seven SC2207 sites use `read -r -a` or a read-loop helper as the producer
-  requires; three SC2076 sites use a literal `contains_element` helper rather
-  than unquoted regexes over filesystem paths.
-- [x] `just security` scope clarified in QUALITY.md: Trivy runs all three
-  scanners but only the secret scanner has anything to act on here.
-
-#### Follow-ups opened by this work — COMPLETE 2026-09-11
-
-- [x] `check-installer.py` now exercises `--all -y --dir`, rejection of an
-  unknown `--family` and an unknown `--skill`, and the `--all` uninstall path.
-  Both original defects were reproduced to prove the new assertions bite:
-  collapsing the `--all` array assignment makes the installer exit 1 with an
-  empty target, and making an unknown family return the parsers list trips
-  "unknown installer family was not rejected". Both previously passed.
-- [x] `check-markdown-links.py` parses balanced and escaped parentheses in
-  destinations, strips `?query` as well as `#fragment`, and matches a
-  destination on the line following its label. 62 tests, each gap covered in
-  both directions. The link count is unchanged at 101, as expected — none of
-  the three constructs occurs in this repository.
-
-  Matching across a run rather than a line means the scan can walk past text,
-  so the parser is built around two rules: a rejected candidate resumes inside
-  its own opening bracket and can never skip what follows, and each part of a
-  link is bounded the way CommonMark bounds it rather than accepted loosely.
-  Seven review rounds went into those bounds and every finding was the same
-  shape — malformed input hiding or inventing a link. **This was stopped
-  deliberately, not because the surface was exhausted.** Every repository link
-  is a plain `[text](path.md)`; not one finding across those rounds
-  corresponded to anything in this repository or to anything a person would
-  plausibly write. Treat further adversarial Markdown edge cases as out of
-  scope unless a real document trips one.
-- [x] The inventory is derived rather than compared. `check-installer.py`
-  loads its families from `skills/inventory.json` at runtime, so that copy is
-  gone. `install.sh` cannot derive at runtime — it is curl-able standalone and
-  `--list` works before anything is downloaded — so its arrays are generated
-  by `scripts/sync-installer-inventory.py`, whose `--check` mode runs in
-  `just lint`. The now-circular manifest-versus-`check-installer.py`
-  comparison was removed rather than left as dead weight.
-
-### P3 — close known package review debt — COMPLETE 2026-09-12
-
-- [x] Re-source and validate `parsing-firepower-configs`. Cisco's documentation
-  is retrievable again; the obsolete "403 Forbidden / inaccessible" statement is
-  replaced with the guides actually retrieved on 2026-09-12 —
-  [verification record](docs/skill-tests/2026-09-12-parsing-firepower-configs-documentation-verification.md).
-  Pagination, expansion, endpoint families, policy inheritance and the FMC/FDM
-  structural differences are now documentation-verified with citations.
-  **Literal objects remain `[unverified]`** along with mixed reference/literal
-  containers and some endpoint families — those need a live FMC/FDM or
-  sanitized API Explorer exports, which were not available. Unverified markers
-  went from 14 to 8: six upgraded on evidence, eight deliberately retained.
-
-- [x] `firewall-best-practices-audit` follow-ups (1.2.0 -> 1.3.0):
-  `SEC-NAME-ACTION-MISMATCH` detects rule names that contradict their action,
-  with whole-word matching that excludes negations ("do-not-deny") and names
-  containing both verbs; `SEC-PLAINTEXT-FEED-TRANSPORT` detects threat feeds
-  fetched over `http://`, definitive for SRX and classified per-platform
-  elsewhere. Both proven to fire on contradictions and stay silent on clean and
-  edge-case inputs —
-  [test record](docs/skill-tests/2026-09-12-audit-name-action-and-plaintext-feed-checks.md).
-
-### Recommended next new skill
-
-- [ ] Build `firewall-policy-path` after the P0 correction and P3 review debt
-  are closed. P1 and P2 can proceed in parallel.
   - Accept vendor/context, ingress interface or zone, source and destination
     addresses, source and destination ports, protocol, and optional application.
   - Report the evidence and confidence at each stage: ingress interface and
@@ -176,17 +54,49 @@ inventory enforcement".
     Keep Cisco `packet-tracer transmit` prohibited by default; require separate
     approval before any packet-producing option.
 
-### Review verification record
+### Needs hardware or an environment this repository does not have
 
-- Original review: `just fmt`, `just lint`, `just test`, `just guard`,
-  `just security`, `just release-check`, and `just e2e` exited successfully on
-  2026-09-11, covering 189 Python tests, 29 package inventories, 29 runtime
-  intake catalogs, and byte-identity checking of five schema copies.
-- Supplemental `shellcheck install.sh scripts/*.sh` exited 1 with ten warnings.
-  All ten are now resolved and shellcheck runs as `just shell` inside `guard`.
-- After the P1/P2 work: `just lint`, `test`, `shell`, `guard`, `security`,
-  `release-check` and `e2e` all exit 0, now additionally running the inventory
-  manifest check, the Markdown link check, and their unit suites.
+- [ ] `palo-operational` (PAN-OS operational playbook)
+  - Add Palo Alto operational depth comparable to the SRX operational skills.
+  - Author and validate against the available Palo VM.
+  - Cover security and NAT policy structure, App-ID and security profiles,
+    decryption, zones and interfaces, candidate configuration and commits,
+    logging, and CLI or operational verification.
+- [ ] Remaining `parsing-firepower-configs` unverified items — literal value
+  formats, mixed reference/literal containers, and several endpoint families.
+  These need a live FMC/FDM or sanitized API Explorer exports. Everything
+  reachable from documentation was verified on 2026-09-12.
+
+## Closed — 2026-09-11 and 2026-09-12
+
+The 2026-09-11 repository review (P0-P3 plus the follow-ups it opened) is
+complete. Landed in PRs [#66](https://github.com/fastrevmd-lab/fwskillsshare/pull/66),
+[#67](https://github.com/fastrevmd-lab/fwskillsshare/pull/67) and
+[#68](https://github.com/fastrevmd-lab/fwskillsshare/pull/68); the reasoning
+lives in those commits and in the skill-test records under `docs/skill-tests/`.
+
+Three findings are worth keeping visible here, because each contradicts
+something this file previously asserted:
+
+- **P0's own premise was wrong.** It called for relaxing the
+  "security logs need a revenue interface" rule for `mode event`. Junos rejects
+  `security log source-interface fxp0.0` regardless of mode, measured on SRX345
+  and vSRX. Implementing the item as written would have made the skill
+  incorrect. The real distinction is which statement governs delivery per mode —
+  [record](docs/skill-tests/2026-09-12-srx-syslog-logging-mode-and-transport.md).
+- **`show security log transport` exists from 25.4R1 but returned empty** on
+  every device that accepted it, under `mode stream`. Still unexplained; see
+  Open work above.
+- **The audit remediation templates were more wrong than the checks.** One told
+  operators that `cert-chain-max` prevents feed MITM; it sets chain depth.
+  Another contradicted this repository's own live-validated SRX feed pattern.
+  Remediation is the part an operator applies to a firewall, so it warrants the
+  same evidence bar as the checks themselves.
+
+Inventory drift is now enforced rather than periodically rediscovered:
+`skills/inventory.json` is authoritative, `scripts/check-inventory.py` fails on
+disagreement with disk, `install.sh`, the README counts and the parser/schema
+counts, and `just lint` runs it.
 
 ## Tracked validation
 
@@ -198,9 +108,10 @@ inventory enforcement".
   The live-device rerun was completed on 2026-07-31 —
   [live SRX audit](docs/skill-tests/2026-07-31-firewall-best-practices-audit-live-srx.md).
   It closed the outstanding acceptance item and surfaced four follow-ups.
-  Modeling `security dynamic-address` and extracting
-  `match dynamic-application` are complete; the rule-name-versus-action and
-  feed-transport checks remain under P3 above.
+  All four follow-ups are now complete: modeling `security dynamic-address`,
+  extracting `match dynamic-application`, and — as of 2026-09-12 — the
+  rule-name-versus-action and plaintext-feed-transport checks in
+  `firewall-best-practices-audit` 1.3.0.
 
 ### vSRX validation gate — `srx-ips`
 
@@ -332,53 +243,33 @@ Its **mutating** paths (`request system license add`,
 only outstanding work on it.
 
 
-**Unowned scope:** Branch SRX (SRX300 series, SRX400 series) zone-pair policy
-design. `srx-initial-setup` targets Branch platforms and reaches the
-baseline-policy stage; when a zone-pair exception applies, that stage routes to
-`srx-policy`. But `srx-policy` scopes itself to "non-Branch SRX platforms" and
-disclaims Branch. Until this is closed, operators on Branch platforms needing
-zone-pair policy design it manually, and both `srx-initial-setup` and this file
-say so rather than implying coverage.
+**Branch SRX policy scope — RESOLVED 2026-09-12.** `srx-policy` excluded
+"non-Branch SRX platforms" from its first commit (`95d247e`) with **no recorded
+rationale anywhere** — no design document, no reference file, no commit message
+— and no Branch hardware had ever been tested against it. The exclusion is now
+removed for core policy design, on measurement rather than argument.
 
-**Decision: narrow `srx-policy`'s exclusion. Do not build a separate
-`srx-branch-policy` skill.** Blocked on SRX345 hardware validation — see below.
+Validated on SRX345 hardware (Junos 26.2R1.7) by `commit check` —
+[record](docs/skill-tests/2026-09-12-srx-policy-branch-srx345-validation.md).
+Zone-pair and global policies, `match dynamic-application` unified policies,
+`default-policy deny-all`, address books and address-sets, applications and
+application-sets, session logging and counters all validate on Branch. The
+unified-policy result settles it: the most advanced construct Junos offers
+behaves the same there.
 
-Investigated 2026-08-24. Findings:
+**The widening stops at the policy layer.** Licence-gated service attachments
+(AppID/AppFW, NGWF, EWF, SecIntel, ATP, IDP) were *not* validated — the test
+device holds no licences, and all three `application-services` checks returned
+no commit-check verdict. The schema accepts them; that proves nothing about
+entitlement. `srx-policy` now carries
+`references/platform-and-licensing.md` drawing that line, and
+`srx-initial-setup` routes Branch zone-pair work to `srx-policy` instead of
+telling operators to design it by hand.
 
-- The `non-Branch` scope has been present since `srx-policy`'s first commit
-  (`95d247e`) with **no recorded rationale anywhere** — no design document, no
-  reference file, no commit message explains it. It appears in exactly two
-  places: the `description` frontmatter field and `SKILL.md`'s Overview.
-- No Branch hardware has ever been tested against `srx-policy`. Its validation
-  records name vSRX and unspecified devices only, so the exclusion is not
-  backed by a negative result either.
-- Juniper documentation (retrieved 2026-08-24) records **no** Branch exclusion
-  for policy structure. Global policies, zone-pair policies, and unified
-  policies with `match dynamic-application` are documented for "SRX Series"
-  generically. Unified policies — the most advanced construct — have been
-  Branch-supported since Junos 18.2R1.
-- Address and application objects, rule order, default-deny, session logging,
-  and hit counts show no documented Branch-specific difference.
-- The NGFW service-attachment features are all Branch-available and
-  license-gated, by the same gates that apply to higher-end SRX: AppID/AppFW,
-  NGWF, EWF, SecIntel, ATP, and IDP/IPS. UTM is in fact **Branch-oriented** —
-  Juniper publishes "Understanding UTM for Branch SRX Series".
-- A separate Branch policy skill would duplicate 90%+ of identical content and
-  runs against this repository's own rule in `AGENTS.md` to prefer
-  consolidating overlapping skills over adding them. Two policy skills would
-  also split lexical discovery for the same question.
-
-**What closing it requires:** widen `srx-policy`'s stated scope to cover Branch
-for core policy design, add a licensing/feature-gate reference section, and
-qualify service-attachment claims per platform. Because that widens a mature
-skill's scope, the Branch claims must be labelled documentation-sourced until
-they are exercised on the SRX345. **Do not widen the scope before that
-validation** — widening on documentation alone, in a skill that has never seen
-Branch hardware, is the overclaiming this repository forbids.
-
-The absence of a recorded rationale is evidence the exclusion was never
-justified, not proof it was wrong; the original author may simply have never
-validated Branch and hedged. The SRX345 settles it either way.
+A separate `srx-branch-policy` skill was rejected and remains rejected: it would
+duplicate 90%+ of identical content, split lexical discovery for the same
+question, and run against `AGENTS.md`'s rule to prefer consolidating overlapping
+skills over adding them.
 
 The repository-wide first-priority new skill is `firewall-policy-path`, scoped
 under **Recommended next new skill** above. After it:
