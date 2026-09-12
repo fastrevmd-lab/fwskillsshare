@@ -2,25 +2,26 @@
 
 ## Documentation Sources
 
-### Attempted Sources (Inaccessible — HTTP 403)
+### Official Cisco Documentation (Verified Accessible 2026-09-12)
 
-The following official Cisco documentation pages were identified but returned 403 Forbidden errors during automated access attempts:
+Information in this reference was gathered from official Cisco documentation, verified accessible as of 2026-09-12:
 
-- [FMC REST API Quick Start Guide v10.0](https://www.cisco.com/c/en/us/td/docs/security/firepower/10-0/API/REST/firepower_management_center_rest_api_quick_start_guide_10_0/About_The_Firewall_Management_Center_REST_API.html)
-- [FTD REST API Guide](https://www.cisco.com/c/en/us/td/docs/security/firepower/ftd-api/guide/ftd-rest-api.html)
-- Multiple FMC Quick Start Guides (v7.0, v7.2, v7.3, v7.4, v7.6, v7.7)
-
-### Sources Actually Consulted
-
-Information in this reference was gathered from:
-
+- **FMC REST API Quick Start Guides**:
+  - [Version 10.0 - Objects in the REST API](https://www.cisco.com/c/en/us/td/docs/security/firepower/10-0/API/REST/firepower_management_center_rest_api_quick_start_guide_10_0/Objects_In_The_REST_API.html)
+  - [Version 7.4 - Objects in the REST API](https://www.cisco.com/c/en/us/td/docs/security/firepower/740/api/REST/secure_firewall_management_center_rest_api_quick_start_guide_740/Objects_In_The_REST_API.html)
+  - [Version 7.0 - Objects in the REST API](https://www.cisco.com/c/en/us/td/docs/security/firepower/70/api/REST/firepower_management_center_rest_api_quick_start_guide_70/Objects_In_The_REST_API.html)
+- **FMC Device Configuration Guides**:
+  - [Version 7.6 - Access Control Policies](https://www.cisco.com/c/en/us/td/docs/security/secure-firewall/management-center/device-config/760/management-center-device-config-76/access-policies.html)
+  - [Inheritance in Multidomain Environment](https://www.cisco.com/c/en/us/support/docs/security/firepower-management-center/216497-inheritance-in-multidomain-environment-i.html)
+- **FTD/FDM Documentation**:
+  - [FTD REST API Guide - About the API](https://www.cisco.com/c/en/us/td/docs/security/firepower/ftd-api/guide/ftd-rest-api/ftd-rest-api-intro.html)
+  - [FDM v7.0 Configuration Guide - Access Control](https://www.cisco.com/c/en/us/td/docs/security/firepower/70/fdm/fptd-fdm-config-guide-700/fptd-fdm-access.html)
+  - [FDM v7.1 Configuration Guide - Access Control](https://www.cisco.com/c/en/us/td/docs/security/firepower/710/fdm/fptd-fdm-config-guide-710/fptd-fdm-access.html)
 - **Cisco DevNet Resources**:
-  - [Firepower Management Center API](https://developer.cisco.com/secure-firewall/management-center/) — landing page with general API structure
-  - [FTD API Reference v6.2 (FTD v7.2)](https://developer.cisco.com/docs/ftd-api-reference/latest/) — base URL and JSON format information
-- **Community Documentation**: GitHub repositories (PowerFMC, Net::Cisco::FMC, fmc-rest-client) with endpoint path examples
-- **Search Result Excerpts**: Partial content from cisco.com pages accessible via search engine result previews
+  - [Firepower Management Center API](https://developer.cisco.com/secure-firewall/management-center/)
+  - [Configure a Time-Based Access Control Rule on FDM](https://www.cisco.com/c/en/us/support/docs/security/secure-firewall-threat-defense/220637-configure-a-time-based-access-control-ru.html)
 
-**Verification Limitation**: Without access to complete official API documentation, sections marked `[unverified]` could not be confirmed and require validation against a live API Explorer (`https://{fmc-or-ftd}/api/api-explorer`) or official documentation.
+**Verification Limitation**: Sections marked `[unverified]` require validation against live FMC/FDM API responses or sanitized API Explorer exports, which were not available at the time of authoring. Validate these against a live API Explorer (`https://{fmc-or-ftd}/api/api-explorer`) before production use.
 
 ## Input Packaging
 
@@ -156,6 +157,32 @@ Device-specific configuration requires a two-step sequence:
 
 A **partial pull is legitimate** for focused questions (e.g., "list all any/any rules" needs only access rules and the default action, not NAT or interfaces). However, the partial nature **must be recorded**: the parser emits a `metadata.warnings` entry listing which expected endpoints were absent, and any audit findings must be qualified as incomplete. See the existing "Paging and Truncation" rule for the warning format.
 
+## Query Parameters
+
+FMC REST API GET requests support the following query parameters for controlling responses:
+
+### Pagination Parameters
+
+- **`limit`**: Number of items to return per page (range: 1-1000, default: 25)
+- **`offset`**: Starting position in the result set (zero-indexed)
+
+Example: `https://<management_center>:443/<object_URL>?offset=0&limit=50`
+
+The REST API serves only 25 results per page by default. This can be increased up to 1000 using the `limit` parameter.
+
+### Expansion Parameter
+
+- **`expanded`**: Boolean flag controlling response detail level
+  - `true`: Returns complete object information with all fields populated
+  - `false` or omitted: Returns only object references (type, id, name)
+  - Some fields only appear when this flag is set to `true`
+
+Use `expanded=false` to reduce payload size when full object details are unnecessary.
+
+### Filtering Parameters
+
+The API supports filtering based on specific attributes in a model. Available filters vary by object type.
+
 ## Paging and Truncation
 
 FMC API responses include a `paging` metadata block:
@@ -281,28 +308,36 @@ FDM-managed FTD devices use a different API with distinct structural differences
 
 FMC: `/api/fmc_config/v1/domain/{domainUUID}/...`
 
-FDM: `/api/fdm/v6/...` (version varies; v6 is representative)
+FDM: `/api/fdm/v{N}/...` (version varies; e.g., `/api/fdm/v3/...`, `/api/fdm/latest/...`)
 
-### 2. Flatter Object Model `[unverified]`
+### 2. Field Name Differences
 
-FDM responses appear to use a flatter JSON structure without the deep policy hierarchy found in FMC (based on migration discussions in community forums, not confirmed in official docs).
+Verified from official Cisco documentation (FTD REST API Guide and configuration examples):
 
-### 3. Field Name Differences
+- **Action field**: FDM uses `ruleAction` (e.g., `"ruleAction": "PERMIT"`, `"DENY"`, `"TRUST"`), while FMC uses `action` (e.g., `"action": "ALLOW"`, `"BLOCK"`, `"TRUST"`, `"MONITOR"`)
+- **Logging**: FDM uses `eventLogAction` (e.g., `"eventLogAction": "LOG_FLOW_END"`, `"LOG_FLOW_START"`, `"LOG_BOTH"`), while FMC uses `logBegin`/`logEnd` boolean fields
 
-Verified from DevNet examples and community posts:
+### 3. No Policy Sections
 
-- **Action field**: FDM uses `ruleAction` (e.g., `"ruleAction": "PERMIT"`), while FMC uses `action`
-- **Logging**: FDM uses `eventLogAction` (e.g., `"eventLogAction": "LOG_FLOW_END"`), while FMC uses `logBegin`/`logEnd` boolean fields
+FMC access policies have Mandatory and Default sections (system-provided, with support for custom categories). FDM uses a simple ordered rule list evaluated top-to-bottom on a first-match basis, with a single default action applied to unmatched traffic.
 
-### 4. No Policy Sections `[unverified]`
+FDM official documentation (v7.0, v7.1 Configuration Guides): "The policy consists of a set of ordered rules, which are evaluated from top to bottom. The rule applied to traffic is the first one where all the traffic criteria are matched."
 
-FMC access policies have Mandatory and Default sections. FDM does not appear to use this two-section structure (based on community migration discussions).
+### 4. No Policy Inheritance
 
-### 5. No Policy Inheritance `[unverified]`
+FMC supports parent/child policy relationships with multi-level inheritance hierarchies, where child policies inherit rules from base policies and rules are nested between parent Mandatory and Default sections. FDM does not support policy inheritance; each device has a single flat access control policy.
 
-FMC supports parent/child policy relationships. FDM does not appear to support policy inheritance.
+FDM Configuration Guides (v7.0, v7.1) contain no references to policy inheritance, parent policies, base policies, or Mandatory/Default sections anywhere in the access control documentation.
 
-**Validation Note**: FDM differences marked `[unverified]` are based on community forum posts and migration tool discussions, not official API documentation. Confirm these differences against the FDM API Explorer before relying on them:
+### 5. Simpler Policy Model
+
+FDM's policy model is optimized for single-device local management:
+- Rules are ordered in a single list (no sections or categories)
+- Rule evaluation is strictly top-to-bottom, first-match-wins
+- Default action is configured as a single fallback (Trust, Allow, or Block)
+- No policy layering or hierarchical relationships
+
+**Validation Note**: The structural differences above are verified from official Cisco FDM/FTD documentation (retrieved 2026-09-12). Specific JSON response shapes and additional field differences require validation against the FDM API Explorer:
 
 ```
 https://{ftd-hostname}/api/api-explorer
@@ -340,13 +375,15 @@ FMC supports HTTPS-based configuration exports (not the REST API). The format of
 
 ---
 
-**Verification Status Summary**:
+**Verification Status Summary** (updated 2026-09-12):
 
-- **FMC endpoint paths and paging structure**: Verified from DevNet resources and community examples
-- **Object reference format** (`type`, `id`, `name`): Verified
-- **FDM field differences** (`ruleAction`, `eventLogAction`): Verified from DevNet examples
-- **Complete endpoint family table**: Partially verified; marked unverified entries require live API Explorer validation
-- **Literal value normalization schema**: Unverified; requires validation against live responses
-- **FDM structural differences** (sections, inheritance): Unverified; based on community discussions, not official docs
+- **FMC endpoint paths and paging structure**: Verified from official Cisco REST API Quick Start Guides (v7.0, v7.4, v10.0)
+- **Query parameters** (`limit`, `offset`, `expanded`): Verified from official documentation
+- **Object reference format** (`type`, `id`, `name`): Verified from official documentation
+- **FMC policy inheritance and sections** (Mandatory/Default, multi-level hierarchies): Verified from official FMC Device Configuration Guides (v7.6) and Cisco support documentation
+- **FDM field differences** (`ruleAction`, `eventLogAction`): Verified from official FTD REST API Guide and configuration examples
+- **FDM structural differences** (no sections, no inheritance): Verified from official FDM Configuration Guides (v7.0, v7.1)
+- **Complete endpoint family table**: Partially verified; some endpoints mentioned in community code require live API Explorer validation
+- **Literal value normalization schema**: Unverified; requires validation against live API responses or sanitized API Explorer exports
 
-For production use, validate all `[unverified]` sections against the API Explorer in your FMC or FDM instance.
+For production use, validate remaining `[unverified]` sections against the API Explorer in your FMC or FDM instance (`https://{host}/api/api-explorer`).
