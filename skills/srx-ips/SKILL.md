@@ -1,6 +1,6 @@
 ---
 name: srx-ips
-description: Manage the complete SRX IDP lifecycle - triage existing detections and propose monitor-to-enforce changes, or design and validate custom signatures for findings the predefined attack database does not cover. Reads IDP policy and logs, reports what fired and what each rule did, stages reviewed changes behind approval gates, checks existing coverage read-only, chooses context/direction/pattern, and validates syntax without activating. Use when reviewing IDP logs, investigating suspicious traffic, deciding which no-action rules to enforce, when a scanner finding needs IDP detection, or when extending IDP coverage. Not for attack database updates or IDP license maintenance.
+description: Manage the complete SRX IPS (Junos IDP) lifecycle - triage existing detections and propose monitor-to-enforce changes, or design and validate custom signatures for findings the predefined attack database does not cover. Reads IDP policy and logs, reports what fired and what each rule did, stages reviewed changes behind approval gates, checks existing coverage read-only, chooses context/direction/pattern, and validates syntax without activating. Use when reviewing IDP logs, investigating suspicious traffic, deciding which no-action rules to enforce, when a scanner finding needs IDP detection, or when extending IDP coverage. Not for attack database updates or IDP license maintenance.
 version: 0.1.0
 author:
   - fastrevmd-lab
@@ -56,7 +56,7 @@ metadata:
       note: "One lab's results against one test application; not production guidance"
 ---
 
-# SRX IDP Management
+# SRX IPS Management
 
 > **STATUS: draft (v0.1.0).** Contributed by Javier Grizzuti
 > ([@jgrizzuti](https://github.com/jgrizzuti)) from lab work against Juniper's
@@ -70,7 +70,8 @@ metadata:
 
 ## Overview
 
-This skill covers the complete IDP lifecycle on Juniper SRX platforms:
+This skill covers the complete IPS lifecycle (Junos calls the feature IDP) on
+Juniper SRX platforms:
 
 **Triage** reads what an SRX's IDP policy and logs actually show, turns that
 into a plain-language finding, and proposes one specific, reviewable change that
@@ -79,11 +80,11 @@ workflow when reviewing IDP or screen logs, checking whether attacks were
 blocked, investigating suspicious traffic, or deciding which rules to enforce.
 
 **Custom signatures** turn a specific finding — an exposed path, an injection
-technique, an auth-bypass pattern — into a custom IDP signature that is checked
+technique, an auth-bypass pattern — into a custom IPS signature that is checked
 against existing coverage, validated without activation, proven in monitor mode,
 and only then proposed for enforcement. Use this workflow when a scanner or
-pentest finding needs IDP detection, when writing a `custom-attack`, or when
-extending IDP coverage beyond the predefined database.
+pentest finding needs IPS detection, when writing a `custom-attack`, or when
+extending IPS coverage beyond the predefined database.
 
 Nothing is changed on the device without explicit approval, and "yes" to an
 analysis request is never approval to push configuration. Attack database

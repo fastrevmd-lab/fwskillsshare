@@ -1,10 +1,10 @@
 # Changelog
 
-## 1.7.0 — SRX IDP skill (draft)
+## 1.7.0 — SRX IPS skill (draft)
 
-**srx-ips** v0.1.0, a draft skill merging IDP detection triage and custom signature authoring. Contributed by Javier Grizzuti (@jgrizzuti) in #70 from lab work against Juniper's junos-mcp-server, revised before merge, then merged into a single skill. The catalog gains one skill, from 30 to 31.
+**srx-ips** v0.1.0, a draft skill merging IPS detection triage and custom signature authoring. Contributed by Javier Grizzuti (@jgrizzuti) in #70 from lab work against Juniper's junos-mcp-server, revised before merge, then merged into a single skill. The catalog gains one skill, from 30 to 31.
 
-Covers IDP detection triage — build the active rule table, read logs safely, monitor-to-enforce escalation behind an approval gate — and custom signature design with read-only coverage checks, context/direction/binding choice, false-positive-aware patterns, `commit check` validation, and monitor-mode proof before enforcement.
+Covers IPS detection triage — build the active rule table, read logs safely, monitor-to-enforce escalation behind an approval gate — and custom signature design with read-only coverage checks, context/direction/binding choice, false-positive-aware patterns, `commit check` validation, and monitor-mode proof before enforcement.
 
 - Packaged to repository standards — frontmatter, runtime intake, Codex metadata, inventory and installer entries.
 - The installer now automatically removes the three retired skill directories (`srx-idp-triage`, `srx-custom-signature-builder`, and `srx-idp`) on every install or uninstall run, regardless of which skills are selected. Existing installations are cleaned up automatically on the next `./install.sh` run. Manual equivalent for anyone who does not re-run the installer: `rm -rf <skills-dir>/srx-idp-triage <skills-dir>/srx-custom-signature-builder <skills-dir>/srx-idp`.
