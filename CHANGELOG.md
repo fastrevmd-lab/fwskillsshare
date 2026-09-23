@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased — SRX IDP triage and custom signature skills (draft)
+
+**srx-idp-triage** v0.1.0 and **srx-custom-signature-builder** v0.1.0, both
+drafts. Contributed by Javier Grizzuti (@jgrizzuti) in #70 from lab work against
+Juniper's junos-mcp-server, then revised before merge:
+
+- Packaged to repository standards — frontmatter, runtime intake, Codex
+  metadata, inventory and installer entries.
+- Safety gates added: no `clear log` without archiving and separate approval;
+  no commit used as an attack-name lookup (`show security idp attack detail`
+  and `commit check` instead); commits use a rollback window, and the plain
+  commit in junos-mcp-server's `load_and_commit_config` is called out.
+- Corrected against Juniper documentation: policy load is verified with
+  `show security idp policy-commit-status`, not `Policy Name` in
+  `show security idp status`; `protocol-binding tcp` needs `minimum-port`;
+  the DFA `\[...\]` case-insensitive operator replaces hand-built character
+  classes; the "relay limitation" commands were not valid Junos syntax.
+- Monitor-only rules are named `DETECT-` rather than `BLOCK-`.
+- Lab signatures moved to a reference file with false-positive warnings.
+- Juniper junos-mcp-server behavior moved to a version-labelled reference file.
+
+Remaining `[unverified]` items are tracked as a vSRX validation gate in
+[TODO.md](./TODO.md).
+
 ## 1.5.0 — SRX NTP process statement, documentation integrity, inventory enforcement
 
 **srx-initial-setup** v1.4.0 and **sd-onprem-proxmox-deploy** v1.2.0 — the hidden

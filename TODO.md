@@ -202,6 +202,34 @@ inventory enforcement".
   `match dynamic-application` are complete; the rule-name-versus-action and
   feed-transport checks remain under P3 above.
 
+### vSRX validation gate — `srx-idp-triage` and `srx-custom-signature-builder`
+
+Both skills ship as **v0.1.0 drafts** and must not be marked reviewed until
+every `[unverified]` item is checked on a vSRX with an IDP license and a current
+attack database. Read-only commands and non-activating `commit check` only,
+unless a write is separately approved.
+
+- [ ] `repeat=N` in `IDP_ATTACK_LOG_EVENT`: send exactly one match, record the
+  value; send several within the suppression window, record again.
+- [ ] `commit confirmed` with IDP configured, on vSRX and one Branch SRX
+  (Juniper KB21334 reports it unsupported on Branch SRX with IDP).
+- [ ] `show security idp policy-commit-status` output before, during, and after
+  a policy load; confirm the "loaded successfully" wording.
+- [ ] `commit check` with a bogus predefined attack name in a rule — rejected,
+  and is the error displayed? (KB31478)
+- [ ] `commit check` of the Step 4 draft as written, including the required
+  flow-type statement for `stream` and `http-*` contexts.
+- [ ] Bare `protocol-binding tcp` versus `tcp minimum-port … maximum-port …`
+  under `commit check`.
+- [ ] `http-url-parsed` versus `http-get-url-parsed` against GET and POST test
+  requests in `no-action`.
+- [ ] `\[union\]` case-insensitive operator against `UNION`, `Union`, `union`.
+- [ ] `show security idp attack detail|description <name>` and
+  `show security idp predefined-attacks filters category` through Juniper's
+  junos-mcp-server — confirm they are not relay-blocked.
+- [ ] Pipe modifiers through junos-mcp-server `execute_junos_command`.
+- [ ] `file copy /var/log/<file> /var/tmp/<file>-<ts>` for the archive step.
+
 ## Tooling and operational skills
 
 `srx-license-signature-maintenance` shipped 2026-07-31 (issue #26) and reached
