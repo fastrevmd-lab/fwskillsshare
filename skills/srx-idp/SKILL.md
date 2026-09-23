@@ -153,6 +153,14 @@ the MCP notes. In order of preference:
    ```
    file copy /var/log/<logfile> /var/tmp/<logfile>-<timestamp>
    ```
+   **`file copy` may not survive an MCP relay.** On a Rust-based Junos MCP
+   server (not Juniper's), two attempts failed with `failed to parse RPC
+   response: significant text outside a reply payload`, and the destination
+   file was verified absent afterwards — the copy did not happen, on a
+   `super-user` account with a readable source. Juniper's own server was not
+   tested. Confirm the archive step actually produced a file before relying
+   on it, and fall back to a direct CLI/SSH session if it did not. Never run
+   `clear log` on the strength of an archive you have not confirmed exists.
 3. Only if a fresh, attributable slice is genuinely needed: archive first as
    above, then ask for **separate explicit approval** to run
    `clear log <logfile>`. Clearing permanently deletes the on-box evidence;
@@ -217,8 +225,13 @@ Every commit here follows the repository write policy:
    or dry-run option. If the tool cannot do a confirmed commit, say so, and get
    approval that explicitly accepts a manual rollback plan
    (`rollback 1` then `commit`) before pushing.
-4. **[unverified]** Juniper KB21334 reports that `commit confirmed` is not
-   supported on Branch SRX with IDP. Until checked, treat confirmed commit as
+4. **Verified on vSRX 26.2R1.7, 2026-09-23:** `commit confirmed` works correctly
+   with IDP configured. The device auto-rolled back a 1-minute confirmed commit
+   cleanly and logged `UI_COMMIT_NOT_CONFIRMED`. **Operational timing:** the
+   rollback fires roughly 30–45 seconds AFTER the nominal window expires, not on
+   the second — verify a rollback by waiting past the window with margin.
+   **[unverified on Branch SRX]** Juniper KB21334 reports that `commit confirmed`
+   is unsupported on Branch SRX with IDP. Until checked, treat confirmed commit as
    unavailable on Branch SRX with IDP and use the manual rollback plan.
 
 A successful commit does **not** mean the new policy is enforcing. IDP compiles
@@ -229,10 +242,14 @@ sleep for a fixed time:
 show security idp policy-commit-status
 ```
 
-Done means it reports the policy and detector **loaded successfully**. `Policy
-Name` and `Running Detector Version` in `show security idp status` are already
-filled in by the **previous** policy, so they alone prove nothing about the new
-one. On a cluster, verify each node.
+**Verified on vSRX 26.2R1.7, 2026-09-23:** `policy-commit-status` never reached a
+"loaded successfully" wording. It reported `Reading set file for compilation` and
+stayed there for the entire life of the loaded policy, minutes after the compile
+had finished. The authoritative completion signal is the syslog event
+`IDP_COMMIT_COMPLETED: IDP policy commit is complete.` `Policy Name` and `Running
+Detector Version` in `show security idp status` do NOT confirm a new policy load —
+both stayed `none` throughout a verified successful compile. On a cluster, verify
+each node.
 
 ## Step 7 — Prove the change with traffic
 
@@ -248,7 +265,12 @@ attack now logs the new action (for example `CLOSE` or `DROP` instead of
 ### Check existing coverage first, read-only
 
 The predefined database has tens of thousands of entries; a duplicate is wasted
-effort and a second source of false positives.
+effort and a second source of false positives. **Verified on vSRX 26.2R1.7,
+2026-09-23:** Custom attacks do NOT require the IDP-SIG licence or a signature
+database. A custom-attack policy compiled and loaded successfully
+(`IDP_COMMIT_COMPLETED`) on a device with `IDP-SIG license not installed` and
+attack database `N/A`. Custom signatures are authored locally and enforce without
+the predefined database.
 
 - **Search offline.** The public database is the HPE Threat Labs IPS signature
   site (formerly `threatlabs.juniper.net`, which now redirects there). If you
@@ -459,8 +481,13 @@ Every commit here follows the repository write policy:
    or dry-run option. If the tool cannot do a confirmed commit, say so, and get
    approval that explicitly accepts a manual rollback plan
    (`rollback 1` then `commit`) before pushing.
-4. **[unverified]** Juniper KB21334 reports that `commit confirmed` is not
-   supported on Branch SRX with IDP. Until checked, treat confirmed commit as
+4. **Verified on vSRX 26.2R1.7, 2026-09-23:** `commit confirmed` works correctly
+   with IDP configured. The device auto-rolled back a 1-minute confirmed commit
+   cleanly and logged `UI_COMMIT_NOT_CONFIRMED`. **Operational timing:** the
+   rollback fires roughly 30–45 seconds AFTER the nominal window expires, not on
+   the second — verify a rollback by waiting past the window with margin.
+   **[unverified on Branch SRX]** Juniper KB21334 reports that `commit confirmed`
+   is unsupported on Branch SRX with IDP. Until checked, treat confirmed commit as
    unavailable on Branch SRX with IDP and use the manual rollback plan.
 
 ## Policy load verification
@@ -473,10 +500,14 @@ sleep for a fixed time:
 show security idp policy-commit-status
 ```
 
-Done means it reports the policy and detector **loaded successfully**. `Policy
-Name` and `Running Detector Version` in `show security idp status` are already
-filled in by the **previous** policy, so they alone prove nothing about the new
-one. On a cluster, verify each node.
+**Verified on vSRX 26.2R1.7, 2026-09-23:** `policy-commit-status` never reached a
+"loaded successfully" wording. It reported `Reading set file for compilation` and
+stayed there for the entire life of the loaded policy, minutes after the compile
+had finished. The authoritative completion signal is the syslog event
+`IDP_COMMIT_COMPLETED: IDP policy commit is complete.` `Policy Name` and `Running
+Detector Version` in `show security idp status` do NOT confirm a new policy load —
+both stayed `none` throughout a verified successful compile. On a cluster, verify
+each node.
 
 # Verification checklists
 
