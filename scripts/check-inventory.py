@@ -136,6 +136,9 @@ def main() -> int:
     # Check against install.sh families
     installer_families = get_installer_families()
 
+    # retired_skills is not a real family - it's the cleanup list
+    installer_families.pop("retired_skills", None)
+
     for family in set(manifest_families.keys()) | set(installer_families.keys()):
         manifest_set = manifest_families.get(family, set())
         installer_set = installer_families.get(family, set())

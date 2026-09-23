@@ -7,6 +7,7 @@
 Covers IDP detection triage — build the active rule table, read logs safely, monitor-to-enforce escalation behind an approval gate — and custom signature design with read-only coverage checks, context/direction/binding choice, false-positive-aware patterns, `commit check` validation, and monitor-mode proof before enforcement.
 
 - Packaged to repository standards — frontmatter, runtime intake, Codex metadata, inventory and installer entries.
+- The installer now automatically removes the two retired skill directories (`srx-idp-triage` and `srx-custom-signature-builder`) on every install or uninstall run, regardless of which skills are selected. Existing installations are cleaned up automatically on the next `./install.sh` run. Manual equivalent for anyone who does not re-run the installer: `rm -rf <skills-dir>/srx-idp-triage <skills-dir>/srx-custom-signature-builder`.
 - Safety gates: no `clear log` without archiving and separate approval; no commit used as an attack-name lookup (`show security idp attack detail` and `commit check` instead); commits use a rollback window, and the plain commit in junos-mcp-server's `load_and_commit_config` is called out.
 - Lab signatures moved to a reference file with false-positive warnings.
 - Juniper junos-mcp-server behavior moved to a version-labelled reference file.

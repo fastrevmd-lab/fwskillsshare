@@ -69,6 +69,18 @@ declare -a DEPLOYMENT=(
 )
 # END generated-inventory
 
+# Retired skills — renamed into, or merged into, another skill.
+# Entries are NEVER removed from this list once added: it is the permanent
+# record of every name this repository has stopped shipping. The installer
+# deletes these directories from the target on every run, install or uninstall,
+# so an existing installation cannot keep serving guidance that was corrected
+# or withdrawn. scripts/check-installer.py enforces that this list stays
+# disjoint from the live inventory.
+declare -a RETIRED_SKILLS=(
+    "srx-idp-triage"
+    "srx-custom-signature-builder"
+)
+
 TOTAL_SKILLS=$((
     ${#PARSERS[@]} +
     ${#SRX[@]} +
@@ -549,6 +561,33 @@ install_skill() {
     return 0
 }
 
+remove_retired_skills() {
+    local target_dir="$1"
+
+    # Never operate on an empty path: "$target_dir/$skill" with an unset
+    # target_dir would expand to an absolute path at the filesystem root.
+    if [[ -z "$target_dir" ]]; then
+        echo -e "${C_RED}Error: target directory is empty or unset${C_RESET}" >&2
+        return 1
+    fi
+
+    if [[ ! -d "$target_dir" ]]; then
+        return 0
+    fi
+
+    local retired
+    for retired in "${RETIRED_SKILLS[@]}"; do
+        local retired_path="$target_dir/$retired"
+        if [[ -d "$retired_path" ]]; then
+            if rm -rf "$retired_path"; then
+                echo -e "  ${C_YELLOW}•${C_RESET} removed retired skill: $retired"
+            else
+                echo -e "  ${C_RED}✗${C_RESET} could not remove retired skill: $retired" >&2
+            fi
+        fi
+    done
+}
+
 uninstall_skill() {
     local skill_name="$1"
     local target_dir="$2"
@@ -717,6 +756,9 @@ declare -i failed=0
 
 for target in "${INSTALL_TARGETS[@]}"; do
     echo -e "${C_CYAN}Target: $target${C_RESET}"
+
+    # Runs for install and uninstall alike, regardless of what was selected.
+    remove_retired_skills "$target"
 
     for skill in "${SELECTED_SKILLS[@]}"; do
         if [[ "$MODE" == "install" ]]; then
