@@ -143,5 +143,10 @@
     "name": "sd-onprem-proxmox-deploy",
     "family": "deployment",
     "reviewed": true
+  },
+  {
+    "name": "csrx-proxmox-deploy",
+    "family": "deployment",
+    "reviewed": false
   }
 ]
