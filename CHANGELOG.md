@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.7.0 — SRX IPS skill (draft)
+
+**srx-ips** v0.1.0, a draft skill merging IPS detection triage and custom signature authoring. Contributed by Javier Grizzuti (@jgrizzuti) in #70 from lab work against Juniper's junos-mcp-server, revised before merge, then merged into a single skill. The catalog gains one skill, from 30 to 31.
+
+Covers IPS detection triage — build the active rule table, read logs safely, monitor-to-enforce escalation behind an approval gate — and custom signature design with read-only coverage checks, context/direction/binding choice, false-positive-aware patterns, `commit check` validation, and monitor-mode proof before enforcement.
+
+- Packaged to repository standards — frontmatter, runtime intake, Codex metadata, inventory and installer entries.
+- The installer now automatically removes the three retired skill directories (`srx-idp-triage`, `srx-custom-signature-builder`, and `srx-idp`) on every install or uninstall run, regardless of which skills are selected. Existing installations are cleaned up automatically on the next `./install.sh` run. Manual equivalent for anyone who does not re-run the installer: `rm -rf <skills-dir>/srx-idp-triage <skills-dir>/srx-custom-signature-builder <skills-dir>/srx-idp`.
+- Safety gates: no `clear log` without archiving and separate approval; no commit used as an attack-name lookup (`show security idp attack detail` and `commit check` instead); commits use a rollback window, and the plain commit in junos-mcp-server's `load_and_commit_config` is called out.
+- Lab signatures moved to a reference file with false-positive warnings.
+- Juniper junos-mcp-server behavior moved to a version-labelled reference file.
+
+Hardware validation on 2026-09-23 (SRX345, Junos 21.2R3-S6.11) falsified three documented claims and found one mandatory statement the skill had omitted:
+
+- **`commit check` does not reject an unknown predefined attack name** — it accepted `"Non-Existent-Attack"` silently, making passive validation unusable. The skill's `commit check` validation strategy is removed, and the remaining attack-name lookup remains read-only via `show security idp attack detail`.
+- **`minimum-port` is not required on `protocol-binding tcp`** — an unbounded binding committed cleanly, contradicting both the skill's rule and the vendor documentation the skill had cited. The skill's minimum-port requirement is removed.
+- **No flow-type statement is required** — signatures with no explicit `ip` or `service` flow type committed and became active without it. The skill's flow-type requirement is removed.
+- **`direction` is mandatory** — every signature lacking it was rejected at commit with `direction statement missing`. The skill now requires `direction client-to-server` or `direction server-to-client` and explains the scoping semantics: client-to-server applies the pattern to the flow initiator's data, server-to-client to the responder's.
+
+Remaining `[unverified]` items are tracked as a vSRX validation gate in [TODO.md](./TODO.md).
+
 ## 1.6.0 — cSRX container firewall deployment on Proxmox
 
 **csrx-proxmox-deploy** v0.1.0, a new skill — deploying a Juniper cSRX container

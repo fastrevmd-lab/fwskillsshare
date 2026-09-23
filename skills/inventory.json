@@ -85,6 +85,11 @@
     "reviewed": false
   },
   {
+    "name": "srx-ips",
+    "family": "srx",
+    "reviewed": false
+  },
+  {
     "name": "firewall-best-practices-audit",
     "family": "tooling",
     "reviewed": true

@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRX IPS Management"
+  short_description: "Triage IPS detections and design custom signatures for SRX"
+  default_prompt: "Use $srx-ips to review IPS detections and recommend enforcement changes, or to design and validate a custom IPS signature for this finding."

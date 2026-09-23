@@ -81,6 +81,40 @@ def main() -> int:
             f"{sorted(EXPECTED_ALL ^ package_names)}"
         )
 
+    # Extract RETIRED_SKILLS from install.sh and verify disjoint from current inventory
+    retired_skills = set()
+    with INSTALLER.open(encoding="utf-8") as f:
+        in_retired_block = False
+        for line in f:
+            if "declare -a RETIRED_SKILLS=" in line:
+                in_retired_block = True
+                continue
+            if in_retired_block:
+                if line.strip() == ")":
+                    break
+                # Extract skill name from quoted string
+                if '"' in line:
+                    skill = line.strip().strip('",')
+                    if skill:
+                        retired_skills.add(skill)
+
+    # A missing or empty array would make every retired-skill assertion below
+    # vacuous: the disjoint test trivially passes and the cleanup test iterates
+    # nothing. Fail loudly instead, so deleting the feature cannot look clean.
+    if not retired_skills:
+        raise SystemExit(
+            "install.sh declares no RETIRED_SKILLS entries; the retired-skill "
+            "cleanup checks below would pass without testing anything. If the "
+            "list is genuinely empty, remove these checks deliberately rather "
+            "than letting them go quiet."
+        )
+
+    if retired_skills & EXPECTED_ALL:
+        raise SystemExit(
+            f"RETIRED_SKILLS overlaps with current inventory: "
+            f"{sorted(retired_skills & EXPECTED_ALL)}"
+        )
+
     inventory = run("--list").stdout
     listed = {
         line.removeprefix("  - ")
@@ -223,11 +257,45 @@ def main() -> int:
                 f"--uninstall --all left {len(remaining)} skills: {sorted(remaining)}"
             )
 
+    # Retired skills are cleaned up automatically
+    with tempfile.TemporaryDirectory(prefix="fwskills-retired-cleanup-") as temp:
+        destination = Path(temp)
+        # Plant fake retired skill directories
+        for retired_name in retired_skills:
+            retired_dir = destination / retired_name
+            retired_dir.mkdir(parents=True)
+            (retired_dir / "SKILL.md").write_text(
+                f"# {retired_name}\n\nThis is a retired skill that should be removed.\n"
+            )
+        # Verify planted
+        planted = installed_names(destination)
+        if planted != retired_skills:
+            raise SystemExit(
+                f"retired skill setup failed: expected {sorted(retired_skills)}, "
+                f"got {sorted(planted)}"
+            )
+        # Run installer with --all to install current skills
+        run("--all", "-y", "--dir", str(destination))
+        # Verify retired skills are gone and current skills are present
+        final = installed_names(destination)
+        remaining_retired = retired_skills & final
+        if remaining_retired:
+            raise SystemExit(
+                f"installer did not clean up retired skills: {sorted(remaining_retired)}"
+            )
+        if not EXPECTED_ALL.issubset(final):
+            missing = EXPECTED_ALL - final
+            raise SystemExit(
+                f"installer did not install all current skills after cleanup: "
+                f"missing {sorted(missing)}"
+            )
+
+    families_count = len(EXPECTED_FAMILIES)
     print(
         f"OK: installer/package inventories match; installer lists and installs "
-        f"{len(EXPECTED_ALL)} skills with byte-identical required artifacts across 5 families "
-        f"and explicit selections; rejects invalid families and skills; "
-        f"uninstalls correctly"
+        f"{len(EXPECTED_ALL)} skills with byte-identical required artifacts across "
+        f"{families_count} families and explicit selections; rejects invalid families "
+        f"and skills; uninstalls correctly; cleans up {len(retired_skills)} retired skill(s)"
     )
     return 0
 
