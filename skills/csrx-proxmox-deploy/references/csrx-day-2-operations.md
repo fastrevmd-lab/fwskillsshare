@@ -44,4 +44,7 @@ hand with `load set` if that is the format you have.
 
 To restore: bind-mount the hierarchical file into the container and point
 `CSRX_JUNOS_CONFIG` at the in-container path, or bind-mount it at the hardcoded
-`/config/juniper.conf`.
+`/config/juniper.conf`. The `/config/juniper.conf` route works because the init
+script unconditionally reassigns `CSRX_JUNIPER_CONFIG` to that path after
+sourcing the environment and before first use (see SKILL.md Gotcha 5), so the
+path is live even though the environment variable is not settable.

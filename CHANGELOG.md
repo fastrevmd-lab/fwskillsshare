@@ -26,9 +26,9 @@ knob), how to rediscover that table for a future release, cSRX's operational CLI
 gaps against vSRX, and a verification methodology built on the rule that every
 check must be capable of the opposite result.
 
-Contrary to public documentation, cSRX 26.2R1.7 carries a `CSRX_CRPD` hook and a
-Linux-FIB-to-Junos-FIB route-import path. It is recorded as read from the image and
-**never executed**.
+Undocumented in any vendor material available for this build, cSRX 26.2R1.7 carries a
+`CSRX_CRPD` hook and a Linux-FIB-to-Junos-FIB route-import path. It is recorded as
+read from the image and **never executed**.
 
 Verified with a clean-context retrieval test: 9 of 10 diagnostic questions
 answerable from the skill alone.

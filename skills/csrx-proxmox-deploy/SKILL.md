@@ -33,14 +33,17 @@ metadata:
 ## Overview
 
 > **The two findings that cost the most time, first in Gotchas below:** (1)
-> Proxmox's default CPU model does not expose SSSE3, and cSRX's forwarding
+> The reference guest's CPU model did not expose SSSE3, and cSRX's forwarding
 > process hard-requires it even when its DPDK fast-path driver is not
 > selected — the container comes up `Up` and healthy with **zero** forwarding
-> plane underneath it. (2) Docker's default macvlan `bridge` mode structurally
-> cannot deliver a frame addressed to a foreign MAC — exactly what a
-> bump-in-the-wire firewall needs — regardless of promiscuous-mode settings on
-> either end. The pre-power-on gate exists specifically to catch both before a
-> live build re-discovers them the hard way.
+> plane underneath it. Whether a given guest's default CPU model exposes
+> SSSE3 depends on the Proxmox version and how the guest was created (`qm
+> create` CLI vs the web UI), so this must be verified rather than assumed.
+> (2) Docker's default macvlan `bridge` mode structurally cannot deliver a
+> frame addressed to a foreign MAC — exactly what a bump-in-the-wire firewall
+> needs — regardless of promiscuous-mode settings on either end. The
+> pre-power-on gate exists specifically to catch both before a live build
+> re-discovers them the hard way.
 
 cSRX ships as a Docker image, not a VM appliance — there is no qcow2, no raw
 disk, no ISO. Deployment is therefore: build a **KVM guest** (not an LXC —
@@ -72,12 +75,17 @@ convertible in place:
 
 ## Requirements
 
-- A KVM guest (not an LXC) running Docker CE, with **CPU model set to pass
-  through the host's real features** — mandatory, not an optimization; see
-  the pre-power-on gate.
+- A KVM guest (not an LXC) running Docker CE, with a **CPU model that
+  exposes SSSE3** — mandatory, not an optimization. `--cpu host` is the
+  simplest way to guarantee it; see the pre-power-on gate for the
+  migration-preserving alternative.
 - At least **one management vNIC** and **two data-plane vNICs**, one per
-  side of the firewall. `CSRX_PORT_NUM` forces a minimum of 3 data-plane
-  ports when `CSRX_FORWARD_MODE=wire`.
+  side of the firewall. `CSRX_PORT_NUM` defaults to 3 and is forced to a
+  minimum of 3 when `CSRX_FORWARD_MODE=wire`; the reference build satisfied
+  this with one management interface plus two data-plane interfaces,
+  implying the count includes the management port — but verify this against
+  your own image's init script before assuming a third data-plane NIC is
+  required.
 - Each data-plane vNIC's Proxmox-side parent interface **administratively
   up** with no IP address of its own — see Gotcha 9.
 - Docker CE installed non-interactively (`DEBIAN_FRONTEND=noninteractive` for
@@ -110,11 +118,16 @@ before configuration, commit, upgrade, reboot, delete, or failover actions.
 > container that looks healthy and passes no traffic, with no error that
 > names the real cause.
 
-1. **The Docker host guest's CPU model passes through the host's real
-   features** (on Proxmox: `qm set <vmid> --cpu host`), and the guest has
-   been **cold-restarted** (`qm stop` / `qm start` — not a soft reboot; a CPU
-   model change never applies to a running VM). Confirm `ssse3` is present
-   in the guest's `/proc/cpuinfo` after the restart.
+1. **The Docker host guest's CPU model exposes SSSE3** (mandatory for
+   cSRX), and the guest has been **cold-restarted** after any CPU model
+   change (`qm stop` / `qm start` — not a soft reboot; a CPU model change
+   never applies to a running VM). Confirm `ssse3` is present in the guest's
+   `/proc/cpuinfo` after the restart. The simplest way to guarantee this is
+   `qm set <vmid> --cpu host`, which passes through the host's real
+   features; on a multi-node cluster where live migration matters, any CPU
+   model exposing SSSE3 (the x86-64-v2 baseline and above, e.g.
+   `x86-64-v2-AES`) satisfies cSRX while keeping the guest migratable —
+   `--cpu host` pins the guest to CPU-compatible nodes.
 2. **The macvlan networks that will carry cSRX's data-plane interfaces are
    planned as `-o macvlan_mode=passthru`**, one network per parent NIC — not
    the Docker default `bridge` mode. Decide this before the first `docker
@@ -269,15 +282,17 @@ Follow "Verification methodology" below — do not stop at "traffic passes."
    This reads exactly like a policy or IPC fault. **Cause:** the
    packet-forwarding process (`srxpfe`) initializes DPDK's EAL at startup
    **even when `CSRX_PACKET_DRIVER=interrupt`** — DPDK's EAL hard-requires
-   SSSE3 unconditionally. If the hypervisor's default CPU model doesn't
-   expose it, `srxpfe` fails at `EAL: unsupported cpu type` and never
-   starts, while every control-plane daemon comes up fine. **Fix:** `qm set
-   <vmid> --cpu host`, then a **cold** `qm stop`/`qm start` (a soft reboot
-   does not renegotiate the CPU model). Confirm `ssse3` in
-   `/proc/cpuinfo` and `srxpfe` actually running (`ps aux | grep srxpfe`)
-   before trusting any subsequent ping test — **`Up` proves nothing about
-   the data plane.** The only real proof is `show security flow session`
-   succeeding, or `srxpfe` visibly in the process list.
+   SSSE3 unconditionally. If the guest's CPU model doesn't expose it,
+   `srxpfe` fails at `EAL: unsupported cpu type` and never starts, while
+   every control-plane daemon comes up fine. **Fix:** set the guest's CPU
+   model to one exposing SSSE3 (the x86-64-v2 baseline and above, e.g.
+   `x86-64-v2-AES`, or `--cpu host` to pass through all host features), then
+   a **cold** `qm stop`/`qm start` (a soft reboot does not renegotiate the
+   CPU model). Confirm `ssse3` in `/proc/cpuinfo` and `srxpfe` actually
+   running (`ps aux | grep srxpfe`) before trusting any subsequent ping test
+   — **`Up` proves nothing about the data plane.** The only real proof is
+   `show security flow session` succeeding, or `srxpfe` visibly in the
+   process list.
 
 2. **Traffic passes cleanly on plain Docker networks, then goes
    unidirectional or silent the moment interfaces move onto macvlan
@@ -348,37 +363,32 @@ Follow "Verification methodology" below — do not stop at "traffic passes."
    choosing wire mode, not after a commit fails.
 
 7. **A routing-mode rebuild has no addressable logical unit at all.** After
-   rebuilding into `CSRX_FORWARD_MODE=routing`, `show interfaces terse |
-   match ge-` returns nothing, and the full `show interfaces ge-0/0/0` form
-   shows the link physically Up with **no logical unit beneath it** — no
-   `unit 0`, no `family`, nothing to address. **Cause:** cSRX does not
-   auto-create a logical unit on its data interfaces when the forward mode
-   changes; there is no auto-addressing fallback to fall back to. **Fix:**
-   explicit interface configuration is mandatory — `set interfaces ge-0/0/0
-   unit 0 family inet address ...` on every data interface, plus zone
-   binding and whatever `host-inbound-traffic system-services` entries the
-   interface itself needs to answer (at minimum `ping`, if the verification
-   plan pings the interface's own address).
+   rebuilding into `CSRX_FORWARD_MODE=routing`, the full
+   `show interfaces ge-0/0/0` form shows the link physically Up with **no
+   logical unit beneath it** — no `unit 0`, no `family`, nothing to address
+   (`show interfaces terse` is empty on cSRX regardless — see
+   `references/csrx-cli-gaps.md` — and proves nothing here). **Cause:** cSRX
+   does not auto-create a logical unit on its data interfaces when the
+   forward mode changes; there is no auto-addressing fallback to fall back
+   to. **Fix:** explicit interface configuration is mandatory —
+   `set interfaces ge-0/0/0 unit 0 family inet address ...` on every data
+   interface, plus zone binding and whatever `host-inbound-traffic
+   system-services` entries the interface itself needs to answer (at minimum
+   `ping`, if the verification plan pings the interface's own address).
 
 8. **cSRX's operational CLI is measurably thinner than a vSRX's — plan
-   verification around this, don't assume parity.** Four confirmed gaps,
-   none producing a self-explanatory "command not found" error:
-   - `show interfaces terse` — completely empty output: no rows, no header,
-     no error, exit 0, even with interfaces up and actively passing traffic
-     in both forwarding modes. **Substitute:** the full `show interfaces
-     <ifname>` form.
-   - `show route` / `show arp` — hard syntax errors
-     (`syntax error, expecting <command>: route` / `: arp`), not merely
-     empty; a vSRX accepts both. **Substitute for routes:** `show route
-     forwarding-table`, which returns real connected/host entries. No
-     working substitute was found for `show arp`.
-   - `show interfaces <ifname> extensive` — output **identical** to the
-     plain form: no packet counts, no error/discard/collision counters.
-     No CLI substitute exists; pull packet-level evidence from
-     `/proc/net/snmp` or `tcpdump` on the endpoints instead.
-   Test the exact commands a verification plan depends on against the
-   specific cSRX build in hand before relying on them, and default to the
-   Linux-side fallback rather than treating it as a last resort.
+   verification around this, don't assume parity.** Seven confirmed gaps,
+   none producing a self-explanatory "command not found" error. The sharpest
+   traps: `show interfaces terse` is silently empty (no rows, no header, no
+   error) even with interfaces up and passing traffic; `show route` and
+   `show arp` fail with hard syntax errors, not merely empty results. The
+   missing `rpd` explains the route/ARP gaps; the remainder reflect that
+   cSRX has no chassis/RE object. Test the exact commands a verification
+   plan depends on against the specific cSRX build in hand before relying on
+   them, and default to the Linux-side fallback (`/proc/net/snmp`,
+   `tcpdump`) rather than treating it as a last resort. Full catalogue,
+   substitutes, and the list of commands verified working:
+   **`references/csrx-cli-gaps.md`**.
 
 9. **A macvlan parent interface is administratively down, and nothing about
    the guest build brought it up.** A NIC meant to parent a Docker macvlan

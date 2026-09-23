@@ -4,19 +4,19 @@ What "working" throughput looks like on a Proxmox/Docker cSRX stack, so a slow
 number is not mistaken for a fault. Figures are from the reference build
 (Proxmox VE 9.2.20, cSRX 26.2R1.7).
 
-None of the gotchas above is "cSRX is slow" — deliberately. Single-digit-
-Mbit/s TCP throughput on this stack is a **baseline, not a fault**. A reader
-who measures a few Mbit/s and works through the gotchas looking for a cause
-will most likely land on Gotcha 3 (`InCsumErrors`), find it already zero,
-and have nowhere left to go.
+None of the gotchas in SKILL.md is "cSRX is slow" — deliberately.
+Single-digit-Mbit/s TCP throughput on this stack is a **baseline, not a
+fault**. A reader who measures a few Mbit/s and works through the gotchas
+looking for a cause will most likely land on Gotcha 3 in SKILL.md
+(`InCsumErrors`), find it already zero, and have nowhere left to go.
 
 > **Sample size: one run per mode, on one build.** These figures come from a
 > single `iperf3` run in each forwarding mode on a single cSRX release and host.
 > Run-to-run variance was never measured, so treat them as an order-of-magnitude
 > expectation — "single-digit Mbit/s, not Gbit/s" — rather than a number to
-> compare against precisely. The *relative* finding (routing roughly two orders
-> faster than secure-wire, with `CSRX_SIZE` and `CSRX_PACKET_DRIVER` held
-> constant) is the durable part; the absolute figures are one data point each.
+> compare against precisely. The *relative* finding (routing roughly 40x faster
+> than secure-wire, with `CSRX_SIZE` and `CSRX_PACKET_DRIVER` held constant)
+> is the durable part; the absolute figures are one data point each.
 > `CSRX_PACKET_DRIVER=poll` and `dpdk` were never benchmarked, so the driver
 > hypothesis for the residual gap remains untested.
 
@@ -28,9 +28,10 @@ across both runs):
 | Secure-wire (L2 bump-in-the-wire) | 210 Kbit/s | 166 | 0 |
 | Routing (L3, static routes) | 8.81 Mbit/s | 3192 | 0 |
 
-Both are roughly three orders of magnitude below line rate on what is
-otherwise a local veth-chain path with no physical link in it — and neither
-is a checksum-corruption symptom (`InCsumErrors` is 0 in both).
+Routing mode is roughly two orders of magnitude below line rate, and
+secure-wire roughly four, on what is otherwise a local veth-chain path
+with no physical link in it — and neither is a checksum-corruption symptom
+(`InCsumErrors` is 0 in both).
 
 **What the ~42x mode gap does and does not establish.** Holding `CSRX_SIZE`
 and `CSRX_PACKET_DRIVER` constant isolates the forwarding path as the only
