@@ -1,207 +1,229 @@
 ---
-name: junos-idp-triage
-description: Analyzes Junos SRX IDP/screen logs via the Junos MCP Server to identify what's actually being detected, then recommends — and, after explicit approval, pushes — a policy change to move currently monitor-mode (no-action) IDP rules to enforcement. Use this whenever the user asks Claude to review logs on a Junos SRX, check for attacks, evaluate threats, investigate suspicious traffic, or recommend/apply a remediation policy on a device reachable via the Junos MCP Server — even for casual phrasing like "check the logs," "what's happening on the firewall," or "can we block this." Always consult this skill for Junos IDP log-analysis-and-remediation requests rather than improvising the log-pull sequence from scratch, since the MCP transport has several non-obvious limitations documented here that are easy to rediscover the hard way.
+name: srx-idp-triage
+description: Triage Juniper SRX IDP detections and propose moving monitor-mode rules to enforcement. Reads the IDP policy and logs, reports what fired and what each rule did, and stages one reviewed change behind an approval gate. Use when reviewing IDP or screen logs, checking whether attacks were blocked, investigating suspicious traffic an SRX flagged, or deciding which no-action IDP rules to enforce. Not for writing new signatures or updating the attack database.
+version: 0.1.0
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
+license: MIT
+metadata:
+  hermes:
+    tags: [srx, vsrx, junos, idp, ips, idp-policy, rulebase-ips, attack-log, idp-attack-log-event, monitor-mode, enforcement, triage, mcp, approval-gate]
+    related_skills: [srx-custom-signature-builder, srx-license-signature-maintenance, srx-policy, srx-syslog-logging]
+  sources:
+    - title: "Junos CLI: action (Security IDP rulebase-ips then)"
+      url: https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/statement/security-edit-action.html
+    - title: "Junos CLI: show security idp policy-commit-status"
+      url: https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/command/show-security-idp-policy-commit-status.html
+    - title: "Junos CLI: show security idp status"
+      url: https://www.juniper.net/documentation/us/en/software/junos/cli-reference/topics/ref/command/show-security-idp-status.html
+    - title: "IDP policies overview (background compile, IDP_COMMIT_COMPLETED)"
+      url: https://www.juniper.net/documentation/us/en/software/junos/idp-policy/topics/topic-map/security-idp-policies-overview.html
+    - title: "IDP event logging and log suppression"
+      url: https://www.juniper.net/documentation/us/en/software/junos/idp-policy/topics/topic-map/security-idp-event-logging.html
+    - title: "Juniper junos-mcp-server (v1.1.1)"
+      url: https://github.com/Juniper/junos-mcp-server
+    - title: "Juniper MCP server field notes"
+      local: references/juniper-mcp-server-notes.md
+      note: "Observed with Juniper's junos-mcp-server; verify against your server and version"
 ---
 
-# Junos IDP Log Triage & Remediation
+# SRX IDP Log Triage
 
-Reads what a Junos SRX's IDP/screen logs actually show, turns that into a
-plain-language finding, and proposes a specific, reviewable config change —
-never pushes anything without explicit human approval first.
+> **STATUS: draft (v0.1.0).** Contributed by Javier Grizzuti
+> ([@jgrizzuti](https://github.com/jgrizzuti)) from lab work against Juniper's
+> junos-mcp-server, then revised against Juniper documentation. Items marked
+> **[unverified]** have not yet been checked on a vSRX and must not be relied on
+> until they are. Values in `<angle brackets>` are site-specific.
 
-## Scope: analyze and recommend, don't invent signatures live
+## Overview
 
-This skill covers **triage of already-configured detection** (rules that
-exist, most likely in monitor/no-action mode) and recommending a move to
-enforcement. It does **not** cover writing new custom IDP signatures from
-scratch in front of a live audience — that's an iterative, packet-level R&D
-task (getting the right `context`, escaping patterns correctly, picking an
-action that actually wins the race for the traffic shape in question) that
-took many rounds of trial, error, and log cross-checking to get right even
-with full tool access. If the logs show attack traffic that doesn't match
-any existing rule, say so plainly and offer to scope that as separate work —
-don't improvise a signature on the spot.
+Reads what an SRX's IDP policy and logs actually show, turns that into a
+plain-language finding, and proposes one specific, reviewable change that moves
+relevant monitor-mode (`no-action`) rules to enforcement. Nothing is changed on
+the device without explicit approval, and "yes" to an analysis request is never
+approval to push configuration.
 
-## Step 0 — Confirm connectivity and identify the target
+This skill triages **detection that already exists**. If the traffic in the logs
+matches no configured rule, say so plainly and hand off to
+`srx-custom-signature-builder`; do not improvise a signature mid-triage. Attack
+database and license problems belong to `srx-license-signature-maintenance`.
 
-```
-get_router_list          (or equivalent MCP tool listing)
-```
+## Runtime intake
 
-Confirm the target device is registered before doing anything else. If a
-basic call like this fails or times out, don't retry blindly — see
-"MCP connection gotchas" below.
+Before starting the workflow, inspect the request, supplied artifacts, and
+available approved read-only evidence. If unresolved facts could materially
+change safety, scope, correctness, confidence, or the requested output, read
+`references/runtime-intake.md`.
 
-## Step 1 — Establish current state before touching anything
+For each unresolved material fact whose catalog condition is true, invoke Claude `AskUserQuestion` or Codex `request_user_input` before continuing or issuing an open-ended request.
+Ask at most three single-select catalog questions per round. After each response, ask another round whenever any unresolved material catalog condition remains true; continue only when none remain. Do not repeat answered questions or show the full catalog.
+Without a native tool, present each selected catalog question with its 2-3 labeled choices and a free-text `Other` path in concise plain text; do not substitute a generic checklist.
+Never request secrets or unredacted customer data. Treat intake answers as task context, not approval for a live change; obtain separate explicit approval before configuration, commit, upgrade, reboot, delete, or failover actions.
 
-Don't assume you know what's configured. Pull it fresh:
+## Step 0 — Identify the target and the transport
+
+List the devices the tooling can reach (for example `get_router_list` on
+Juniper's junos-mcp-server) and confirm the target is registered. Record the
+model, Junos release, and whether it is a chassis cluster; IDP state is per node
+on a cluster.
+
+Know your transport's limits before you rely on it. Server-specific behavior —
+idle connection drops, pipe modifiers, binary output — is in
+[`references/juniper-mcp-server-notes.md`](references/juniper-mcp-server-notes.md).
+If a basic call fails, do not retry blindly; read that file first.
+
+## Step 1 — Establish current state (read-only)
 
 ```
 show security idp status
-show configuration security idp idp-policy <policy-name>
+show security idp policy-commit-status
+show security idp security-package-version
+show configuration security idp
+show configuration security policies
 ```
 
-From this, build a table of every `rulebase-ips` rule: its name, which
-attack object(s)/dynamic-attack-group it matches, and its **current
-action**. This tells you which rules are already enforcing vs. which are
-in monitor mode (`no-action`) and are candidates for a recommendation.
+Filter the policies output for `application-services idp-policy` locally
+rather than with `| match`, which some transports do not honor.
+
+From this, build a table of every `rulebase-ips` rule in the **active** policy:
+name, matched attack objects or groups, match scope (zones, addresses), and the
+current `then action`. Rules with `no-action` are candidates; rules already
+enforcing are not.
+
+Also confirm the idp-policy is actually attached through
+`application-services` on the security policies carrying the traffic. A
+missing binding means **nothing** is inspected, which looks identical to "no
+attacks".
 
 ## Step 2 — Pull logs, small and attributable
 
-Prefer a dedicated, purpose-built log file over the generic `messages` log
-— `messages` accumulates unrelated noise (management-plane SSH, routine
-traffic) fast enough to bury the signal. If the environment has a
-dedicated IDP or screen log file (check `show configuration system
-syslog`), use that.
+Prefer a dedicated IDP log file over `messages`, which fills with unrelated
+management-plane noise. Find it with `show configuration system syslog`.
+Detections may also already be off-box — a collector or SIEM is often the
+better source; see `srx-syslog-logging`.
 
-**Before pulling, always check size first:**
+Check size before pulling:
+
 ```
 file list detail /var/log/<logfile>
 ```
-If it's small (roughly under a few hundred KB), pull it directly:
-```
-show log <logfile>
-```
-If it's large (multi-hundred-KB to MB range), **don't try to filter it with
-a pipe** — `| match`, `| last N`, and `| count` are not reliably honored
-through this MCP command-execution path; they often just return the same
-unfiltered content and you'll hit the tool's ~1MB result cap regardless of
-what you append. Instead:
-```
-clear log <logfile>
-```
-...then ask the user to regenerate a small, fresh, attributable slice of
-traffic (re-run whatever script/tool produces it), and pull the now-small
-file. **Always read a log's content before clearing it if you actually
-want to know what's in it** — clearing first destroys the evidence you're
-about to go looking for. This is an easy, costly mistake to make twice.
+
+If it is small, read it with `show log <logfile>`. If it is large, **do not
+count on pipe modifiers** (`| match`, `| last`, `| count`) to shrink it — see
+the MCP notes. In order of preference:
+
+1. Read the same detections from the collector or SIEM.
+2. **Archive, then read the copy.** Nothing is lost:
+   ```
+   file copy /var/log/<logfile> /var/tmp/<logfile>-<timestamp>
+   ```
+3. Only if a fresh, attributable slice is genuinely needed: archive first as
+   above, then ask for **separate explicit approval** to run
+   `clear log <logfile>`. Clearing permanently deletes the on-box evidence;
+   never clear a log you have not archived and read.
 
 ## Step 3 — Parse and cross-reference
 
-For each log entry, note: source IP, destination, matched rule name,
-signature name, action taken, and the `repeat=` field. **`repeat=N` means
-N+1 total coalesced matches were logged as one line, not N** — don't
-undercount.
+For each `IDP_ATTACK_LOG_EVENT`, record source, destination and port, matched
+policy and rule, attack name, action, and the `repeat=` value.
 
-Cross-reference matched signature names against the table from Step 1 to
-confirm which ones are currently in monitor mode. If working against a
-known environment, use the reference table below rather than rediscovering
-rule names.
+IDP log suppression is on by default: repeated matches are coalesced into one
+line that carries a count. Juniper documents the `repeat-count` field but not
+whether `repeat=0` means one occurrence — **[unverified]** the reading
+"`repeat=N` means N+1 matches". Until it is checked, report the raw value
+("1 line, repeat=3") rather than a derived total.
 
-## Step 4 — Synthesize the finding (plain language first)
+Cross-reference every attack name against the Step 1 table to confirm which
+rules are in monitor mode.
 
-Before any config, state in plain English: which source IP, what it did,
-which signatures fired, over what time window, and how many times. Example
-shape:
+## Step 4 — State the finding in plain language first
 
-> Source `<source-ip>` triggered `<signature-A>` 3 times and
-> `<signature-B>` 3 times against `<destination-ip>:<port>` between
-> `<start-time>`–`<end-time>`. Both rules are currently in monitor mode
-> (`action=NONE`) — nothing was blocked.
+Before any configuration, say which source did what, which signatures fired,
+over what window, how many log lines and repeat values, and what each rule
+actually did:
 
-## Step 5 — One combined recommendation, not several sequential ones
+> Source `<source-ip>` triggered `<signature-A>` (3 lines, repeat=0) and
+> `<signature-B>` (1 line, repeat=2) against `<destination-ip>:<port>` between
+> `<start>` and `<end>`. Both rules are in monitor mode (`action=NONE`) —
+> nothing was blocked.
 
-Propose flipping **all** currently-monitor-mode rules relevant to the
-observed traffic to enforcement in a single reviewed block, rather than a
-rule-by-rule back-and-forth. For each rule needing a change:
+## Step 5 — One combined, reviewed proposal
 
-```
-delete security idp idp-policy <policy> rulebase-ips rule <rule> then action no-action
-set security idp idp-policy <policy> rulebase-ips rule <rule> then action close-client-and-server
-```
-
-State clearly this is the exact command set you'd push, and **stop — do
-not commit** until the user explicitly approves. Never treat "yes" to an
-analysis request as approval to also push config.
-
-## Step 6 — After approval: push, then verify the data plane actually caught up
+Propose all relevant monitor-to-enforce changes as **one** block rather than a
+rule-by-rule back-and-forth. `then action` is a single choice, so setting a new
+action replaces `no-action`; no `delete` is needed:
 
 ```
-load_and_commit_config   (with the exact commands from Step 5)
+set security idp idp-policy <policy> rulebase-ips rule <rule> then action <action>
 ```
 
-A successful commit message does **not** mean the change is live for
-traffic yet — IDP policy changes need to recompile onto the data plane,
-which commonly takes ~20–30 seconds. Wait, then verify before telling
-the user it's ready:
+Choose `<action>` deliberately. Valid values are `close-client`,
+`close-client-and-server`, `close-server`, `drop-connection`, `drop-packet`,
+`ignore-connection`, `mark-diffserv`, `no-action`, and `recommended`. Prefer an
+action already proven in **this** environment by before-and-after logs; the
+contributor's lab found `close-client-and-server` most consistent for its HTTP
+test traffic, which is a lab result, not a general rule.
+
+Present the exact lines, the expected effect, the blast radius (which traffic
+the rule scope covers), and the rollback. Then **stop** until the user
+explicitly approves the push.
+
+## Step 6 — After approval: commit with rollback, then verify the data plane
+
+Every commit here follows the repository write policy:
+
+1. Show the candidate with `show | compare` and confirm it matches the approved
+   lines exactly.
+2. Commit with a rollback window — `commit confirmed <minutes>` — and confirm
+   with a second commit only after verification passes.
+3. **Check whether your transport can do that.** Juniper's junos-mcp-server
+   v1.1.1 `load_and_commit_config` performs a plain `commit` with no confirmed
+   or dry-run option. If the tool cannot do a confirmed commit, say so, and get
+   approval that explicitly accepts a manual rollback plan
+   (`rollback 1` then `commit`) before pushing.
+4. **[unverified]** Juniper KB21334 reports that `commit confirmed` is not
+   supported on Branch SRX with IDP. Until checked, treat confirmed commit as
+   unavailable on Branch SRX with IDP and use the manual rollback plan.
+
+A successful commit does **not** mean the new policy is enforcing. IDP compiles
+and loads in the background after commit, with no fixed duration. Poll, do not
+sleep for a fixed time:
 
 ```
-show security idp status
+show security idp policy-commit-status
 ```
 
-Look for `Policy Name` and `Running Detector Version` populated — that's
-the signal the new policy actually compiled, not just that config was
-accepted. Don't skip this; a config that looks committed can still be
-running the old compiled policy for a short window.
+Done means it reports the policy and detector **loaded successfully**. `Policy
+Name` and `Running Detector Version` in `show security idp status` are already
+filled in by the **previous** policy, so they alone prove nothing about the new
+one. On a cluster, verify each node.
 
-## Step 7 — Offer to demonstrate
+## Step 7 — Prove the change with traffic
 
-Suggest re-running whatever attack-generating script/tool produced the
-original evidence, so the before/after is visible, and offer to pull the
-log again afterward to confirm the new action (e.g. `CLOSE` or `DROP`
-instead of `NONE`) actually appears.
+Offer to regenerate the original traffic — with the operator running the tool,
+not the agent — and pull the log again. The change is proven when the same
+attack now logs the new action (for example `CLOSE` or `DROP` instead of
+`NONE`) and the client sees the connection fail.
 
----
+## Verification checklist
 
-## MCP connection gotchas (learned the hard way)
+- [ ] Rule table built from the **active** policy, including actions and scope
+- [ ] idp-policy binding through `application-services` confirmed
+- [ ] Logs read without deleting evidence; any `clear log` separately approved
+- [ ] Finding stated in plain language with raw repeat values
+- [ ] One combined proposal with exact lines, blast radius, and rollback
+- [ ] Explicit approval received for the push
+- [ ] Commit used a rollback window, or the lack of one was approved
+- [ ] `policy-commit-status` shows the new policy loaded, per node
+- [ ] Before-and-after log evidence shows the new action
 
-- **Async commands** (e.g. signature package download/install) return
-  immediately with "processing in async mode" — poll with a `... status`
-  follow-up command rather than assuming completion.
-- **Binary content does not survive this transport.** `monitor traffic
-  read-file`, raw `file show` of a pcap, or anything else that isn't
-  guaranteed printable text will fail with XML/PCDATA parsing errors. Stick
-  to `show log`, `show configuration`, and other plain-text operational
-  commands.
-- **Some config values reject special characters** that would be fine
-  elsewhere in Junos — e.g. packet-capture filenames can't contain `.`,
-  `/`, `%`, or spaces. If a commit fails with a specific "must not contain"
-  error, that's usually the actual constraint, not a deeper problem — just
-  adjust the value and retry.
-- **The connection can go unresponsive mid-session** without warning —
-  sometimes as a slow timeout (~4 minutes) on a specific call, sometimes as
-  an immediate failure on *every* call including trivial ones. Known root
-  cause in at least one deployment: the local MCP server pools connections
-  per-router and closes them after ~305 seconds idle (visible in that
-  server's own logs as `Pool: closed idle connection to <router> (idle
-  305s)`). Any gap longer than ~5 minutes — a long recompile wait, the user
-  running a script, an extended discussion — can trigger this. A couple of
-  quick retries from the assistant side do NOT reliably self-heal it; if a
-  basic, previously-working call (like `show security idp status` or a
-  router list) suddenly fails, don't keep retrying more than once or
-  twice — tell the user the connection likely needs a nudge on their end
-  (restarting the local MCP server, or simply re-engaging the app), and
-  verify with one simple call once they confirm before resuming real work.
-  Practical mitigation: if a step is known to involve a long wait (e.g.
-  asking the user to run an attack script), expect the next call to
-  possibly need a retry-after-reconnect rather than treating it as a
-  fresh failure requiring investigation.
+## Hand-offs
 
----
-
-## Reference: keep a known-environment cheat sheet, filled in per deployment
-
-If you're running this skill repeatedly against the same device/policy,
-maintain a short reference block like the one below with that
-environment's real values, so you're not rediscovering rule names and
-signature bindings on every run. Fill in your own policy name, rule
-table, validated enforcement action, log file names, and attack source —
-this is a template, not data:
-
-**Policy**: `<idp-policy-name>`, active on `<device-name>`.
-
-| Rule | Signature | Detects |
-|---|---|---|
-| `<rule-name>` | `<signature-name>` (context `<context>`) | `<what it matches>` |
-
-**Validated action**: note here whichever action (`close-client-and-server`,
-`drop-connection`, `drop-packet`) has actually been confirmed via
-before/after log cross-checks to work reliably for this traffic shape —
-don't assume one action generalizes from a different environment without
-re-testing.
-
-**Logs**: list the dedicated log files in use (not the general `messages`
-log) and what each captures.
-
-**Attack source**: the tool/script and target used to generate the
-traffic this policy is meant to catch, if one exists.
+| Situation | Skill |
+|---|---|
+| Traffic matches no existing signature | `srx-custom-signature-builder` |
+| Attack database stale, IDP license missing | `srx-license-signature-maintenance` |
+| Security policy or `application-services` binding design | `srx-policy` |
+| IDP logs not reaching a collector | `srx-syslog-logging` |
