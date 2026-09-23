@@ -44,8 +44,7 @@ declare -a SRX=(
     "srx-advpn"
     "srx-chassis-cluster-proxmox"
     "srx-syslog-logging"
-    "srx-idp-triage"
-    "srx-custom-signature-builder"
+    "srx-idp"
 )
 
 declare -a TOOLING=(

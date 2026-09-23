@@ -202,33 +202,83 @@ inventory enforcement".
   `match dynamic-application` are complete; the rule-name-versus-action and
   feed-transport checks remain under P3 above.
 
-### vSRX validation gate — `srx-idp-triage` and `srx-custom-signature-builder`
+### vSRX validation gate — `srx-idp`
 
-Both skills ship as **v0.1.0 drafts** and must not be marked reviewed until
+The skill ships as a **v0.1.0 draft** and must not be marked reviewed until
 every `[unverified]` item is checked on a vSRX with an IDP license and a current
 attack database. Read-only commands and non-activating `commit check` only,
 unless a write is separately approved.
 
-- [ ] `repeat=N` in `IDP_ATTACK_LOG_EVENT`: send exactly one match, record the
-  value; send several within the suppression window, record again.
+**Partial validation completed 2026-09-23** on `infra-vsrx` (vSRX 26.2R1.7,
+IDP-SIG licensed through 2027-07-29, attack database 3929/23 Jul 2026, detector
+12.6.180260106). Five items exercised via read-only operational commands and
+non-activating `commit check` only; **four falsified the skill's claims and
+have been corrected.**
+
+- [x] `commit check` with a bogus predefined attack name (KB31478) — **Falsified.**
+  A rule matching `predefined-attacks BOGUS:NOT:A:REAL:ATTACK` passed `commit check`
+  with `outcome: valid` and no error. `commit check` does not validate predefined
+  attack names; they resolve only at policy compile/load time. The skill's advice
+  to use `commit check` to test a name was unsound and has been corrected.
+
+- [x] `commit check` of the Step 4 draft as written, including the flow-type
+  statement for `stream` and `http-*` contexts — **Falsified.** The draft commits
+  exactly as written (`outcome: valid`) with **no** flow-type statement, for
+  `context packet`, `context stream` and `context http-url-parsed` alike. No zone
+  or address match statements were required either. The flow-type instruction has
+  been removed from the skill.
+
+- [x] Bare `protocol-binding tcp` versus `tcp minimum-port … maximum-port …`
+  under `commit check` — **Falsified.** Both forms pass `commit check` with
+  `outcome: valid`. `minimum-port` is not required. Separately discovered:
+  `direction` IS mandatory — omitting it yields `## Warning: missing mandatory
+  statement(s): 'direction'` and the check fails. That was the real cause of the
+  first failed attempt, and it was undocumented.
+
+- [x] `show security idp attack detail|description <name>` and
+  `show security idp predefined-attacks filters category` through the
+  junos-mcp-server — **Not relay-blocked, with one syntax correction.** The bare
+  `predefined-attacks filters category` form is a syntax error (`syntax error,
+  expecting <data>`) — it requires a category argument.
+  `show security idp predefined-attacks filters category HTTP` returned 11,214 lines.
+  `show security idp attack detail <name>` and `... description <name>` both
+  returned full output.
+
+- [x] Pipe modifiers through junos-mcp-server `execute_junos_command` —
+  **Confirmed working**, including chained modifiers (`| match "…" | count`).
+
+- [ ] `repeat=N` in `IDP_ATTACK_LOG_EVENT` — **blocked: needs an active policy
+  and live attack traffic** (a device write plus traffic generation).
+
 - [ ] `commit confirmed` with IDP configured, on vSRX and one Branch SRX
-  (Juniper KB21334 reports it unsupported on Branch SRX with IDP).
+  (Juniper KB21334 reports it unsupported on Branch SRX with IDP) — **blocked:
+  needs a real commit.** Additionally blocked on the Branch SRX half: `srx345`,
+  the lab's only physical Branch SRX, was unreachable on 2026-09-23 ("No route to
+  host", 192.168.1.210). The KB21334 question cannot be answered until it is back.
+
 - [ ] `show security idp policy-commit-status` output before, during, and after
-  a policy load; confirm the "loaded successfully" wording.
-- [ ] `commit check` with a bogus predefined attack name in a rule — rejected,
-  and is the error displayed? (KB31478)
-- [ ] `commit check` of the Step 4 draft as written, including the required
-  flow-type statement for `stream` and `http-*` contexts.
-- [ ] Bare `protocol-binding tcp` versus `tcp minimum-port … maximum-port …`
-  under `commit check`.
+  a policy load — **blocked: needs an actual policy load.** The "before" state was
+  captured read-only and reads `Active policy not configured or Active policy not
+  modified`; "during" and "after" states require a real policy load.
+
 - [ ] `http-url-parsed` versus `http-get-url-parsed` against GET and POST test
-  requests in `no-action`.
-- [ ] `\[union\]` case-insensitive operator against `UNION`, `Union`, `union`.
-- [ ] `show security idp attack detail|description <name>` and
-  `show security idp predefined-attacks filters category` through Juniper's
-  junos-mcp-server — confirm they are not relay-blocked.
-- [ ] Pipe modifiers through junos-mcp-server `execute_junos_command`.
-- [ ] `file copy /var/log/<file> /var/tmp/<file>-<ts>` for the archive step.
+  requests in `no-action` — **blocked: needs traffic.**
+
+- [ ] `\[union\]` case-insensitive operator against `UNION`, `Union`, `union` —
+  **pattern is syntactically valid** at commit check in an `http-url-parsed`
+  context; **match behavior blocked: needs traffic.**
+
+- [ ] `file copy /var/log/<file> /var/tmp/<file>-<ts>` for the archive step —
+  **blocked: a device write.**
+
+**Environmental blocker:** closing this gate to its own stated standard ("a vSRX
+with an IDP license and a current attack database") is currently not possible
+with a device that is free to use. `vsrx-prod` has the current database (3945,
+17 Sep 2026) but is tagged `protected` in Proxmox and is off-limits.
+`infra-vsrx` is licensed and usable but its database is 3929 (23 Jul 2026),
+sixteen revisions stale. `vsrx-ci` has neither — `IDP-SIG license not installed`
+and no attack database at all. Closing the gate properly needs either a signature
+update on `infra-vsrx` (a write) or an explicit exemption to use `vsrx-prod`.
 
 ## Tooling and operational skills
 

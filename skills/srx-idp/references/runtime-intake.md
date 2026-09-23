@@ -24,27 +24,43 @@ platform or framework basis, evidence quality, then output preference.
 {
   "questions": [
     {
-      "id": "idpt_task",
-      "ask_when": "The requested activity is absent.",
-      "header": "Task",
-      "question": "What should this IDP triage run accomplish?",
+      "id": "idp_workflow",
+      "ask_when": "Whether to triage existing detections or design a custom signature is unclear.",
+      "header": "Workflow",
+      "question": "Which IDP workflow should this run use?",
       "options": [
         {
-          "label": "Analyze and recommend (Recommended)",
-          "description": "Read detections and policy state, then propose a reviewed change without committing."
+          "label": "Triage detections (Recommended)",
+          "description": "Read existing IDP logs and policy state, then propose monitor-to-enforce changes."
         },
         {
-          "label": "Analysis only",
-          "description": "Report what fired and what each rule currently does, with no change proposal."
-        },
-        {
-          "label": "Recommend and apply",
-          "description": "Propose a change and, after separate explicit approval, commit it under confirmed commit."
+          "label": "Custom signature",
+          "description": "Check existing coverage, draft a signature, and validate syntax without activating."
         }
       ]
     },
     {
-      "id": "idpt_evidence",
+      "id": "idp_depth",
+      "ask_when": "The level of action to take is absent.",
+      "header": "Depth",
+      "question": "How far should this run go?",
+      "options": [
+        {
+          "label": "Recommend (Recommended)",
+          "description": "Propose a reviewed change without committing."
+        },
+        {
+          "label": "Analysis only",
+          "description": "Report findings with no change proposal."
+        },
+        {
+          "label": "Recommend and apply",
+          "description": "Propose and, after separate explicit approval, commit under confirmed commit."
+        }
+      ]
+    },
+    {
+      "id": "idp_evidence",
       "ask_when": "It is unclear where IDP detections should be read from.",
       "header": "Evidence",
       "question": "Where should IDP detections be read from?",
@@ -64,7 +80,7 @@ platform or framework basis, evidence quality, then output preference.
       ]
     },
     {
-      "id": "idpt_log_size",
+      "id": "idp_log_size",
       "ask_when": "The on-box log file is too large to read in one pull.",
       "header": "Large log",
       "question": "How should an IDP log too large for one pull be handled?",
@@ -84,7 +100,47 @@ platform or framework basis, evidence quality, then output preference.
       ]
     },
     {
-      "id": "idpt_platform",
+      "id": "idp_finding",
+      "ask_when": "The finding lacks a concrete request, payload, or response sample.",
+      "header": "Finding",
+      "question": "What evidence of the finding is available?",
+      "options": [
+        {
+          "label": "Sanitized sample (Recommended)",
+          "description": "A redacted request, payload, or response that shows the bytes to match."
+        },
+        {
+          "label": "Scanner result only",
+          "description": "A scanner or pentest finding name; the pattern must be derived and marked unproven."
+        },
+        {
+          "label": "Packet capture",
+          "description": "A sanitized capture reviewed locally, never pushed through the device transport."
+        }
+      ]
+    },
+    {
+      "id": "idp_scope",
+      "ask_when": "Where the signature will be enforced is unstated.",
+      "header": "Scope",
+      "question": "Where should the signature apply?",
+      "options": [
+        {
+          "label": "One lab host (Recommended)",
+          "description": "Scope the rule by destination address to a single lab or test target."
+        },
+        {
+          "label": "Named production hosts",
+          "description": "Scope to specific hosts and require a false-positive review before enforcement."
+        },
+        {
+          "label": "Device-wide",
+          "description": "Apply broadly; stays in monitor mode until a false-positive review is complete."
+        }
+      ]
+    },
+    {
+      "id": "idp_platform",
       "ask_when": "Model, Junos release, or chassis-cluster state is absent and affects the commands used.",
       "header": "Platform",
       "question": "How should missing SRX model, release, or cluster details be handled?",
@@ -104,7 +160,7 @@ platform or framework basis, evidence quality, then output preference.
       ]
     },
     {
-      "id": "idpt_action",
+      "id": "idp_action",
       "ask_when": "Enforcement is proposed and no action has been validated for this traffic.",
       "header": "Action",
       "question": "Which enforcement action should the proposal use?",

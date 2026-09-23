@@ -140,7 +140,7 @@ def main() -> int:
         if any(destination.iterdir()):
             raise SystemExit("unknown installer family wrote to its destination")
 
-    # --all -y --dir <tmp> installs exactly 31 skills
+    # --all -y --dir <tmp> installs all expected skills
     with tempfile.TemporaryDirectory(prefix="fwskills-all-") as temp:
         destination = Path(temp)
         result = run("--all", "-y", "--dir", str(destination))
@@ -181,7 +181,7 @@ def main() -> int:
     # --dir is mandatory here even though nothing should be written: with -y
     # and no --dir the installer targets the caller's real ~/.claude/skills,
     # and if this rejection ever regresses to leaving the selection empty the
-    # non-interactive fallback installs all 31 skills there before the
+    # non-interactive fallback installs all skills there before the
     # assertion below runs. A rejection test must not rely on the behaviour it
     # is testing to stay off the workstation. AGENTS.md: installation tests
     # must target disposable paths.
@@ -223,11 +223,12 @@ def main() -> int:
                 f"--uninstall --all left {len(remaining)} skills: {sorted(remaining)}"
             )
 
+    families_count = len(EXPECTED_FAMILIES)
     print(
-        "OK: installer/package inventories match; installer lists and installs "
-        "31 skills with byte-identical required artifacts across 5 families "
-        "and explicit selections; rejects invalid families and skills; "
-        "uninstalls correctly"
+        f"OK: installer/package inventories match; installer lists and installs "
+        f"{len(EXPECTED_ALL)} skills with byte-identical required artifacts across {families_count} families "
+        f"and explicit selections; rejects invalid families and skills; "
+        f"uninstalls correctly"
     )
     return 0
 

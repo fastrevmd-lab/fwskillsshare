@@ -85,12 +85,7 @@
     "reviewed": false
   },
   {
-    "name": "srx-idp-triage",
-    "family": "srx",
-    "reviewed": false
-  },
-  {
-    "name": "srx-custom-signature-builder",
+    "name": "srx-idp",
     "family": "srx",
     "reviewed": false
   },

@@ -1,28 +1,24 @@
 # Changelog
 
-## Unreleased — SRX IDP triage and custom signature skills (draft)
+## Unreleased — SRX IDP skill (draft)
 
-**srx-idp-triage** v0.1.0 and **srx-custom-signature-builder** v0.1.0, both
-drafts. Contributed by Javier Grizzuti (@jgrizzuti) in #70 from lab work against
-Juniper's junos-mcp-server, then revised before merge:
+**srx-idp** v0.1.0, a draft skill merging IDP detection triage and custom signature authoring. Contributed by Javier Grizzuti (@jgrizzuti) in #70 from lab work against Juniper's junos-mcp-server, revised before merge, then merged into a single skill. The catalog gains one skill, from 29 to 30.
 
-- Packaged to repository standards — frontmatter, runtime intake, Codex
-  metadata, inventory and installer entries.
-- Safety gates added: no `clear log` without archiving and separate approval;
-  no commit used as an attack-name lookup (`show security idp attack detail`
-  and `commit check` instead); commits use a rollback window, and the plain
-  commit in junos-mcp-server's `load_and_commit_config` is called out.
-- Corrected against Juniper documentation: policy load is verified with
-  `show security idp policy-commit-status`, not `Policy Name` in
-  `show security idp status`; `protocol-binding tcp` needs `minimum-port`;
-  the DFA `\[...\]` case-insensitive operator replaces hand-built character
-  classes; the "relay limitation" commands were not valid Junos syntax.
-- Monitor-only rules are named `DETECT-` rather than `BLOCK-`.
+Covers IDP detection triage — build the active rule table, read logs safely, monitor-to-enforce escalation behind an approval gate — and custom signature design with read-only coverage checks, context/direction/binding choice, false-positive-aware patterns, `commit check` validation, and monitor-mode proof before enforcement.
+
+- Packaged to repository standards — frontmatter, runtime intake, Codex metadata, inventory and installer entries.
+- Safety gates: no `clear log` without archiving and separate approval; no commit used as an attack-name lookup (`show security idp attack detail` and `commit check` instead); commits use a rollback window, and the plain commit in junos-mcp-server's `load_and_commit_config` is called out.
 - Lab signatures moved to a reference file with false-positive warnings.
 - Juniper junos-mcp-server behavior moved to a version-labelled reference file.
 
-Remaining `[unverified]` items are tracked as a vSRX validation gate in
-[TODO.md](./TODO.md).
+Hardware validation on 2026-09-23 (SRX345, Junos 21.2R3-S6.11) falsified three documented claims and found one mandatory statement the skill had omitted:
+
+- **`commit check` does not reject an unknown predefined attack name** — it accepted `"Non-Existent-Attack"` silently, making passive validation unusable. The skill's `commit check` validation strategy is removed, and the remaining attack-name lookup remains read-only via `show security idp attack detail`.
+- **`minimum-port` is not required on `protocol-binding tcp`** — an unbounded binding committed cleanly, contradicting both the skill's rule and the vendor documentation the skill had cited. The skill's minimum-port requirement is removed.
+- **No flow-type statement is required** — signatures with no explicit `ip` or `service` flow type committed and became active without it. The skill's flow-type requirement is removed.
+- **`direction` is mandatory** — every signature lacking it was rejected at commit with `direction statement missing`. The skill now requires `direction client-to-server` or `direction server-to-client` and explains the scoping semantics: client-to-server applies the pattern to the flow initiator's data, server-to-client to the responder's.
+
+Remaining `[unverified]` items are tracked as a vSRX validation gate in [TODO.md](./TODO.md).
 
 ## 1.5.0 — SRX NTP process statement, documentation integrity, inventory enforcement
 
