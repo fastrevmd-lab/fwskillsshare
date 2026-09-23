@@ -2,9 +2,9 @@
 
 Round-by-round review history for the skills in this repository. Summary and caveat live in the [README](./README.md#quality-and-review).
 
-**26 of the 30 skills** have passed independent technical review. The exceptions
-are `clearpass-proxmox-deploy`, which ships as a draft and is described at the end
-of this page, the draft `srx-idp`, and `parsing-firepower-configs` and `srx-syslog-logging`, which have not yet been through the
+**26 of the 31 skills** have passed independent technical review. The exceptions
+are `clearpass-proxmox-deploy`, `csrx-proxmox-deploy`, and `srx-idp`, which ship as drafts,
+while `parsing-firepower-configs` and `srx-syslog-logging` have not yet been through the
 two-stage review described below. The original 21
 were first reviewed on 2026-06-30, then re-reviewed on 2026-07-02 with a
 two-stage process: an OpenAI Codex CLI review per skill (vendor command/syntax
@@ -29,8 +29,8 @@ The 26th skill, `srx-initial-setup`, was validated on 2026-08-25 by execution ra
 | SRX operational playbooks | 13 | 11 / 13 |
 | NGFW compliance and STIG playbooks | 7 | 7 / 7 |
 | Cross-vendor tooling (audit · convert · diff) | 3 | 3 / 3 |
-| Security management and NAC deployment | 2 | 1 / 2 |
-| **Total** | **30** | **26 / 30** |
+| Security management and NAC deployment | 3 | 1 / 3 |
+| **Total** | **31** | **26 / 31** |
 
 The later `srx-disa-stig-compliance` addition completed an independent review on
 2026-07-22. That review verified the NIST checklist 657 / DISA Y25M01 artifact,

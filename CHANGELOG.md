@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased — SRX IDP skill (draft)
+## 1.7.0 — SRX IDP skill (draft)
 
-**srx-idp** v0.1.0, a draft skill merging IDP detection triage and custom signature authoring. Contributed by Javier Grizzuti (@jgrizzuti) in #70 from lab work against Juniper's junos-mcp-server, revised before merge, then merged into a single skill. The catalog gains one skill, from 29 to 30.
+**srx-idp** v0.1.0, a draft skill merging IDP detection triage and custom signature authoring. Contributed by Javier Grizzuti (@jgrizzuti) in #70 from lab work against Juniper's junos-mcp-server, revised before merge, then merged into a single skill. The catalog gains one skill, from 30 to 31.
 
 Covers IDP detection triage — build the active rule table, read logs safely, monitor-to-enforce escalation behind an approval gate — and custom signature design with read-only coverage checks, context/direction/binding choice, false-positive-aware patterns, `commit check` validation, and monitor-mode proof before enforcement.
 
@@ -20,6 +20,39 @@ Hardware validation on 2026-09-23 (SRX345, Junos 21.2R3-S6.11) falsified three d
 - **`direction` is mandatory** — every signature lacking it was rejected at commit with `direction statement missing`. The skill now requires `direction client-to-server` or `direction server-to-client` and explains the scoping semantics: client-to-server applies the pattern to the flow initiator's data, server-to-client to the responder's.
 
 Remaining `[unverified]` items are tracked as a vSRX validation gate in [TODO.md](./TODO.md).
+
+## 1.6.0 — cSRX container firewall deployment on Proxmox
+
+**csrx-proxmox-deploy** v0.1.0, a new skill — deploying a Juniper cSRX container
+firewall on Proxmox VE, written from an end-to-end build rather than from vendor
+documentation. Ships as a **draft**: validated by execution on Proxmox VE 9.2.20
+with cSRX 26.2R1.7 in both secure-wire and routing modes, and not validated on any
+other cSRX release or a second estate.
+
+The build's value is in failures that do not announce themselves, so every entry
+leads with the observed symptom. The two most expensive:
+
+- **`--cpu host` is mandatory.** Proxmox's default CPU model does not expose SSSE3,
+  and `srxpfe` initialises DPDK's EAL even at `CSRX_PACKET_DRIVER=interrupt`.
+  Without it the container stays `Up`, every control-plane daemon looks healthy,
+  and there is no forwarding plane at all — presenting as
+  `usp_ipc_client_open: failed to connect to the server`.
+- **Docker macvlan needs `-o macvlan_mode=passthru`.** `bridge` mode never delivers
+  unicast frames addressed to a foreign MAC regardless of promiscuous flags, which
+  is exactly what cSRX does in secure-wire.
+
+Also records the `CSRX_*` surface split by env-driven versus silently hardcoded
+(`CSRX_JUNIPER_CONFIG` discards any `-e` value; `CSRX_JUNOS_CONFIG` is the real
+knob), how to rediscover that table for a future release, cSRX's operational CLI
+gaps against vSRX, and a verification methodology built on the rule that every
+check must be capable of the opposite result.
+
+Undocumented in any vendor material available for this build, cSRX 26.2R1.7 carries a
+`CSRX_CRPD` hook and a Linux-FIB-to-Junos-FIB route-import path. It is recorded as
+read from the image and **never executed**.
+
+Verified with a clean-context retrieval test: 9 of 10 diagnostic questions
+answerable from the skill alone.
 
 ## 1.5.0 — SRX NTP process statement, documentation integrity, inventory enforcement
 
