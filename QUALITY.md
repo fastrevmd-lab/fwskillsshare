@@ -3,7 +3,7 @@
 Round-by-round review history for the skills in this repository. Summary and caveat live in the [README](./README.md#quality-and-review).
 
 **26 of the 31 skills** have passed independent technical review. The exceptions
-are `clearpass-proxmox-deploy`, `csrx-proxmox-deploy`, and `srx-idp`, which ship as drafts,
+are `clearpass-proxmox-deploy`, `csrx-proxmox-deploy`, and `srx-ips`, which ship as drafts,
 while `parsing-firepower-configs` and `srx-syslog-logging` have not yet been through the
 two-stage review described below. The original 21
 were first reviewed on 2026-06-30, then re-reviewed on 2026-07-02 with a

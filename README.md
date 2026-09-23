@@ -191,7 +191,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**31 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem or ClearPass deployment request, or compliance language in your message or a pasted config. 26 of the 31 packages have completed the review record below; `clearpass-proxmox-deploy`, `csrx-proxmox-deploy`, and `srx-idp` ship as drafts, while `parsing-firepower-configs` and `srx-syslog-logging` have not yet been through the two-stage review. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
+**31 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem or ClearPass deployment request, or compliance language in your message or a pasted config. 26 of the 31 packages have completed the review record below; `clearpass-proxmox-deploy`, `csrx-proxmox-deploy`, and `srx-ips` ship as drafts, while `parsing-firepower-configs` and `srx-syslog-logging` have not yet been through the two-stage review. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 Extended notes on the compliance and SRX playbooks — what they cover and when to reach for one — are in **[SKILLS.md](./SKILLS.md)**. Every skill also documents itself in its own `SKILL.md`, linked above.
 
@@ -220,7 +220,7 @@ Actionable Junos playbooks — commands, design guidance, verification, troubles
 - **[srx-dynamic-ip-feed](./skills/srx-dynamic-ip-feed/SKILL.md)** — Dynamic IP objects from HTTPS feed servers: `.tgz` bundles, cert validation, basic-auth / mTLS, `ipfd` log interpretation.
 - **[srx-license-signature-maintenance](./skills/srx-license-signature-maintenance/SKILL.md)** — AppID and IDP/IPS entitlement audit, license installation, and offline signature updates behind two independent approval gates, with secret-safe license handling, per-node chassis-cluster verification, pilot-then-batch rollout, and condition-based polling.
 - **[srx-initial-setup](./skills/srx-initial-setup/SKILL.md)** — *(v1.4.0)* First-time SRX bring-up: read-only entry-state assessment, Branch factory-default handling, management plane, interfaces and zones, starter screens, a minimal baseline policy, and an entitlement readout that routes onward. Every device write runs under a per-stage gate and confirmed commit.
-- **[srx-idp](./skills/srx-idp/SKILL.md)** — *(v0.1.0, draft)* IDP detection triage and custom signature authoring: build the active rule table, read logs safely, monitor-to-enforce escalation behind an approval gate, and custom signature design with read-only coverage checks, context/direction/binding choice, false-positive-aware patterns, `commit check` validation, and monitor-mode proof before enforcement.
+- **[srx-ips](./skills/srx-ips/SKILL.md)** — *(v0.1.0, draft)* IDP detection triage and custom signature authoring: build the active rule table, read logs safely, monitor-to-enforce escalation behind an approval gate, and custom signature design with read-only coverage checks, context/direction/binding choice, false-positive-aware patterns, `commit check` validation, and monitor-mode proof before enforcement.
 - **[srx-syslog-logging](./skills/srx-syslog-logging/SKILL.md)** — *(v1.1.0, live-validated 2026-09-12; independent review still open)* External syslog and SIEM delivery: the Routing Engine vs PFE logging split, choosing a source interface per log type, the `fxp0` and `mgmt_junos` rules, Security Director Cloud onboarding, and why a non-default syslog port can be discarded silently.
 
 ### Cross-vendor tooling
@@ -256,7 +256,7 @@ Install with `--family deployment`.
 ## Quality and Review
 
 **26 of the 31 skills** have passed independent technical review. The exceptions
-are `clearpass-proxmox-deploy`, `csrx-proxmox-deploy`, and `srx-idp`, which ship as drafts,
+are `clearpass-proxmox-deploy`, `csrx-proxmox-deploy`, and `srx-ips`, which ship as drafts,
 while `parsing-firepower-configs` and `srx-syslog-logging` have not yet been through
 the two-stage review. Four review rounds, the
 live-device validation runs, what those runs falsified, and the per-family table

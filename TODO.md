@@ -202,7 +202,7 @@ inventory enforcement".
   `match dynamic-application` are complete; the rule-name-versus-action and
   feed-transport checks remain under P3 above.
 
-### vSRX validation gate — `srx-idp`
+### vSRX validation gate — `srx-ips`
 
 The skill ships as a **v0.1.0 draft** and must not be marked reviewed until
 every `[unverified]` item is checked on a vSRX with an IDP license and a current

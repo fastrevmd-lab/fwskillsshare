@@ -44,7 +44,7 @@ declare -a SRX=(
     "srx-advpn"
     "srx-chassis-cluster-proxmox"
     "srx-syslog-logging"
-    "srx-idp"
+    "srx-ips"
 )
 
 declare -a TOOLING=(
@@ -80,6 +80,7 @@ declare -a DEPLOYMENT=(
 declare -a RETIRED_SKILLS=(
     "srx-idp-triage"
     "srx-custom-signature-builder"
+    "srx-idp"
 )
 
 TOTAL_SKILLS=$((

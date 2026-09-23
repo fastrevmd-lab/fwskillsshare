@@ -1,5 +1,5 @@
 ---
-name: srx-idp
+name: srx-ips
 description: Manage the complete SRX IDP lifecycle - triage existing detections and propose monitor-to-enforce changes, or design and validate custom signatures for findings the predefined attack database does not cover. Reads IDP policy and logs, reports what fired and what each rule did, stages reviewed changes behind approval gates, checks existing coverage read-only, chooses context/direction/pattern, and validates syntax without activating. Use when reviewing IDP logs, investigating suspicious traffic, deciding which no-action rules to enforce, when a scanner finding needs IDP detection, or when extending IDP coverage. Not for attack database updates or IDP license maintenance.
 version: 0.1.0
 author:
