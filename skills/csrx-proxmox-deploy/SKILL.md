@@ -528,22 +528,9 @@ correctly moments earlier — sample mid-test, not after.
 
 ## Day-2 operations
 
-- **A forwarding-mode change is a rebuild, not a toggle.** Interface
-  addressing, zone bindings, and policy all have to be redone; there is no
-  live migration path from `wire` to `routing` or back.
-- **The offload fix does not survive a reboot of any host in the path.**
-  After any reboot of an endpoint or the Docker host guest, re-check
-  `InCsumErrors` before trusting a throughput measurement — don't assume
-  the earlier `ethtool -K` settings carried forward.
-- **A container reporting `Up` is not a health check.** The routine health
-  signal is `srxpfe` visibly running and `show security flow session`
-  succeeding rather than erroring with `usp_ipc_client_open` — check this
-  after any container restart, host reboot, or CPU-model change.
-- **Before moving to a different cSRX release**, re-derive the `CSRX_*`
-  surface for that image rather than assuming this build's table still
-  applies — see `references/csrx-environment-variables.md`.
-- **Keep the licence outside the image and out of version control.**
-  Reference it only via `CSRX_LICENSE_FILE` and a bind mount.
+Routine operation, log access, policy changes on a running container, and the
+**configuration backup and restore procedure that rollback depends on**:
+**`references/csrx-day-2-operations.md`**.
 
 ## Rollback
 
@@ -566,13 +553,9 @@ are bind-mounted in. Rollback is bounded:
   >
   > Before removing a container you may want to keep:
   >
-  > ```bash
-  > docker exec <name> cli -c 'show configuration | display set' > csrx-config.set
-  > ```
-  >
-  > Restore by bind-mounting it and pointing `CSRX_JUNOS_CONFIG` at the in-container
-  > path (it is `load merge`'d at start if the file exists), or bind-mount a file at
-  > the hardcoded `/config/juniper.conf`. **Keep the original container — stopped,
+  > Export with `show configuration` (**hierarchical** — a `| display set` capture
+  > will not load through the startup path) and restore via `CSRX_JUNOS_CONFIG`.
+  > Full procedure: `references/csrx-day-2-operations.md`. **Keep the original container — stopped,
   > not removed — until the replacement has passed verification.** A stopped
   > container still holds its writable layer; a removed one does not.
 - **Host-guest-level:** if the CPU model or NIC configuration was changed,
