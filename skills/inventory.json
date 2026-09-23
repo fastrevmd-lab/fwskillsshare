@@ -85,6 +85,16 @@
     "reviewed": false
   },
   {
+    "name": "srx-idp-triage",
+    "family": "srx",
+    "reviewed": false
+  },
+  {
+    "name": "srx-custom-signature-builder",
+    "family": "srx",
+    "reviewed": false
+  },
+  {
     "name": "firewall-best-practices-audit",
     "family": "tooling",
     "reviewed": true

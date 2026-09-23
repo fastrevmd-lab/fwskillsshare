@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRX IDP Log Triage"
+  short_description: "Triage SRX IDP detections and propose monitor-to-enforce changes"
+  default_prompt: "Use $srx-idp-triage to review the IDP detections on this SRX and recommend enforcement changes."

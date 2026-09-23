@@ -1,0 +1,4 @@
+interface:
+  display_name: "SRX Custom IDP Signature Builder"
+  short_description: "Design, validate, and stage a custom SRX IDP signature"
+  default_prompt: "Use $srx-custom-signature-builder to design and validate a custom IDP signature for this finding."
