@@ -188,6 +188,16 @@ docker network create -d macvlan \
 One network per parent NIC — `passthru` gives a single child the entire
 parent, which is why only one network per parent is valid.
 
+> **Secure-wire needs two *different* `--subnet` values even though both
+> segments share one transit subnet.** Docker's IPAM refuses a second network
+> whose pool overlaps the first (`Pool overlaps with other one on this address
+> space`) — it does not care that the parent NICs differ. But wire mode is a
+> Layer-2 splice: cSRX holds no address on either data interface and never
+> consults these pools. So give the second network an **unused dummy CIDR**
+> purely to satisfy the driver, and address the hosts either side into the one
+> real transit subnet as normal. In routing mode the two `--subnet` values are
+> real and must match the addresses cSRX will carry.
+
 ### 4. Disable offload on every hop before any TCP test
 
 ```bash
@@ -429,56 +439,15 @@ Follow "Verification methodology" below — do not stop at "traffic passes."
 
 ## The performance envelope
 
-None of the gotchas above is "cSRX is slow" — deliberately. Single-digit-
-Mbit/s TCP throughput on this stack is a **baseline, not a fault**. A reader
-who measures a few Mbit/s and works through the gotchas looking for a cause
-will most likely land on Gotcha 3 (`InCsumErrors`), find it already zero,
-and have nowhere left to go.
+**Single-digit Mbit/s TCP on this stack is a baseline, not a fault.** The
+reference build measured roughly **8.8 Mbit/s in routing mode** and
+**0.2 Mbit/s in secure-wire**, on a local virtual path where Gbit/s would be
+expected, with `InCsumErrors` at zero in both. Do not start a corruption hunt
+(Gotcha 3) on a throughput number alone — check `InCsumErrors` first, and if it
+is already zero, the number is probably normal for this stack.
 
-> **Sample size: one run per mode, on one build.** These figures come from a
-> single `iperf3` run in each forwarding mode on a single cSRX release and host.
-> Run-to-run variance was never measured, so treat them as an order-of-magnitude
-> expectation — "single-digit Mbit/s, not Gbit/s" — rather than a number to
-> compare against precisely. The *relative* finding (routing roughly two orders
-> faster than secure-wire, with `CSRX_SIZE` and `CSRX_PACKET_DRIVER` held
-> constant) is the durable part; the absolute figures are one data point each.
-> `CSRX_PACKET_DRIVER=poll` and `dpdk` were never benchmarked, so the driver
-> hypothesis for the residual gap remains untested.
-
-**Observed** (`CSRX_SIZE=large`, `CSRX_PACKET_DRIVER=interrupt`, identical
-across both runs):
-
-| Forwarding mode | Sender bitrate | Retransmits | `InCsumErrors` |
-|---|---|---|---|
-| Secure-wire (L2 bump-in-the-wire) | 210 Kbit/s | 166 | 0 |
-| Routing (L3, static routes) | 8.81 Mbit/s | 3192 | 0 |
-
-Both are roughly three orders of magnitude below line rate on what is
-otherwise a local veth-chain path with no physical link in it — and neither
-is a checksum-corruption symptom (`InCsumErrors` is 0 in both).
-
-**What the ~42x mode gap does and does not establish.** Holding `CSRX_SIZE`
-and `CSRX_PACKET_DRIVER` constant isolates the forwarding path as the only
-variable between the two runs: if sizing or the interrupt-mode packet driver
-were the dominant bottleneck, both modes would be roughly equally slow, and
-they are not — routing mode's flow-based L3 path (route lookup, TTL
-decrement, a real policy/session lookup) outperforms secure-wire's raw
-byte-splice forwarding by roughly 42x under otherwise identical settings.
-
-**What is still unexplained — do not present this as solved.** Routing
-mode's own 8.81 Mbit/s is itself far below what a local veth path should
-sustain, with zero checksum errors and a congestion window pinned near its
-floor for the full transfer. The leading hypothesis is
-`CSRX_PACKET_DRIVER=interrupt` — a non-DPDK, userspace, per-packet driver
-crossing several virtualization hops — but this is **partly explained, not
-settled**: the packet driver was never varied against a DPDK/poll-mode
-alternative here, so that theory was never isolated the way the mode
-comparison was.
-
-**Practical takeaway.** Single-digit Mbit/s in routing mode, or low hundreds
-of Kbit/s in secure-wire, with `InCsumErrors` at 0, matches this baseline —
-not a new bug. A number *below* this envelope, or a nonzero `InCsumErrors`,
-is the actual signal worth investigating.
+Figures, the mode-gap analysis, the sample-size caveat (one run per mode) and
+what remains unexplained: **`references/csrx-performance-envelope.md`**.
 
 ## The cRPD finding — read from the image, never executed
 
@@ -585,6 +554,27 @@ are bind-mounted in. Rollback is bounded:
 - **Container-level:** `docker stop <name> && docker rm <name>` plus
   `docker network rm` for the macvlan networks it used. Recreate from the
   same image tag and the same `CSRX_*` values.
+
+  > **`docker rm` destroys every Junos commit you have made.** Unless you
+  > bind-mounted a config path, interfaces, zones, policies, static routes and
+  > the syslog configuration all live in the container's writable layer only.
+  > Recreating from the same image and the same `CSRX_*` values returns a
+  > *factory* cSRX, not your device — and it does so silently, because the
+  > container comes up healthy. This is not hypothetical: a rebuild during the
+  > reference build lost its logging configuration exactly this way, and the
+  > deny policy that followed was enforced but unlogged until it was noticed.
+  >
+  > Before removing a container you may want to keep:
+  >
+  > ```bash
+  > docker exec <name> cli -c 'show configuration | display set' > csrx-config.set
+  > ```
+  >
+  > Restore by bind-mounting it and pointing `CSRX_JUNOS_CONFIG` at the in-container
+  > path (it is `load merge`'d at start if the file exists), or bind-mount a file at
+  > the hardcoded `/config/juniper.conf`. **Keep the original container — stopped,
+  > not removed — until the replacement has passed verification.** A stopped
+  > container still holds its writable layer; a removed one does not.
 - **Host-guest-level:** if the CPU model or NIC configuration was changed,
   revert with `qm set` and a **cold** restart — a live reboot will not
   undo a CPU-model change either.
