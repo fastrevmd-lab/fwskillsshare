@@ -104,7 +104,7 @@ in the discovery surface. How much that costs depends on the runtime and version
 Codex 0.147.0 routes discovery through a dynamic selector and treats a flat
 concatenated list as a fallback, truncating metadata to fit its budget rather than
 failing — so the direct token cost is modest and not worth optimizing: all 30
-descriptions together are a few thousand characters, and
+descriptions together are on the order of ten thousand characters, and
 `scripts/check-skill-packages.py` reports the current figure rather than this page
 pinning a number that goes stale. The cost that matters is **selection**: the more
 overlapping descriptions compete, the likelier your agent reaches for a near-miss
@@ -255,8 +255,9 @@ Install with `--family deployment`.
 ## Quality and Review
 
 **26 of the 30 skills** have passed independent technical review. The exceptions
-are `clearpass-proxmox-deploy`, which ships as a draft, and `parsing-firepower-configs`
-and `srx-syslog-logging`, which have not yet been through the two-stage review. Four review rounds, the
+are `clearpass-proxmox-deploy` and `csrx-proxmox-deploy`, which ship as drafts, and
+`parsing-firepower-configs` and `srx-syslog-logging`, which have not yet been through
+the two-stage review. Four review rounds, the
 live-device validation runs, what those runs falsified, and the per-family table
 are recorded in **[QUALITY.md](./QUALITY.md)**.
 
