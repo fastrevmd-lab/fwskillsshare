@@ -13,7 +13,7 @@ Ordered by readiness, not importance. Each entry says what unblocks it.
 
 - [ ] **Independent technical review of `srx-syslog-logging` 1.1.0.** The
   2026-09-12 work was expansion and live validation, which is not review. The
-  README count stays 26/29 until someone other than its author reviews it.
+  README count stays 26/31 until someone other than its author reviews it.
 - [ ] **Why `show security log transport` reports nothing under `mode stream`**
   on 25.4R1.12 and 26.2R1.7, while `show security log statistics` returns real
   counters. Needs either documentation on the counter's scope or an activated
