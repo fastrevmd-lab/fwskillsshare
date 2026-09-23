@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.6.0 — cSRX container firewall deployment on Proxmox
+
+**csrx-proxmox-deploy** v0.1.0, a new skill — deploying a Juniper cSRX container
+firewall on Proxmox VE, written from an end-to-end build rather than from vendor
+documentation. Ships as a **draft**: validated by execution on Proxmox VE 9.2.20
+with cSRX 26.2R1.7 in both secure-wire and routing modes, and not validated on any
+other cSRX release or a second estate.
+
+The build's value is in failures that do not announce themselves, so every entry
+leads with the observed symptom. The two most expensive:
+
+- **`--cpu host` is mandatory.** Proxmox's default CPU model does not expose SSSE3,
+  and `srxpfe` initialises DPDK's EAL even at `CSRX_PACKET_DRIVER=interrupt`.
+  Without it the container stays `Up`, every control-plane daemon looks healthy,
+  and there is no forwarding plane at all — presenting as
+  `usp_ipc_client_open: failed to connect to the server`.
+- **Docker macvlan needs `-o macvlan_mode=passthru`.** `bridge` mode never delivers
+  unicast frames addressed to a foreign MAC regardless of promiscuous flags, which
+  is exactly what cSRX does in secure-wire.
+
+Also records the `CSRX_*` surface split by env-driven versus silently hardcoded
+(`CSRX_JUNIPER_CONFIG` discards any `-e` value; `CSRX_JUNOS_CONFIG` is the real
+knob), how to rediscover that table for a future release, cSRX's operational CLI
+gaps against vSRX, and a verification methodology built on the rule that every
+check must be capable of the opposite result.
+
+Undocumented in any vendor material available for this build, cSRX 26.2R1.7 carries a
+`CSRX_CRPD` hook and a Linux-FIB-to-Junos-FIB route-import path. It is recorded as
+read from the image and **never executed**.
+
+Verified with a clean-context retrieval test: 9 of 10 diagnostic questions
+answerable from the skill alone.
+
 ## 1.5.0 — SRX NTP process statement, documentation integrity, inventory enforcement
 
 **srx-initial-setup** v1.4.0 and **sd-onprem-proxmox-deploy** v1.2.0 — the hidden

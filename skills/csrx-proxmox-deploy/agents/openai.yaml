@@ -1,0 +1,4 @@
+interface:
+  display_name: "cSRX Proxmox Deploy"
+  short_description: "Deploy a cSRX container firewall on Proxmox VE"
+  default_prompt: "Use $csrx-proxmox-deploy to deploy and validate a Juniper cSRX container firewall as a Docker workload on a Proxmox VE KVM guest."
