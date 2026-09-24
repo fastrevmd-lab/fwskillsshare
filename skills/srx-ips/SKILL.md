@@ -6,6 +6,7 @@ author:
   - fastrevmd-lab
   - Claude
   - GPT
+  - jgrizzuti
 license: MIT
 metadata:
   hermes:
