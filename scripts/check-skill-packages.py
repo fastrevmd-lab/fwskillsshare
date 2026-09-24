@@ -16,6 +16,9 @@ MANIFEST = ROOT / "skills" / "inventory.json"
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---(?:\n|$)", re.DOTALL)
 EXPECTED_AUTHORS = ["fastrevmd-lab", "Claude", "GPT"]
+# Outside contributors credited on a specific package, listed after the standard
+# authors. Keyed by skill so an unexpected author anywhere else still fails.
+CONTRIBUTING_AUTHORS = {"srx-ips": ["jgrizzuti"]}
 RAW_REFERENCE_MAX_LINES = 200
 RAW_DUMP_MARKERS = (
     "Skip main navigation",
@@ -116,6 +119,9 @@ def main() -> int:
         errors.append(f"missing expected skills: {', '.join(missing_skills)}")
     if unexpected_skills:
         errors.append(f"unexpected skills: {', '.join(unexpected_skills)}")
+    stale_contributors = sorted(set(CONTRIBUTING_AUTHORS) - actual_skill_names)
+    if stale_contributors:
+        errors.append(f"CONTRIBUTING_AUTHORS names missing skills: {', '.join(stale_contributors)}")
 
     for skill_file in skill_files:
         skill_dir = skill_file.parent
@@ -151,9 +157,10 @@ def main() -> int:
             errors.append(f"{skill_file}: version is required for Hermes package metadata")
         if fields.get("license") != "MIT":
             errors.append(f"{skill_file}: license must be MIT")
-        if authors != EXPECTED_AUTHORS:
+        expected_authors = EXPECTED_AUTHORS + CONTRIBUTING_AUTHORS.get(skill_dir.name, [])
+        if authors != expected_authors:
             errors.append(
-                f"{skill_file}: author must be exactly {EXPECTED_AUTHORS!r}; found {authors!r}"
+                f"{skill_file}: author must be exactly {expected_authors!r}; found {authors!r}"
             )
         if "metadata" not in fields:
             errors.append(f"{skill_file}: metadata is required for Hermes compatibility")
