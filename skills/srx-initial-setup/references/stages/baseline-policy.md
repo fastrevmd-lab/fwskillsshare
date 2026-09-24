@@ -101,8 +101,8 @@ Global policies are evaluated in the order they appear in the configuration. The
 
 **Zone-pair exceptions route by platform.** When the caller opts into one of the three exceptions documented in `skills/srx-policy/SKILL.md`, section "Enforced Global-Policy Output Contract", this skill does not generate policy at all — the baseline-policy stage routes policy design as follows:
 
-- **Non-Branch platforms** (SRX1600, SRX4120, SRX4300, SRX4700, SRX5000, vSRX): route to `skills/srx-policy/`, which owns zone-pair design for non-Branch platforms and already has a working zone-pair generation path.
-- **Branch platforms** (SRX300 series, SRX400 series): `skills/srx-policy/` scopes itself to "non-Branch SRX platforms" (see its description and scope statement). **No skill in this repository currently owns Branch zone-pair policy design.** The operator designs it manually, or extends and validates `srx-policy` for Branch platforms first.
+- **All platforms**, Branch and non-Branch alike (SRX300/SRX400 series, SRX1600, SRX4120, SRX4300, SRX4700, SRX5000, vSRX): route to `skills/srx-policy/`, which owns zone-pair design and has a working zone-pair generation path.
+- **Branch platforms** (SRX300 series, SRX400 series) route to `skills/srx-policy/` as well, as of 2026-09-12. It previously excluded Branch; the exclusion had no recorded rationale and was removed after the core policy constructs were validated on SRX345 hardware (`docs/skill-tests/2026-09-12-srx-policy-branch-srx345-validation.md`). Note the limit of that validation: policy **structure** is confirmed on Branch, while licence-gated service attachments (AppID/AppFW, NGWF, EWF, SecIntel, ATP, IDP) were not exercised — see the platform and licensing reference in `srx-policy`.
 
 The three named exceptions are:
 
@@ -122,7 +122,7 @@ The three named exceptions are:
 
 **Rationale:** See `skills/srx-policy/SKILL.md`, section "Enforced Global-Policy Output Contract" and "Explicit Zone-to-Zone Opt-Out" for the complete reasoning behind this position.
 
-**Verification:** Without an opt-out, the proposed set-format configuration must contain no matches for `set security policies from-zone` and every baseline rule must start with `set security policies global policy` with `match from-zone` and `match to-zone` fields. With an opt-out, this skill proposes no policy configuration at all and the verification check does not apply here — verification belongs to `srx-policy` for non-Branch platforms or to the operator for Branch platforms.
+**Verification:** Without an opt-out, the proposed set-format configuration must contain no matches for `set security policies from-zone` and every baseline rule must start with `set security policies global policy` with `match from-zone` and `match to-zone` fields. With an opt-out, this skill proposes no policy configuration at all and the verification check does not apply here — verification belongs to `srx-policy`, on Branch and non-Branch platforms alike.
 
 
 ## Gaps
@@ -133,7 +133,7 @@ The three named exceptions are:
 - **Severity:** `blocking`
 - **Depends on:** `zone.trust-absent`, `zone.untrust-absent`
 - **Lockout risk:** `false` (creating a policy table does not change traffic flow; policies must be committed and activated)
-- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when a policy configuration exists and is verified by that party, whatever its structure.
+- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy`, on Branch and non-Branch platforms alike. The gap is satisfied when a policy configuration exists and is verified by that party, whatever its structure.
 - **Evidence:** `show configuration security policies global` returns no configuration
 - **Proposal:**
 
@@ -153,7 +153,7 @@ The three named exceptions are:
 - **Severity:** `blocking`
 - **Depends on:** `policy.global-policy-absent`, all `zone.*` gaps closed
 - **Lockout risk:** `false` (adding permit policies does not break existing flows; removing or changing them can)
-- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when outbound DNS, HTTP, HTTPS, and NTP from trust to untrust are verified permitted by that party, whatever the policy structure.
+- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy`, on Branch and non-Branch platforms alike. The gap is satisfied when outbound DNS, HTTP, HTTPS, and NTP from trust to untrust are verified permitted by that party, whatever the policy structure.
 - **Evidence:** `show configuration security policies global` returns no policies, or existing policies do not permit trust-to-untrust outbound traffic for essential services (DNS, HTTP, HTTPS, NTP)
 - **Factory zone-pair interaction:** If — and only if — the `factory.permissive-policy` gap is **open**, **this gap does not run.** Key the handoff to that gap's state, not to the mere presence of any factory zone-pair policy: on a partial device where the broad trust-to-untrust permit-any was already removed but some other factory zone-pair rule survives, `factory.permissive-policy` is not generated (its evidence requires the broad policy), and a presence-based test would skip this gap too, leaving nothing owning creation of the outbound rules. Junos evaluates zone-pair policies before global ones, so adding global rules underneath a factory permit-any produces a table that verifies as configured but is never reached. In that state the cutover is owned end-to-end by `factory.permissive-policy` in `references/factory-default-branch.md`, which deletes the factory policies and creates these same global replacements in a single commit. Record this gap as closed by that commit rather than proposing the policies a second time.
 - **Proposal:**
@@ -220,7 +220,7 @@ The three named exceptions are:
 - **Severity:** `blocking`
 - **Depends on:** `policy.explicit-outbound`
 - **Lockout risk:** `false` (adding a default-deny at the bottom of the table does not block traffic already permitted by earlier rules; it only makes the implicit deny explicit and logged)
-- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when a final catch-all deny with logging is verified present by that party, whatever the policy structure.
+- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy`, on Branch and non-Branch platforms alike. The gap is satisfied when a final catch-all deny with logging is verified present by that party, whatever the policy structure.
 - **Evidence:** `show configuration security policies global` returns policies, but no final deny-all rule with logging exists
 - **Proposal:**
 
@@ -254,7 +254,7 @@ The three named exceptions are:
 - **Severity:** `advisory` (logging is operationally important but not a blocker for connectivity)
 - **Depends on:** `policy.explicit-outbound`, `policy.default-deny-absent`
 - **Lockout risk:** `false`
-- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy` (non-Branch platforms) or to the operator (Branch platforms). The gap is satisfied when session logging on permit and deny rules is verified by that party, whatever the policy structure.
+- **Zone-pair opt-out handoff:** When a zone-pair exception is selected, this gap is transferred to `srx-policy`, on Branch and non-Branch platforms alike. The gap is satisfied when session logging on permit and deny rules is verified by that party, whatever the policy structure.
 - **Evidence:** Policies exist but `show configuration security policies global | match log` returns no logging configuration on permit policies
 - **Proposal:**
 

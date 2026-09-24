@@ -1,7 +1,7 @@
 ---
 name: srx-policy
-description: Design, migrate, configure, audit, and troubleshoot Juniper SRX security policy on Junos 23.x+ non-Branch platforms. Use when handling global or zone policy, address and application objects, AppID, AppFW, NGWF, EWF, SecIntel, ATP, logging, rule order, hit counts, default deny, or cross-VLAN mDNS and SSDP boundaries.
-version: 1.2.5
+description: Design, migrate, configure, audit, and troubleshoot Juniper SRX security policy on Junos 23.x+, including Branch SRX300/SRX400 platforms. Use when handling global or zone policy, address and application objects, AppID, AppFW, NGWF, EWF, SecIntel, ATP, logging, rule order, hit counts, default deny, or cross-VLAN mDNS and SSDP boundaries.
+version: 1.3.0
 author:
   - fastrevmd-lab
   - Claude
@@ -12,6 +12,8 @@ metadata:
     tags: [srx, junos, security-policy, global-policy, zone-policy, appid, appfw, application-firewall, web-filtering, ngwf, next-gen-web-filtering, enhanced-web-filtering, utm, secintel, atp, migration, mdns, ssdp, multicast, cross-vlan-discovery]
     related_skills: [parsing-srx-configs, srx-nat, srx-dynamic-ip-feed, srx-mnha, srx-mpls-in-flow]
   sources:
+    - title: "Platform scope and service licensing (Branch validated 2026-09-12)"
+      local: references/platform-and-licensing.md
     - title: Configuring Security Policies | Junos OS
       author: Juniper Networks
       url: https://www.juniper.net/documentation/us/en/software/junos/security-policies/topics/topic-map/security-policy-configuration.html
@@ -74,7 +76,23 @@ metadata:
 
 ## Overview
 
-Use this skill for Juniper SRX security policy design on Junos 23.x and newer non-Branch SRX platforms. It focuses on the policy layer that decides whether traffic is permitted, denied, logged, counted, or passed into security services such as AppID/AppFW, NextGen Web Filtering (NGWF), Enhanced Web Filtering (EWF), SecIntel, and ATP-backed protections.
+Use this skill for Juniper SRX security policy design on Junos 23.x and newer, **including Branch platforms** (SRX300 and SRX400 series). It focuses on the policy layer that decides whether traffic is permitted, denied, logged, counted, or passed into security services such as AppID/AppFW, NextGen Web Filtering (NGWF), Enhanced Web Filtering (EWF), SecIntel, and ATP-backed protections.
+
+**Branch scope, and its limit.** Core policy design is validated on Branch
+hardware: zone-pair and global policies, `match dynamic-application` unified
+policies, `default-policy deny-all`, address books and address-sets,
+applications and application-sets, session logging and counters all validate on
+an SRX345 running 26.2R1.7 (`commit check`, 2026-09-12 —
+`docs/skill-tests/2026-09-12-srx-policy-branch-srx345-validation.md`). Treat the
+policy layer as the same on Branch as elsewhere.
+
+The **service attachments are a different matter and are not validated here.**
+AppID/AppFW, NGWF, EWF, SecIntel, ATP and IDP/IPS are licence-gated, and the
+Branch device used for validation held no licences, so those paths were
+exercised only as far as the configuration schema. Read
+`references/platform-and-licensing.md` before asserting that a service is
+available on a given Branch platform and release, and say what is entitled
+rather than assuming parity with a higher-end SRX.
 
 ## Enforced Global-Policy Output Contract
 

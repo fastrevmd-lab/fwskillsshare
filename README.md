@@ -209,7 +209,7 @@ Normalize a vendor config into the shared intermediate schema. Everything else c
 
 Actionable Junos playbooks — commands, design guidance, verification, troubleshooting matrices, source attribution.
 
-- **[srx-policy](./skills/srx-policy/SKILL.md)** — Enforced global-policy output with explicit zone-pair opt-outs on 23.x+, AppID/AppFW, NGWF-first web filtering, SecIntel, ATP, hit-count troubleshooting.
+- **[srx-policy](./skills/srx-policy/SKILL.md)** — *(v1.3.0)* Enforced global-policy output with explicit zone-pair opt-outs on 23.x+, now including Branch SRX300/SRX400 after hardware validation, AppID/AppFW, NGWF-first web filtering, SecIntel, ATP, hit-count troubleshooting.
 - **[srx-nat](./skills/srx-nat/SKILL.md)** — Source/destination/static NAT, NAT64/DNS64, CGN/PBA, persistent NAT, hairpin, proxy-ARP, session verification.
 - **[srx-mnha](./skills/srx-mnha/SKILL.md)** — Multi-Node High Availability: routed/default-gateway/hybrid modes, SRGs, ICL/ICD, eBGP/BFD failover, VIPs, DHCP caveats.
 - **[srx-advpn](./skills/srx-advpn/SKILL.md)** — Auto Discovery VPN dynamic spoke-to-spoke shortcuts, suggester/partner roles, multipoint st0, OSPF p2mp, the cert-auth requirement and the `No public key found` fix.
