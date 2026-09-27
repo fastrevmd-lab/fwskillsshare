@@ -2,7 +2,7 @@
 # known false positives in this repo.
 
 [extend]
-useDefault = true
+path = ".gitleaks-vendor.toml"
 
 [[allowlists]]
 description = "Juniper community blog source URLs carry a public CommunityKey query parameter (a forum section ID, not a credential)"
