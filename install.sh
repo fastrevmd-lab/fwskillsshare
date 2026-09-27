@@ -28,7 +28,7 @@
 #   --uninstall           Remove the selected skills from the selected target(s) instead of installing
 #   --force               Overwrite existing skill directories without prompting
 #   -y, --yes             Non-interactive; assume defaults, no prompts
-#   -h, --help            Show help and exit
+#   -h, --help             Show help and exit
 #
 
 set -euo pipefail
@@ -154,10 +154,10 @@ trap cleanup EXIT
 print_banner() {
     echo -e "${C_CYAN}${C_BOLD}"
     cat << 'EOF'
-╔═══════════════════════════════════╗
+╔═══════════════════════════════════════════════╗
 ║  FW Skills Share - Installer                  ║
 ║  fastrevmd-lab/fwskillsshare                  ║
-╚═══════════════════════════════════╝
+╚═══════════════════════════════════════════════╝
 EOF
     echo -e "${C_RESET}"
 }
@@ -178,7 +178,7 @@ Options:
   --uninstall           Remove the selected skills from the selected target(s) instead of installing
   --force               Overwrite existing skill directories without prompting
   -y, --yes             Non-interactive; assume defaults, no prompts
-  -h, --help            Show help and exit
+  -h, --help             Show help and exit
 
 Examples:
   ./install.sh --all --target claude
