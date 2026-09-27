@@ -8,3 +8,25 @@ path = ".gitleaks-vendor.toml"
 description = "Juniper community blog source URLs carry a public CommunityKey query parameter (a forum section ID, not a credential)"
 regexTarget = "line"
 regexes = ['''CommunityKey=[0-9a-fA-F-]+''']
+
+# The new junos-type9-secret vendor rule (MEC-30) also matches $9$ example
+# hashes reproduced from the sourced Juniper MNHA documentation that these
+# three reference files were converted from in their initial commits. The
+# current file content no longer contains any $9$ strings (confirmed via
+# `grep -rn '\$9\$'` over HEAD) — this only exempts the specific historical
+# commits/files where the doc-sourced examples were introduced, so a real
+# secret added to these files afterwards or in any other commit still fires.
+[[allowlists]]
+description = "srx-mnha reference docs: $9$ examples copied from sourced Juniper MNHA documentation (chassis-cluster-to-mnha, mnha basics)"
+condition = "AND"
+commits = ["323840d679e6f9fa3572b42236869ead24f84e30"]
+paths = [
+  '''^skills/srx-mnha/references/source-srx-from-chassis-cluster-to-mnha\.md$''',
+  '''^skills/srx-mnha/references/source-multi-node-high-availability-basics\.md$''',
+]
+
+[[allowlists]]
+description = "srx-mnha reference docs: $9$ examples copied from sourced Juniper MNHA-IPsec documentation"
+condition = "AND"
+commits = ["633ce4988e314f7b2dd9e8fcd2f302108cf54737"]
+paths = ['''^skills/srx-mnha/references/source-mnha-ipsec-and-multiple-routing-instances\.md$''']
