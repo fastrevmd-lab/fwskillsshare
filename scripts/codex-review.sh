@@ -22,7 +22,22 @@
 #
 # Exit status: 0 if a verdict was produced, 1 if the gate did not run.
 # A gate that produces no verdict is NOT a pass — this script says so and fails.
+#
+# This sends your diff to OpenAI's Codex service (off-box, third-party). Not
+# run automatically by any hook, CI job, or `just` target other than
+# `just review`, which a human invokes deliberately. It still requires
+# explicit opt-in below so that running it is never an accident: set
+# FWSKILLS_ALLOW_CODEX_REVIEW=1 to proceed.
 set -uo pipefail
+
+if [ "${FWSKILLS_ALLOW_CODEX_REVIEW:-0}" != "1" ]; then
+  echo "WARNING: this review gate sends your diff to OpenAI's Codex service (off-box)." >&2
+  echo "Refusing to run without explicit opt-in." >&2
+  echo "Set FWSKILLS_ALLOW_CODEX_REVIEW=1 to acknowledge and proceed, e.g.:" >&2
+  echo "  FWSKILLS_ALLOW_CODEX_REVIEW=1 scripts/codex-review.sh" >&2
+  exit 1
+fi
+echo "FWSKILLS_ALLOW_CODEX_REVIEW=1 set — this diff will be sent to OpenAI's Codex service." >&2
 
 LINK="${CODEX_SKILLS_DIR:-$HOME/.agents/skills}/superpowers"
 PARKED="$LINK.gate-parked"
