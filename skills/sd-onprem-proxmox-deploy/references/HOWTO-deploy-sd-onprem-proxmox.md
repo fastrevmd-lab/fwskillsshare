@@ -9,8 +9,8 @@
 
 Proven end-to-end on **SD On-Prem 26.2.1-5348**, Proxmox VE 9.2, managing Junos
 26.2R1.7 vSRX (incl. MNHA pairs). Values in `<angle brackets>` are site-specific;
-the worked example uses the remote lab (SD subnet `10.88.8.0/21`; managed-device
-subnet `192.168.77.0/24`).
+the worked example uses the remote lab (SD subnet `198.51.100.0/21`; managed-device
+subnet `203.0.113.0/24`).
 
 ---
 
@@ -422,11 +422,11 @@ rm -f -- <client-path-to-copied-cert.pem>
 The 2026-07-24 remote-lab build passed DNS/NTP checks from Proxmox but seeded:
 
 ```text
-SD management: 10.88.15.19/21
-Wrong gateway: 10.88.15.254
-Required gateway: 10.88.15.18 (infra-vsrx)
-Device VIP: 10.88.15.21:TCP/7804
-Log VIP: 10.88.15.22:TCP/6514
+SD management: 198.51.100.19/21
+Wrong gateway: 198.51.100.254
+Required gateway: 198.51.100.18 (infra-vsrx)
+Device VIP: 198.51.100.21:TCP/7804
+Log VIP: 198.51.100.22:TCP/6514
 ```
 
 The installed appliance sent managed-firewall traffic toward `.254` and could
@@ -459,19 +459,19 @@ extractor. It is interactive; the **26.2.1 prompt order is 22 prompts**:
 | 3 | Virtual Machine Name | `sd-onprem` |
 | 4 | Hostname | `sd-onprem` |
 | 5 | CLI Admin Password | *(silent; 8–32, ≥3 of digit/upper/lower/special, must pass cracklib — systematic strings like `Test1234!` are rejected)* |
-| 6 | Management IP (CIDR) | `10.88.15.19/21` |
-| 7 | Default Gateway | `10.88.15.18` |
-| 8 | DNS Servers (space-sep) | `10.88.25.1` *(one verified resolver)* |
+| 6 | Management IP (CIDR) | `198.51.100.19/21` |
+| 7 | Default Gateway | `198.51.100.18` |
+| 8 | DNS Servers (space-sep) | `198.51.100.25` *(one verified resolver)* |
 | 9 | Search Domains (optional) | *(blank)* |
-| 10 | UI Virtual IP | `10.88.15.20` |
+| 10 | UI Virtual IP | `198.51.100.20` |
 | 11 | UI FQDN (optional) | *(blank — reached by IP)* |
-| 12 | Device Connection VIP | `10.88.15.21` |
+| 12 | Device Connection VIP | `198.51.100.21` |
 | 13 | Device Connection FQDN (optional) | *(blank)* |
-| 14 | LOG Collector VIP | `10.88.15.22` |
+| 14 | LOG Collector VIP | `198.51.100.22` |
 | 15 | LOG Collector FQDN (optional) | *(blank)* |
-| 16 | Software Bundle Path | `http://10.88.8.22:8085/<bundle>.tgz` *(HTTP; see note)* |
+| 16 | Software Bundle Path | `http://198.51.100.8:8085/<bundle>.tgz` *(HTTP; see note)* |
 | 17 | HTTP Proxy URL (optional, http only) | *(blank — required by the direct restricted-server pattern)* |
-| 18 | NTP Server | `10.88.25.1` *(must be reachable)* |
+| 18 | NTP Server | `198.51.100.25` *(must be reachable)* |
 | 19 | Security Director CIDR (optional) | *(blank → default `10.42.0.0/21`)* |
 | 20 | **Configuration ID / flavor** (1/2/3) | `1` — **easy to miss when scripting; no default, loops on invalid** |
 | 21 | Bridge interface name | `vmbr5` |
@@ -669,7 +669,7 @@ Only when every device passes does onboarding begin.
 > The clean fix is `set system management-instance`, which moves `fxp0` into
 > `mgmt_junos` and out of `inet.0`, so no data-plane route can resolve to it.
 > Verified in this lab: `dc-fw` is managed at revenue leg `ge-0/0/3.0`
-> (`192.0.2.50`) with `fxp0` in the management instance, and the branches are
+> (`203.0.113.50`) with `fxp0` in the management instance, and the branches are
 > managed at `lo0` reached in-band over the IPsec tunnel.
 
 ---
@@ -693,7 +693,7 @@ For that stream to actually work, three network facts must hold:
    fabric might not normally reach. Use a policy/routing firewall with a leg on
    the SD subnet as the **log gateway**, and route every device's `<log-VIP>/32`
    toward it. In the current worked example, `infra-vsrx` has the SD-side
-   `10.88.15.18` leg and the device-transit `192.168.77.1` leg.
+   `198.51.100.18` leg and the device-transit `203.0.113.1` leg.
 3. **Source-NAT on the log-gateway FW.** TLS/6514 is **bidirectional** (unlike
    one-way UDP syslog), so SD must be able to reply. SD's only route off its subnet
    is its default gateway — it has **no route back to the FW's fabric interface**.

@@ -157,11 +157,11 @@ before configuration, commit, upgrade, reboot, delete, or failover actions.
 8. Confirm host CPU, RAM, and thin block storage headroom for the selected flavor.
 
 **Regression guard (remote lab, 2026-07-24):** hypervisor-only DNS/NTP checks
-passed while the seed used gateway `10.88.15.254`. The installed SD source
-`10.88.15.19/21` then sent managed-device traffic to the wrong first hop and
+passed while the seed used gateway `198.51.100.254`. The installed SD source
+`198.51.100.19/21` then sent managed-device traffic to the wrong first hop and
 could not reach the firewalls. The required gateway was the policy/routing
-firewall `10.88.15.18`; the reverse paths terminate at device VIP
-`10.88.15.21:7804` and log VIP `10.88.15.22:6514`. Exact-source testing would
+firewall `198.51.100.18`; the reverse paths terminate at device VIP
+`198.51.100.21:7804` and log VIP `198.51.100.22:6514`. Exact-source testing would
 have failed before deployment.
 
 ## Procedure
@@ -370,7 +370,7 @@ onboarding will appear to succeed.
   route. The clean pattern is `set system management-instance`, which lifts
   `fxp0` into `mgmt_junos` and out of `inet.0` entirely, so data-plane routes
   cannot resolve to it. Verified on this lab's `dc-fw`, which is managed at its
-  revenue leg `ge-0/0/3.0` (`192.168.77.50`) with `fxp0` in the management
+  revenue leg `ge-0/0/3.0` (`203.0.113.50`) with `fxp0` in the management
   instance; the branches are managed at `lo0` reached in-band over the tunnel.
 - **LOG STREAMING must NOT source off fxp0 — SD cannot receive security logs
   from the management interface.** SRX stream-mode security logs are emitted by
