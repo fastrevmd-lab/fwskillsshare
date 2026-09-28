@@ -108,7 +108,11 @@ GITHUB_REPO="fastrevmd-lab/fwskillsshare"
 # Pinned release tag used when downloading skills. Update on every release.
 # Never point this at a branch or HEAD -- validate_ref() below refuses anything
 # that isn't a vX.Y.Z tag, so a moving ref can't slip in via this default either.
-GITHUB_REF_DEFAULT="v1.7.0"
+#
+# NOTE: When cutting a new release, update this to the release tag (e.g. v1.8.0).
+# The checksum manifest (skills/CHECKSUMS.sha256) was added after v1.7.0, so
+# this must point to a tag that includes the manifest.
+GITHUB_REF_DEFAULT="v1.8.0"
 GITHUB_REF="$GITHUB_REF_DEFAULT"
 CLAUDE_SKILLS_DIR="${HOME}/.claude/skills"
 CODEX_SKILLS_DIR="${HOME}/.agents/skills"
@@ -138,6 +142,7 @@ TEMP_DIR=""
 SELECTED_SKILLS=()
 INSTALL_TARGETS=()
 EXPLICIT_DIR=""
+REF_EXPLICIT=false
 MODE="install"
 FORCE=false
 NON_INTERACTIVE=false
@@ -346,20 +351,47 @@ verify_checksums() {
         exit 1
     fi
 
+    # Check for a hasher once at the top, outside any command substitution
+    if ! command -v sha256sum &>/dev/null && ! command -v shasum &>/dev/null; then
+        echo -e "${C_RED}Error: neither sha256sum nor shasum is available; cannot verify checksums${C_RESET}" >&2
+        exit 1
+    fi
+
     echo -e "${C_CYAN}Verifying skill checksums against $manifest...${C_RESET}"
 
     local line expected relative file_path actual
     local -i checked=0
     while IFS= read -r line || [[ -n "$line" ]]; do
+        # Reject empty lines
         [[ -z "$line" ]] && continue
+
+        # Validate line format: must match ^[0-9a-f]{64}  .+$
+        local regex='^[0-9a-f]{64}  .+$'
+        if ! [[ "$line" =~ $regex ]]; then
+            echo -e "${C_RED}Error: malformed manifest line at $manifest:${C_RESET}" >&2
+            echo -e "${C_RED}  $line${C_RESET}" >&2
+            echo -e "${C_RED}Expected: <sha256>  <relative-path>${C_RESET}" >&2
+            exit 1
+        fi
+
+        # Reject absolute paths or paths containing ..
         expected="${line%%  *}"
         relative="${line#*  }"
+        if [[ "$relative" == /* ]] || [[ "$relative" == *..* ]]; then
+            echo -e "${C_RED}Error: manifest line contains absolute path or ..:${C_RESET}" >&2
+            echo -e "${C_RED}  $line${C_RESET}" >&2
+            exit 1
+        fi
         file_path="$skills_dir/$relative"
         if [[ ! -f "$file_path" ]]; then
             echo -e "${C_RED}Error: checksum manifest lists '$relative' but it is missing from the download${C_RESET}" >&2
             exit 1
         fi
-        actual=$(sha256_of "$file_path")
+        if command -v sha256sum &>/dev/null; then
+            actual=$(sha256sum "$file_path" | awk '{print $1}')
+        else
+            actual=$(shasum -a 256 "$file_path" | awk '{print $1}')
+        fi
         if [[ "$actual" != "$expected" ]]; then
             echo -e "${C_RED}Error: checksum mismatch for '$relative'${C_RESET}" >&2
             echo -e "${C_RED}Refusing to install a skill payload that does not match its manifest.${C_RESET}" >&2
@@ -367,6 +399,19 @@ verify_checksums() {
         fi
         ((checked++)) || true
     done < "$manifest"
+
+    # F3+F4: Ensure manifest is not empty and matches exactly
+    if (( checked == 0 )); then
+        echo -e "${C_RED}Error: checksum manifest $manifest lists no files${C_RESET}" >&2
+        exit 1
+    fi
+    local listed present
+    listed=$(sed 's/^[0-9a-f]\{64\}  //' "$manifest" | LC_ALL=C sort)
+    present=$(cd "$skills_dir" && find . -type f ! -name 'CHECKSUMS.sha256' | sed 's|^\./||' | LC_ALL=C sort)
+    if [[ "$listed" != "$present" ]]; then
+        echo -e "${C_RED}Error: files under $skills_dir do not match the manifest exactly (unlisted or extra files present)${C_RESET}" >&2
+        exit 1
+    fi
 
     echo -e "${C_GREEN}✓${C_RESET} $checked file(s) matched the checksum manifest"
 }
@@ -410,6 +455,9 @@ find_skills_source() {
 
     # Check for local skills/ directory
     if [[ -n "$script_dir" && -d "$script_dir/skills" ]]; then
+        if [[ "$REF_EXPLICIT" == true ]]; then
+            echo -e "${C_YELLOW}Warning: local skills/ directory found; ignoring explicit --ref ${GITHUB_REF}${C_RESET}" >&2
+        fi
         echo "$script_dir/skills"
         return 0
     fi
@@ -786,6 +834,7 @@ while [[ $# -gt 0 ]]; do
             fi
             validate_ref "$2"
             GITHUB_REF="$2"
+            REF_EXPLICIT=true
             shift 2
             ;;
         --list)

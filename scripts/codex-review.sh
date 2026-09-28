@@ -27,14 +27,20 @@
 # run automatically by any hook, CI job, or `just` target other than
 # `just review`, which a human invokes deliberately. It still requires
 # explicit opt-in below so that running it is never an accident: set
-# FWSKILLS_ALLOW_CODEX_REVIEW=1 to proceed.
+# FWSKILLS_ALLOW_CODEX_REVIEW=1 to proceed. Do not set this in a way that
+# makes it persist silently (a committed .env, a default in CI, etc.)
+# — the point is a deliberate choice per run.
 set -uo pipefail
 
 if [ "${FWSKILLS_ALLOW_CODEX_REVIEW:-0}" != "1" ]; then
   echo "WARNING: this review gate sends your diff to OpenAI's Codex service (off-box)." >&2
-  echo "Refusing to run without explicit opt-in." >&2
-  echo "Set FWSKILLS_ALLOW_CODEX_REVIEW=1 to acknowledge and proceed, e.g.:" >&2
+  echo "" >&2
+  echo "FWSKILLS_ALLOW_CODEX_REVIEW is not set to 1, so this gate will NOT run." >&2
+  echo "To run the review gate, set the environment variable explicitly:" >&2
+  echo "" >&2
   echo "  FWSKILLS_ALLOW_CODEX_REVIEW=1 scripts/codex-review.sh" >&2
+  echo "" >&2
+  echo "This opt-in must be explicit every time. Do not make it persistent." >&2
   exit 1
 fi
 echo "FWSKILLS_ALLOW_CODEX_REVIEW=1 set — this diff will be sent to OpenAI's Codex service." >&2
