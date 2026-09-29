@@ -10,7 +10,7 @@ license: MIT
 metadata:
   hermes:
     tags: [srx, junos, mnha, high-availability, chassis-cluster, srg, icl, icd, bgp, bfd, ipsec, ike, nat, routing-instance, dhcp]
-    related_skills: [parsing-srx-configs, srx-nat, srx-policy, srx-autovpn-full-tunnel, srx-ipsec-hub-spoke]
+    related_skills: [srx-mnha-builder, parsing-srx-configs, srx-nat, srx-policy, srx-autovpn-full-tunnel, srx-ipsec-hub-spoke]
   sources:
     - title: "DHCP on MNHA: Back to Basics"
       author: James Rathbun
@@ -40,7 +40,7 @@ metadata:
 
 Multi-Node High Availability (MNHA) is Juniper SRX high availability built around independent SRX nodes that synchronize runtime state over routed HA links. Unlike chassis cluster, MNHA nodes do not become a single logical chassis. Each node keeps its own control plane, hostname, management, routing protocols, interface addressing, and node-specific configuration. Stateful firewall/NAT/IPsec runtime objects can still synchronize so traffic can survive a path or node failover when the design keeps routing, interfaces, policy, and HA state aligned.
 
-Use MNHA as an L3-first HA design. Routing policy, BFD, link monitoring, service redundancy groups, and optional VIP behavior determine which node handles traffic. Avoid treating MNHA as a drop-in chassis-cluster clone; it solves different problems and has different failure modes.
+Use MNHA as an L3-first HA design. Routing policy, BFD, link monitoring, service redundancy groups, and optional VIP behavior determine which node handles traffic. Avoid treating MNHA as a drop-in chassis-cluster clone; it solves different problems and has different failure modes. **To build a new pair step by step through a Junos MCP server, use `srx-mnha-builder`.**
 
 ## Runtime intake
 
