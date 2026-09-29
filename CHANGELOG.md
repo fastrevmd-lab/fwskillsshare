@@ -2,7 +2,7 @@
 
 ## Unreleased — SRX MNHA pair builder skill (draft)
 
-**srx-mnha-mcp-builder** v0.1.0, a draft skill that builds a new two-node SRX/vSRX Multi-Node High Availability pair end-to-end through Juniper's junos-mcp-server. Contributed by Javier Grizzuti (@jgrizzuti) from lab work. The catalog gains one skill, from 31 to 32. Design theory and troubleshooting of a running pair stay in `srx-mnha`; this skill covers the build order.
+**srx-mnha-builder** v0.1.0 (renamed from `srx-mnha-mcp-builder` before first release), a draft skill that builds a new two-node SRX/vSRX Multi-Node High Availability pair end-to-end through Juniper's junos-mcp-server. Contributed by Javier Grizzuti (@jgrizzuti) from lab work. The catalog gains one skill, from 31 to 32. Design theory and troubleshooting of a running pair stay in `srx-mnha`; this skill covers the build order.
 
 - Mode selection (routing, switching/default-gateway, hybrid) and ICL choice (dedicated or shared loopback, optionally encrypted with HA link encryption) during setup; the ICL pre-shared key is set by the user on each node and never passes through the pair sheet, chat, or MCP.
 - One pair sheet rendered by `scripts/build_pair.py` into per-node stage files (underlay, HA stanza in the flat ≤24.x or grid 26.x model, eBGP signal-route export) plus undo files computed against the device baseline, with a lint that blocks management-plane changes, broad host-inbound permissions, a missing ICL BFD permit, a missing activeness probe in routing mode, and export terms without route filters.

@@ -1,5 +1,5 @@
 ---
-name: srx-mnha-mcp-builder
+name: srx-mnha-builder
 description: Builds a new two-node Juniper SRX/vSRX Multi-Node High Availability (MNHA) pair end-to-end through the Junos MCP Server (junos-mcp-server). Selects the deployment mode (routing/L3 with eBGP, switching/default-gateway with VIPs, or hybrid) during setup, then does preflight discovery, a single pair sheet, rendered and linted per-node configs, staged commits with approval gates, the HA-activation reboot handoff, formation verification and failover testing. In L3 and hybrid modes it also builds the eBGP upstream and signal-route export. Use when the user wants to create, stand up, build, deploy, or bring up an MNHA pair, "turn these two SRXs into an HA pair", or configure chassis high-availability on devices reachable via MCP - even if they only name the two devices. For MNHA design theory or troubleshooting an already-running pair, use srx-mnha instead.
 version: 0.1.0
 author:
@@ -181,7 +181,7 @@ Handling the report:
 For every node, run `render_and_apply_j2_template` on stage 1 alone and on stages 1+2+3
 concatenated (later stages reference earlier ones), with:
 - `template_content` = the rendered stage text
-- `vars_content: "skill: srx-mnha-mcp-builder"` (a dummy key; `{}` is rejected)
+- `vars_content: "skill: srx-mnha-builder"` (a dummy key; `{}` is rejected)
 - `config_format: "set"`
 - `apply_config: true, dry_run: true`
 

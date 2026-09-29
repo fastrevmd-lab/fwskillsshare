@@ -41,7 +41,7 @@ server version changes.
   config, after the baseline is taken.
 - **Pushing linted text through the J2 tool:** pass the rendered `stageN.set` file as
   `template_content`, `config_format: "set"`, and a one-key dummy mapping as
-  `vars_content` (e.g. `skill: srx-mnha-mcp-builder`). **`{}` is rejected** with
+  `vars_content` (e.g. `skill: srx-mnha-builder`). **`{}` is rejected** with
   "Variables content is empty or invalid" (observed 2026-09-25). The files contain no Jinja
   syntax, so what the device receives is byte-for-byte what was linted.
 - **Dry-run cumulatively.** A stage-2 dry run on a fresh node fails when it is run on its

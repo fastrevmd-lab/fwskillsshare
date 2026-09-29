@@ -199,7 +199,7 @@ Firewall fundamentals don't get easier in the AI age — the blast radius just g
 
 ## Reference
 
-**32 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem or ClearPass deployment request, or compliance language in your message or a pasted config. 26 of the 32 packages have completed the review record below; `clearpass-proxmox-deploy`, `csrx-proxmox-deploy`, `srx-ips`, and `srx-mnha-mcp-builder` ship as drafts, while `parsing-firepower-configs` and `srx-syslog-logging` have not yet been through the two-stage review. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
+**32 skills** across five families. All of them are **model-invoked** — the agent reaches for them automatically when it sees vendor keywords, an SRX operational topic, a Security Director On-Prem or ClearPass deployment request, or compliance language in your message or a pasted config. 26 of the 32 packages have completed the review record below; `clearpass-proxmox-deploy`, `csrx-proxmox-deploy`, `srx-ips`, and `srx-mnha-builder` ship as drafts, while `parsing-firepower-configs` and `srx-syslog-logging` have not yet been through the two-stage review. Invoke one explicitly as `/srx-nat` in Claude Code or Hermes, or `$srx-nat` in Codex.
 
 Extended notes on the compliance and SRX playbooks — what they cover and when to reach for one — are in **[SKILLS.md](./SKILLS.md)**. Every skill also documents itself in its own `SKILL.md`, linked above.
 
@@ -229,7 +229,7 @@ Actionable Junos playbooks — commands, design guidance, verification, troubles
 - **[srx-license-signature-maintenance](./skills/srx-license-signature-maintenance/SKILL.md)** — AppID and IDP/IPS entitlement audit, license installation, and offline signature updates behind two independent approval gates, with secret-safe license handling, per-node chassis-cluster verification, pilot-then-batch rollout, and condition-based polling.
 - **[srx-initial-setup](./skills/srx-initial-setup/SKILL.md)** — *(v1.4.0)* First-time SRX bring-up: read-only entry-state assessment, Branch factory-default handling, management plane, interfaces and zones, starter screens, a minimal baseline policy, and an entitlement readout that routes onward. Every device write runs under a per-stage gate and confirmed commit.
 - **[srx-ips](./skills/srx-ips/SKILL.md)** — *(v0.1.0, draft)* IPS detection triage and custom signature authoring: build the active rule table, read logs safely, monitor-to-enforce escalation behind an approval gate, and custom signature design with read-only coverage checks, context/direction/binding choice, false-positive-aware patterns, `commit check` validation, and monitor-mode proof before enforcement.
-- **[srx-mnha-mcp-builder](./skills/srx-mnha-mcp-builder/SKILL.md)** — *(v0.1.0, draft)* Build a new two-node MNHA pair end-to-end through the Junos MCP Server: routing, switching, or hybrid mode selection, dedicated or shared and optionally encrypted ICL, one pair sheet rendered and linted into per-node staged configs with pre-computed undo files, device dry runs, per-stage approval gates, the user-performed HA-activation reboot, formation checks, eBGP signal-route export, and a role-consistency failover test.
+- **[srx-mnha-builder](./skills/srx-mnha-builder/SKILL.md)** — *(v0.1.0, draft)* Build a new two-node MNHA pair end-to-end through the Junos MCP Server: routing, switching, or hybrid mode selection, dedicated or shared and optionally encrypted ICL, one pair sheet rendered and linted into per-node staged configs with pre-computed undo files, device dry runs, per-stage approval gates, the user-performed HA-activation reboot, formation checks, eBGP signal-route export, and a role-consistency failover test.
 - **[srx-syslog-logging](./skills/srx-syslog-logging/SKILL.md)** — *(v1.1.0, live-validated 2026-09-12; independent review still open)* External syslog and SIEM delivery: the Routing Engine vs PFE logging split, choosing a source interface per log type, the `fxp0` and `mgmt_junos` rules, Security Director Cloud onboarding, and why a non-default syslog port can be discarded silently.
 
 ### Cross-vendor tooling
@@ -265,7 +265,7 @@ Install with `--family deployment`.
 ## Quality and Review
 
 **26 of the 32 skills** have passed independent technical review. The exceptions
-are `clearpass-proxmox-deploy`, `csrx-proxmox-deploy`, `srx-ips`, and `srx-mnha-mcp-builder`, which ship as drafts,
+are `clearpass-proxmox-deploy`, `csrx-proxmox-deploy`, `srx-ips`, and `srx-mnha-builder`, which ship as drafts,
 while `parsing-firepower-configs` and `srx-syslog-logging` have not yet been through
 the two-stage review. Four review rounds, the
 live-device validation runs, what those runs falsified, and the per-family table
