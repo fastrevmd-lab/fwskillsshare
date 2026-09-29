@@ -1,7 +1,7 @@
 ---
 name: srx-mnha
 description: Design, configure, audit, and troubleshoot Juniper SRX Multi-Node High Availability. Use when handling routed, default-gateway, or hybrid modes, chassis-cluster migration, SRGs, ICL or ICD, session sync, BGP or BFD failover, VIPs, IPsec, NAT, proxy ARP, routing instances, or DHCP. Use focused SRX skills for non-MNHA behavior.
-version: 1.3.1
+version: 1.3.2
 author:
   - fastrevmd-lab
   - Claude
@@ -140,9 +140,15 @@ L2-adjacency caveats for `deployment-type switching` / default-gateway mode:
 
 - The VIP rides on the `aeN.unit` (or physical unit) directly — no IRB/bridge-domain is introduced. The gateway is an interface VIP, not a routed SVI.
 - The gateway vMAC **moves** on failover. Adjacent switches must accept that MAC move: check **MAC-move limits**, **Dynamic ARP Inspection (DAI)**, **storm-control**, and **EVPN/MLAG duplicate-MAC protection** — any of these can suppress or block the moved vMAC and silently break failover even though the SRG shows ACTIVE.
-- Use an SRG monitor-object to tie the segment's uplink to failover (interface
-  monitoring hangs off a named monitor-object with weights and thresholds, not
-  a bare `monitor interface` knob):
+- Tie the segment's uplink to failover with SRG interface monitoring. Two
+  forms commit: the bare `monitor interface <IFD>` (simple case: one or a few
+  uplinks; verify on the target release that any down triggers failover
+  evaluation):
+  ```junos
+  set chassis high-availability services-redundancy-group <SRG> monitor interface <IFD>
+  ```
+  and a named monitor-object with weights and thresholds for weighted or
+  multi-object logic:
   ```junos
   set chassis high-availability services-redundancy-group <SRG> monitor monitor-object <NAME> interface interface-name <IFD> weight 100
   set chassis high-availability services-redundancy-group <SRG> monitor monitor-object <NAME> interface threshold 100
@@ -153,7 +159,9 @@ L2-adjacency caveats for `deployment-type switching` / default-gateway mode:
   when accumulated weight reaches the interface threshold, the object
   threshold, and the SRG threshold — size weights accordingly (see
   `references/source-hybrid-mnha-with-ebgp.md` for a weighted BFD + interface
-  example).
+  example). Both forms commit-checked on vSRX 26.2R1.7 (2026-09-29); the bare
+  form is also used on 24.4R2.21 by `srx-mnha-builder`. Failover behavior of
+  the bare form was not separately tested — verify with a link-down test.
 - Chassis-cluster `interface-monitor` **weights do not map 1:1** to SRG monitoring. Do not port cluster monitor weights directly; redesign monitoring around SRG active/backup semantics and test failover explicitly.
 
 ### Hybrid MNHA

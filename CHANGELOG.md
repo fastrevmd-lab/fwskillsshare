@@ -4,6 +4,8 @@
 
 **srx-mnha-builder** v0.1.0 (renamed from `srx-mnha-mcp-builder` before first release), a draft skill that builds a new two-node SRX/vSRX Multi-Node High Availability pair end-to-end through a Junos MCP server (Juniper junos-mcp-server or mechubsec rust-junosmcp). Contributed by Javier Grizzuti (@jgrizzuti) from lab work. The catalog gains one skill, from 31 to 32. Design theory and troubleshooting of a running pair stay in `srx-mnha`; this skill covers the build order and works with either MCP server.
 
+**srx-mnha** v1.3.2 corrects the claim that SRG interface monitoring requires a monitor-object; the bare `monitor interface` form commit-checks on vSRX 26.2R1.7.
+
 - Mode selection (routing, switching/default-gateway, hybrid) and ICL choice (dedicated or shared loopback, optionally encrypted with HA link encryption) during setup; the ICL pre-shared key is set by the user on each node and never passes through the pair sheet, chat, or MCP. Design content defers to `srx-mnha` to avoid duplication.
 - One pair sheet used to write per-node stage files from a Markdown stage reference (`references/config-stages.md`) with substituted placeholders (underlay, HA stanza in the flat ≤24.x or grid 26.x model, eBGP signal-route export) plus undo files computed against the device baseline, with a pre-push checklist that blocks management-plane changes, broad host-inbound permissions, a missing ICL BFD permit, a missing activeness probe in routing mode, and export terms without route filters.
 - Device dry runs of each stage, separate approval gates for the push, the HA-activation reboot (performed by the user), eBGP, and the failover test.
