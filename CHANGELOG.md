@@ -1,14 +1,17 @@
 # Changelog
 
-## 1.8.0 — Pinned, checksum-verified installs
+## Unreleased — SRX MNHA pair builder skill (draft)
 
-The installer no longer installs whatever `main` currently holds. It installs a pinned release tag and verifies the skill payload before copying anything (#77).
+**srx-mnha-mcp-builder** v0.1.0, a draft skill that builds a new two-node SRX/vSRX Multi-Node High Availability pair end-to-end through Juniper's junos-mcp-server. Contributed by Javier Grizzuti (@jgrizzuti) from lab work. The catalog gains one skill, from 31 to 32. Design theory and troubleshooting of a running pair stay in `srx-mnha`; this skill covers the build order.
 
-- **Pinned release ref.** `install.sh` defaults to this tag (`v1.8.0`) and refuses a moving ref (a branch or `HEAD`); `--ref` accepts `vX.Y.Z` tags only. The `curl | bash` install is no longer offered — clone the tag (or download its tarball) and run `./install.sh` from it.
-- **Checksum manifest.** `skills/CHECKSUMS.sha256` lists every file under `skills/`. The installer aborts on a missing or empty manifest, a malformed or `..`/absolute line, any hash mismatch, any file present but not listed (including a nested file named `CHECKSUMS.sha256`), and any symlink in the payload. Regenerate with `scripts/gen-checksums.py`; `scripts/check-checksums.py` verifies it in CI.
-- **Signatures are not implemented yet.** `FWSKILLS_REQUIRE_SIGNATURE=1` fails closed until they are; the manifest proves integrity against the tag, not authorship.
-- **srx-policy 1.3.0** covers Branch SRX after SRX345 validation (#73). `srx-ips` credits @jgrizzuti as an author (#74).
-- **Hygiene:** lab subnets replaced with RFC 5737 documentation addresses (#76); shared gitleaks vendor rules (#75); the secrets check now uses the shared mechubsec gitleaks workflow (#80); links point at the `mechubsec` organization (#79).
+- Mode selection (routing, switching/default-gateway, hybrid) and ICL choice (dedicated or shared loopback, optionally encrypted with HA link encryption) during setup; the ICL pre-shared key is set by the user on each node and never passes through the pair sheet, chat, or MCP.
+- One pair sheet rendered by `scripts/build_pair.py` into per-node stage files (underlay, HA stanza in the flat ≤24.x or grid 26.x model, eBGP signal-route export) plus undo files computed against the device baseline, with a lint that blocks management-plane changes, broad host-inbound permissions, a missing ICL BFD permit, a missing activeness probe in routing mode, and export terms without route filters.
+- Device dry runs of each stage, separate approval gates for the push, the HA-activation reboot (performed by the user, since the server blocks reboots), eBGP, and the failover test.
+- Verification reference with formation pass criteria, a diagnostic tree for dual-ACTIVE or Conn State DOWN, and a role-consistency invariant (SRG1 role, VIP, signal route, upstream path selection) re-checked after every failover.
+- junos-mcp-server behavior that shapes the workflow (no commit confirmed, `load_and_commit_config` skips commit check, blocked reboots, idle-pool timeout) moved to a reference file.
+- Packaged to repository standards — frontmatter, runtime intake, Codex metadata, inventory and installer entries. Lab hostnames and addresses were replaced with neutral node names and RFC 5737 documentation addresses.
+
+Field-confirmed 2026-09-25 on a vSRX 24.4R2.21 hybrid pair (flat model, encrypted ICL): formation, planned failover and failback, and an unplanned uplink failure with BFD 500 ms × 3. The grid-model `vpn-profile` placement for an encrypted ICL on 26.x is not yet confirmed on a device; the skill defers to the device dry run there.
 
 ## 1.7.0 — SRX IPS skill (draft)
 
