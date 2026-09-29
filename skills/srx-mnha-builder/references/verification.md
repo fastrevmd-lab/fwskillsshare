@@ -1,7 +1,10 @@
 # Verification: pass criteria and diagnostic tree
 
-Run each check on both nodes with `execute_junos_command_batch`, then compare the
-results side by side.
+Run each check on both nodes. Use the batch-command tool from `references/mcp-server-notes.md`:
+- rust-junosmcp: `execute_junos_command_batch` (parallel server-side)
+- Juniper junos-mcp-server: run `execute_junos_command` twice (sequential or parallel client-side)
+
+Compare the results side by side.
 
 ## After Stage 1 (underlay)
 - Each data segment: `ping <neighbor on that segment> count 3` from both nodes, **and** node-to-node

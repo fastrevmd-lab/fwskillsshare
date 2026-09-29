@@ -4,8 +4,18 @@
 
 This repository packages firewall parsing, conversion, diff, audit, compliance,
 and Juniper SRX operational skills. Each `skills/<name>/` subtree contains a
-`SKILL.md`, references, metadata, and optional fixtures/scripts. The parsing
+`SKILL.md`, references, metadata, and optional data fixtures. The parsing
 skills share a normalized schema whose copies must remain byte-identical.
+
+## Skills are Markdown, not programs
+
+Skills contain **Markdown knowledge only** — SKILL.md, references/*.md, agents/openai.yaml metadata, and non-executable fixtures such as .yaml/.set/.xml sample data. No scripts, executables, or code for the agent to run (.py, .sh, .js, .ts) and no template engines' source (e.g. Jinja .j2) inside a skill package. Skills are knowledge the agent reads; code needs a different review, supply-chain and runtime story; the agent can already run commands through its own tools and MCP servers.
+
+**The only executable shipped to users is the repository installer `install.sh`.** Development and CI tooling in top-level `scripts/` (validators, gen-checksums, codex-review.sh) is NOT covered — it is dev tooling, never installed.
+
+Grandfathered exceptions (remove in follow-up; do not add more):
+- skills/clearpass-proxmox-deploy/scripts/console-type.py and stream-inflate-zip.py
+- skills/sd-onprem-proxmox-deploy/scripts/serve_bundle.py (tested by scripts/check-sd-bundle-server.py)
 
 ## Setup and development
 

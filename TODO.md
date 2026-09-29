@@ -11,6 +11,7 @@ Ordered by readiness, not importance. Each entry says what unblocks it.
 
 ### Ready now
 
+- [ ] **Remove grandfathered scripts from skill packages.** Convert the procedural steps to Markdown instructions in `clearpass-proxmox-deploy` (console-type.py, stream-inflate-zip.py) and `sd-onprem-proxmox-deploy` (serve_bundle.py); retire scripts/check-sd-bundle-server.py with it. The "skills are Markdown only" rule is now documented.
 - [ ] **Independent technical review of `srx-syslog-logging` 1.1.0.** The
   2026-09-12 work was expansion and live validation, which is not review. The
   README count stays 26/31 until someone other than its author reviews it.

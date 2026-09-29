@@ -18,7 +18,7 @@ FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---(?:\n|$)", re.DOTALL)
 EXPECTED_AUTHORS = ["fastrevmd-lab", "Claude", "GPT"]
 # Outside contributors credited on a specific package, listed after the standard
 # authors. Keyed by skill so an unexpected author anywhere else still fails.
-CONTRIBUTING_AUTHORS = {"srx-ips": ["jgrizzuti"], "srx-mnha-mcp-builder": ["jgrizzuti"]}
+CONTRIBUTING_AUTHORS = {"srx-ips": ["jgrizzuti"], "srx-mnha-builder": ["jgrizzuti"]}
 RAW_REFERENCE_MAX_LINES = 200
 RAW_DUMP_MARKERS = (
     "Skip main navigation",

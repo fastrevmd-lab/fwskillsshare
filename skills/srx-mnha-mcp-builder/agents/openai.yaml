@@ -1,4 +1,0 @@
-interface:
-  display_name: "SRX MNHA Pair Builder"
-  short_description: "Build a two-node SRX MNHA pair through the Junos MCP Server"
-  default_prompt: "Use $srx-mnha-mcp-builder to build an MNHA pair from these two SRX nodes through the Junos MCP Server."

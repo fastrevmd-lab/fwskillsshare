@@ -57,7 +57,7 @@ declare -a SRX=(
     "srx-chassis-cluster-proxmox"
     "srx-syslog-logging"
     "srx-ips"
-    "srx-mnha-mcp-builder"
+    "srx-mnha-builder"
 )
 
 declare -a TOOLING=(

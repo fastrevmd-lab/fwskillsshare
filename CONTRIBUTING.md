@@ -29,8 +29,10 @@ skills/<name>/
   SKILL.md              # required: frontmatter + body
   agents/openai.yaml     # required: Codex UI metadata
   references/            # optional: longer material loaded on demand
-  scripts/, templates/, assets/   # optional, as needed
+  fixtures/, assets/     # optional: data fixtures only (no scripts/executables)
 ```
+
+**Skills are Markdown only** — no scripts or executables inside a skill package. See [AGENTS.md](AGENTS.md#skills-are-markdown-not-programs) for the rule and grandfathered exceptions.
 
 ### `SKILL.md` frontmatter
 

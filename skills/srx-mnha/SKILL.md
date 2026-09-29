@@ -1,7 +1,7 @@
 ---
 name: srx-mnha
 description: Design, configure, audit, and troubleshoot Juniper SRX Multi-Node High Availability. Use when handling routed, default-gateway, or hybrid modes, chassis-cluster migration, SRGs, ICL or ICD, session sync, BGP or BFD failover, VIPs, IPsec, NAT, proxy ARP, routing instances, or DHCP. Use focused SRX skills for non-MNHA behavior.
-version: 1.3.1
+version: 1.3.2
 author:
   - fastrevmd-lab
   - Claude
@@ -10,7 +10,7 @@ license: MIT
 metadata:
   hermes:
     tags: [srx, junos, mnha, high-availability, chassis-cluster, srg, icl, icd, bgp, bfd, ipsec, ike, nat, routing-instance, dhcp]
-    related_skills: [parsing-srx-configs, srx-nat, srx-policy, srx-autovpn-full-tunnel, srx-ipsec-hub-spoke]
+    related_skills: [srx-mnha-builder, parsing-srx-configs, srx-nat, srx-policy, srx-autovpn-full-tunnel, srx-ipsec-hub-spoke]
   sources:
     - title: "DHCP on MNHA: Back to Basics"
       author: James Rathbun
@@ -40,7 +40,7 @@ metadata:
 
 Multi-Node High Availability (MNHA) is Juniper SRX high availability built around independent SRX nodes that synchronize runtime state over routed HA links. Unlike chassis cluster, MNHA nodes do not become a single logical chassis. Each node keeps its own control plane, hostname, management, routing protocols, interface addressing, and node-specific configuration. Stateful firewall/NAT/IPsec runtime objects can still synchronize so traffic can survive a path or node failover when the design keeps routing, interfaces, policy, and HA state aligned.
 
-Use MNHA as an L3-first HA design. Routing policy, BFD, link monitoring, service redundancy groups, and optional VIP behavior determine which node handles traffic. Avoid treating MNHA as a drop-in chassis-cluster clone; it solves different problems and has different failure modes.
+Use MNHA as an L3-first HA design. Routing policy, BFD, link monitoring, service redundancy groups, and optional VIP behavior determine which node handles traffic. Avoid treating MNHA as a drop-in chassis-cluster clone; it solves different problems and has different failure modes. **To build a new pair step by step through a Junos MCP server, use `srx-mnha-builder`.**
 
 ## Runtime intake
 
@@ -140,9 +140,15 @@ L2-adjacency caveats for `deployment-type switching` / default-gateway mode:
 
 - The VIP rides on the `aeN.unit` (or physical unit) directly — no IRB/bridge-domain is introduced. The gateway is an interface VIP, not a routed SVI.
 - The gateway vMAC **moves** on failover. Adjacent switches must accept that MAC move: check **MAC-move limits**, **Dynamic ARP Inspection (DAI)**, **storm-control**, and **EVPN/MLAG duplicate-MAC protection** — any of these can suppress or block the moved vMAC and silently break failover even though the SRG shows ACTIVE.
-- Use an SRG monitor-object to tie the segment's uplink to failover (interface
-  monitoring hangs off a named monitor-object with weights and thresholds, not
-  a bare `monitor interface` knob):
+- Tie the segment's uplink to failover with SRG interface monitoring. Two
+  forms commit: the bare `monitor interface <IFD>` (simple case: one or a few
+  uplinks; verify on the target release that any down triggers failover
+  evaluation):
+  ```junos
+  set chassis high-availability services-redundancy-group <SRG> monitor interface <IFD>
+  ```
+  and a named monitor-object with weights and thresholds for weighted or
+  multi-object logic:
   ```junos
   set chassis high-availability services-redundancy-group <SRG> monitor monitor-object <NAME> interface interface-name <IFD> weight 100
   set chassis high-availability services-redundancy-group <SRG> monitor monitor-object <NAME> interface threshold 100
@@ -153,7 +159,9 @@ L2-adjacency caveats for `deployment-type switching` / default-gateway mode:
   when accumulated weight reaches the interface threshold, the object
   threshold, and the SRG threshold — size weights accordingly (see
   `references/source-hybrid-mnha-with-ebgp.md` for a weighted BFD + interface
-  example).
+  example). Both forms commit-checked on vSRX 26.2R1.7 (2026-09-29); the bare
+  form is also used on 24.4R2.21 by `srx-mnha-builder`. Failover behavior of
+  the bare form was not separately tested — verify with a link-down test.
 - Chassis-cluster `interface-monitor` **weights do not map 1:1** to SRG monitoring. Do not port cluster monitor weights directly; redesign monitoring around SRG active/backup semantics and test failover explicitly.
 
 ### Hybrid MNHA

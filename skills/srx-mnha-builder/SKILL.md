@@ -1,6 +1,6 @@
 ---
-name: srx-mnha-mcp-builder
-description: Builds a new two-node Juniper SRX/vSRX Multi-Node High Availability (MNHA) pair end-to-end through the Junos MCP Server (junos-mcp-server). Selects the deployment mode (routing/L3 with eBGP, switching/default-gateway with VIPs, or hybrid) during setup, then does preflight discovery, a single pair sheet, rendered and linted per-node configs, staged commits with approval gates, the HA-activation reboot handoff, formation verification and failover testing. In L3 and hybrid modes it also builds the eBGP upstream and signal-route export. Use when the user wants to create, stand up, build, deploy, or bring up an MNHA pair, "turn these two SRXs into an HA pair", or configure chassis high-availability on devices reachable via MCP - even if they only name the two devices. For MNHA design theory or troubleshooting an already-running pair, use srx-mnha instead.
+name: srx-mnha-builder
+description: Build a new two-node SRX/vSRX Multi-Node High Availability pair from standalone nodes over a Junos MCP server: routing, switching or hybrid mode, dedicated or shared ICL, pair sheet, staged configs with pre-push checks and approval gates, HA-activation reboot, formation checks and failover test. Use when standing up an MNHA pair or turning two SRXs into HA. For design or troubleshooting a running pair, use srx-mnha.
 version: 0.1.0
 author:
   - fastrevmd-lab
@@ -10,16 +10,16 @@ author:
 license: MIT
 metadata:
   hermes:
-    tags: [srx, vsrx, junos, mnha, high-availability, srg, icl, bfd, bgp, signal-route, vip, ha-link-encryption, jinja2, mcp, junos-mcp-server, approval-gate, failover-test]
+    tags: [srx, vsrx, junos, mnha, high-availability, srg, icl, bfd, bgp, signal-route, vip, ha-link-encryption, mcp, approval-gate, failover-test]
     related_skills: [srx-mnha, srx-policy, srx-nat, parsing-srx-configs]
 ---
 
-# SRX MNHA Pair Builder (via junos-mcp-server)
+# SRX MNHA Pair Builder
 
-This skill turns two standalone SRX nodes into an MNHA pair. It uses the Junos MCP
-Server's tools and never pushes anything without explicit approval. Design knowledge
-(modes, SRGs, pitfalls) lives in the `srx-mnha` skill. This skill is about **choosing
-the mode and building the pair in a safe order**.
+This skill turns two standalone SRX nodes into an MNHA pair through a Junos MCP server
+and never pushes anything without explicit approval. Design knowledge (modes, SRGs,
+pitfalls) lives in the `srx-mnha` skill. This skill is about **choosing the mode and
+building the pair in a safe order**.
 
 **Scope:**
 - A new pair, built from two nodes with no chassis cluster and no existing
@@ -36,12 +36,7 @@ the mode and building the pair in a safe order**.
 **Naming:** Node0 maps to MNHA `local-id 1` and Node1 to `local-id 2`. Node0 gets the
 higher `activeness-priority`, so it is the SRG1 ACTIVE node by default.
 
-Read `references/mcp-transport-notes.md` before starting. Four facts from the server
-source shape every step:
-- there is no commit confirmed;
-- `load_and_commit_config` commits without a commit check;
-- the server blocks reboot commands;
-- idle connections are dropped after 300 s.
+Read `references/mcp-server-notes.md` before starting for tool mappings and server-specific behavior.
 
 ## Runtime intake
 
@@ -57,7 +52,8 @@ Before starting the workflow, inspect the request, supplied artifacts, and avail
    configured*. If a node shows an MNHA configuration, it isn't a new node: stop and
    hand back to the user to clean it and reboot.
 5. Ask the user to confirm they have **console / out-of-band access to both nodes**.
-   This is a hard prerequisite, because nothing reverts a bad commit automatically.
+   This is a hard prerequisite for both servers, because a bad commit can cut management
+   access; commit confirmed (where the server has it) is a backstop, not a substitute.
 
 ## Step 1 - Baseline and safety net
 
@@ -76,14 +72,14 @@ are computed from it.
 ## Step 2 - Select the deployment mode
 
 Ask this before anything else in the pair sheet, because the mode decides which
-sections are required. If the client supports it, present the choice as tappable
-options. Offer a recommendation based on what the user describes:
+sections are required. See `srx-mnha` → Deployment Modes for design guidance. Offer
+a recommendation based on what the user describes:
 
-| Mode | `deployment-type` | Pick it when | Skill builds |
-|---|---|---|---|
-| **Routing (L3)** | `routing` | Neighbors are routers that can run BGP. No hosts use the SRX as their static gateway. | Signal routes, eBGP group, route-filtered export with MEDs. Activeness probe required. |
-| **Switching (default-gateway / L2)** | `switching` | Hosts on a shared L2 segment use the SRX as their gateway, and there is no dynamic routing. | VIPs, uplink monitoring. No BGP. |
-| **Hybrid** | `hybrid` | One side is an L2 host segment that needs a VIP; the other side is routed upstream. | VIPs, monitoring, signal routes and eBGP. |
+| Mode | `deployment-type` | Skill builds |
+|---|---|---|
+| **Routing (L3)** | `routing` | Signal routes, eBGP group, route-filtered export with MEDs. Activeness probe required. |
+| **Switching (default-gateway / L2)** | `switching` | VIPs, uplink monitoring. No BGP. |
+| **Hybrid** | `hybrid` | VIPs, monitoring, signal routes and eBGP. |
 
 To help the user choose, ask:
 1. Do any directly attached hosts use the firewall's address as their static default
@@ -91,12 +87,8 @@ To help the user choose, ask:
 2. Can the upstream run eBGP with both nodes?
 
 If the answers are yes / yes, the mode is hybrid. No / yes means routing. Yes / no means
-switching.
-
-Also point out the per-segment consequence (from `srx-mnha`): in routing mode, a host
-whose static gateway is one node's own IP is stranded when that node fails. In switching
-and hybrid modes, the vMAC moves on failover, so the adjacent switches must accept the
-MAC move. Check MAC-move limits, Dynamic ARP Inspection (DAI) and storm-control.
+switching. See `srx-mnha` → Deployment Modes for the per-segment failover consequences
+and vMAC-move caveats (DAI, storm-control, MAC-move limits).
 
 ### ICL questions (asked right after the mode)
 
@@ -108,19 +100,17 @@ MAC move. Check MAC-move limits, Dynamic ARP Inspection (DAI) and storm-control.
 | **Shared** | Loopback /32s reached over a data segment, used when no spare port or path exists | `lo0.<unit>` in the ICL zone, a static /32 route to the peer loopback, and HA/BFD (+IKE) host-inbound opened on the transport segment's zone |
 
 **2. Encrypted or not?** Recommend encryption whenever the ICL is shared or crosses
-anything the user doesn't control. It is optional on a dedicated back-to-back link.
-Encryption uses Junos HA link encryption: an IPsec VPN with `ha-link-encryption`,
-referenced by `peer-id … vpn-profile`. It has two prerequisites the skill cannot do
-itself:
+anything the user doesn't control. See `srx-mnha` → ICL for conceptual guidance. Two
+prerequisites the skill checks but cannot set:
 - **`junos-ike` package on both nodes.** Check the `show version` output for
   "JUNOS ike". If it's missing, the user installs it
   (`request system software add optional://junos-ike.tgz`); a reboot may be needed.
 - **The pre-shared key, set by the user on both nodes via CLI**, before the baseline is
   taken:
   `set security ike policy MNHA-ICL-IKE-POL pre-shared-key ascii-text <key>`.
-  The key never goes into the sheet, the chat or an MCP push. The lint fails until the
-  line appears in both baselines. The skill then adds everything else: proposals,
-  gateway, VPN, `vpn-profile`, and IKE host-inbound.
+  The key never goes into the sheet, the chat or an MCP push. The pre-push checklist
+  blocks until the line appears in both baselines. The skill then adds everything else:
+  proposals, gateway, VPN, `vpn-profile`, and IKE host-inbound.
 
 Field-confirmed 2026-09-25: the encrypted-ICL stanza (`ha-link-encryption` + `peer-id …
 vpn-profile`) commit-checks on vSRX 24.4R2.21 (flat model). On the grid model (26.x) the
@@ -144,60 +134,68 @@ What each mode needs:
   on both nodes) and `monitor_interfaces`.
 
 If a BGP group, zone or interface already exists in the baseline, the sheet must match
-it. The lint catches conflicts, such as a group that already exports another policy or a
-different autonomous-system number.
+it. The pre-push checklist catches conflicts, such as a group that already exports another
+policy or a different autonomous-system number.
 
-## Step 4 - Render and lint (nothing touches devices)
+## Step 4 - Write and check stage files (nothing touches devices)
 
-**With code execution:**
-```
-python scripts/build_pair.py pair.yaml --out build \
-  --baseline <NODE0>=<node0>.set --baseline <NODE1>=<node1>.set
-```
+1. Read `references/config-stages.md`, which contains all stage blocks with placeholders.
+2. For each node, write `stage1.set`, `stage2.set`, and `stage3.set` (routing/hybrid only)
+   by substituting `<PLACEHOLDER>` values from the pair sheet and baseline facts into the
+   stage blocks. Include or exclude conditional blocks based on the mode, ICL transport,
+   encryption, and config model as the stage reference directs.
+3. Write matching `undo-stageN.set` files following the undo rules in
+   `references/config-stages.md`. Undo files delete only what their stage **adds** relative
+   to the baseline — pre-existing config that a stage merely re-states is never removed.
+4. Walk the pre-push checklist in `references/config-stages.md` for both nodes.
+   - **Any Blocking item means stop.** Fix the pair sheet or baseline, then rewrite the
+     stage files.
+   - **Needs Acknowledgment items** require a one-line user OK before proceeding.
+   - **Tell the User items** are informational context.
+
 Output per node:
-- `stage1.set`: underlay, meaning the ICL transport, data segments, zones and host-inbound
-  rules
-- `stage2.set`: ICL crypto objects when encrypted, plus the HA stanza for the chosen mode
-  and the flat or grid model
+- `stage1.set`: underlay (ICL transport, data segments, zones, host-inbound rules)
+- `stage2.set`: ICL crypto objects (when encrypted), plus the HA stanza for the chosen mode
+  and flat or grid model
 - `stage3.set`: eBGP and the export policy (routing and hybrid only)
 - matching `undo-stageN.set` files
-- a summary of how many lines each stage adds
-
-Handling the report:
-- **Any ERROR means stop.**
-- WARNs need a one-line acknowledgment from the user.
-- INFO lines are context for the user.
-
-**Without code execution:**
-1. Render the templates with `render_and_apply_j2_template` (`apply_config: false`) and
-   per-node vars.
-2. The tool takes a single template string, so paste the contents of
-   `_srg1-common.set.j2` and `_icl-crypto.set.j2` in place of the `{% include %}` lines.
-3. Walk the checks in `scripts/build_pair.py` by hand.
-4. Write undo files manually. They must delete only what each stage adds.
 
 ## Step 5 - Dry run on devices
 
-For every node, run `render_and_apply_j2_template` on stage 1 alone and on stages 1+2+3
-concatenated (later stages reference earlier ones), with:
+For every node, dry run stage 1 alone and stages 1+2+3 concatenated (later stages reference
+earlier ones). Use the commit-check/dry-run tool from `references/mcp-server-notes.md`:
+- rust-junosmcp: prefer `commit_check_config` with `device`, `config_text` (the rendered
+  stage), and `config_format: "set"`; if not available, `render_and_apply_j2_template` with
+  `apply_config: true, dry_run: true`
+- Juniper junos-mcp-server: `render_and_apply_j2_template` with `apply_config: true,
+  dry_run: true`
+
+Template parameters (when using the J2 tool):
 - `template_content` = the rendered stage text
-- `vars_content: "skill: srx-mnha-mcp-builder"` (a dummy key; `{}` is rejected)
+- `vars_content: {"skill": "srx-mnha-builder"}` (a JSON object)
 - `config_format: "set"`
-- `apply_config: true, dry_run: true`
 
 Also dry-run each `undo-stageN.set` against the current config. This shows exactly what
 an undo would remove.
 
 ## Step 6 - Approval gate #1
 
-1. Show the user the per-node diffs, the lint result and the undo files.
+1. Show the user the per-node diffs, the pre-push checklist results, and the undo files.
 2. Get explicit approval to push Stage 1 and Stage 2. Approval of the design or the dry
    run is not approval to push.
 
 ## Step 7 - Stage 1: underlay
 
-1. Push `stage1.set` with `render_and_apply_j2_template` (`dry_run: false`) on Node0,
-   then on Node1.
+1. Push `stage1.set` on Node0, then on Node1. Use the push tool from
+   `references/mcp-server-notes.md`:
+   - rust-junosmcp: `create_junos_change_set` (preview/diff) → `approve_junos_change_set` →
+     `apply_junos_change_set` with `confirm_timeout_mins: 10` → verify → `confirm_junos_change_set`.
+     Direct-commit tools (`load_and_commit_config`) are refused unless the operator enabled
+     `--allow-direct-commit`; if so, use `load_and_commit_config` with `confirm_timeout_mins: 10`,
+     then a plain follow-up commit. The user's chat approval at each gate is required;
+     server-side approval (or lab-mode auto-approval) is not user approval.
+   - Juniper junos-mcp-server: `render_and_apply_j2_template` with `apply_config: true,
+     dry_run: false` (runs commit check before committing; no commit confirmed)
 2. Verify per `references/verification.md` → "After Stage 1":
    - ICL ping, including the 1400-byte DF ping
    - each segment's neighbor answers ping
@@ -205,12 +203,14 @@ an undo would remove.
 
 ## Step 8 - Stage 2: HA stanza
 
-1. Push `stage2.set` on Node0, then Node1.
-2. Run `junos_config_diff` (version 1) on each node as evidence.
+1. Push `stage2.set` on Node0, then Node1, using the same push tool/confirm flow as Step 7.
+2. Run the config diff against rollback 1 on each node as evidence (see `mcp-server-notes.md`).
+3. Confirm the Stage 2 commit before the user reboots — do not leave a commit-confirmed
+   window open across the HA-activation reboot.
 
 ## Step 9 - Reboot handoff (approval gate #2)
 
-The server blocks reboots, so the user does this step.
+This skill never reboots a device; the user performs the reboot.
 
 1. Ask the user to reboot **Node1 first**, then Node0 once Node1 is back.
    **Expected side effect:** while Node0 reboots, Node1 goes from HOLD to SRG1 ACTIVE and takes the
@@ -236,7 +236,8 @@ Run the "After Stage 2 + reboot" checks on both nodes with
 
 ## Step 11 - Stage 3: eBGP (routing and hybrid; approval gate #3)
 
-1. Get approval, then push `stage3.set` on both nodes.
+1. Get approval, then push `stage3.set` on both nodes using the same change-set or
+   direct-commit flow as Step 7.
 2. The upstream router must have both nodes configured as neighbors. If the upstream is
    MCP-managed, read its config first. It often already has a group for Node0; the smallest
    change is to add Node1 as another neighbor in that group, after a dry run. Otherwise ask the
@@ -269,8 +270,9 @@ Deliver:
 
 - Every push needs explicit, stage-specific approval.
 - Push Node0 then Node1, and verify between stages.
-- Never hand-edit staged files; change the sheet and re-render.
+- Never edit stage files in isolation; change the pair sheet and rewrite them from
+  `references/config-stages.md`.
 - Never touch `fxp0`, system services, logins or `mgmt_junos`.
-- If a commit's result is unclear because the connection dropped, check
-  `junos_config_diff` before retrying.
+- If a commit's result is unclear because the connection dropped, check the config diff
+  against rollback 1 (see `mcp-server-notes.md`) before retrying.
 - Undo files are only valid against the baseline they were computed from.
