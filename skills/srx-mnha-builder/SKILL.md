@@ -36,12 +36,7 @@ building the pair in a safe order**.
 **Naming:** Node0 maps to MNHA `local-id 1` and Node1 to `local-id 2`. Node0 gets the
 higher `activeness-priority`, so it is the SRG1 ACTIVE node by default.
 
-Read `references/mcp-transport-notes.md` before starting. Four facts from the server
-source shape every step:
-- there is no commit confirmed;
-- `load_and_commit_config` commits without a commit check;
-- the server blocks reboot commands;
-- idle connections are dropped after 300 s.
+Read `references/mcp-server-notes.md` before starting for tool mappings and server-specific behavior.
 
 ## Runtime intake
 
@@ -168,14 +163,17 @@ Output per node:
 ## Step 5 - Dry run on devices
 
 For every node, dry run stage 1 alone and stages 1+2+3 concatenated (later stages reference
-earlier ones). Use `render_and_apply_j2_template` with:
+earlier ones). Use the commit-check/dry-run tool from `references/mcp-server-notes.md`:
+- rust-junosmcp: prefer `commit_check_config` with `device`, `config_text` (the rendered
+  stage), and `config_format: "set"`; if not available, `render_and_apply_j2_template` with
+  `apply_config: true, dry_run: true`
+- Juniper junos-mcp-server: `render_and_apply_j2_template` with `apply_config: true,
+  dry_run: true`
+
+Template parameters (when using the J2 tool):
 - `template_content` = the rendered stage text
 - `vars_content: {"skill": "srx-mnha-builder"}` (a JSON object)
 - `config_format: "set"`
-- `apply_config: true`
-- `dry_run: true`
-
-The tool loads, runs commit check, diffs, and rolls back automatically.
 
 Also dry-run each `undo-stageN.set` against the current config. This shows exactly what
 an undo would remove.
@@ -188,9 +186,16 @@ an undo would remove.
 
 ## Step 7 - Stage 1: underlay
 
-1. Push `stage1.set` on Node0, then on Node1. Use `render_and_apply_j2_template` with
-   `apply_config: true, dry_run: false` (the same parameters as Step 5, but `dry_run: false`).
-   The tool runs commit check before committing.
+1. Push `stage1.set` on Node0, then on Node1. Use the push tool from
+   `references/mcp-server-notes.md`:
+   - rust-junosmcp: `create_junos_change_set` (preview/diff) → `approve_junos_change_set` →
+     `apply_junos_change_set` with `confirm_timeout_mins: 10` → verify → `confirm_junos_change_set`.
+     Direct-commit tools (`load_and_commit_config`) are refused unless the operator enabled
+     `--allow-direct-commit`; if so, use `load_and_commit_config` with `confirm_timeout_mins: 10`,
+     then a plain follow-up commit. The user's chat approval at each gate is required;
+     server-side approval (or lab-mode auto-approval) is not user approval.
+   - Juniper junos-mcp-server: `render_and_apply_j2_template` with `apply_config: true,
+     dry_run: false` (runs commit check before committing; no commit confirmed)
 2. Verify per `references/verification.md` → "After Stage 1":
    - ICL ping, including the 1400-byte DF ping
    - each segment's neighbor answers ping
@@ -198,8 +203,10 @@ an undo would remove.
 
 ## Step 8 - Stage 2: HA stanza
 
-1. Push `stage2.set` on Node0, then Node1, using the same tool as Step 7.
-2. Run `junos_config_diff` (version 1) on each node as evidence.
+1. Push `stage2.set` on Node0, then Node1, using the same push tool/confirm flow as Step 7.
+2. Run the config diff against rollback 1 on each node as evidence (see `mcp-server-notes.md`).
+3. Confirm the Stage 2 commit before the user reboots — do not leave a commit-confirmed
+   window open across the HA-activation reboot.
 
 ## Step 9 - Reboot handoff (approval gate #2)
 
@@ -229,7 +236,8 @@ Run the "After Stage 2 + reboot" checks on both nodes with
 
 ## Step 11 - Stage 3: eBGP (routing and hybrid; approval gate #3)
 
-1. Get approval, then push `stage3.set` on both nodes using the same tool as Step 7.
+1. Get approval, then push `stage3.set` on both nodes using the same change-set or
+   direct-commit flow as Step 7.
 2. The upstream router must have both nodes configured as neighbors. If the upstream is
    MCP-managed, read its config first. It often already has a group for Node0; the smallest
    change is to add Node1 as another neighbor in that group, after a dry run. Otherwise ask the
@@ -265,6 +273,6 @@ Deliver:
 - Never edit stage files in isolation; change the pair sheet and rewrite them from
   `references/config-stages.md`.
 - Never touch `fxp0`, system services, logins or `mgmt_junos`.
-- If a commit's result is unclear because the connection dropped, check
-  `junos_config_diff` before retrying.
+- If a commit's result is unclear because the connection dropped, check the config diff
+  against rollback 1 (see `mcp-server-notes.md`) before retrying.
 - Undo files are only valid against the baseline they were computed from.
