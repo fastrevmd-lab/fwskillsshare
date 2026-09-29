@@ -87,6 +87,53 @@ class SupplyChainInstallTests(unittest.TestCase):
             self.assertIn("no checksum manifest", result.stderr)
             self.assertFalse(dest.exists() and any(dest.iterdir()))
 
+    def _assert_refused(self, result, dest: Path, needle: str) -> None:
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn(needle, result.stderr)
+        self.assertFalse(dest.exists() and any(dest.iterdir()))
+
+    def test_extra_unlisted_file_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            repo = self._build_fake_repo(tmp_path)
+            (repo / "skills" / SKILL_NAME / "extra.md").write_text("not in manifest\n")
+            dest = tmp_path / "dest"
+            self._assert_refused(self._run_install(repo, dest), dest, "do not match the manifest exactly")
+
+    def test_empty_manifest_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            repo = self._build_fake_repo(tmp_path)
+            (repo / "skills" / "CHECKSUMS.sha256").write_text("")
+            dest = tmp_path / "dest"
+            self._assert_refused(self._run_install(repo, dest), dest, "lists no files")
+
+    def test_dotdot_or_absolute_manifest_line_is_refused(self) -> None:
+        for bad in ("../outside.md", "/etc/hostname"):
+            with self.subTest(path=bad), tempfile.TemporaryDirectory() as tmp:
+                tmp_path = Path(tmp)
+                repo = self._build_fake_repo(tmp_path)
+                manifest = repo / "skills" / "CHECKSUMS.sha256"
+                manifest.write_text(manifest.read_text() + ("0" * 64) + "  " + bad + "\n")
+                dest = tmp_path / "dest"
+                self._assert_refused(self._run_install(repo, dest), dest, "absolute path or ..")
+
+    def test_unlisted_symlink_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            repo = self._build_fake_repo(tmp_path)
+            (repo / "skills" / SKILL_NAME / "link.md").symlink_to("/etc/hostname")
+            dest = tmp_path / "dest"
+            self._assert_refused(self._run_install(repo, dest), dest, "symlink")
+
+    def test_nested_manifest_named_file_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            repo = self._build_fake_repo(tmp_path)
+            (repo / "skills" / SKILL_NAME / "CHECKSUMS.sha256").write_text("sneaky\n")
+            dest = tmp_path / "dest"
+            self._assert_refused(self._run_install(repo, dest), dest, "do not match the manifest exactly")
+
     def test_moving_ref_is_refused(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

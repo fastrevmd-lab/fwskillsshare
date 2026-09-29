@@ -405,9 +405,17 @@ verify_checksums() {
         echo -e "${C_RED}Error: checksum manifest $manifest lists no files${C_RESET}" >&2
         exit 1
     fi
+    # R1: a symlink anywhere in the payload could point outside it (and was
+    # installed as-is), so refuse any at all rather than try to vet targets.
+    if [[ -n "$(find "$skills_dir" -type l -print -quit)" ]]; then
+        echo -e "${C_RED}Error: symlink(s) present under $skills_dir; refusing to install an unverifiable payload${C_RESET}" >&2
+        exit 1
+    fi
     local listed present
     listed=$(sed 's/^[0-9a-f]\{64\}  //' "$manifest" | LC_ALL=C sort)
-    present=$(cd "$skills_dir" && find . -type f ! -name 'CHECKSUMS.sha256' | sed 's|^\./||' | LC_ALL=C sort)
+    # Every non-directory entry except the top-level manifest itself: a nested
+    # file named CHECKSUMS.sha256 must be listed like any other file.
+    present=$(cd "$skills_dir" && find . ! -type d ! -path './CHECKSUMS.sha256' | sed 's|^\./||' | LC_ALL=C sort)
     if [[ "$listed" != "$present" ]]; then
         echo -e "${C_RED}Error: files under $skills_dir do not match the manifest exactly (unlisted or extra files present)${C_RESET}" >&2
         exit 1
