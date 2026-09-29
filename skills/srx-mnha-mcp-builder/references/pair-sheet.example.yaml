@@ -1,0 +1,70 @@
+# MNHA pair sheet - single source of truth for one pair. Fill every <FILL>.
+# Node0 -> MNHA local-id 1, Node1 -> local-id 2.
+# Sections marked [routing|hybrid] or [switching|hybrid] are required only in those modes;
+# delete or leave empty the ones your mode does not use.
+
+pair:
+  name: <FILL>
+  junos_release: <FILL>             # from gather_device_facts, identical on both nodes
+  config_model: auto                # auto | grid | flat
+  grid_id: 1                        # grid model only
+  deployment_mode: <FILL>           # routing (L3) | switching (default-gateway/L2) | hybrid
+  liveness: {min_interval: 1000, multiplier: 3}
+
+  icl:
+    transport: <FILL>               # dedicated (own back-to-back link) | shared (loopbacks over a data segment)
+    zone: ICL                       # new, dedicated zone
+    # dedicated only:
+    ifd: <FILL>                     # e.g. ge-0/0/2 - unused, or already holding exactly this node's ICL address
+    unit: 0
+    prefix_len: 30
+    # shared only:
+    segment: <FILL>                 # name of the segment that carries the ICL, e.g. upstream
+    loopback_unit: 1                # lo0 unit for the ICL /32
+    encryption:
+      enabled: <FILL>               # true | false  (strongly recommended when transport is shared)
+      ike_policy: MNHA-ICL-IKE-POL  # the USER sets its pre-shared-key on both nodes via CLI - never in this sheet
+
+  segments:                         # data-plane interfaces; same IFL name on both nodes
+    - name: upstream                # [routing|hybrid] exactly one role: upstream
+      role: upstream
+      ifl: <FILL>                   # e.g. ge-0/0/1.0
+      zone: untrust
+    - name: downstream
+      role: downstream
+      ifl: <FILL>                   # e.g. ge-0/0/0.0
+      zone: trust
+
+  srg1:
+    active_signal_route: 169.254.200.1    # [routing|hybrid]
+    backup_signal_route: 169.254.200.2    # [routing|hybrid]
+    preemption: false
+    vips: []                        # [switching|hybrid] e.g. [{id: 1, ip: 198.51.100.1/24, ifl: ge-0/0/0.0}]
+    monitor_interfaces: []          # physical IFDs whose loss should fail SRG1 over, e.g. [ge-0/0/1]
+
+  bgp:                              # [routing|hybrid] built by Stage 3
+    local_as: <FILL>
+    peer_as: <FILL>
+    group: UPSTREAM
+    bfd: {min_interval: 500, multiplier: 3}   # or null
+    export_policy: MNHA-SRG1-EXPORT
+    protected_prefixes: []          # with match type, e.g. ["198.51.100.0/24 exact"]
+    transit_subnets: []             # connected subnets to advertise, e.g. the downstream segment
+    active_metric: 10
+    backup_metric: 20
+
+nodes:
+  node0:
+    router_name: <FILL>             # exact name from get_router_list
+    icl_ip: <FILL>                  # dedicated: link address; shared: loopback /32 address
+    activeness_priority: 200        # higher = preferred ACTIVE
+    probe: {dest_ip: <FILL>, src_ip: <FILL>}   # required in routing; optional in switching/hybrid (set to null)
+    addresses: {upstream: <FILL>, downstream: <FILL>}   # CIDR per segment name, e.g. 203.0.113.2/24
+    bgp_neighbors: [<FILL>]         # [routing|hybrid]
+  node1:
+    router_name: <FILL>
+    icl_ip: <FILL>
+    activeness_priority: 100
+    probe: {dest_ip: <FILL>, src_ip: <FILL>}
+    addresses: {upstream: <FILL>, downstream: <FILL>}
+    bgp_neighbors: [<FILL>]

@@ -1,0 +1,13 @@
+{# Stage 2 - MNHA flat model (Junos <= 24.x). #}
+{% if icl_encrypted %}{% include "_icl-crypto.set.j2" %}
+{% endif %}
+set chassis high-availability local-id {{ local_id }} local-ip {{ local_icl_ip }}
+set chassis high-availability peer-id {{ peer_id }} peer-ip {{ peer_icl_ip }}
+set chassis high-availability peer-id {{ peer_id }} interface {{ icl_ha_ifl }}
+set chassis high-availability peer-id {{ peer_id }} liveness-detection minimum-interval {{ liveness_min }}
+set chassis high-availability peer-id {{ peer_id }} liveness-detection multiplier {{ liveness_mult }}
+{% if icl_encrypted %}set chassis high-availability peer-id {{ peer_id }} vpn-profile MNHA-ICL-VPN
+{% endif %}
+set chassis high-availability services-redundancy-group 0 peer-id {{ peer_id }}
+set chassis high-availability services-redundancy-group 1 peer-id {{ peer_id }}
+{% include "_srg1-common.set.j2" %}
