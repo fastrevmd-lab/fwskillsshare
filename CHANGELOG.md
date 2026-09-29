@@ -13,6 +13,16 @@
 
 Field-confirmed 2026-09-25 on a vSRX 24.4R2.21 hybrid pair (flat model, encrypted ICL): formation, planned failover and failback, and an unplanned uplink failure with BFD 500 ms × 3. The grid-model `vpn-profile` placement for an encrypted ICL on 26.x is not yet confirmed on a device; the skill defers to the device dry run there.
 
+## 1.8.0 — Pinned, checksum-verified installs
+
+The installer no longer installs whatever `main` currently holds. It installs a pinned release tag and verifies the skill payload before copying anything (#77).
+
+- **Pinned release ref.** `install.sh` defaults to this tag (`v1.8.0`) and refuses a moving ref (a branch or `HEAD`); `--ref` accepts `vX.Y.Z` tags only. The `curl | bash` install is no longer offered — clone the tag (or download its tarball) and run `./install.sh` from it.
+- **Checksum manifest.** `skills/CHECKSUMS.sha256` lists every file under `skills/`. The installer aborts on a missing or empty manifest, a malformed or `..`/absolute line, any hash mismatch, any file present but not listed (including a nested file named `CHECKSUMS.sha256`), and any symlink in the payload. Regenerate with `scripts/gen-checksums.py`; `scripts/check-checksums.py` verifies it in CI.
+- **Signatures are not implemented yet.** `FWSKILLS_REQUIRE_SIGNATURE=1` fails closed until they are; the manifest proves integrity against the tag, not authorship.
+- **srx-policy 1.3.0** covers Branch SRX after SRX345 validation (#73). `srx-ips` credits @jgrizzuti as an author (#74).
+- **Hygiene:** lab subnets replaced with RFC 5737 documentation addresses (#76); shared gitleaks vendor rules (#75); the secrets check now uses the shared mechubsec gitleaks workflow (#80); links point at the `mechubsec` organization (#79).
+
 ## 1.7.0 — SRX IPS skill (draft)
 
 **srx-ips** v0.1.0, a draft skill merging IPS detection triage and custom signature authoring. Contributed by Javier Grizzuti (@jgrizzuti) in #70 from lab work against Juniper's junos-mcp-server, revised before merge, then merged into a single skill. The catalog gains one skill, from 30 to 31.
