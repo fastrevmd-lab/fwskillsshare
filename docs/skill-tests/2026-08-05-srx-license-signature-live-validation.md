@@ -1,7 +1,7 @@
 # Skill Test: srx-license-signature-maintenance on live SRX devices
 
 - **Validation date:** 2026-08-05
-- **Issue:** [#26](https://github.com/fastrevmd-lab/fwskillsshare/issues/26)
+- **Issue:** [#26](https://github.com/mechubsec/fwskillsshare/issues/26)
 - **Skill under test:** `srx-license-signature-maintenance` **1.0.0**
   (promoted from 0.1.0 draft on the strength of this run)
 - **Collection:** live devices over NETCONF via `rust-junosmcp`

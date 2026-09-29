@@ -34,7 +34,7 @@ metadata:
       retrieved: "2026-06-29"
     - title: "Field report: 12-branch vSRX3 lab, Junos 24.4R1.9 / 25.4R1.12 (commit blockers + NAT-T findings)"
       author: community field report (fwskillsshare issues #5, #6)
-      url: https://github.com/fastrevmd-lab/fwskillsshare/issues/5
+      url: https://github.com/mechubsec/fwskillsshare/issues/5
       retrieved: "2026-07-02"
 ---
 
