@@ -1,7 +1,7 @@
 ---
 name: srx-ips
-description: Manage the complete SRX IPS (Junos IDP) lifecycle - triage existing detections and propose monitor-to-enforce changes, or design and validate custom signatures for findings the predefined attack database does not cover. Reads IDP policy and logs, reports what fired and what each rule did, stages reviewed changes behind approval gates, checks existing coverage read-only, chooses context/direction/pattern, and validates syntax without activating. Use when reviewing IDP logs, investigating suspicious traffic, deciding which no-action rules to enforce, when a scanner finding needs IDP detection, or when extending IDP coverage. Not for attack database updates or IDP license maintenance.
-version: 0.1.0
+description: Manage SRX IPS (Junos IDP) lifecycle through a Junos MCP server - triage detections, propose monitor-to-enforce changes, design and validate custom signatures for findings the predefined database does not cover. Reads IDP policy and logs, reports what fired and each rule's action, stages changes behind approval gates, checks coverage read-only, chooses context/direction/pattern, validates syntax without activating. Use when reviewing IDP logs, investigating suspicious traffic, deciding which no-action rules to enforce, when a scanner finding needs IDP detection, or when extending IDP coverage. Not for attack database updates or IDP license maintenance.
+version: 0.1.1
 author:
   - fastrevmd-lab
   - Claude
@@ -47,11 +47,9 @@ metadata:
       url: https://www.juniper.net/documentation/en_US/junos/topics/reference/general/security-idp-custom-attack-object-dfa-pattern.html
     - title: "HPE Threat Labs IPS signature database"
       url: https://www.hpe.com/h41379/threatlabs/ips-signatures
-    - title: "Juniper junos-mcp-server (v1.1.1)"
-      url: https://github.com/Juniper/junos-mcp-server
-    - title: "Juniper MCP server field notes"
-      local: references/juniper-mcp-server-notes.md
-      note: "Observed with Juniper's junos-mcp-server; verify against your server and version"
+    - title: "MCP server capabilities reference"
+      local: references/mcp-server-notes.md
+      note: "Capability mapping for Junos MCP servers; verify against your server and version"
     - title: "Lab signature notes"
       local: references/lab-signature-notes.md
       note: "One lab's results against one test application; not production guidance"
@@ -59,11 +57,11 @@ metadata:
 
 # SRX IPS Management
 
-> **STATUS: draft (v0.1.0).** Contributed by Javier Grizzuti
-> ([@jgrizzuti](https://github.com/jgrizzuti)) from lab work against Juniper's
-> junos-mcp-server, then revised against Juniper documentation. Items marked
-> **[unverified]** have not yet been checked on a vSRX and must not be relied on
-> until they are. Values in `<angle brackets>` are site-specific.
+> **STATUS: draft (v0.1.1).** Contributed by Javier Grizzuti
+> ([@jgrizzuti](https://github.com/jgrizzuti)) from lab work through a Junos MCP
+> server, then revised against Juniper documentation. Items marked **[unverified]**
+> have not yet been checked on a vSRX and must not be relied on until they are.
+> Values in `<angle brackets>` are site-specific.
 >
 > Partial validation performed on vSRX 26.2R1.7 (attack database 3929) on
 > 2026-09-23: commit check behavior, predefined-attack browsing, and signature
@@ -100,15 +98,14 @@ Before starting the workflow, inspect the request, supplied artifacts, and avail
 
 ## Step 0 — Identify the target and the transport
 
-List the devices the tooling can reach (for example `get_router_list` on
-Juniper's junos-mcp-server) and confirm the target is registered. Record the
-model, Junos release, and whether it is a chassis cluster; IDP state is per node
-on a cluster.
+List the devices the tooling can reach (for example `get_router_list` on most
+Junos MCP servers) and confirm the target is registered. Record the model, Junos
+release, and whether it is a chassis cluster; IDP state is per node on a cluster.
 
 Know your transport's limits before you rely on it. Server-specific behavior —
-idle connection drops, pipe modifiers, binary output — is in
-[`references/juniper-mcp-server-notes.md`](references/juniper-mcp-server-notes.md).
-If a basic call fails, do not retry blindly; read that file first.
+idle connection drops, pipe modifiers, binary output, commit capabilities — is in
+[`references/mcp-server-notes.md`](references/mcp-server-notes.md). If a basic
+call fails, do not retry blindly; read that file first.
 
 ## Step 1 — Establish current state (read-only)
 
@@ -146,23 +143,19 @@ Check size before pulling:
 file list detail /var/log/<logfile>
 ```
 
-If it is small, read it with `show log <logfile>`. If it is large, **do not
-count on pipe modifiers** (`| match`, `| last`, `| count`) to shrink it — see
-the MCP notes. In order of preference:
+If it is small, read it with `show log <logfile>`. If it is large, **check your
+MCP server's pipe-modifier support** (`| match`, `| last`, `| count`) in the MCP
+notes before relying on them to shrink output. In order of preference:
 
 1. Read the same detections from the collector or SIEM.
 2. **Archive, then read the copy.** Nothing is lost:
    ```
    file copy /var/log/<logfile> /var/tmp/<logfile>-<timestamp>
    ```
-   **`file copy` may not survive an MCP relay.** On a Rust-based Junos MCP
-   server (not Juniper's), two attempts failed with `failed to parse RPC
-   response: significant text outside a reply payload`, and the destination
-   file was verified absent afterwards — the copy did not happen, on a
-   `super-user` account with a readable source. Juniper's own server was not
-   tested. Confirm the archive step actually produced a file before relying
-   on it, and fall back to a direct CLI/SSH session if it did not. Never run
-   `clear log` on the strength of an archive you have not confirmed exists.
+   **`file copy` may not work through all MCP servers.** Some have observed
+   failures; confirm the archive step actually produced a file before relying on
+   it, and fall back to a direct CLI/SSH session if it did not. Never run `clear
+   log` on the strength of an archive you have not confirmed exists.
 3. Only if a fresh, attributable slice is genuinely needed: archive first as
    above, then ask for **separate explicit approval** to run
    `clear log <logfile>`. Clearing permanently deletes the on-box evidence;
@@ -220,13 +213,16 @@ Every commit here follows the repository write policy:
 
 1. Show the candidate with `show | compare` and confirm it matches the approved
    lines exactly.
-2. Commit with a rollback window — `commit confirmed <minutes>` — and confirm
-   with a second commit only after verification passes.
-3. **Check whether your transport can do that.** Juniper's junos-mcp-server
-   v1.1.1 `load_and_commit_config` performs a plain `commit` with no confirmed
-   or dry-run option. If the tool cannot do a confirmed commit, say so, and get
-   approval that explicitly accepts a manual rollback plan
-   (`rollback 1` then `commit`) before pushing.
+2. Commit with a rollback window — `commit confirmed <minutes>` — where the MCP
+   server supports it, and confirm with a second commit only after verification
+   passes. If the server supports change sets with a confirm window (create,
+   approve, apply with `confirm_timeout_mins`, then confirm), prefer that flow.
+3. **Check whether your transport can do that.** Some Junos MCP servers perform a
+   plain `commit` with no confirmed or dry-run option; others support
+   `confirm_timeout_mins` on `load_and_commit_config` or change sets with apply-time
+   confirm windows. If the tool cannot do a confirmed commit, say so, and get
+   approval that explicitly accepts a manual rollback plan (`rollback 1` then
+   `commit`) before pushing.
 4. **Verified on vSRX 26.2R1.7, 2026-09-23:** `commit confirmed` works correctly
    with IDP configured. The device auto-rolled back a 1-minute confirmed commit
    cleanly and logged `UI_COMMIT_NOT_CONFIRMED`. **Operational timing:** the
@@ -298,10 +294,10 @@ the predefined database.
   **Verified on vSRX 26.2R1.7, 2026-09-23:** The `show security idp
   predefined-attacks filters category` command **requires a category argument**
   (e.g., `category HTTP`). The bare form fails with `syntax error, expecting
-  <data>`. The following browse commands are confirmed reachable through
-  Juniper's junos-mcp-server and are NOT relay-blocked: `show security idp
-  attack detail <name>`, `show security idp attack description <name>`, and pipe
-  modifiers (`| match`, `| count`, chained).
+  <data>`. The following browse commands are reachable through tested Junos MCP
+  servers: `show security idp attack detail <name>`, `show security idp attack
+  description <name>`, and pipe modifiers (`| match`, `| count`, chained) where
+  the server supports them.
 
 - **Do not commit to test a name.** Probing with a real or "throwaway" commit
   changes the device. **Verified on vSRX 26.2R1.7, 2026-09-23:** `commit check`
@@ -428,15 +424,15 @@ set security idp idp-policy <policy> rulebase-ips rule DETECT-<NAME> then notifi
 
 Then:
 
-1. **Validate without activating.** Run `commit check` on the candidate —
-   through a tool that supports it (for example `render_and_apply_j2_template`
-   with `dry_run=true` on Juniper's server) — and discard the candidate.
-2. **Get explicit approval** to stage it, stating that it is `no-action` and
-   what it is scoped to.
-3. **Commit with a rollback window** where available, following the shared
-   commit guidance below, including the plain-commit limitation of Juniper's
-   `load_and_commit_config` and the **[unverified]** Branch SRX confirmed-commit
-   restriction.
+1. **Validate without activating.** Run `commit check` on the candidate through a
+   tool that supports it (for example `commit_check_config`, or
+   `render_and_apply_j2_template` with `dry_run=true`, or a change set's
+   pre-flight validation step) and discard the candidate.
+2. **Get explicit approval** to stage it, stating that it is `no-action` and what
+   it is scoped to.
+3. **Commit with a rollback window** where available, following the shared commit
+   guidance below, including the MCP server's commit capabilities and the
+   **[unverified]** Branch SRX confirmed-commit restriction.
 4. **Verify the policy loaded** with `show security idp policy-commit-status`,
    polling rather than waiting a fixed time.
 
@@ -476,13 +472,16 @@ Every commit here follows the repository write policy:
 
 1. Show the candidate with `show | compare` and confirm it matches the approved
    lines exactly.
-2. Commit with a rollback window — `commit confirmed <minutes>` — and confirm
-   with a second commit only after verification passes.
-3. **Check whether your transport can do that.** Juniper's junos-mcp-server
-   v1.1.1 `load_and_commit_config` performs a plain `commit` with no confirmed
-   or dry-run option. If the tool cannot do a confirmed commit, say so, and get
-   approval that explicitly accepts a manual rollback plan
-   (`rollback 1` then `commit`) before pushing.
+2. Commit with a rollback window — `commit confirmed <minutes>` — where the MCP
+   server supports it, and confirm with a second commit only after verification
+   passes. If the server supports change sets with a confirm window (create,
+   approve, apply with `confirm_timeout_mins`, then confirm), prefer that flow.
+3. **Check whether your transport can do that.** Some Junos MCP servers perform a
+   plain `commit` with no confirmed or dry-run option; others support
+   `confirm_timeout_mins` on `load_and_commit_config` or change sets with apply-time
+   confirm windows. If the tool cannot do a confirmed commit, say so, and get
+   approval that explicitly accepts a manual rollback plan (`rollback 1` then
+   `commit`) before pushing.
 4. **Verified on vSRX 26.2R1.7, 2026-09-23:** `commit confirmed` works correctly
    with IDP configured. The device auto-rolled back a 1-minute confirmed commit
    cleanly and logged `UI_COMMIT_NOT_CONFIRMED`. **Operational timing:** the

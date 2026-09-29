@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+**srx-ips** v0.1.1: Generalized the skill to work with any Junos MCP server that exposes core operational and configuration capabilities, not just Juniper's junos-mcp-server. The MCP server capabilities reference (`references/mcp-server-notes.md`) now documents both Juniper junos-mcp-server v1.1.1 and rust-junosmcp v0.19.0+ with a capability mapping table covering commit check, confirmed commits, change sets, and rollback. All skill text refers capability-first ("where the MCP server supports it") instead of naming one specific server. No change to device syntax, safety gates, or verification procedures.
+
 ## Unreleased — SRX MNHA pair builder skill (draft)
 
 **srx-mnha-builder** v0.1.0 (renamed from `srx-mnha-mcp-builder` before first release), a draft skill that builds a new two-node SRX/vSRX Multi-Node High Availability pair end-to-end through a Junos MCP server (Juniper junos-mcp-server or mechubsec rust-junosmcp). Contributed by Javier Grizzuti (@jgrizzuti) from lab work. The catalog gains one skill, from 31 to 32. Design theory and troubleshooting of a running pair stay in `srx-mnha`; this skill covers the build order and works with either MCP server.
