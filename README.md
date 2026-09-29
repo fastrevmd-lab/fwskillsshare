@@ -126,7 +126,7 @@ in production.
 1. Run the installer and pick what you want:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/mechubsec/fwskillsshare/main/install.sh | bash
 ```
 
 2. Choose your skills (space/numbers to toggle, `a` for all) and where to install them — **Claude Code** (`~/.claude/skills/`), **Codex** (`~/.agents/skills/`), **Hermes**, or all three.
@@ -272,10 +272,10 @@ The [`install.sh`](./install.sh) installer runs interactively when piped from cu
 
 ```bash
 # Interactive: pick skills + target
-curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/mechubsec/fwskillsshare/main/install.sh | bash
 
 # Or from a clone
-git clone git@github.com:fastrevmd-lab/fwskillsshare.git
+git clone git@github.com:mechubsec/fwskillsshare.git
 cd fwskillsshare
 ./install.sh
 ```
@@ -314,7 +314,7 @@ Examples:
 The skills are plain directories — copy the ones you want:
 
 ```bash
-git clone git@github.com:fastrevmd-lab/fwskillsshare.git
+git clone git@github.com:mechubsec/fwskillsshare.git
 
 # All of them
 cp -r fwskillsshare/skills/* ~/.claude/skills/

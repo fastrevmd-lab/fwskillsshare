@@ -70,9 +70,9 @@ Ordered by readiness, not importance. Each entry says what unblocks it.
 ## Closed — 2026-09-11 and 2026-09-12
 
 The 2026-09-11 repository review (P0-P3 plus the follow-ups it opened) is
-complete. Landed in PRs [#66](https://github.com/fastrevmd-lab/fwskillsshare/pull/66),
-[#67](https://github.com/fastrevmd-lab/fwskillsshare/pull/67) and
-[#68](https://github.com/fastrevmd-lab/fwskillsshare/pull/68); the reasoning
+complete. Landed in PRs [#66](https://github.com/mechubsec/fwskillsshare/pull/66),
+[#67](https://github.com/mechubsec/fwskillsshare/pull/67) and
+[#68](https://github.com/mechubsec/fwskillsshare/pull/68); the reasoning
 lives in those commits and in the skill-test records under `docs/skill-tests/`.
 
 Three findings are worth keeping visible here, because each contradicts
@@ -101,7 +101,7 @@ counts, and `just lint` runs it.
 ## Tracked validation
 
 - [Issue #15: Re-run `firewall-best-practices-audit` v1.1 against policy-light
-  and policy-heavy SRX devices](https://github.com/fastrevmd-lab/fwskillsshare/issues/15)
+  and policy-heavy SRX devices](https://github.com/mechubsec/fwskillsshare/issues/15)
   defines the read-only test scope, safety boundary, evidence to collect, and
   acceptance criteria. The prior result is documented in
   [the 2026-06-29 vSRX production audit](docs/skill-tests/2026-06-29-vsrx-production-audit.md).

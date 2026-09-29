@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# install.sh - Installer for fastrevmd-lab/fwskillsshare Claude Code / Codex / Hermes skills
+# install.sh - Installer for mechubsec/fwskillsshare Claude Code / Codex / Hermes skills
 #
 # Usage: ./install.sh [options]
-#   OR:  curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash
+#   OR:  curl -fsSL https://raw.githubusercontent.com/mechubsec/fwskillsshare/main/install.sh | bash
 #
 # Options:
 #   --all                 Select every skill in the inventory
@@ -92,7 +92,7 @@ TOTAL_SKILLS=$((
 ))
 
 # Constants
-GITHUB_REPO="fastrevmd-lab/fwskillsshare"
+GITHUB_REPO="mechubsec/fwskillsshare"
 GITHUB_BRANCH="main"
 CLAUDE_SKILLS_DIR="${HOME}/.claude/skills"
 CODEX_SKILLS_DIR="${HOME}/.agents/skills"
@@ -140,7 +140,7 @@ print_banner() {
     cat << 'EOF'
 ╔═══════════════════════════════════════════════╗
 ║  FW Skills Share - Installer                  ║
-║  fastrevmd-lab/fwskillsshare                  ║
+║  mechubsec/fwskillsshare                      ║
 ╚═══════════════════════════════════════════════╝
 EOF
     echo -e "${C_RESET}"
@@ -170,7 +170,7 @@ Examples:
   ./install.sh --family parsers --target all
   ./install.sh --family deployment --target codex
   ./install.sh --skill srx-nat --skill srx-policy
-  curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash -s -- --all -y
+  curl -fsSL https://raw.githubusercontent.com/mechubsec/fwskillsshare/main/install.sh | bash -s -- --all -y
 EOF
 }
 
