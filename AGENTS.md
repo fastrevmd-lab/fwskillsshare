@@ -70,6 +70,19 @@ harder to find, which fails silently.
 
 Run it with `scripts/codex-review.sh` — not `codex exec review` directly.
 
+**This sends your diff to OpenAI's Codex service, off-box.** It is not run by
+any hook or CI job — only a human invoking `just review` triggers it — and the
+script itself refuses to run unless `FWSKILLS_ALLOW_CODEX_REVIEW=1` is set, so
+opt-in is explicit every time:
+
+```
+FWSKILLS_ALLOW_CODEX_REVIEW=1 scripts/codex-review.sh
+```
+
+Do not set that variable in a way that makes it silently persistent (a
+committed `.env`, a default in CI, etc.) — the point is a deliberate choice per
+run, not a one-time toggle.
+
 `~/.agents/skills/superpowers` symlinks into `~/.codex/superpowers/skills`, so
 Codex loads it as a skill on every run. Its preamble makes the reviewer read
 skill files and attempt subagent dispatch instead of the diff; seven consecutive

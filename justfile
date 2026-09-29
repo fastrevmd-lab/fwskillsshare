@@ -21,12 +21,15 @@ lint:
     python3 scripts/check-runtime-intake-safety.py
     python3 scripts/test-runtime-intake-safety.py
     python3 scripts/check-readme-branding.py
+    python3 scripts/check-checksums.py
 
 test:
     python3 scripts/test-inventory.py
     python3 scripts/test-markdown-links.py
     python3 scripts/check-shared-schema.py
     python3 scripts/check-installer.py
+    python3 scripts/test-installer-supply-chain.py
+    python3 scripts/test-codex-review-optin.py
     python3 scripts/check-sd-bundle-server.py
     python3 scripts/check-srx-policy-global-default.py
     python3 scripts/check-audit-rule-contract.py
@@ -48,6 +51,9 @@ publish-jnpr *ARGS:
 # denies MCP servers, and exits non-zero when no verdict is produced. A raw
 # `codex ... | jq` pipeline exits 0 on an empty stream, reporting success for a
 # gate that never ran. See AGENTS.md "Codex review gate".
+#
+# Sends your diff to OpenAI's Codex service (off-box). Requires explicit
+# opt-in: FWSKILLS_ALLOW_CODEX_REVIEW=1 just review
 review COMMIT="HEAD":
     scripts/codex-review.sh "$(git rev-parse {{COMMIT}})"
 

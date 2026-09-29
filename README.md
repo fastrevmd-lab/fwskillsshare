@@ -123,11 +123,19 @@ in production.
 
 ## Quickstart (30-second setup)
 
-1. Run the installer and pick what you want:
+1. Clone a tagged release and run the installer:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mechubsec/fwskillsshare/main/install.sh | bash
+git clone --branch v1.7.0 --depth 1 https://github.com/mechubsec/fwskillsshare.git
+cd fwskillsshare
+./install.sh
 ```
+
+`install.sh` verifies every skill file against `skills/CHECKSUMS.sha256` before
+installing anything, and refuses to run against a branch or `HEAD` — only a
+release tag (`vX.Y.Z`). Piping the script straight from `curl` into `bash` is
+not offered: that pattern runs whatever `main` currently contains, with no
+checksum possible before execution.
 
 2. Choose your skills (space/numbers to toggle, `a` for all) and where to install them — **Claude Code** (`~/.claude/skills/`), **Codex** (`~/.agents/skills/`), **Hermes**, or all three.
 
@@ -268,15 +276,16 @@ These are research/operational and assessment-support skills, not certified prod
 
 ### Installer (recommended)
 
-The [`install.sh`](./install.sh) installer runs interactively when piped from curl, or with flags for scripted/non-interactive use:
+Clone a tagged release and run [`install.sh`](./install.sh) — interactively, or
+with flags for scripted/non-interactive use. The installer only accepts a
+release tag (`vX.Y.Z`), never a branch or `HEAD`, and verifies every skill file
+against `skills/CHECKSUMS.sha256` before installing anything:
 
 ```bash
-# Interactive: pick skills + target
-curl -fsSL https://raw.githubusercontent.com/mechubsec/fwskillsshare/main/install.sh | bash
-
-# Or from a clone
-git clone git@github.com:mechubsec/fwskillsshare.git
+git clone --branch v1.7.0 --depth 1 https://github.com/mechubsec/fwskillsshare.git
 cd fwskillsshare
+
+# Interactive: pick skills + target
 ./install.sh
 ```
 
@@ -289,6 +298,8 @@ Flags:
 --target WHERE        claude | codex | hermes | both | all
                       ('both' means Claude+Hermes; default: interactive prompt, or claude with -y)
 --dir PATH            Explicit install directory (overrides --target)
+--ref TAG             Release tag to install from when downloading skills without a local clone
+                      (default: the tag pinned in install.sh). Must be vX.Y.Z; branches and HEAD are refused.
 --list                Print the skill inventory (grouped by family) and exit
 --uninstall           Remove the selected skills from the selected target(s) instead of installing
 --force               Overwrite existing skill directories without prompting
@@ -311,10 +322,11 @@ Examples:
 
 ### Manual install
 
-The skills are plain directories — copy the ones you want:
+The skills are plain directories — copy the ones you want. Pin a release tag
+rather than the default branch so you know exactly what you're copying:
 
 ```bash
-git clone git@github.com:mechubsec/fwskillsshare.git
+git clone --branch v1.7.0 --depth 1 git@github.com:mechubsec/fwskillsshare.git
 
 # All of them
 cp -r fwskillsshare/skills/* ~/.claude/skills/
