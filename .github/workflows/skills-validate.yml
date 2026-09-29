@@ -1,0 +1,61 @@
+name: skills-validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skills-validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: skill packaging, inventory, and markdown links
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Python version
+        run: python3 --version
+
+      - name: Lint (skill packaging, inventory, markdown links, runtime-intake catalogs)
+        run: |
+          set -euo pipefail
+          python3 scripts/sync-installer-inventory.py --check
+          python3 scripts/check-inventory.py
+          python3 scripts/check-catalog-counts.py
+          python3 scripts/check-skill-packages.py
+          python3 scripts/check-markdown-links.py
+          python3 scripts/test-runtime-intake-validator.py
+          python3 scripts/check-runtime-intake.py
+          python3 scripts/check-runtime-intake-safety.py
+          python3 scripts/test-runtime-intake-safety.py
+          python3 scripts/check-readme-branding.py
+          python3 scripts/check-checksums.py
+
+      - name: Test (fixtures, shared schema, behavioral contracts)
+        run: |
+          set -euo pipefail
+          python3 scripts/test-inventory.py
+          python3 scripts/test-markdown-links.py
+          python3 scripts/check-shared-schema.py
+          python3 scripts/check-installer.py
+          python3 scripts/test-installer-supply-chain.py
+          python3 scripts/test-codex-review-optin.py
+          python3 scripts/check-sd-bundle-server.py
+          python3 scripts/check-srx-policy-global-default.py
+          python3 scripts/check-audit-rule-contract.py
+          python3 scripts/check-srx-stig-catalog.py
+          python3 scripts/check-srx-stig-behavior.py
+          python3 scripts/check-srx-license-signature-contract.py
+
+      - name: Shell lint
+        run: shellcheck install.sh scripts/*.sh

@@ -33,7 +33,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BRAND_DIR = ROOT / "docs" / "publish"
 
-UPSTREAM_SLUG = "fastrevmd-lab/fwskillsshare"
+UPSTREAM_SLUG = "mechubsec/fwskillsshare"
 
 # Allowlist, not denylist: anything not named here is never published, so a new
 # directory of lab notes cannot leak by being forgotten.

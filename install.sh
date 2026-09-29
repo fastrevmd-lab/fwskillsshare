@@ -1,9 +1,19 @@
 #!/usr/bin/env bash
 #
-# install.sh - Installer for fastrevmd-lab/fwskillsshare Claude Code / Codex / Hermes skills
+# install.sh - Installer for mechubsec/fwskillsshare Claude Code / Codex / Hermes skills
 #
-# Usage: ./install.sh [options]
-#   OR:  curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash
+# Usage: git clone --branch <tag> --depth 1 https://github.com/mechubsec/fwskillsshare.git
+#        cd fwskillsshare && ./install.sh
+#
+# Piping this script straight from curl into bash is deliberately not offered:
+# it would run whatever main currently contains, with no checksum or signature
+# check possible before execution. Clone a tagged release (or download that
+# tag's tarball) and run install.sh from it instead.
+#
+# The skill payload under skills/ is verified against skills/CHECKSUMS.sha256
+# before anything is copied. A tampered or incomplete payload aborts the
+# install. --ref pins a release tag, not a signature; signature verification is
+# not implemented yet, and FWSKILLS_REQUIRE_SIGNATURE=1 fails closed until it is.
 #
 # Options:
 #   --all                 Select every skill in the inventory
@@ -12,11 +22,13 @@
 #   --target WHERE        claude | codex | hermes | both | all
 #                         ('both' keeps the legacy Claude+Hermes meaning; default: prompt, or claude with -y)
 #   --dir PATH            Explicit install directory (overrides --target)
+#   --ref TAG             Release tag to install from when downloading (default: GITHUB_REF_DEFAULT below).
+#                         Must match vX.Y.Z; branches, HEAD, and other moving refs are refused.
 #   --list                Print the skill inventory (grouped by family) and exit
 #   --uninstall           Remove the selected skills from the selected target(s) instead of installing
 #   --force               Overwrite existing skill directories without prompting
 #   -y, --yes             Non-interactive; assume defaults, no prompts
-#   -h, --help            Show help and exit
+#   -h, --help             Show help and exit
 #
 
 set -euo pipefail
@@ -93,8 +105,16 @@ TOTAL_SKILLS=$((
 ))
 
 # Constants
-GITHUB_REPO="fastrevmd-lab/fwskillsshare"
-GITHUB_BRANCH="main"
+GITHUB_REPO="mechubsec/fwskillsshare"
+# Pinned release tag used when downloading skills. Update on every release.
+# Never point this at a branch or HEAD -- validate_ref() below refuses anything
+# that isn't a vX.Y.Z tag, so a moving ref can't slip in via this default either.
+#
+# NOTE: When cutting a new release, update this to the release tag (e.g. v1.8.0).
+# The checksum manifest (skills/CHECKSUMS.sha256) was added after v1.7.0, so
+# this must point to a tag that includes the manifest.
+GITHUB_REF_DEFAULT="v1.8.0"
+GITHUB_REF="$GITHUB_REF_DEFAULT"
 CLAUDE_SKILLS_DIR="${HOME}/.claude/skills"
 CODEX_SKILLS_DIR="${HOME}/.agents/skills"
 HERMES_SKILLS_DIR="${HOME}/.hermes/skills/devops"
@@ -123,6 +143,7 @@ TEMP_DIR=""
 SELECTED_SKILLS=()
 INSTALL_TARGETS=()
 EXPLICIT_DIR=""
+REF_EXPLICIT=false
 MODE="install"
 FORCE=false
 NON_INTERACTIVE=false
@@ -141,7 +162,7 @@ print_banner() {
     cat << 'EOF'
 ╔═══════════════════════════════════════════════╗
 ║  FW Skills Share - Installer                  ║
-║  fastrevmd-lab/fwskillsshare                  ║
+║  mechubsec/fwskillsshare                      ║
 ╚═══════════════════════════════════════════════╝
 EOF
     echo -e "${C_RESET}"
@@ -158,11 +179,12 @@ Options:
   --target WHERE        claude | codex | hermes | both | all
                         ('both' means Claude+Hermes; default: interactive prompt, or claude with -y)
   --dir PATH            Explicit install directory (overrides --target)
+  --ref TAG             Release tag to download (default: ${GITHUB_REF_DEFAULT}). Must be vX.Y.Z.
   --list                Print the skill inventory (grouped by family) and exit
   --uninstall           Remove the selected skills from the selected target(s) instead of installing
   --force               Overwrite existing skill directories without prompting
   -y, --yes             Non-interactive; assume defaults, no prompts
-  -h, --help            Show help and exit
+  -h, --help             Show help and exit
 
 Examples:
   ./install.sh --all --target claude
@@ -171,7 +193,11 @@ Examples:
   ./install.sh --family parsers --target all
   ./install.sh --family deployment --target codex
   ./install.sh --skill srx-nat --skill srx-policy
-  curl -fsSL https://raw.githubusercontent.com/fastrevmd-lab/fwskillsshare/main/install.sh | bash -s -- --all -y
+  ./install.sh --all -y --ref ${GITHUB_REF_DEFAULT}
+
+  # From a fresh checkout, no local clone required:
+  git clone --branch ${GITHUB_REF_DEFAULT} --depth 1 https://github.com/${GITHUB_REPO}.git
+  cd fwskillsshare && ./install.sh --all -y
 EOF
 }
 
@@ -261,8 +287,8 @@ skill_exists() {
 # Sort and de-duplicate skill names into SELECTED_SKILLS.
 #
 # Deliberately a read loop rather than `mapfile`: mapfile is a Bash 4 builtin,
-# and the documented `curl ... | bash` install path runs under whatever bash
-# the machine ships. macOS still ships 3.2, where mapfile aborts the run with
+# and this script runs under whatever bash the machine ships, cloned or not.
+# macOS still ships 3.2, where mapfile aborts the run with
 # "mapfile: command not found" before a single skill is copied.
 set_selected_skills_sorted() {
     if [[ $# -eq 0 ]]; then
@@ -291,6 +317,131 @@ contains_element() {
     return 1
 }
 
+validate_ref() {
+    local ref="$1"
+    if [[ ! "$ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo -e "${C_RED}Error: --ref must be a release tag matching vX.Y.Z (got '$ref')${C_RESET}" >&2
+        echo -e "${C_RED}Refusing to install from a moving ref such as a branch name or HEAD.${C_RESET}" >&2
+        exit 1
+    fi
+}
+
+sha256_of() {
+    local file="$1"
+    if command -v sha256sum &>/dev/null; then
+        sha256sum "$file" | awk '{print $1}'
+    elif command -v shasum &>/dev/null; then
+        shasum -a 256 "$file" | awk '{print $1}'
+    else
+        echo -e "${C_RED}Error: neither sha256sum nor shasum is available; cannot verify checksums${C_RESET}" >&2
+        exit 1
+    fi
+}
+
+# Verify every file listed in skills_dir/CHECKSUMS.sha256 against its recorded
+# hash. Aborts the install (rather than returning an error) on any mismatch,
+# missing file, or missing manifest: a corrupted or tampered payload must never
+# reach install_skill.
+verify_checksums() {
+    local skills_dir="$1"
+    local manifest="$skills_dir/CHECKSUMS.sha256"
+
+    if [[ ! -f "$manifest" ]]; then
+        echo -e "${C_RED}Error: no checksum manifest at $manifest${C_RESET}" >&2
+        echo -e "${C_RED}Refusing to install an unverified skill payload.${C_RESET}" >&2
+        exit 1
+    fi
+
+    # Check for a hasher once at the top, outside any command substitution
+    if ! command -v sha256sum &>/dev/null && ! command -v shasum &>/dev/null; then
+        echo -e "${C_RED}Error: neither sha256sum nor shasum is available; cannot verify checksums${C_RESET}" >&2
+        exit 1
+    fi
+
+    echo -e "${C_CYAN}Verifying skill checksums against $manifest...${C_RESET}"
+
+    local line expected relative file_path actual
+    local -i checked=0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Reject empty lines
+        [[ -z "$line" ]] && continue
+
+        # Validate line format: must match ^[0-9a-f]{64}  .+$
+        local regex='^[0-9a-f]{64}  .+$'
+        if ! [[ "$line" =~ $regex ]]; then
+            echo -e "${C_RED}Error: malformed manifest line at $manifest:${C_RESET}" >&2
+            echo -e "${C_RED}  $line${C_RESET}" >&2
+            echo -e "${C_RED}Expected: <sha256>  <relative-path>${C_RESET}" >&2
+            exit 1
+        fi
+
+        # Reject absolute paths or paths containing ..
+        expected="${line%%  *}"
+        relative="${line#*  }"
+        if [[ "$relative" == /* ]] || [[ "$relative" == *..* ]]; then
+            echo -e "${C_RED}Error: manifest line contains absolute path or ..:${C_RESET}" >&2
+            echo -e "${C_RED}  $line${C_RESET}" >&2
+            exit 1
+        fi
+        file_path="$skills_dir/$relative"
+        if [[ ! -f "$file_path" ]]; then
+            echo -e "${C_RED}Error: checksum manifest lists '$relative' but it is missing from the download${C_RESET}" >&2
+            exit 1
+        fi
+        if command -v sha256sum &>/dev/null; then
+            actual=$(sha256sum "$file_path" | awk '{print $1}')
+        else
+            actual=$(shasum -a 256 "$file_path" | awk '{print $1}')
+        fi
+        if [[ "$actual" != "$expected" ]]; then
+            echo -e "${C_RED}Error: checksum mismatch for '$relative'${C_RESET}" >&2
+            echo -e "${C_RED}Refusing to install a skill payload that does not match its manifest.${C_RESET}" >&2
+            exit 1
+        fi
+        ((checked++)) || true
+    done < "$manifest"
+
+    # F3+F4: Ensure manifest is not empty and matches exactly
+    if (( checked == 0 )); then
+        echo -e "${C_RED}Error: checksum manifest $manifest lists no files${C_RESET}" >&2
+        exit 1
+    fi
+    # R1: a symlink anywhere in the payload could point outside it (and was
+    # installed as-is), so refuse any at all rather than try to vet targets.
+    if [[ -n "$(find "$skills_dir" -type l -print -quit)" ]]; then
+        echo -e "${C_RED}Error: symlink(s) present under $skills_dir; refusing to install an unverifiable payload${C_RESET}" >&2
+        exit 1
+    fi
+    local listed present
+    listed=$(sed 's/^[0-9a-f]\{64\}  //' "$manifest" | LC_ALL=C sort)
+    # Every non-directory entry except the top-level manifest itself: a nested
+    # file named CHECKSUMS.sha256 must be listed like any other file.
+    present=$(cd "$skills_dir" && find . ! -type d ! -path './CHECKSUMS.sha256' | sed 's|^\./||' | LC_ALL=C sort)
+    if [[ "$listed" != "$present" ]]; then
+        echo -e "${C_RED}Error: files under $skills_dir do not match the manifest exactly (unlisted or extra files present)${C_RESET}" >&2
+        exit 1
+    fi
+
+    echo -e "${C_GREEN}✓${C_RESET} $checked file(s) matched the checksum manifest"
+}
+
+# Stub: no signing mechanism exists yet (it depends on the release baseline
+# work tracked separately). This deliberately fails closed rather than
+# pretending to verify something it cannot. Once signing lands, this function
+# gets a real implementation instead of a flag that always refuses.
+verify_signature() {
+    local manifest="$1"
+
+    if [[ "${FWSKILLS_REQUIRE_SIGNATURE:-0}" != "1" ]]; then
+        return 0
+    fi
+
+    echo -e "${C_RED}Error: FWSKILLS_REQUIRE_SIGNATURE=1 but signature verification is not implemented yet.${C_RESET}" >&2
+    echo -e "${C_RED}There is no signature over $manifest that this installer can check.${C_RESET}" >&2
+    echo -e "${C_RED}Refusing to install rather than accepting an unsigned manifest as if it were signed.${C_RESET}" >&2
+    exit 1
+}
+
 detect_script_dir() {
     # Try to detect the directory where the script lives
     # This is tricky when piped from curl
@@ -313,6 +464,9 @@ find_skills_source() {
 
     # Check for local skills/ directory
     if [[ -n "$script_dir" && -d "$script_dir/skills" ]]; then
+        if [[ "$REF_EXPLICIT" == true ]]; then
+            echo -e "${C_YELLOW}Warning: local skills/ directory found; ignoring explicit --ref ${GITHUB_REF}${C_RESET}" >&2
+        fi
         echo "$script_dir/skills"
         return 0
     fi
@@ -323,23 +477,25 @@ find_skills_source() {
 
     # Try curl + tar first (preferred)
     if command -v curl &>/dev/null && command -v tar &>/dev/null; then
-        local tarball_url="https://codeload.github.com/${GITHUB_REPO}/tar.gz/refs/heads/${GITHUB_BRANCH}"
+        local tarball_url="https://codeload.github.com/${GITHUB_REPO}/tar.gz/refs/tags/${GITHUB_REF}"
+        # GitHub's tarball strips a leading 'v' from a vX.Y.Z tag when naming
+        # the extracted directory (verified against codeload.github.com).
         if curl -fsSL "$tarball_url" | tar -xz -C "$TEMP_DIR" 2>/dev/null; then
-            echo "$TEMP_DIR/fwskillsshare-${GITHUB_BRANCH}/skills"
+            echo "$TEMP_DIR/fwskillsshare-${GITHUB_REF#v}/skills"
             return 0
         else
-            echo -e "${C_RED}Error: Failed to download tarball${C_RESET}" >&2
+            echo -e "${C_RED}Error: Failed to download tarball for tag ${GITHUB_REF}${C_RESET}" >&2
         fi
     fi
 
     # Fall back to git clone
     if command -v git &>/dev/null; then
         local clone_url="https://github.com/${GITHUB_REPO}.git"
-        if git clone --depth 1 --branch "$GITHUB_BRANCH" "$clone_url" "$TEMP_DIR/repo" &>/dev/null; then
+        if git clone --depth 1 --branch "$GITHUB_REF" "$clone_url" "$TEMP_DIR/repo" &>/dev/null; then
             echo "$TEMP_DIR/repo/skills"
             return 0
         else
-            echo -e "${C_RED}Error: Failed to clone repository${C_RESET}" >&2
+            echo -e "${C_RED}Error: Failed to clone repository at tag ${GITHUB_REF}${C_RESET}" >&2
         fi
     fi
 
@@ -680,6 +836,16 @@ while [[ $# -gt 0 ]]; do
             EXPLICIT_DIR="$2"
             shift 2
             ;;
+        --ref)
+            if [[ -z "${2:-}" ]]; then
+                echo -e "${C_RED}Error: --ref requires a release tag${C_RESET}" >&2
+                exit 1
+            fi
+            validate_ref "$2"
+            GITHUB_REF="$2"
+            REF_EXPLICIT=true
+            shift 2
+            ;;
         --list)
             print_inventory
             exit 0
@@ -749,6 +915,9 @@ echo ""
 SKILLS_SOURCE=""
 if [[ "$MODE" == "install" ]]; then
     SKILLS_SOURCE=$(find_skills_source)
+    echo ""
+    verify_checksums "$SKILLS_SOURCE"
+    verify_signature "$SKILLS_SOURCE/CHECKSUMS.sha256"
     echo ""
 fi
 

@@ -1,6 +1,6 @@
 # Plan: srx-license-signature-maintenance
 
-- **Issue:** [#26](https://github.com/fastrevmd-lab/fwskillsshare/issues/26)
+- **Issue:** [#26](https://github.com/mechubsec/fwskillsshare/issues/26)
 - **Date:** 2026-07-31
 - **Outcome:** shipped at v0.1.0 draft 2026-07-31; promoted to **v1.0.0** on
   2026-08-05 after live read-only validation

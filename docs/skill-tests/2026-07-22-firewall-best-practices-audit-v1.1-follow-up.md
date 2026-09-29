@@ -1,7 +1,7 @@
 # Skill Test Follow-up: firewall-best-practices-audit v1.1
 
 - **Validation date:** 2026-07-22
-- **Issue:** [#15 — re-run policy-light and policy-heavy SRX audits](https://github.com/fastrevmd-lab/fwskillsshare/issues/15)
+- **Issue:** [#15 — re-run policy-light and policy-heavy SRX audits](https://github.com/mechubsec/fwskillsshare/issues/15)
 - **Skill under test:** `firewall-best-practices-audit` **v1.1.4**
 - **Parser instructions:** `parsing-srx-configs` **v1.3.4**
 - **Mode:** read, parse, and analyze only; no device-side operation was called
