@@ -1,7 +1,7 @@
 # Skill Test: firewall-best-practices-audit v1.1 on live SRX devices
 
 - **Validation date:** 2026-07-31
-- **Issue:** [#15 — re-run policy-light and policy-heavy SRX audits](https://github.com/fastrevmd-lab/fwskillsshare/issues/15)
+- **Issue:** [#15 — re-run policy-light and policy-heavy SRX audits](https://github.com/mechubsec/fwskillsshare/issues/15)
 - **Skill under test:** `firewall-best-practices-audit` **v1.1.4**
 - **Parser instructions:** `parsing-srx-configs` **v1.3.4**
 - **Collection:** live devices over NETCONF via `rust-junosmcp` (34-device lab inventory)

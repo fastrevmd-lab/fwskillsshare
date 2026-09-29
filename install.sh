@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# install.sh - Installer for fastrevmd-lab/fwskillsshare Claude Code / Codex / Hermes skills
+# install.sh - Installer for mechubsec/fwskillsshare Claude Code / Codex / Hermes skills
 #
-# Usage: git clone --branch <tag> --depth 1 https://github.com/fastrevmd-lab/fwskillsshare.git
+# Usage: git clone --branch <tag> --depth 1 https://github.com/mechubsec/fwskillsshare.git
 #        cd fwskillsshare && ./install.sh
 #
 # Piping this script straight from curl into bash is deliberately not offered:
@@ -104,7 +104,7 @@ TOTAL_SKILLS=$((
 ))
 
 # Constants
-GITHUB_REPO="fastrevmd-lab/fwskillsshare"
+GITHUB_REPO="mechubsec/fwskillsshare"
 # Pinned release tag used when downloading skills. Update on every release.
 # Never point this at a branch or HEAD -- validate_ref() below refuses anything
 # that isn't a vX.Y.Z tag, so a moving ref can't slip in via this default either.
@@ -161,7 +161,7 @@ print_banner() {
     cat << 'EOF'
 ╔═══════════════════════════════════════════════╗
 ║  FW Skills Share - Installer                  ║
-║  fastrevmd-lab/fwskillsshare                  ║
+║  mechubsec/fwskillsshare                      ║
 ╚═══════════════════════════════════════════════╝
 EOF
     echo -e "${C_RESET}"

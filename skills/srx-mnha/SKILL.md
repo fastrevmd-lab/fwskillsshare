@@ -471,7 +471,7 @@ Session, IPsec, routing, VIP, and DHCP checks are listed inline in their section
 Full write-ups live in `references/mnha-grid-model-field-notes.md`; the pitfalls
 above index them. Confirmed on live pairs:
 
-- vSRX3 24.4R1.9 hybrid pair ([issue #7](https://github.com/fastrevmd-lab/fwskillsshare/issues/7)):
+- vSRX3 24.4R1.9 hybrid pair ([issue #7](https://github.com/mechubsec/fwskillsshare/issues/7)):
   an unzoned-leg static default black-holes transit (pitfall 18); the backup node
   does not service SRG data traffic (`Process Packet In Backup State: NO` is
   expected, not a fault); the `high-availability` host-inbound knob commit-checks

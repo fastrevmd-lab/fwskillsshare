@@ -1,0 +1,72 @@
+title = "mecmcp vendor gitleaks rules (canonical, extended by all 15 repos)"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "junos-type9-secret"
+description = "Junos $9$ (family 9) obfuscated secret"
+regex = '''\$9\$[A-Za-z0-9/.\-]{4,}'''
+tags = ["junos", "secret"]
+
+[[rules]]
+id = "junos-type6-secret"
+description = "Junos $6$ (SHA-512 crypt) secret"
+regex = '''\$6\$(rounds=\d+\$)?[A-Za-z0-9./]{1,16}\$[A-Za-z0-9./]{20,}'''
+tags = ["junos", "secret"]
+
+[[rules]]
+id = "junos-type5-secret"
+description = "Junos $5$ (SHA-256 crypt) secret"
+regex = '''\$5\$(rounds=\d+\$)?[A-Za-z0-9./]{1,16}\$[A-Za-z0-9./]{20,}'''
+tags = ["junos", "secret"]
+
+[[rules]]
+id = "junos-type1-secret"
+description = "Junos $1$ (MD5 crypt) secret"
+regex = '''\$1\$[A-Za-z0-9./]{1,8}\$[A-Za-z0-9./]{22}'''
+tags = ["junos", "secret"]
+
+[[rules]]
+id = "fortios-enc-secret"
+description = "FortiOS ENC-obfuscated value"
+regex = '''\bENC\s+[A-Za-z0-9+/=]{20,}'''
+tags = ["fortios", "secret"]
+
+[[rules]]
+id = "panos-aq-encrypted"
+description = "PAN-OS master-key encrypted value (-AQ== prefix form)"
+regex = '''-AQ==[A-Za-z0-9+/]{16,}={0,2}'''
+tags = ["panos", "secret"]
+
+[[rules]]
+id = "panos-lufrpt-secret"
+description = "PAN-OS LUFRPT-prefixed obfuscated secret"
+regex = '''\bLUFRPT[A-Za-z0-9+/=]{16,}'''
+tags = ["panos", "secret"]
+
+[[rules]]
+id = "pve-api-token"
+description = "Proxmox VE API token"
+regex = '''PVEAPIToken=[A-Za-z0-9_.\-]+@[A-Za-z0-9]+![A-Za-z0-9_.\-]+=[A-Za-z0-9\-]{20,}'''
+tags = ["proxmox", "secret"]
+
+[[rules]]
+id = "mist-x-passphrase"
+description = "Mist x_passphrase field"
+regex = '''"?x_passphrase"?\s*[:=]\s*"[^"\s]{8,}"'''
+tags = ["mist", "secret"]
+
+[[rules]]
+id = "pem-private-key"
+description = "PEM-encoded private key header (incl. encrypted/OpenSSH/PGP)"
+regex = '''-----BEGIN\s+((EC|RSA|DSA|OPENSSH|ENCRYPTED)\s+)?PRIVATE KEY-----|-----BEGIN PGP PRIVATE KEY BLOCK-----'''
+tags = ["pem", "secret"]
+
+# The rule regexes above are literal strings that match themselves. Without
+# this, every repo's own gitleaks config file would flag as a leak.
+[allowlist]
+description = "gitleaks rule/config files match their own literal example patterns"
+paths = [
+  '''(^|/)\.gitleaks(-vendor)?\.toml$''',
+]

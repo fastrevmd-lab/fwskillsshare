@@ -358,7 +358,7 @@ A common structure is:
 
 ## Routing Instance Reachability
 
-**Warning — non-default feed-server routing-table pins are not reboot-safe on vSRX 24.4R1.9.** A saved configuration containing `security dynamic-address feed-server <server> routing-table <instance>.inet` can commit and fetch normally after the table already exists, yet fail normal boot validation with `routing table <instance>.inet cannot find`. The device can then activate Recovery Mode and load its rescue configuration. A successful interactive commit is not reboot-safety proof; this failure was [field-observed on 18 devices](https://github.com/fastrevmd-lab/fwskillsshare/issues/18).
+**Warning — non-default feed-server routing-table pins are not reboot-safe on vSRX 24.4R1.9.** A saved configuration containing `security dynamic-address feed-server <server> routing-table <instance>.inet` can commit and fetch normally after the table already exists, yet fail normal boot validation with `routing table <instance>.inet cannot find`. The device can then activate Recovery Mode and load its rescue configuration. A successful interactive commit is not reboot-safety proof; this failure was [field-observed on 18 devices](https://github.com/mechubsec/fwskillsshare/issues/18).
 
 **Preferred reboot-safe path:** make the feed server reachable through the default routing instance and omit the feed-server `routing-table` statement. On the affected release, devices using the same feed server without the pin booted normally.
 

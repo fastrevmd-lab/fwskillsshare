@@ -22,7 +22,7 @@ metadata:
       retrieved: "2026-07-02"
     - title: "Field report: 12-branch vSRX3 lab (6 AutoVPN + 6 ADVPN), Junos 24.4R1.9 / 25.4R1.12"
       author: community field report (fwskillsshare issue #4)
-      url: https://github.com/fastrevmd-lab/fwskillsshare/issues/4
+      url: https://github.com/mechubsec/fwskillsshare/issues/4
       retrieved: "2026-07-02"
 ---
 
@@ -366,5 +366,5 @@ certificate-requirement commit error, chassis-cluster PKI gotcha, NAT-T
 double-NAT and host-inbound findings, and the open `No public key found`
 blocker are field data from a 12-branch vSRX3 lab build (Junos 24.4R1.9 /
 25.4R1.12) contributed via
-[fwskillsshare issue #4](https://github.com/fastrevmd-lab/fwskillsshare/issues/4).
+[fwskillsshare issue #4](https://github.com/mechubsec/fwskillsshare/issues/4).
 See `references/field-notes-vsrx-advpn-lab.md`.

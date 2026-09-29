@@ -81,7 +81,7 @@ interfaces {
 
     reth0 {
         redundant-ether-options { redundancy-group 1; }
-        unit 0 { family inet { address 192.168.77.97/24; } }
+        unit 0 { family inet { address 203.0.113.97/24; } }
     }
     reth1 {
         redundant-ether-options { redundancy-group 1; }
