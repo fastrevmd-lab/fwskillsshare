@@ -1,6 +1,6 @@
 ---
 name: srx-mnha-builder
-description: Builds a new two-node Juniper SRX/vSRX Multi-Node High Availability (MNHA) pair end-to-end through the Junos MCP Server (junos-mcp-server). Selects the deployment mode (routing/L3 with eBGP, switching/default-gateway with VIPs, or hybrid) during setup, then does preflight discovery, a single pair sheet, rendered and linted per-node configs, staged commits with approval gates, the HA-activation reboot handoff, formation verification and failover testing. In L3 and hybrid modes it also builds the eBGP upstream and signal-route export. Use when the user wants to create, stand up, build, deploy, or bring up an MNHA pair, "turn these two SRXs into an HA pair", or configure chassis high-availability on devices reachable via MCP - even if they only name the two devices. For MNHA design theory or troubleshooting an already-running pair, use srx-mnha instead.
+description: Builds a new two-node Juniper SRX/vSRX Multi-Node High Availability (MNHA) pair end-to-end through the Junos MCP Server (junos-mcp-server). Selects the deployment mode (routing/L3 with eBGP, switching/default-gateway with VIPs, or hybrid) during setup, then does preflight discovery, a single pair sheet, per-node configs written from a stage reference and checked against a pre-push checklist, staged commits with approval gates, the HA-activation reboot handoff, formation verification and failover testing. In L3 and hybrid modes it also builds the eBGP upstream and signal-route export. Use when the user wants to create, stand up, build, deploy, or bring up an MNHA pair, "turn these two SRXs into an HA pair", or configure chassis high-availability on devices reachable via MCP - even if they only name the two devices. For MNHA design theory or troubleshooting an already-running pair, use srx-mnha instead.
 version: 0.1.0
 author:
   - fastrevmd-lab
@@ -118,9 +118,9 @@ itself:
 - **The pre-shared key, set by the user on both nodes via CLI**, before the baseline is
   taken:
   `set security ike policy MNHA-ICL-IKE-POL pre-shared-key ascii-text <key>`.
-  The key never goes into the sheet, the chat or an MCP push. The lint fails until the
-  line appears in both baselines. The skill then adds everything else: proposals,
-  gateway, VPN, `vpn-profile`, and IKE host-inbound.
+  The key never goes into the sheet, the chat or an MCP push. The pre-push checklist
+  blocks until the line appears in both baselines. The skill then adds everything else:
+  proposals, gateway, VPN, `vpn-profile`, and IKE host-inbound.
 
 Field-confirmed 2026-09-25: the encrypted-ICL stanza (`ha-link-encryption` + `peer-id …
 vpn-profile`) commit-checks on vSRX 24.4R2.21 (flat model). On the grid model (26.x) the
@@ -144,37 +144,31 @@ What each mode needs:
   on both nodes) and `monitor_interfaces`.
 
 If a BGP group, zone or interface already exists in the baseline, the sheet must match
-it. The lint catches conflicts, such as a group that already exports another policy or a
-different autonomous-system number.
+it. The pre-push checklist catches conflicts, such as a group that already exports another
+policy or a different autonomous-system number.
 
-## Step 4 - Render and lint (nothing touches devices)
+## Step 4 - Write and check stage files (nothing touches devices)
 
-**With code execution:**
-```
-python scripts/build_pair.py pair.yaml --out build \
-  --baseline <NODE0>=<node0>.set --baseline <NODE1>=<node1>.set
-```
+1. Read `references/config-stages.md`, which contains all stage blocks with placeholders.
+2. For each node, write `stage1.set`, `stage2.set`, and `stage3.set` (routing/hybrid only)
+   by substituting `<PLACEHOLDER>` values from the pair sheet and baseline facts into the
+   stage blocks. Include or exclude conditional blocks based on the mode, ICL transport,
+   encryption, and config model as the stage reference directs.
+3. Write matching `undo-stageN.set` files following the undo rules in
+   `references/config-stages.md`. Undo files delete only what their stage **adds** relative
+   to the baseline — pre-existing config that a stage merely re-states is never removed.
+4. Walk the pre-push checklist in `references/config-stages.md` for both nodes.
+   - **Any Blocking item means stop.** Fix the pair sheet or baseline, then rewrite the
+     stage files.
+   - **Needs Acknowledgment items** require a one-line user OK before proceeding.
+   - **Tell the User items** are informational context.
+
 Output per node:
-- `stage1.set`: underlay, meaning the ICL transport, data segments, zones and host-inbound
-  rules
-- `stage2.set`: ICL crypto objects when encrypted, plus the HA stanza for the chosen mode
-  and the flat or grid model
+- `stage1.set`: underlay (ICL transport, data segments, zones, host-inbound rules)
+- `stage2.set`: ICL crypto objects (when encrypted), plus the HA stanza for the chosen mode
+  and flat or grid model
 - `stage3.set`: eBGP and the export policy (routing and hybrid only)
 - matching `undo-stageN.set` files
-- a summary of how many lines each stage adds
-
-Handling the report:
-- **Any ERROR means stop.**
-- WARNs need a one-line acknowledgment from the user.
-- INFO lines are context for the user.
-
-**Without code execution:**
-1. Render the templates with `render_and_apply_j2_template` (`apply_config: false`) and
-   per-node vars.
-2. The tool takes a single template string, so paste the contents of
-   `_srg1-common.set.j2` and `_icl-crypto.set.j2` in place of the `{% include %}` lines.
-3. Walk the checks in `scripts/build_pair.py` by hand.
-4. Write undo files manually. They must delete only what each stage adds.
 
 ## Step 5 - Dry run on devices
 
@@ -190,7 +184,7 @@ an undo would remove.
 
 ## Step 6 - Approval gate #1
 
-1. Show the user the per-node diffs, the lint result and the undo files.
+1. Show the user the per-node diffs, the pre-push checklist results, and the undo files.
 2. Get explicit approval to push Stage 1 and Stage 2. Approval of the design or the dry
    run is not approval to push.
 
