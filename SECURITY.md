@@ -6,7 +6,7 @@ Please **do not** open a public GitHub issue, discussion, or pull request for a 
 
 Use GitHub's private vulnerability reporting for this repository:
 
-https://github.com/fastrevmd-lab/fwskillsshare/security/advisories/new
+https://github.com/mechubsec/fwskillsshare/security/advisories/new
 
 Include what you'd include in a normal report — affected skill or script, version, reproduction steps, and impact — but keep it in the private advisory, not a public issue, PR, comment, or discussion. No email address or third-party reporting service is used for this project; the GitHub Security tab (Security Advisories) is the only channel.
 
