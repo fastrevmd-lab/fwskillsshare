@@ -90,6 +90,11 @@
     "reviewed": false
   },
   {
+    "name": "srx-mnha-mcp-builder",
+    "family": "srx",
+    "reviewed": false
+  },
+  {
     "name": "firewall-best-practices-audit",
     "family": "tooling",
     "reviewed": true
