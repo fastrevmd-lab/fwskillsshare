@@ -1,6 +1,6 @@
 # Contributing to fwskillsshare
 
-Thanks for considering a contribution. fwskillsshare is a collection of **agent skills** for firewall and network-security work — Juniper SRX design, NAT, VPN, and MNHA playbooks; Security Director On-Prem and ClearPass deployment; cross-vendor parse/audit/convert/diff; and PCI/HIPAA/CMMC/CIS/ISO/SOC 2/DISA STIG evidence mapping — part of the [mechub](https://github.com/fastrevmd-lab) family of open-source, self-hosted network-security tooling.
+Thanks for considering a contribution. fwskillsshare is a collection of **agent skills** for firewall and network-security work — Juniper SRX design, NAT, VPN, and MNHA playbooks; Security Director On-Prem and ClearPass deployment; cross-vendor parse/audit/convert/diff; and PCI/HIPAA/CMMC/CIS/ISO/SOC 2/DISA STIG evidence mapping — part of the [mechub](https://github.com/mechubsec) family of open-source, self-hosted network-security tooling.
 
 This is a Markdown-first repository, not a conventional software package. A "contribution" here is almost always a new or updated `SKILL.md` (and its supporting references/fixtures), not application code. See [README.md](README.md) for what the skills do and [QUALITY.md](QUALITY.md) for how they've been reviewed so far.
 

@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a security vulnerability or unsafe skill guidance
-    url: https://github.com/fastrevmd-lab/fwskillsshare/security/advisories/new
+    url: https://github.com/mechubsec/fwskillsshare/security/advisories/new
     about: Please do not report security vulnerabilities or dangerously unsafe skill guidance through public GitHub issues — use private reporting instead. See SECURITY.md.
