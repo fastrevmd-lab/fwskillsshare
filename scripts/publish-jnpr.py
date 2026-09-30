@@ -76,7 +76,10 @@ FORBIDDEN = re.compile(r"mechub|fastrevmd|violet", re.IGNORECASE)
 # Citations of real field evidence, kept deliberately: stripping the URL turns a
 # sourced claim into a bare assertion, which is the failure mode these skills exist
 # to prevent. Attribution in the footer is an MIT courtesy, not branding.
-PROVENANCE_OK = re.compile(re.escape(UPSTREAM_SLUG))
+# The rust-junosmcp slug is the source of a cited tool dependency.
+PROVENANCE_OK = re.compile(
+    "(?:" + re.escape(UPSTREAM_SLUG) + "|" + re.escape("mechubsec/rustjunosmcp") + ")"
+)
 
 # Nested metadata.sources[].author entries are left as the upstream author on
 # purpose -- they credit whoever did the underlying lab work, and rewriting them
