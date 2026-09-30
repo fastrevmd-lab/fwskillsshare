@@ -235,9 +235,21 @@ def transform_changelog(dest: Path) -> None:
 
     Release notes cite validation records under docs/, which is upstream-only,
     for the same reason QUALITY.md does. Without this the gate fails the run.
+
+    Targeted rewrites neutralize historical org references in release notes.
     """
     path = dest / "CHANGELOG.md"
-    path.write_text(repoint_docs_links(path.read_text(encoding="utf-8")), encoding="utf-8")
+    text = repoint_docs_links(path.read_text(encoding="utf-8"))
+    # v1.8.0 Hygiene line mentions the upstream org and its shared workflow
+    text = text.replace(
+        "the shared mechubsec gitleaks workflow",
+        "a shared gitleaks workflow"
+    )
+    text = text.replace(
+        "the `mechubsec` organization",
+        "the upstream organization"
+    )
+    path.write_text(text, encoding="utf-8")
 
 
 def pad_to_width(line: str, old: str, new: str) -> str:
