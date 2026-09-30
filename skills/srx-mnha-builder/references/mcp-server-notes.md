@@ -1,7 +1,7 @@
 # Junos MCP server comparison and capability mapping
 
 This workflow uses a Junos MCP server and is compatible with **both** Juniper's
-junos-mcp-server and mechubsec's rust-junosmcp. Each step names the capability it
+junos-mcp-server and rust-junosmcp. Each step names the capability it
 needs ("dry run the stage", "push with commit confirmed"), and this file maps those
 capabilities to the tools each server exposes.
 
@@ -80,7 +80,7 @@ server version changes.
   own, because it references stage-1 interfaces and zones. Dry-run stage 1 alone, and then
   1+2+3 concatenated. The tool rolls everything back after the check.
 
-## mechubsec rust-junosmcp
+## rust-junosmcp
 
 Version checked: **rust-junosmcp v0.26.0**. Re-check after an upgrade.
 
