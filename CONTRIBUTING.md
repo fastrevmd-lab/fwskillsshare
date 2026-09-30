@@ -64,7 +64,7 @@ Rules enforced by `scripts/check-skill-packages.py`:
 - `description` is required, at most **1,024 characters** (Codex's hard per-skill limit — see `AGENTS.md` for the version this was verified against), contains no angle brackets, and must include the literal phrase `. Use when ` followed by the trigger conditions. Discovery is largely lexical, so the `Use when ...` clause is what gets matched on — don't trim it to save space.
 - `version` and `metadata` are required (Hermes package metadata).
 - `license` must be `MIT`.
-- `author` must be exactly `[fastrevmd-lab, Claude, GPT]`, unless the skill has an entry in `CONTRIBUTING_AUTHORS` in `scripts/check-skill-packages.py` crediting an outside contributor by name — see the `srx-ips` entry for the pattern if you're adding a named credit.
+- `author` must be exactly `[fastrevmd-lab, Claude, GPT]`, unless the skill has an entry in `CONTRIBUTING_AUTHORS` in `scripts/check-skill-packages.py` crediting an outside contributor by name — see the `srx-ips` entry for the pattern if you're adding a named credit. Contributors are listed in [CONTRIBUTORS.md](CONTRIBUTORS.md); add yourself there in your pull request.
 - Every `references/...` path mentioned in the body must exist.
 - The file must stay under 600 lines total; push longer material into `references/` and link to it (progressive disclosure) rather than inlining it.
 

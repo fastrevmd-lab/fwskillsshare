@@ -4,6 +4,7 @@
 
 <p align="center">
   <img alt="skills" src="https://img.shields.io/badge/skills-{SKILL_COUNT}-informational">
+  <img alt="reviewed" src="https://img.shields.io/badge/reviewed-{REVIEWED_COUNT}%2F{SKILL_COUNT}-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-informational">
   <img alt="vendors" src="https://img.shields.io/badge/vendors-Cisco%20%C2%B7%20Fortinet%20%C2%B7%20Palo%20Alto%20%C2%B7%20Juniper%20%C2%B7%20HPE%20Aruba-informational">
 </p>

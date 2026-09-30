@@ -500,6 +500,8 @@ and is not relicensed by this repository.
 Unless you explicitly state otherwise, contributions intentionally submitted for
 inclusion in this repository are licensed under the MIT License.
 
+See [CONTRIBUTORS.md](CONTRIBUTORS.md) for the list of maintainers and contributors.
+
 ---
 
 <!-- brand:footer:start -->
