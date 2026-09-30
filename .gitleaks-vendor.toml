@@ -1,4 +1,4 @@
-title = "mecmcp vendor gitleaks rules (canonical, extended by all 15 repos)"
+title = "gitleaks vendor secrets rules (canonical)"
 
 [extend]
 useDefault = true
@@ -28,6 +28,18 @@ regex = '''\$1\$[A-Za-z0-9./]{1,8}\$[A-Za-z0-9./]{22}'''
 tags = ["junos", "secret"]
 
 [[rules]]
+id = "junos-sha1-secret"
+description = "Junos $sha1$ encrypted-password"
+regex = '''\$sha1\$\d+\$[A-Za-z0-9./]{1,64}\$[A-Za-z0-9./]{20,}'''
+tags = ["junos", "secret"]
+
+[[rules]]
+id = "junos-type8-secret"
+description = "Junos $8$ master-password encrypted secret"
+regex = '''\$8\$[a-z0-9-]+\$[a-z0-9-]+\$[0-9]+\$[A-Za-z0-9+/=$]{16,}'''
+tags = ["junos", "secret"]
+
+[[rules]]
 id = "fortios-enc-secret"
 description = "FortiOS ENC-obfuscated value"
 regex = '''\bENC\s+[A-Za-z0-9+/=]{20,}'''
@@ -48,25 +60,19 @@ tags = ["panos", "secret"]
 [[rules]]
 id = "pve-api-token"
 description = "Proxmox VE API token"
-regex = '''PVEAPIToken=[A-Za-z0-9_.\-]+@[A-Za-z0-9]+![A-Za-z0-9_.\-]+=[A-Za-z0-9\-]{20,}'''
+regex = '''PVEAPIToken=[A-Za-z0-9_.\-]+@[A-Za-z0-9_.\-]+![A-Za-z0-9_.\-]+=[A-Za-z0-9\-]{20,}'''
 tags = ["proxmox", "secret"]
 
 [[rules]]
 id = "mist-x-passphrase"
 description = "Mist x_passphrase field"
-regex = '''"?x_passphrase"?\s*[:=]\s*"[^"\s]{8,}"'''
+regex = '''x_passphrase["']?\s*[:=]\s*["']?[^"'\s,}]{8,}'''
 tags = ["mist", "secret"]
-
-[[rules]]
-id = "pem-private-key"
-description = "PEM-encoded private key header (incl. encrypted/OpenSSH/PGP)"
-regex = '''-----BEGIN\s+((EC|RSA|DSA|OPENSSH|ENCRYPTED)\s+)?PRIVATE KEY-----|-----BEGIN PGP PRIVATE KEY BLOCK-----'''
-tags = ["pem", "secret"]
 
 # The rule regexes above are literal strings that match themselves. Without
 # this, every repo's own gitleaks config file would flag as a leak.
 [allowlist]
 description = "gitleaks rule/config files match their own literal example patterns"
 paths = [
-  '''(^|/)\.gitleaks(-vendor)?\.toml$''',
+  '''^\.gitleaks(-vendor)?\.toml$''',
 ]
