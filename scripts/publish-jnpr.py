@@ -488,6 +488,26 @@ def _check_gitleaks_extend(config_path: Path, staged_root: Path) -> list[str]:
     return violations
 
 
+def _load_staged_module(path: Path, name: str):
+    """Import a staged module without writing bytecode to the staged tree.
+
+    Sets sys.dont_write_bytecode for the duration so no __pycache__ is created.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise SystemExit(f"cannot import {path}")
+
+    prev_dont_write = sys.dont_write_bytecode
+    try:
+        sys.dont_write_bytecode = True
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    finally:
+        sys.dont_write_bytecode = prev_dont_write
+
+
 def regenerate_checksums(dest: Path) -> None:
     """Regenerate skills/CHECKSUMS.sha256 for the staged tree after transformations.
 
@@ -495,25 +515,16 @@ def regenerate_checksums(dest: Path) -> None:
     sanitized), so the checksum manifest must be regenerated to match. install.sh
     refuses a payload whose manifest does not match byte-for-byte.
     """
-    import importlib.util
     gen_script = dest / "scripts" / "gen-checksums.py"
     if not gen_script.is_file():
         raise SystemExit("cannot regenerate checksums: gen-checksums.py not published")
 
-    spec = importlib.util.spec_from_file_location("gen_checksums", gen_script)
-    if spec is None or spec.loader is None:
-        raise SystemExit(f"cannot import {gen_script}")
-    gen = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(gen)
+    gen = _load_staged_module(gen_script, "gen_checksums")
 
     skills_dir = dest / "skills"
     manifest = gen.generate(skills_dir)
     manifest_path = skills_dir / gen.MANIFEST_NAME
     manifest_path.write_text(manifest, encoding="utf-8")
-
-    # Clean up __pycache__ created by the import
-    for cache in dest.rglob("__pycache__"):
-        shutil.rmtree(cache, ignore_errors=True)
 
 
 def gate(dest: Path) -> list[str]:
@@ -547,24 +558,30 @@ def gate(dest: Path) -> list[str]:
     # Verify that the staged checksum manifest matches the staged skills/ tree.
     # This catches a manifest that was either not regenerated after transforms or
     # was regenerated incorrectly.
-    import importlib.util
     gen_script = dest / "scripts" / "gen-checksums.py"
     if gen_script.is_file():
-        spec = importlib.util.spec_from_file_location("gen_checksums", gen_script)
-        if spec is not None and spec.loader is not None:
-            gen = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(gen)
+        gen = _load_staged_module(gen_script, "gen_checksums")
+        skills_dir = dest / "skills"
+        manifest_path = skills_dir / gen.MANIFEST_NAME
+        if manifest_path.is_file():
+            expected = gen.generate(skills_dir)
+            actual = manifest_path.read_text(encoding="utf-8")
+            if expected != actual:
+                violations.append(
+                    "skills/CHECKSUMS.sha256 does not match the staged skills/ tree; "
+                    "regenerate_checksums() was not called or ran incorrectly"
+                )
 
-            skills_dir = dest / "skills"
-            manifest_path = skills_dir / gen.MANIFEST_NAME
-            if manifest_path.is_file():
-                expected = gen.generate(skills_dir)
-                actual = manifest_path.read_text(encoding="utf-8")
-                if expected != actual:
-                    violations.append(
-                        "skills/CHECKSUMS.sha256 does not match the staged skills/ tree; "
-                        "regenerate_checksums() was not called or ran incorrectly"
-                    )
+    # Fail-closed: detect any bytecode that leaked into the staged tree.
+    # This must run after the manifest check above, since that imports a staged
+    # module, so ordering matters even though the import itself is now guarded.
+    for path in sorted(dest.rglob("*")):
+        if path.is_file() and (path.suffix == ".pyc" or path.name == "__pycache__"):
+            rel = path.relative_to(dest)
+            violations.append(f"{rel}: bytecode file in staged tree")
+        elif path.is_dir() and path.name == "__pycache__":
+            rel = path.relative_to(dest)
+            violations.append(f"{rel}/: __pycache__ directory in staged tree")
 
     return violations
 

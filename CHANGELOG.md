@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Publishing:** never leave bytecode in the staged export tree; gate() now fails-closed on any .pyc or __pycache__.
 - **Publishing:** the JNPR downstream keeps its own secret-scan workflow; rust-junosmcp is named without its org.
 - **Contributors:** added top-level `CONTRIBUTORS.md` listing the maintainer and contributors, linked from README and CONTRIBUTING.
 - **Publishing:** `.gitleaks-vendor.toml` is now published alongside `.gitleaks.toml` so the downstream secret scan can load its vendor rules; the gate now fails if any published gitleaks config extends a file that is not present.
