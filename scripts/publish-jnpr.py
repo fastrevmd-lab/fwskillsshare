@@ -42,7 +42,6 @@ PUBLISH_FILES = (
     "install.sh",
     "LICENSE",
     "README.md",
-    "CONTRIBUTING.md",
     "CONTRIBUTORS.md",
     "QUALITY.md",
     "SKILLS.md",
@@ -251,7 +250,7 @@ def transform_quality(dest: Path) -> None:
 
 
 def transform_contributors(dest: Path) -> None:
-    """Neutralize the maintainer handle while preserving contributor credits."""
+    """Neutralize the maintainer handle and repoint CONTRIBUTING.md link."""
     path = dest / "CONTRIBUTORS.md"
     if not path.is_file():
         return
@@ -263,32 +262,10 @@ def transform_contributors(dest: Path) -> None:
         f"Maintained upstream at [{UPSTREAM_SLUG}](https://github.com/{UPSTREAM_SLUG})",
         text,
     )
-    path.write_text(text, encoding="utf-8")
-
-
-def transform_contributing(dest: Path) -> None:
-    """Neutralize brand references and repoint upstream-only links in CONTRIBUTING.md."""
-    path = dest / "CONTRIBUTING.md"
-    if not path.is_file():
-        return
-
-    text = path.read_text(encoding="utf-8")
-    # Replace fastrevmd-lab with generic "upstream maintainer"
-    text = text.replace("fastrevmd-lab", "upstream-maintainer")
-    # Neutralize the mechub family reference
+    # Repoint CONTRIBUTING.md to upstream (not published downstream)
     text = text.replace(
-        "part of the [mechub](https://github.com/mechubsec) family of open-source, self-hosted network-security tooling",
-        f"maintained at [{UPSTREAM_SLUG}](https://github.com/{UPSTREAM_SLUG})"
-    )
-    # Repoint AGENTS.md and SECURITY.md to upstream
-    text = re.sub(
-        r"\]\(AGENTS\.md(#[^)]+)?\)",
-        f"](https://github.com/{UPSTREAM_SLUG}/blob/main/AGENTS.md\\1)",
-        text,
-    )
-    text = text.replace(
-        "](SECURITY.md)",
-        f"](https://github.com/{UPSTREAM_SLUG}/blob/main/SECURITY.md)"
+        "[CONTRIBUTING.md](CONTRIBUTING.md)",
+        f"[CONTRIBUTING.md](https://github.com/{UPSTREAM_SLUG}/blob/main/CONTRIBUTING.md)"
     )
     path.write_text(text, encoding="utf-8")
 
@@ -748,7 +725,6 @@ def main() -> int:
         transform_readme(staged, args.repo_slug, len(skills), reviewed_count)
         transform_quality(staged)
         transform_changelog(staged)
-        transform_contributing(staged)
         transform_contributors(staged)
         transform_install(staged, args.repo_slug)
         transform_skill_frontmatter(staged, args.author)
