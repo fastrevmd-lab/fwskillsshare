@@ -184,11 +184,11 @@ metadata:
             yaml_errors = [e for e in errors if "contains ' #'" in e]
             self.assertTrue(len(yaml_errors) > 0, f"Should have YAML hash error. Errors: {errors}")
 
-    def test_indicator_character_at_start_is_rejected(self) -> None:
-        """Frontmatter value starting with YAML indicator should fail."""
+    def test_dash_followed_by_space_is_rejected(self) -> None:
+        """Frontmatter value starting with '- ' should fail."""
         frontmatter = """---
 name: test-skill
-description: -Start with dash is bad. Use when testing.
+description: - x is invalid. Use when testing.
 version: 1.0.0
 author:
   - fastrevmd-lab
@@ -211,8 +211,156 @@ metadata:
             )
             status, errors = run_checker(Path(tmpdir))
             self.assertNotEqual(status, 0, "Should fail validation")
-            yaml_errors = [e for e in errors if "starts with YAML indicator" in e]
-            self.assertTrue(len(yaml_errors) > 0, f"Should have YAML indicator error. Errors: {errors}")
+            yaml_errors = [e for e in errors if "starts with '-'" in e]
+            self.assertTrue(len(yaml_errors) > 0, f"Should have dash-space error. Errors: {errors}")
+
+    def test_at_sign_is_rejected(self) -> None:
+        """Frontmatter value starting with @ should fail."""
+        frontmatter = """---
+name: test-skill
+description: @mention is invalid. Use when testing.
+version: 1.0.0
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
+license: MIT
+metadata:
+  hermes:
+    tags: [test]
+---
+
+# Test Skill
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            create_test_skill(
+                Path(tmpdir),
+                "test-skill",
+                frontmatter,
+                [{"name": "test-skill", "family": "test", "reviewed": True}]
+            )
+            status, errors = run_checker(Path(tmpdir))
+            self.assertNotEqual(status, 0, "Should fail validation")
+            yaml_errors = [e for e in errors if "starts with '@'" in e]
+            self.assertTrue(len(yaml_errors) > 0, f"Should have @ error. Errors: {errors}")
+
+    def test_flow_sequence_is_accepted(self) -> None:
+        """Flow sequences like [a, b, c] should pass."""
+        frontmatter = """---
+name: test-skill
+description: Valid skill description. Use when testing.
+version: 1.0.0
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
+license: MIT
+metadata:
+  hermes:
+    tags: [test, validation, flow-sequence]
+---
+
+# Test Skill
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            create_test_skill(
+                Path(tmpdir),
+                "test-skill",
+                frontmatter,
+                [{"name": "test-skill", "family": "test", "reviewed": True}]
+            )
+            status, errors = run_checker(Path(tmpdir))
+            yaml_errors = [e for e in errors if "contains" in e or "starts with" in e]
+            self.assertEqual(yaml_errors, [], f"Flow sequence should be valid. Errors: {errors}")
+
+    def test_flow_mapping_is_accepted(self) -> None:
+        """Flow mappings like {key: value} should pass."""
+        frontmatter = """---
+name: test-skill
+description: Valid skill description. Use when testing.
+version: 1.0.0
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
+license: MIT
+metadata:
+  hermes: {tags: [test], priority: high}
+---
+
+# Test Skill
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            create_test_skill(
+                Path(tmpdir),
+                "test-skill",
+                frontmatter,
+                [{"name": "test-skill", "family": "test", "reviewed": True}]
+            )
+            status, errors = run_checker(Path(tmpdir))
+            yaml_errors = [e for e in errors if "contains" in e or "starts with" in e]
+            self.assertEqual(yaml_errors, [], f"Flow mapping should be valid. Errors: {errors}")
+
+    def test_block_scalar_header_is_accepted(self) -> None:
+        """Block scalar headers like | and > should pass YAML validation."""
+        frontmatter = """---
+name: test-skill
+description: |
+  This is a literal block scalar that spans multiple lines.
+  Use when testing block scalars.
+version: 1.0.0
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
+license: MIT
+metadata:
+  hermes:
+    tags: [test]
+---
+
+# Test Skill
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            create_test_skill(
+                Path(tmpdir),
+                "test-skill",
+                frontmatter,
+                [{"name": "test-skill", "family": "test", "reviewed": True}]
+            )
+            status, errors = run_checker(Path(tmpdir))
+            # Only check for YAML validation errors (contains/starts with), not content validation
+            yaml_errors = [e for e in errors if ("contains" in e or "starts with" in e) and "angle brackets" not in e]
+            self.assertEqual(yaml_errors, [], f"Block scalar header should be valid YAML. Errors: {errors}")
+
+    def test_plain_scalar_with_dash_no_space_is_accepted(self) -> None:
+        """Plain scalars like '-Start here' (dash not followed by space) should pass."""
+        frontmatter = """---
+name: test-skill
+description: -Start here with a valid plain scalar. Use when testing.
+version: 1.0.0
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
+license: MIT
+metadata:
+  hermes:
+    tags: [test]
+---
+
+# Test Skill
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            create_test_skill(
+                Path(tmpdir),
+                "test-skill",
+                frontmatter,
+                [{"name": "test-skill", "family": "test", "reviewed": True}]
+            )
+            status, errors = run_checker(Path(tmpdir))
+            yaml_errors = [e for e in errors if "contains" in e or "starts with" in e]
+            self.assertEqual(yaml_errors, [], f"'-Start' plain scalar should be valid. Errors: {errors}")
 
 
 if __name__ == "__main__":

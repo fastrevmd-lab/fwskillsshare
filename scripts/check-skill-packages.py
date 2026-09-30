@@ -63,36 +63,51 @@ def validate_yaml_plain_scalar(value: str, key: str, file_path: Path) -> list[st
     common ones that break PyYAML parsing:
     - ": " anywhere in the value (triggers "mapping values are not allowed here")
     - " #" anywhere in the value (rest is treated as a comment)
-    - Starting with a YAML indicator character (-, ?, :, etc.)
+    - Starting with problematic characters in plain-scalar context
+
+    Non-plain-scalars (quoted strings, flow collections, block scalars) are skipped.
 
     Returns a list of error messages, empty if valid.
     """
     errors: list[str] = []
     value = value.strip()
 
-    # Already quoted values are safe
-    if value[:1] in {"'", '"'}:
+    # Skip non-plain-scalars that don't need validation:
+    # - Empty values (nested block mapping/sequence follows)
+    # - Quoted strings
+    # - Flow collections (start with [ or {)
+    # - Block scalar headers (start with | or >)
+    if not value or value[:1] in {"'", '"', "[", "{", "|", ">"}:
         return errors
 
     # Check for common plain-scalar hazards
-    if ": " in value:
+    if ": " in value or value.endswith(":"):
         errors.append(
-            f"{file_path}: frontmatter field {key!r} contains ': ' which breaks YAML parsing. "
-            "Either quote the value or reword without a colon."
+            f"{file_path}: frontmatter field {key!r} contains ': ' or ends with ':' which breaks YAML parsing. "
+            "Quote the value or reword without a colon."
         )
     if " #" in value:
         errors.append(
             f"{file_path}: frontmatter field {key!r} contains ' #' which is treated as a comment "
-            "start in YAML. Either quote the value or remove the hash."
+            "start in YAML. Quote the value or remove the hash."
         )
 
-    # Check for YAML indicator characters at the start
-    # Based on YAML 1.2 spec indicator characters: - ? : , [ ] { } # & * ! | > ' " % @
-    if value and value[0] in "-?:,[]{}#&*!|>'\"%@":
-        errors.append(
-            f"{file_path}: frontmatter field {key!r} starts with YAML indicator character "
-            f"{value[0]!r}. Quote the value or start with a letter."
-        )
+    # Check for characters that cannot start a plain scalar in YAML 1.2
+    # Problematic starts: -, ?, : when followed by space/end; , # & * ! % @ `
+    if value:
+        first_char = value[0]
+        # These can NEVER start a plain scalar
+        if first_char in ",#&*!%@`":
+            errors.append(
+                f"{file_path}: frontmatter field {key!r} starts with {first_char!r} which is not valid "
+                "in skill frontmatter. Quote the value."
+            )
+        # -, ?, : are only invalid when followed by space or at end
+        elif first_char in "-?:" and (len(value) == 1 or value[1] in " \t"):
+            errors.append(
+                f"{file_path}: frontmatter field {key!r} starts with {first_char!r} followed by space or end, "
+                "which breaks YAML parsing. Quote the value or start differently."
+            )
 
     return errors
 
