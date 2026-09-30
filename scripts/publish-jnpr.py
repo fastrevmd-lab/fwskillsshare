@@ -22,6 +22,7 @@ not by choosing which skills go.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -41,6 +42,7 @@ PUBLISH_FILES = (
     "install.sh",
     "LICENSE",
     "README.md",
+    "CONTRIBUTORS.md",
     "QUALITY.md",
     "SKILLS.md",
     "CHANGELOG.md",
@@ -174,6 +176,18 @@ def stage_tree(dest: Path, ref: str) -> None:
         shutil.rmtree(cache, ignore_errors=True)
 
 
+def load_reviewed_count(staged: Path) -> int:
+    """Load the reviewed count from skills/inventory.json in the staged tree."""
+    inventory_path = staged / "skills" / "inventory.json"
+    if not inventory_path.is_file():
+        raise SystemExit(f"cannot find {inventory_path} in staged tree")
+
+    with inventory_path.open(encoding="utf-8") as f:
+        manifest = json.load(f)
+
+    return sum(1 for skill in manifest if skill.get("reviewed", False))
+
+
 def brand_block(name: str, **fields: str) -> str:
     """Load a neutral brand block template and fill its {PLACEHOLDERS}."""
     text = (BRAND_DIR / f"brand-{name}-neutral.md").read_text(encoding="utf-8").rstrip("\n")
@@ -193,7 +207,7 @@ def swap_marked_block(text: str, name: str, replacement: str) -> str:
     return pattern.sub(lambda _: replacement, text)
 
 
-def transform_readme(dest: Path, repo_slug: str, skill_count: int) -> None:
+def transform_readme(dest: Path, repo_slug: str, skill_count: int, reviewed_count: int) -> None:
     """Swap branded blocks for neutral ones and repoint upstream-only links."""
     path = dest / "README.md"
     text = path.read_text(encoding="utf-8")
@@ -205,7 +219,12 @@ def transform_readme(dest: Path, repo_slug: str, skill_count: int) -> None:
 
     text = swap_marked_block(
         text, "header",
-        brand_block("header", REPO_NAME=repo_name, SKILL_COUNT=str(skill_count)),
+        brand_block(
+            "header",
+            REPO_NAME=repo_name,
+            SKILL_COUNT=str(skill_count),
+            REVIEWED_COUNT=str(reviewed_count),
+        ),
     )
     text = swap_marked_block(text, "disclaimer", brand_block("disclaimer"))
     text = swap_marked_block(text, "trademark", brand_block("trademark"))
@@ -228,6 +247,22 @@ def transform_quality(dest: Path) -> None:
     """Repoint the review history's skill-test links; it carries no brand blocks."""
     path = dest / "QUALITY.md"
     path.write_text(repoint_docs_links(path.read_text(encoding="utf-8")), encoding="utf-8")
+
+
+def transform_contributors(dest: Path) -> None:
+    """Neutralize the maintainer handle while preserving contributor credits."""
+    path = dest / "CONTRIBUTORS.md"
+    if not path.is_file():
+        return
+
+    text = path.read_text(encoding="utf-8")
+    # Replace the maintainer line with upstream provenance
+    text = re.sub(
+        r"\[fastrevmd-lab\]\(https://github\.com/fastrevmd-lab\)",
+        f"Maintained upstream at [{UPSTREAM_SLUG}](https://github.com/{UPSTREAM_SLUG})",
+        text,
+    )
+    path.write_text(text, encoding="utf-8")
 
 
 def transform_changelog(dest: Path) -> None:
@@ -405,6 +440,34 @@ def scrub_source_attribution(rel: Path, text: str) -> str:
     return "\n".join(lines)
 
 
+def regenerate_checksums(dest: Path) -> None:
+    """Regenerate skills/CHECKSUMS.sha256 for the staged tree after transformations.
+
+    The staged tree's skills/ files are transformed (frontmatter rewritten,
+    sanitized), so the checksum manifest must be regenerated to match. install.sh
+    refuses a payload whose manifest does not match byte-for-byte.
+    """
+    import importlib.util
+    gen_script = dest / "scripts" / "gen-checksums.py"
+    if not gen_script.is_file():
+        raise SystemExit("cannot regenerate checksums: gen-checksums.py not published")
+
+    spec = importlib.util.spec_from_file_location("gen_checksums", gen_script)
+    if spec is None or spec.loader is None:
+        raise SystemExit(f"cannot import {gen_script}")
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
+
+    skills_dir = dest / "skills"
+    manifest = gen.generate(skills_dir)
+    manifest_path = skills_dir / gen.MANIFEST_NAME
+    manifest_path.write_text(manifest, encoding="utf-8")
+
+    # Clean up __pycache__ created by the import
+    for cache in dest.rglob("__pycache__"):
+        shutil.rmtree(cache, ignore_errors=True)
+
+
 def gate(dest: Path) -> list[str]:
     """Fail-closed verification. Returns human-readable violations."""
     violations: list[str] = []
@@ -428,6 +491,29 @@ def gate(dest: Path) -> list[str]:
             for number, line in enumerate(text.split("\n"), start=1):
                 if BROKEN_LINK.search(line):
                     violations.append(f"{rel}:{number}: link into unpublished docs/")
+
+    # Verify that the staged checksum manifest matches the staged skills/ tree.
+    # This catches a manifest that was either not regenerated after transforms or
+    # was regenerated incorrectly.
+    import importlib.util
+    gen_script = dest / "scripts" / "gen-checksums.py"
+    if gen_script.is_file():
+        spec = importlib.util.spec_from_file_location("gen_checksums", gen_script)
+        if spec is not None and spec.loader is not None:
+            gen = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(gen)
+
+            skills_dir = dest / "skills"
+            manifest_path = skills_dir / gen.MANIFEST_NAME
+            if manifest_path.is_file():
+                expected = gen.generate(skills_dir)
+                actual = manifest_path.read_text(encoding="utf-8")
+                if expected != actual:
+                    violations.append(
+                        "skills/CHECKSUMS.sha256 does not match the staged skills/ tree; "
+                        "regenerate_checksums() was not called or ran incorrectly"
+                    )
+
     return violations
 
 
@@ -625,15 +711,22 @@ def main() -> int:
     try:
         stage_tree(staged, ref)
         skills = sorted(p.name for p in (staged / "skills").iterdir() if p.is_dir())
-        transform_readme(staged, args.repo_slug, len(skills))
+        reviewed_count = load_reviewed_count(staged)
+        transform_readme(staged, args.repo_slug, len(skills), reviewed_count)
         transform_quality(staged)
         transform_changelog(staged)
+        transform_contributors(staged)
         transform_install(staged, args.repo_slug)
         transform_skill_frontmatter(staged, args.author)
         transform_skill_checker(staged, args.author)
         transform_justfile(staged)
         sanitize(staged)
         write_provenance(staged, sha, dirty, skills)
+
+        # Regenerate the checksum manifest after all transforms that modify skills/.
+        # The staged tree's SKILL.md files have been rewritten (author, sanitize),
+        # so the manifest must match the transformed tree, not the upstream one.
+        regenerate_checksums(staged)
 
         violations = gate(staged)
         if violations:
