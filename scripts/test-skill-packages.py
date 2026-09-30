@@ -362,6 +362,66 @@ metadata:
             yaml_errors = [e for e in errors if "contains" in e or "starts with" in e]
             self.assertEqual(yaml_errors, [], f"'-Start' plain scalar should be valid. Errors: {errors}")
 
+    def test_right_bracket_is_rejected(self) -> None:
+        """Frontmatter value starting with ] should fail."""
+        frontmatter = """---
+name: test-skill
+description: ]x is invalid. Use when testing.
+version: 1.0.0
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
+license: MIT
+metadata:
+  hermes:
+    tags: [test]
+---
+
+# Test Skill
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            create_test_skill(
+                Path(tmpdir),
+                "test-skill",
+                frontmatter,
+                [{"name": "test-skill", "family": "test", "reviewed": True}]
+            )
+            status, errors = run_checker(Path(tmpdir))
+            self.assertNotEqual(status, 0, "Should fail validation")
+            yaml_errors = [e for e in errors if "starts with ']'" in e]
+            self.assertTrue(len(yaml_errors) > 0, f"Should have ] error. Errors: {errors}")
+
+    def test_right_brace_is_rejected(self) -> None:
+        """Frontmatter value starting with } should fail."""
+        frontmatter = """---
+name: test-skill
+description: }x is invalid. Use when testing.
+version: 1.0.0
+author:
+  - fastrevmd-lab
+  - Claude
+  - GPT
+license: MIT
+metadata:
+  hermes:
+    tags: [test]
+---
+
+# Test Skill
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            create_test_skill(
+                Path(tmpdir),
+                "test-skill",
+                frontmatter,
+                [{"name": "test-skill", "family": "test", "reviewed": True}]
+            )
+            status, errors = run_checker(Path(tmpdir))
+            self.assertNotEqual(status, 0, "Should fail validation")
+            yaml_errors = [e for e in errors if "starts with '}'" in e]
+            self.assertTrue(len(yaml_errors) > 0, f"Should have }} error. Errors: {errors}")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -93,11 +93,11 @@ def validate_yaml_plain_scalar(value: str, key: str, file_path: Path) -> list[st
         )
 
     # Check for characters that cannot start a plain scalar in YAML 1.2
-    # Problematic starts: -, ?, : when followed by space/end; , # & * ! % @ `
+    # Problematic starts: -, ?, : when followed by space/end; , # & * ! % @ ` ] }
     if value:
         first_char = value[0]
         # These can NEVER start a plain scalar
-        if first_char in ",#&*!%@`":
+        if first_char in ",#&*!%@`]}":
             errors.append(
                 f"{file_path}: frontmatter field {key!r} starts with {first_char!r} which is not valid "
                 "in skill frontmatter. Quote the value."
