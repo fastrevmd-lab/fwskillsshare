@@ -88,6 +88,41 @@ if [ "${CODEX_REVIEW_LOAD_MCP:-0}" = "1" ]; then
 fi
 timeout "${CODEX_REVIEW_TIMEOUT:-600}" \
   codex exec "${CONFIG[@]}" review "${SCOPE[@]}" --json >"$OUT" 2>"$ERR"
+CODEX_EXIT=$?
+
+# Non-zero exit status (including 124 from timeout) => gate did not run.
+# A successful review always exits 0, even with [P0]/[P1] findings — the verdict
+# differentiates those, not the exit status.
+if [ "$CODEX_EXIT" -ne 0 ]; then
+  echo >&2
+  echo "GATE DID NOT RUN — codex exited $CODEX_EXIT." >&2
+  echo "Do not treat this as a pass. Raw output: $OUT" >&2
+  if [ -s "$ERR" ]; then
+    echo "stderr ($ERR):" >&2
+    head -5 "$ERR" >&2
+  fi
+  exit 1
+fi
+
+# Error events in the JSONL => gate did not run. Usage-limit errors appear as
+# {"type":"error","message":"...usage limit..."} or
+# {"type":"turn.failed","error":{"message":"..."}}. A usage limit is quota
+# exhaustion, not a transient failure — re-running immediately will fail again.
+ERRORS="$(jq -rR 'fromjson? | if .type=="error" then .message
+                              elif .type=="turn.failed" then .error.message
+                              else empty end' "$OUT" 2>/dev/null)"
+if [ -n "$ERRORS" ]; then
+  echo >&2
+  echo "GATE DID NOT RUN — error events present:" >&2
+  echo "$ERRORS" | head -5 >&2
+  if echo "$ERRORS" | grep -qi "usage limit"; then
+    echo >&2
+    echo "This is a usage-limit error (quota exhausted), not a transient failure." >&2
+    echo "Re-running immediately will fail again — wait for the reset time above." >&2
+  fi
+  echo "Do not treat this as a pass. Raw output: $OUT" >&2
+  exit 1
+fi
 
 # The verdict is the final agent_message. `fromjson?` rather than plain jq: one
 # stray non-JSON line would abort a strict parse and lose the whole review.
@@ -102,6 +137,18 @@ if [ -z "$VERDICT" ]; then
     echo "stderr ($ERR):" >&2
     head -5 "$ERR" >&2
   fi
+  exit 1
+fi
+
+# An interrupted run is not a verdict. Codex returns this message when the review
+# did not complete (usage limit, internal error, etc.) The raw JSONL will contain
+# the actual error, checked above, but this catches cases where the error was
+# swallowed or occurred outside the event stream.
+if echo "$VERDICT" | grep -qiE '^Review was interrupted'; then
+  echo >&2
+  echo "GATE DID NOT RUN — review was interrupted:" >&2
+  echo "$VERDICT" >&2
+  echo "Do not treat this as a pass. Raw output: $OUT" >&2
   exit 1
 fi
 

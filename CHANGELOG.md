@@ -6,6 +6,7 @@
 - **Publishing:** the JNPR downstream keeps its own secret-scan workflow; rust-junosmcp is named without its org.
 - **Contributors:** added top-level `CONTRIBUTORS.md` listing the maintainer and contributors, linked from README and CONTRIBUTING.
 - **Publishing:** `.gitleaks-vendor.toml` is now published alongside `.gitleaks.toml` so the downstream secret scan can load its vendor rules; the gate now fails if any published gitleaks config extends a file that is not present.
+- **Codex review gate:** quota errors and interrupted runs now exit non-zero instead of falsely passing.
 
 ## 1.9.0 — SRX MNHA pair builder; skills work with any Junos MCP server
 

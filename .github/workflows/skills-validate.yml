@@ -51,6 +51,7 @@ jobs:
           python3 scripts/check-installer.py
           python3 scripts/test-installer-supply-chain.py
           python3 scripts/test-codex-review-optin.py
+          python3 scripts/test-codex-review-verdict.py
           python3 scripts/check-sd-bundle-server.py
           python3 scripts/check-srx-policy-global-default.py
           python3 scripts/check-audit-rule-contract.py
