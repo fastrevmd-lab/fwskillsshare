@@ -50,11 +50,15 @@ PUBLISH_FILES = (
     ".gitignore",
     ".python-version",
     ".pre-commit-config.yaml",
-    ".gitleaks.toml",  # the security workflow reads it; shipping one without the other
-                       # scans downstream copies with no allowlist
-    ".github/workflows/security.yml",
+    ".gitleaks.toml",  # downstream keeps its own security workflow; ship the config it reads
 )
 PUBLISH_DIRS = ("skills", "scripts")
+
+# Files the downstream keeps that must survive the sync. These are neither
+# published nor deleted -- they are preserved as-is when present in the target.
+PRESERVE_DOWNSTREAM = (
+    ".github/workflows/security.yml",
+)
 
 # Excluded even though their parent directory is published.
 # These read from docs/, which is upstream-only process material, so they cannot
@@ -508,6 +512,13 @@ def sync_to_target(staged: Path, target: Path, sha: str, dirty: bool, repo_slug:
             "Move or delete them, or drop them from the export."
         )
 
+    # Save downstream-specific files before removing everything.
+    preserved: dict[str, bytes] = {}
+    for rel in PRESERVE_DOWNSTREAM:
+        path = target / rel
+        if path.is_file():
+            preserved[rel] = path.read_bytes()
+
     if run(["git", "ls-files"], cwd=target).strip():
         run(["git", "rm", "-r", "-q", "--", "."], cwd=target)
 
@@ -521,6 +532,12 @@ def sync_to_target(staged: Path, target: Path, sha: str, dirty: bool, repo_slug:
             shutil.copytree(entry, dst, ignore=ignore, dirs_exist_ok=True)
         else:
             shutil.copy2(entry, dst)
+
+    # Restore downstream-specific files the sync must not touch.
+    for rel, content in preserved.items():
+        path = target / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
 
     run(["git", "add", "-A"], cwd=target)
     if not run(["git", "status", "--porcelain"], cwd=target).strip():
