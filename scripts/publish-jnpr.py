@@ -42,6 +42,7 @@ PUBLISH_FILES = (
     "install.sh",
     "LICENSE",
     "README.md",
+    "CONTRIBUTING.md",
     "CONTRIBUTORS.md",
     "QUALITY.md",
     "SKILLS.md",
@@ -265,6 +266,33 @@ def transform_contributors(dest: Path) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def transform_contributing(dest: Path) -> None:
+    """Neutralize brand references and repoint upstream-only links in CONTRIBUTING.md."""
+    path = dest / "CONTRIBUTING.md"
+    if not path.is_file():
+        return
+
+    text = path.read_text(encoding="utf-8")
+    # Replace fastrevmd-lab with generic "upstream maintainer"
+    text = text.replace("fastrevmd-lab", "upstream-maintainer")
+    # Neutralize the mechub family reference
+    text = text.replace(
+        "part of the [mechub](https://github.com/mechubsec) family of open-source, self-hosted network-security tooling",
+        f"maintained at [{UPSTREAM_SLUG}](https://github.com/{UPSTREAM_SLUG})"
+    )
+    # Repoint AGENTS.md and SECURITY.md to upstream
+    text = re.sub(
+        r"\]\(AGENTS\.md(#[^)]+)?\)",
+        f"](https://github.com/{UPSTREAM_SLUG}/blob/main/AGENTS.md\\1)",
+        text,
+    )
+    text = text.replace(
+        "](SECURITY.md)",
+        f"](https://github.com/{UPSTREAM_SLUG}/blob/main/SECURITY.md)"
+    )
+    path.write_text(text, encoding="utf-8")
+
+
 def transform_changelog(dest: Path) -> None:
     """Repoint the changelog's skill-test links; it carries no brand blocks.
 
@@ -283,6 +311,11 @@ def transform_changelog(dest: Path) -> None:
     text = text.replace(
         "the `mechubsec` organization",
         "the upstream organization"
+    )
+    # Repoint TODO.md (unpublished) to upstream
+    text = text.replace(
+        "](./TODO.md)",
+        f"](https://github.com/{UPSTREAM_SLUG}/blob/main/TODO.md)"
     )
     path.write_text(text, encoding="utf-8")
 
@@ -715,6 +748,7 @@ def main() -> int:
         transform_readme(staged, args.repo_slug, len(skills), reviewed_count)
         transform_quality(staged)
         transform_changelog(staged)
+        transform_contributing(staged)
         transform_contributors(staged)
         transform_install(staged, args.repo_slug)
         transform_skill_frontmatter(staged, args.author)

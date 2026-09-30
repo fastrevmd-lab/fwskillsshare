@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **Publishing:** the JNPR downstream keeps its own secret-scan workflow; rust-junosmcp is named without its org.
+- **Contributors:** added top-level `CONTRIBUTORS.md` listing the maintainer and contributors, linked from README and CONTRIBUTING.
 
 ## 1.9.0 — SRX MNHA pair builder; skills work with any Junos MCP server
 
