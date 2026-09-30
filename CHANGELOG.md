@@ -2,10 +2,6 @@
 
 ## Unreleased
 
-**srx-ips** v0.1.1: Generalized the skill to work with any Junos MCP server that exposes core operational and configuration capabilities, not just Juniper's junos-mcp-server. The MCP server capabilities reference (`references/mcp-server-notes.md`) now documents both Juniper junos-mcp-server v1.1.1 and rust-junosmcp v0.19.0+ with a capability mapping table covering commit check, confirmed commits, change sets, and rollback. All skill text refers capability-first ("where the MCP server supports it") instead of naming one specific server. No change to device syntax, safety gates, or verification procedures.
-
-## Unreleased — SRX MNHA pair builder skill (draft)
-
 **srx-mnha-builder** v0.1.0 (renamed from `srx-mnha-mcp-builder` before first release), a draft skill that builds a new two-node SRX/vSRX Multi-Node High Availability pair end-to-end through a Junos MCP server (Juniper junos-mcp-server or mechubsec rust-junosmcp). Contributed by Javier Grizzuti (@jgrizzuti) from lab work. The catalog gains one skill, from 31 to 32. Design theory and troubleshooting of a running pair stay in `srx-mnha`; this skill covers the build order and works with either MCP server.
 
 **srx-mnha** v1.3.2 corrects the claim that SRG interface monitoring requires a monitor-object; the bare `monitor interface` form commit-checks on vSRX 26.2R1.7.
@@ -18,6 +14,10 @@
 - Packaged to repository standards — frontmatter, runtime intake, Codex metadata, inventory and installer entries. Lab hostnames and addresses were replaced with neutral node names and RFC 5737 documentation addresses.
 
 Field-confirmed 2026-09-25 on a vSRX 24.4R2.21 hybrid pair (flat model, encrypted ICL): formation, planned failover and failback, and an unplanned uplink failure with BFD 500 ms × 3. The grid-model `vpn-profile` placement for an encrypted ICL on 26.x is not yet confirmed on a device; the skill defers to the device dry run there.
+
+**srx-ips** v0.1.1: Generalized the skill to work with any Junos MCP server that exposes core operational and configuration capabilities, not just Juniper's junos-mcp-server. The MCP server capabilities reference (`references/mcp-server-notes.md`) now documents both Juniper junos-mcp-server v1.1.1 and rust-junosmcp v0.19.0+ with a capability mapping table covering commit check, confirmed commits, change sets, and rollback. All skill text refers capability-first ("where the MCP server supports it") instead of naming one specific server. No change to device syntax, safety gates, or verification procedures.
+
+**Checks:** `check-skill-packages.py` now fails frontmatter values YAML cannot parse (an unquoted `: `, a ` #`, or a character that cannot start a plain scalar), with tests in `scripts/test-skill-packages.py`.
 
 ## 1.8.0 — Pinned, checksum-verified installs
 
