@@ -28,7 +28,7 @@ capabilities to the tools each server exposes.
 | **Push with commit confirmed** | **Not available** | `load_and_commit_config` with `confirm_timeout_mins` |
 | **Confirm commit** | **Not available** (no confirmed-commit support) | `load_and_commit_config` (another commit without confirm_timeout_mins) |
 | **Change-set flow** | **Not available** | `create_junos_change_set` → `approve_junos_change_set` → `apply_junos_change_set` (accepts `confirm_timeout_mins`) → `confirm_junos_change_set` |
-| **Rollback** | `load_and_commit_config` with `config_text: "rollback <N>"` in text format (commits immediately, no check) | `rollback_config` with `commit: true` (if `--allow-direct-commit`) or via change set |
+| **Rollback** | **Not available** (no `rollback_config` tool; push the pre-rendered `undo-stageN.set` file with `load_and_commit_config` for a dry-run-first rollback, or hand off to the operator for `rollback <N>` + `commit` at the CLI/console) | `rollback_config` with `commit: true` (if `--allow-direct-commit`) or change-set with `rollback_source: <N>` |
 
 ## Juniper junos-mcp-server
 
@@ -108,7 +108,7 @@ Change-set flow (requires second-principal approval, or `--lab-mode` self-approv
 
 Parameters:
 - `create_junos_change_set`: `device`, `expected_fingerprint` (from `get_junos_candidate_fingerprint`),
-  `actions` (each action has `config_text`, `config_format`)
+  `actions` (array of actions; each action has exactly one of: `payload: {text, format?, mode?}` OR `rollback_source: <0-49>`)
 - `approve_junos_change_set`: `change_set_id`, `device`, `expected_digest` (from create result)
 - `apply_junos_change_set`: `change_set_id`, `device`, `expected_digest`, `expected_fingerprint`,
   optional `confirm_timeout_mins` (whole minutes)
@@ -148,9 +148,9 @@ blocklist to get around this; the user performs the reboot.
 
 ### Other behavior
 
-- **vars_content in `render_and_apply_j2_template`:** must be a JSON object, e.g.
-  `{"skill": "srx-mnha-builder"}`. Empty object `{}` is accepted (the README does not say
-  otherwise). The Juniper server rejects `{}`, so use the one-key object for both.
+- **vars_content in `render_and_apply_j2_template`:** is a string argument whose content must
+  be a valid JSON object, e.g. `vars_content: "{\"skill\": \"srx-mnha-builder\"}"`. The Juniper
+  server rejects empty `{}`, so use a one-key object for both servers.
 - **Batch commands:** `execute_junos_command_batch` runs M commands on N routers in
   parallel across routers. Returns inline error rows for unknown or unreachable routers
   instead of aborting. Blocklist violations are strict: if any router in the request is
