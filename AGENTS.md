@@ -100,7 +100,8 @@ runs ended with no verdict. The wrapper parks that symlink for the duration and
 restores it on exit, including on failure.
 
 - **A run with no final `agent_message` is not a pass.** The wrapper exits
-  non-zero and says so; report that the gate did not run.
+  non-zero and says so; report that the gate did not run. This now also covers
+  usage-limit errors, interrupted runs, and non-zero exits from codex.
 - **Keep commits small.** `--commit` and `--base` both reject a custom prompt,
   so the only way to scope a review is commit size. A ~1,300-line commit never
   returned; ~80-line commits returned every time.
