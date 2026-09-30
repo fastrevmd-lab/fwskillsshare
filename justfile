@@ -25,6 +25,7 @@ lint:
 
 test:
     python3 scripts/test-inventory.py
+    python3 scripts/test-skill-packages.py
     python3 scripts/test-markdown-links.py
     python3 scripts/check-shared-schema.py
     python3 scripts/check-installer.py

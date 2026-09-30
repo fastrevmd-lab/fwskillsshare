@@ -56,6 +56,47 @@ def parse_scalar(value: str) -> str:
     return value
 
 
+def validate_yaml_plain_scalar(value: str, key: str, file_path: Path) -> list[str]:
+    """Validate that a plain (unquoted) YAML scalar value is safe.
+
+    YAML plain scalars have many syntactic hazards. This check catches the most
+    common ones that break PyYAML parsing:
+    - ": " anywhere in the value (triggers "mapping values are not allowed here")
+    - " #" anywhere in the value (rest is treated as a comment)
+    - Starting with a YAML indicator character (-, ?, :, etc.)
+
+    Returns a list of error messages, empty if valid.
+    """
+    errors: list[str] = []
+    value = value.strip()
+
+    # Already quoted values are safe
+    if value[:1] in {"'", '"'}:
+        return errors
+
+    # Check for common plain-scalar hazards
+    if ": " in value:
+        errors.append(
+            f"{file_path}: frontmatter field {key!r} contains ': ' which breaks YAML parsing. "
+            "Either quote the value or reword without a colon."
+        )
+    if " #" in value:
+        errors.append(
+            f"{file_path}: frontmatter field {key!r} contains ' #' which is treated as a comment "
+            "start in YAML. Either quote the value or remove the hash."
+        )
+
+    # Check for YAML indicator characters at the start
+    # Based on YAML 1.2 spec indicator characters: - ? : , [ ] { } # & * ! | > ' " % @
+    if value and value[0] in "-?:,[]{}#&*!|>'\"%@":
+        errors.append(
+            f"{file_path}: frontmatter field {key!r} starts with YAML indicator character "
+            f"{value[0]!r}. Quote the value or start with a letter."
+        )
+
+    return errors
+
+
 def top_level_frontmatter(frontmatter: str) -> dict[str, str]:
     values: dict[str, str] = {}
     for line in frontmatter.splitlines():
@@ -131,10 +172,18 @@ def main() -> int:
             errors.append(f"{skill_file}: missing or malformed YAML frontmatter")
             continue
 
-        fields = top_level_frontmatter(match.group(1))
-        authors = list_field(match.group(1), "author")
+        frontmatter_text = match.group(1)
+        fields = top_level_frontmatter(frontmatter_text)
+        authors = list_field(frontmatter_text, "author")
         name = fields.get("name", "")
         description = fields.get("description", "")
+
+        # Validate frontmatter fields as safe YAML plain scalars
+        for line in frontmatter_text.splitlines():
+            if line.startswith((" ", "\t")) or ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            errors.extend(validate_yaml_plain_scalar(value, key, skill_file))
 
         if name != skill_dir.name:
             errors.append(f"{skill_file}: name {name!r} does not match directory {skill_dir.name!r}")
