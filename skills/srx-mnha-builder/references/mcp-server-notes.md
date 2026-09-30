@@ -19,7 +19,7 @@ capabilities to the tools each server exposes.
 |---|---|---|
 | **List devices** | `get_router_list` | `get_router_list` |
 | **Gather facts** | `gather_device_facts` | `gather_device_facts` |
-| **Read config baseline** | `get_junos_config` (set format) | `get_junos_config` with `format: "set"` |
+| **Read config baseline** | `get_junos_config` (set format) | `get_junos_config` with `format: "set"` (v0.26.0+; on older versions use `execute_junos_command` with `show configuration \| display set` or upgrade) |
 | **Op commands (single router)** | `execute_junos_command` | `execute_junos_command` |
 | **Op commands (batch, both nodes)** | run twice (sequential or parallel client-side) | `execute_junos_command_batch` (parallel server-side) |
 | **Diff vs rollback N** | `junos_config_diff` with `version: <N>` | `junos_config_diff` with `version: <N>` |
@@ -82,7 +82,7 @@ server version changes.
 
 ## mechubsec rust-junosmcp
 
-Verified against the mechubsec/rustjunosmcp README and source. Re-check after an upgrade.
+Version checked: **rust-junosmcp v0.26.0**. Re-check after an upgrade.
 
 ### Core tool surface
 
@@ -108,7 +108,8 @@ Change-set flow (requires second-principal approval, or `--lab-mode` self-approv
 
 Parameters:
 - `create_junos_change_set`: `device`, `expected_fingerprint` (from `get_junos_candidate_fingerprint`),
-  `actions` (array of actions; each action has exactly one of: `payload: {text, format?, mode?}` OR `rollback_source: <0-49>`)
+  `actions` (array of actions; each action has exactly one of: `payload: {text, format?, mode?}` OR `rollback_source: <0-49>`).
+  The `mode` field (merge/replace/override; merge is default) exists since v0.26.0
 - `approve_junos_change_set`: `change_set_id`, `device`, `expected_digest` (from create result)
 - `apply_junos_change_set`: `change_set_id`, `device`, `expected_digest`, `expected_fingerprint`,
   optional `confirm_timeout_mins` (whole minutes)
@@ -155,7 +156,9 @@ blocklist to get around this; the user performs the reboot.
   parallel across routers. Returns inline error rows for unknown or unreachable routers
   instead of aborting. Blocklist violations are strict: if any router in the request is
   outside the token's scope, the call is refused with HTTP 403 and **no** router executes.
-- **Output handling:** `| match` / `| except` are applied server-side (v0.9+). `| last N`,
-  `| count`, `max_lines`, `max_bytes` are supported.
+- **Output handling:** `| match` / `| except` / `| last N` / `| count` are applied
+  server-side after fetching the full output from the device (the modifiers bound the
+  *response*, not the device transfer). `max_lines` and `max_bytes` caps are also
+  supported and applied after pipe modifiers.
 - **Idle pool timeout: 300 s by default** (`JMCP_POOL_IDLE_TIMEOUT`, same as Juniper's).
   After a reboot or any pause longer than ~5 min, the first call may fail. Retry once.
