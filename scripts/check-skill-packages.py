@@ -56,6 +56,62 @@ def parse_scalar(value: str) -> str:
     return value
 
 
+def validate_yaml_plain_scalar(value: str, key: str, file_path: Path) -> list[str]:
+    """Validate that a plain (unquoted) YAML scalar value is safe.
+
+    YAML plain scalars have many syntactic hazards. This check catches the most
+    common ones that break PyYAML parsing:
+    - ": " anywhere in the value (triggers "mapping values are not allowed here")
+    - " #" anywhere in the value (rest is treated as a comment)
+    - Starting with problematic characters in plain-scalar context
+
+    Non-plain-scalars (quoted strings, flow collections, block scalars) are skipped.
+
+    Returns a list of error messages, empty if valid.
+    """
+    errors: list[str] = []
+    value = value.strip()
+
+    # Skip non-plain-scalars that don't need validation:
+    # - Empty values (nested block mapping/sequence follows)
+    # - Quoted strings
+    # - Flow collections (start with [ or {)
+    # - Block scalar headers (start with | or >)
+    if not value or value[:1] in {"'", '"', "[", "{", "|", ">"}:
+        return errors
+
+    # Check for common plain-scalar hazards
+    if ": " in value or value.endswith(":"):
+        errors.append(
+            f"{file_path}: frontmatter field {key!r} contains ': ' or ends with ':' which breaks YAML parsing. "
+            "Quote the value or reword without a colon."
+        )
+    if " #" in value:
+        errors.append(
+            f"{file_path}: frontmatter field {key!r} contains ' #' which is treated as a comment "
+            "start in YAML. Quote the value or remove the hash."
+        )
+
+    # Check for characters that cannot start a plain scalar in YAML 1.2
+    # Problematic starts: -, ?, : when followed by space/end; , # & * ! % @ ` ] }
+    if value:
+        first_char = value[0]
+        # These can NEVER start a plain scalar
+        if first_char in ",#&*!%@`]}":
+            errors.append(
+                f"{file_path}: frontmatter field {key!r} starts with {first_char!r} which is not valid "
+                "in skill frontmatter. Quote the value."
+            )
+        # -, ?, : are only invalid when followed by space or at end
+        elif first_char in "-?:" and (len(value) == 1 or value[1] in " \t"):
+            errors.append(
+                f"{file_path}: frontmatter field {key!r} starts with {first_char!r} followed by space or end, "
+                "which breaks YAML parsing. Quote the value or start differently."
+            )
+
+    return errors
+
+
 def top_level_frontmatter(frontmatter: str) -> dict[str, str]:
     values: dict[str, str] = {}
     for line in frontmatter.splitlines():
@@ -131,10 +187,18 @@ def main() -> int:
             errors.append(f"{skill_file}: missing or malformed YAML frontmatter")
             continue
 
-        fields = top_level_frontmatter(match.group(1))
-        authors = list_field(match.group(1), "author")
+        frontmatter_text = match.group(1)
+        fields = top_level_frontmatter(frontmatter_text)
+        authors = list_field(frontmatter_text, "author")
         name = fields.get("name", "")
         description = fields.get("description", "")
+
+        # Validate frontmatter fields as safe YAML plain scalars
+        for line in frontmatter_text.splitlines():
+            if line.startswith((" ", "\t")) or ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            errors.extend(validate_yaml_plain_scalar(value, key, skill_file))
 
         if name != skill_dir.name:
             errors.append(f"{skill_file}: name {name!r} does not match directory {skill_dir.name!r}")

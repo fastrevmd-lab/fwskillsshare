@@ -19,7 +19,7 @@ capabilities to the tools each server exposes.
 |---|---|---|
 | **List devices** | `get_router_list` | `get_router_list` |
 | **Gather facts** | `gather_device_facts` | `gather_device_facts` |
-| **Read config baseline** | `get_junos_config` (set format) | `get_junos_config` with `format: "set"` |
+| **Read config baseline** | `get_junos_config` (set format) | `get_junos_config` with `format: "set"` (v0.26.0+; on older versions use `execute_junos_command` with `show configuration \| display set` or upgrade) |
 | **Op commands (single router)** | `execute_junos_command` | `execute_junos_command` |
 | **Op commands (batch, both nodes)** | run twice (sequential or parallel client-side) | `execute_junos_command_batch` (parallel server-side) |
 | **Diff vs rollback N** | `junos_config_diff` with `version: <N>` | `junos_config_diff` with `version: <N>` |
@@ -28,7 +28,7 @@ capabilities to the tools each server exposes.
 | **Push with commit confirmed** | **Not available** | `load_and_commit_config` with `confirm_timeout_mins` |
 | **Confirm commit** | **Not available** (no confirmed-commit support) | `load_and_commit_config` (another commit without confirm_timeout_mins) |
 | **Change-set flow** | **Not available** | `create_junos_change_set` → `approve_junos_change_set` → `apply_junos_change_set` (accepts `confirm_timeout_mins`) → `confirm_junos_change_set` |
-| **Rollback** | `load_and_commit_config` with `config_text: "rollback <N>"` in text format (commits immediately, no check) | `rollback_config` with `commit: true` (if `--allow-direct-commit`) or via change set |
+| **Rollback** | **Not available** (no `rollback_config` tool; push the pre-rendered `undo-stageN.set` file with `load_and_commit_config` for a dry-run-first rollback, or hand off to the operator for `rollback <N>` + `commit` at the CLI/console) | `rollback_config` with `commit: true` (if `--allow-direct-commit`) or change-set with `rollback_source: <N>` |
 
 ## Juniper junos-mcp-server
 
@@ -82,7 +82,7 @@ server version changes.
 
 ## mechubsec rust-junosmcp
 
-Verified against the mechubsec/rustjunosmcp README and source. Re-check after an upgrade.
+Version checked: **rust-junosmcp v0.26.0**. Re-check after an upgrade.
 
 ### Core tool surface
 
@@ -108,7 +108,8 @@ Change-set flow (requires second-principal approval, or `--lab-mode` self-approv
 
 Parameters:
 - `create_junos_change_set`: `device`, `expected_fingerprint` (from `get_junos_candidate_fingerprint`),
-  `actions` (each action has `config_text`, `config_format`)
+  `actions` (array of actions; each action has exactly one of: `payload: {text, format?, mode?}` OR `rollback_source: <0-49>`).
+  The `mode` field (merge/replace/override; merge is default) exists since v0.26.0
 - `approve_junos_change_set`: `change_set_id`, `device`, `expected_digest` (from create result)
 - `apply_junos_change_set`: `change_set_id`, `device`, `expected_digest`, `expected_fingerprint`,
   optional `confirm_timeout_mins` (whole minutes)
@@ -148,14 +149,16 @@ blocklist to get around this; the user performs the reboot.
 
 ### Other behavior
 
-- **vars_content in `render_and_apply_j2_template`:** must be a JSON object, e.g.
-  `{"skill": "srx-mnha-builder"}`. Empty object `{}` is accepted (the README does not say
-  otherwise). The Juniper server rejects `{}`, so use the one-key object for both.
+- **vars_content in `render_and_apply_j2_template`:** is a string argument whose content must
+  be a valid JSON object, e.g. `vars_content: "{\"skill\": \"srx-mnha-builder\"}"`. The Juniper
+  server rejects empty `{}`, so use a one-key object for both servers.
 - **Batch commands:** `execute_junos_command_batch` runs M commands on N routers in
   parallel across routers. Returns inline error rows for unknown or unreachable routers
   instead of aborting. Blocklist violations are strict: if any router in the request is
   outside the token's scope, the call is refused with HTTP 403 and **no** router executes.
-- **Output handling:** `| match` / `| except` are applied server-side (v0.9+). `| last N`,
-  `| count`, `max_lines`, `max_bytes` are supported.
+- **Output handling:** `| match` / `| except` / `| last N` / `| count` are applied
+  server-side after fetching the full output from the device (the modifiers bound the
+  *response*, not the device transfer). `max_lines` and `max_bytes` caps are also
+  supported and applied after pipe modifiers.
 - **Idle pool timeout: 300 s by default** (`JMCP_POOL_IDLE_TIMEOUT`, same as Juniper's).
   After a reboot or any pause longer than ~5 min, the first call may fail. Retry once.

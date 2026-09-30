@@ -7,7 +7,7 @@ Verify each capability against your server and version before relying on it.
 
 ## Capability mapping
 
-| Capability | Juniper junos-mcp-server<br/>(v1.1.1) | rust-junosmcp<br/>(v0.19.0+) |
+| Capability | Juniper junos-mcp-server<br/>(v1.1.1) | rust-junosmcp<br/>(v0.26.0+) |
 |---|---|---|
 | **List devices** | `get_router_list` | `get_router_list` |
 | **Execute operational commands** | `execute_junos_command` | `execute_junos_command` |
@@ -100,13 +100,14 @@ usually the whole story — adjust the value and retry.
 
 ## rust-junosmcp
 
-**Version checked:** v0.19.0
+**Version checked:** v0.26.0
 **Repository:** <https://github.com/mechubsec/rustjunosmcp>
 
 ### Tools
 
-v0.19.0 (with default `srx` feature) exposes 27 tools. The Junos-only build
-(`--no-default-features`) exposes 18 tools.
+v0.26.0 (with default `srx` feature) exposes 42 tools: 27 Junos tools plus 15
+SRX workflow tools. The Junos-only build (`--no-default-features`) exposes 27
+tools.
 
 ### Commit check without committing
 
@@ -155,14 +156,26 @@ The server reads `_blocklist_defaults` and per-device `blocklist` rules from
 ### Output caps
 
 `execute_junos_command` and `get_junos_config` accept `max_lines` and
-`max_bytes` parameters to cap output server-side. `| last N` and `| count` are
-applied device-side and work as expected.
+`max_bytes` parameters to cap output server-side.
 
-### Config path and format selection
+`| match`, `| except`, `| count`, and `| last N` pipe modifiers are applied
+**server-side** after fetching the full output from the device (the NETCONF
+transport drops them, so rust-junosmcp-core's `output.rs` applies them itself).
+They bound the tool response, but the full output is still transferred from the
+device and processed on the server. For large logs, narrow at the source (e.g.,
+specific log file, time-bounded commands, or smaller archives) rather than
+relying on these modifiers to avoid transferring large data sets.
+
+### Config path and format selection (v0.26.0+)
 
 `get_junos_config` supports `config_path` (a Junos hierarchy path such as
 `system services`) and `format` (`text`, `set`, `xml`, or `json`), rendered
-device-side via `| display <format>`.
+device-side via `| display <format>`. The `format` parameter was added in
+v0.26.0.
+
+`load_and_commit_config` supports `mode` (`merge`, `replace`, or `override` —
+`override` is refused by this tool), which controls how the configuration is
+loaded into the candidate. The `mode` parameter was added in v0.26.0.
 
 ### Idle timeout
 

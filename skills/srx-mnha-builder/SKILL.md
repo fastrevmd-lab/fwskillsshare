@@ -1,6 +1,6 @@
 ---
 name: srx-mnha-builder
-description: Build a new two-node SRX/vSRX Multi-Node High Availability pair from standalone nodes over a Junos MCP server: routing, switching or hybrid mode, dedicated or shared ICL, pair sheet, staged configs with pre-push checks and approval gates, HA-activation reboot, formation checks and failover test. Use when standing up an MNHA pair or turning two SRXs into HA. For design or troubleshooting a running pair, use srx-mnha.
+description: Build a new two-node SRX/vSRX Multi-Node High Availability pair from standalone nodes over a Junos MCP server, covering routing, switching or hybrid mode, dedicated or shared ICL, pair sheet, staged configs with pre-push checks and approval gates, HA-activation reboot, formation checks and failover test. Use when standing up an MNHA pair or turning two SRXs into HA. For design or troubleshooting a running pair, use srx-mnha.
 version: 0.1.0
 author:
   - fastrevmd-lab
@@ -172,7 +172,7 @@ earlier ones). Use the commit-check/dry-run tool from `references/mcp-server-not
 
 Template parameters (when using the J2 tool):
 - `template_content` = the rendered stage text
-- `vars_content: {"skill": "srx-mnha-builder"}` (a JSON object)
+- `vars_content: "{\"skill\": \"srx-mnha-builder\"}"` (string containing a one-key JSON object; empty `{}` is rejected by Juniper's server)
 - `config_format: "set"`
 
 Also dry-run each `undo-stageN.set` against the current config. This shows exactly what
