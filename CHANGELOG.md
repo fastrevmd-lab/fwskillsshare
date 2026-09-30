@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Publishing:** the JNPR downstream keeps its own secret-scan workflow; rust-junosmcp is named without its org.
+
 ## 1.9.0 — SRX MNHA pair builder; skills work with any Junos MCP server
 
 New draft skill **srx-mnha-builder** (#83, reworked in #84 and #86), and `srx-ips` no longer tied to one MCP server (#85). The catalog grows from 31 to 32 skills.
