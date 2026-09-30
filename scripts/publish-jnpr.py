@@ -50,11 +50,15 @@ PUBLISH_FILES = (
     ".gitignore",
     ".python-version",
     ".pre-commit-config.yaml",
-    ".gitleaks.toml",  # the security workflow reads it; shipping one without the other
-                       # scans downstream copies with no allowlist
-    ".github/workflows/security.yml",
+    ".gitleaks.toml",  # downstream keeps its own security workflow; ship the config it reads
 )
 PUBLISH_DIRS = ("skills", "scripts")
+
+# Files the downstream keeps that must survive the sync. These are neither
+# published nor deleted -- they are preserved as-is when present in the target.
+PRESERVE_DOWNSTREAM = (
+    ".github/workflows/security.yml",
+)
 
 # Excluded even though their parent directory is published.
 # These read from docs/, which is upstream-only process material, so they cannot
@@ -72,7 +76,10 @@ FORBIDDEN = re.compile(r"mechub|fastrevmd|violet", re.IGNORECASE)
 # Citations of real field evidence, kept deliberately: stripping the URL turns a
 # sourced claim into a bare assertion, which is the failure mode these skills exist
 # to prevent. Attribution in the footer is an MIT courtesy, not branding.
-PROVENANCE_OK = re.compile(re.escape(UPSTREAM_SLUG))
+# The rust-junosmcp slug is the source of a cited tool dependency.
+PROVENANCE_OK = re.compile(
+    "(?:" + re.escape(UPSTREAM_SLUG) + "|" + re.escape("mechubsec/rustjunosmcp") + ")"
+)
 
 # Nested metadata.sources[].author entries are left as the upstream author on
 # purpose -- they credit whoever did the underlying lab work, and rewriting them
@@ -228,9 +235,21 @@ def transform_changelog(dest: Path) -> None:
 
     Release notes cite validation records under docs/, which is upstream-only,
     for the same reason QUALITY.md does. Without this the gate fails the run.
+
+    Targeted rewrites neutralize historical org references in release notes.
     """
     path = dest / "CHANGELOG.md"
-    path.write_text(repoint_docs_links(path.read_text(encoding="utf-8")), encoding="utf-8")
+    text = repoint_docs_links(path.read_text(encoding="utf-8"))
+    # v1.8.0 Hygiene line mentions the upstream org and its shared workflow
+    text = text.replace(
+        "the shared mechubsec gitleaks workflow",
+        "a shared gitleaks workflow"
+    )
+    text = text.replace(
+        "the `mechubsec` organization",
+        "the upstream organization"
+    )
+    path.write_text(text, encoding="utf-8")
 
 
 def pad_to_width(line: str, old: str, new: str) -> str:
@@ -508,6 +527,13 @@ def sync_to_target(staged: Path, target: Path, sha: str, dirty: bool, repo_slug:
             "Move or delete them, or drop them from the export."
         )
 
+    # Save downstream-specific files before removing everything.
+    preserved: dict[str, bytes] = {}
+    for rel in PRESERVE_DOWNSTREAM:
+        path = target / rel
+        if path.is_file():
+            preserved[rel] = path.read_bytes()
+
     if run(["git", "ls-files"], cwd=target).strip():
         run(["git", "rm", "-r", "-q", "--", "."], cwd=target)
 
@@ -521,6 +547,12 @@ def sync_to_target(staged: Path, target: Path, sha: str, dirty: bool, repo_slug:
             shutil.copytree(entry, dst, ignore=ignore, dirs_exist_ok=True)
         else:
             shutil.copy2(entry, dst)
+
+    # Restore downstream-specific files the sync must not touch.
+    for rel, content in preserved.items():
+        path = target / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
 
     run(["git", "add", "-A"], cwd=target)
     if not run(["git", "status", "--porcelain"], cwd=target).strip():

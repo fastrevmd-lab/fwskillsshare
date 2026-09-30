@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Publishing:** the JNPR downstream keeps its own secret-scan workflow; rust-junosmcp is named without its org.
+
 ## 1.9.0 — SRX MNHA pair builder; skills work with any Junos MCP server
 
 New draft skill **srx-mnha-builder** (#83, reworked in #84 and #86), and `srx-ips` no longer tied to one MCP server (#85). The catalog grows from 31 to 32 skills.
@@ -7,7 +11,7 @@ New draft skill **srx-mnha-builder** (#83, reworked in #84 and #86), and `srx-ip
 - **Skills are Markdown only.** `install.sh` is the only executable shipped to users; see `AGENTS.md`. The scripts in `clearpass-proxmox-deploy` and `sd-onprem-proxmox-deploy` are grandfathered and tracked for removal in `TODO.md`.
 - **Repaired #83 merge damage:** restored the 1.8.0 release notes and the LF endings of `scripts/test-runtime-intake-validator.py`.
 
-**srx-mnha-builder** v0.1.0 (renamed from `srx-mnha-mcp-builder` before first release), a draft skill that builds a new two-node SRX/vSRX Multi-Node High Availability pair end-to-end through a Junos MCP server (Juniper junos-mcp-server or mechubsec rust-junosmcp). Contributed by Javier Grizzuti (@jgrizzuti) from lab work. The catalog gains one skill, from 31 to 32. Design theory and troubleshooting of a running pair stay in `srx-mnha`; this skill covers the build order and works with either MCP server.
+**srx-mnha-builder** v0.1.0 (renamed from `srx-mnha-mcp-builder` before first release), a draft skill that builds a new two-node SRX/vSRX Multi-Node High Availability pair end-to-end through a Junos MCP server (Juniper junos-mcp-server or rust-junosmcp). Contributed by Javier Grizzuti (@jgrizzuti) from lab work. The catalog gains one skill, from 31 to 32. Design theory and troubleshooting of a running pair stay in `srx-mnha`; this skill covers the build order and works with either MCP server.
 
 **srx-mnha** v1.3.2 corrects the claim that SRG interface monitoring requires a monitor-object; the bare `monitor interface` form commit-checks on vSRX 26.2R1.7.
 

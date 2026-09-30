@@ -183,7 +183,7 @@ show dhcp server binding routing-instance <RI>
 
 ### srx-mnha-builder
 
-`srx-mnha-builder` builds a two-node SRX MNHA pair from standalone nodes step by step through a Junos MCP server (Juniper junos-mcp-server or mechubsec rust-junosmcp). Covers mode selection, preflight discovery, pair sheet, staged config with pre-push checks and approval gates, HA-activation reboot handoff, formation verification, and failover test. Maps each workflow capability (dry run, push with commit confirmed where supported, confirm, diff, batch commands) to both MCP servers' tools.
+`srx-mnha-builder` builds a two-node SRX MNHA pair from standalone nodes step by step through a Junos MCP server (Juniper junos-mcp-server or rust-junosmcp). Covers mode selection, preflight discovery, pair sheet, staged config with pre-push checks and approval gates, HA-activation reboot handoff, formation verification, and failover test. Maps each workflow capability (dry run, push with commit confirmed where supported, confirm, diff, batch commands) to both MCP servers' tools.
 
 ### srx-autovpn-full-tunnel
 
