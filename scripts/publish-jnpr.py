@@ -53,6 +53,7 @@ PUBLISH_FILES = (
     ".python-version",
     ".pre-commit-config.yaml",
     ".gitleaks.toml",  # downstream keeps its own security workflow; ship the config it reads
+    ".gitleaks-vendor.toml",  # vendor rules extended by .gitleaks.toml
 )
 PUBLISH_DIRS = ("skills", "scripts")
 
@@ -450,6 +451,43 @@ def scrub_source_attribution(rel: Path, text: str) -> str:
     return "\n".join(lines)
 
 
+def _check_gitleaks_extend(config_path: Path, staged_root: Path) -> list[str]:
+    """Check if a gitleaks config's [extend] path target exists in the staged tree.
+
+    Returns a list of violations (empty if all extend targets are present).
+    """
+    import tomllib
+
+    violations: list[str] = []
+    rel = config_path.relative_to(staged_root)
+
+    try:
+        with config_path.open("rb") as f:
+            data = tomllib.load(f)
+    except (tomllib.TOMLDecodeError, OSError) as e:
+        violations.append(f"{rel}: could not parse TOML: {e}")
+        return violations
+
+    extend = data.get("extend")
+    if not extend or not isinstance(extend, dict):
+        return violations
+
+    path_value = extend.get("path")
+    if not path_value or not isinstance(path_value, str):
+        return violations
+
+    # Resolve the extend path relative to the config file's directory
+    config_dir = config_path.parent
+    target_path = (config_dir / path_value).resolve()
+
+    if not target_path.is_file():
+        violations.append(
+            f"{rel}: [extend] path = {path_value!r} does not exist in the staged tree"
+        )
+
+    return violations
+
+
 def regenerate_checksums(dest: Path) -> None:
     """Regenerate skills/CHECKSUMS.sha256 for the staged tree after transformations.
 
@@ -501,6 +539,10 @@ def gate(dest: Path) -> list[str]:
             for number, line in enumerate(text.split("\n"), start=1):
                 if BROKEN_LINK.search(line):
                     violations.append(f"{rel}:{number}: link into unpublished docs/")
+
+        # Verify gitleaks config extend targets are present in the staged tree
+        if path.suffix == ".toml" and path.name.startswith(".gitleaks"):
+            violations.extend(_check_gitleaks_extend(path, dest))
 
     # Verify that the staged checksum manifest matches the staged skills/ tree.
     # This catches a manifest that was either not regenerated after transforms or
