@@ -6,7 +6,7 @@ path = ".gitleaks-vendor.toml"
 
 [[allowlists]]
 description = "Juniper community blog source URLs carry a public CommunityKey query parameter (a forum section ID, not a credential)"
-regexTarget = "line"
+regexTarget = "match"
 regexes = ['''CommunityKey=[0-9a-fA-F-]+''']
 
 # The new junos-type9-secret vendor rule (MEC-30) also matches $9$ example
