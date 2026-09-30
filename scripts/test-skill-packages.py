@@ -22,15 +22,23 @@ checker = importlib.util.module_from_spec(_spec)
 assert _spec.loader is not None
 _spec.loader.exec_module(checker)
 
+
+def _author_list() -> str:
+    """Build YAML author list from checker's EXPECTED_AUTHORS.
+
+    This ensures test fixtures match the checker's expectation both upstream
+    and after the downstream transform rewrites the checker's author list.
+    """
+    return "\n".join(f"  - {author}" for author in checker.EXPECTED_AUTHORS)
+
+
 # Minimal valid skill for testing
-MINIMAL_VALID_SKILL = """---
+MINIMAL_VALID_SKILL = f"""---
 name: test-skill
 description: A minimal test skill for validation. Use when testing the checker.
 version: 1.0.0
 author:
-  - fastrevmd-lab
-  - Claude
-  - GPT
+{_author_list()}
 license: MIT
 metadata:
   hermes:
@@ -126,14 +134,12 @@ class YAMLValidationTests(unittest.TestCase):
 
     def test_unquoted_colon_space_is_rejected(self) -> None:
         """Frontmatter with ': ' in an unquoted value should fail."""
-        frontmatter = """---
+        frontmatter = f"""---
 name: test-skill
 description: Build from nodes over a server: routing mode and more. Use when testing.
 version: 1.0.0
 author:
-  - fastrevmd-lab
-  - Claude
-  - GPT
+{_author_list()}
 license: MIT
 metadata:
   hermes:
@@ -156,14 +162,12 @@ metadata:
 
     def test_unquoted_space_hash_is_rejected(self) -> None:
         """Frontmatter with ' #' in an unquoted value should fail."""
-        frontmatter = """---
+        frontmatter = f"""---
 name: test-skill
 description: A test skill with a #hashtag in it. Use when testing.
 version: 1.0.0
 author:
-  - fastrevmd-lab
-  - Claude
-  - GPT
+{_author_list()}
 license: MIT
 metadata:
   hermes:
@@ -186,14 +190,12 @@ metadata:
 
     def test_dash_followed_by_space_is_rejected(self) -> None:
         """Frontmatter value starting with '- ' should fail."""
-        frontmatter = """---
+        frontmatter = f"""---
 name: test-skill
 description: - x is invalid. Use when testing.
 version: 1.0.0
 author:
-  - fastrevmd-lab
-  - Claude
-  - GPT
+{_author_list()}
 license: MIT
 metadata:
   hermes:
@@ -216,14 +218,12 @@ metadata:
 
     def test_at_sign_is_rejected(self) -> None:
         """Frontmatter value starting with @ should fail."""
-        frontmatter = """---
+        frontmatter = f"""---
 name: test-skill
 description: @mention is invalid. Use when testing.
 version: 1.0.0
 author:
-  - fastrevmd-lab
-  - Claude
-  - GPT
+{_author_list()}
 license: MIT
 metadata:
   hermes:
@@ -246,14 +246,12 @@ metadata:
 
     def test_flow_sequence_is_accepted(self) -> None:
         """Flow sequences like [a, b, c] should pass."""
-        frontmatter = """---
+        frontmatter = f"""---
 name: test-skill
 description: Valid skill description. Use when testing.
 version: 1.0.0
 author:
-  - fastrevmd-lab
-  - Claude
-  - GPT
+{_author_list()}
 license: MIT
 metadata:
   hermes:
@@ -275,17 +273,15 @@ metadata:
 
     def test_flow_mapping_is_accepted(self) -> None:
         """Flow mappings like {key: value} should pass."""
-        frontmatter = """---
+        frontmatter = f"""---
 name: test-skill
 description: Valid skill description. Use when testing.
 version: 1.0.0
 author:
-  - fastrevmd-lab
-  - Claude
-  - GPT
+{_author_list()}
 license: MIT
 metadata:
-  hermes: {tags: [test], priority: high}
+  hermes: {{tags: [test], priority: high}}
 ---
 
 # Test Skill
@@ -303,16 +299,14 @@ metadata:
 
     def test_block_scalar_header_is_accepted(self) -> None:
         """Block scalar headers like | and > should pass YAML validation."""
-        frontmatter = """---
+        frontmatter = f"""---
 name: test-skill
 description: |
   This is a literal block scalar that spans multiple lines.
   Use when testing block scalars.
 version: 1.0.0
 author:
-  - fastrevmd-lab
-  - Claude
-  - GPT
+{_author_list()}
 license: MIT
 metadata:
   hermes:
@@ -335,14 +329,12 @@ metadata:
 
     def test_plain_scalar_with_dash_no_space_is_accepted(self) -> None:
         """Plain scalars like '-Start here' (dash not followed by space) should pass."""
-        frontmatter = """---
+        frontmatter = f"""---
 name: test-skill
 description: -Start here with a valid plain scalar. Use when testing.
 version: 1.0.0
 author:
-  - fastrevmd-lab
-  - Claude
-  - GPT
+{_author_list()}
 license: MIT
 metadata:
   hermes:
@@ -364,14 +356,12 @@ metadata:
 
     def test_right_bracket_is_rejected(self) -> None:
         """Frontmatter value starting with ] should fail."""
-        frontmatter = """---
+        frontmatter = f"""---
 name: test-skill
 description: ]x is invalid. Use when testing.
 version: 1.0.0
 author:
-  - fastrevmd-lab
-  - Claude
-  - GPT
+{_author_list()}
 license: MIT
 metadata:
   hermes:
@@ -394,14 +384,12 @@ metadata:
 
     def test_right_brace_is_rejected(self) -> None:
         """Frontmatter value starting with } should fail."""
-        frontmatter = """---
+        frontmatter = f"""---
 name: test-skill
-description: }x is invalid. Use when testing.
+description: }}x is invalid. Use when testing.
 version: 1.0.0
 author:
-  - fastrevmd-lab
-  - Claude
-  - GPT
+{_author_list()}
 license: MIT
 metadata:
   hermes:
